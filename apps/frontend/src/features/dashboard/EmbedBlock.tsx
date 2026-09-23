@@ -78,28 +78,28 @@ export function EmbedBlockBody(props: {
 
   return (
     <section className="rounded-xl border border-surface-border bg-card p-3 md:p-4">
-      <h3 className="mb-2 text-sm font-medium text-white">{title}</h3>
+      <h3 className="mb-2 text-sm font-medium text-ink-primary">{title}</h3>
       {!readOnly ? (
         <div className="dashboard-grid-no-drag mb-3 space-y-2">
           <div>
-            <label className="mb-1 block text-meta uppercase text-surface-muted">
+            <label className="mb-1 block text-meta uppercase text-ink-muted">
               {t("dashboard:embedTitleOptionalLabel")}
             </label>
             <input
               type="text"
-              className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-white"
+              className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
               placeholder={sectionTitle}
               value={st.title}
               onChange={(e) => patch({ title: e.target.value })}
             />
           </div>
           <div>
-            <label className="mb-1 block text-meta uppercase text-surface-muted">
+            <label className="mb-1 block text-meta uppercase text-ink-muted">
               {t("dashboard:embedUrlLabel")}
             </label>
             <input
               type="url"
-              className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 font-mono text-xs text-neutral-100"
+              className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 font-mono text-xs text-ink-primary"
               placeholder={t("dashboard:embedUrlPlaceholder")}
               value={st.url}
               onChange={(e) => patch({ url: e.target.value })}
@@ -107,7 +107,7 @@ export function EmbedBlockBody(props: {
           </div>
           <div className="flex flex-wrap items-end gap-2">
             <div>
-              <label className="mb-1 block text-meta uppercase text-surface-muted">
+              <label className="mb-1 block text-meta uppercase text-ink-muted">
                 {t("dashboard:embedHeightLabel")}
               </label>
               <input
@@ -115,7 +115,7 @@ export function EmbedBlockBody(props: {
                 min={120}
                 max={2000}
                 step={20}
-                className="w-28 rounded-lg border border-surface-border bg-field px-2 py-1.5 text-sm text-white"
+                className="w-28 rounded-lg border border-surface-border bg-field px-2 py-1.5 text-sm text-ink-primary"
                 value={st.height}
                 onChange={(e) => patch({ height: Number(e.target.value) || 480 })}
               />
@@ -127,7 +127,7 @@ export function EmbedBlockBody(props: {
               {EMBED_ALLOWED_HOSTNAMES.slice(0, 4).join(", ")} …
             </p>
           ) : null}
-          <p className="text-meta leading-snug text-surface-muted">
+          <p className="text-meta leading-snug text-ink-muted">
             {t("dashboard:embedGoogleCalendarHint")}
           </p>
         </div>
@@ -151,7 +151,7 @@ export function EmbedBlockBody(props: {
           {t("dashboard:embedUnavailableReadOnly")}
         </p>
       ) : !st.url ? (
-        <p className="rounded-lg border border-dashed border-white/15 py-10 text-center text-sm text-surface-muted">
+        <p className="rounded-lg border border-dashed border-white/15 py-10 text-center text-sm text-ink-muted">
           {readOnly
             ? t("dashboard:embedEmptyReadOnly")
             : t("dashboard:embedEmptyEditable")}

@@ -98,7 +98,7 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
             <p className="mt-0.5 text-meta text-amber-200/70">{prompt.reason}</p>
           ) : null}
           {prompt.help ? (
-            <p className="mt-1 text-meta leading-snug text-neutral-400">{prompt.help}</p>
+            <p className="mt-1 text-meta leading-snug text-ink-muted">{prompt.help}</p>
           ) : null}
 
           {prompt.status === "saved" ? (
@@ -108,7 +108,7 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
               {hasFields ? (
                 fields.map((f) => (
                   <label key={f.name} className="block">
-                    <span className="text-meta text-neutral-400">
+                    <span className="text-meta text-ink-muted">
                       {f.label || f.name}
                       {f.required ? " *" : ""}
                     </span>
@@ -120,20 +120,20 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
                       onChange={(e) =>
                         setFieldValues((prev) => ({ ...prev, [f.name]: e.target.value }))
                       }
-                      className="mt-0.5 w-full rounded-lg border border-white/10 bg-field px-2.5 py-1.5 text-sm text-neutral-100 outline-none focus:border-amber-600/50"
+                      className="mt-0.5 w-full rounded-lg border border-white/10 bg-field px-2.5 py-1.5 text-sm text-ink-primary outline-none focus:border-amber-600/50"
                     />
                   </label>
                 ))
               ) : (
                 <label className="block">
-                  <span className="text-meta text-neutral-400">{t("chat:secretCardValueLabel")}</span>
+                  <span className="text-meta text-ink-muted">{t("chat:secretCardValueLabel")}</span>
                   <input
                     type="password"
                     autoComplete="off"
                     disabled={disabled}
                     value={rawSecret}
                     onChange={(e) => setRawSecret(e.target.value)}
-                    className="mt-0.5 w-full rounded-lg border border-white/10 bg-field px-2.5 py-1.5 text-sm text-neutral-100 outline-none focus:border-amber-600/50"
+                    className="mt-0.5 w-full rounded-lg border border-white/10 bg-field px-2.5 py-1.5 text-sm text-ink-primary outline-none focus:border-amber-600/50"
                   />
                 </label>
               )}
@@ -145,13 +145,13 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
                   type="button"
                   disabled={disabled}
                   onClick={() => void save()}
-                  className="rounded-lg bg-amber-700/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600/90 disabled:opacity-50"
+                  className="rounded-lg bg-amber-700/80 px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-amber-600/90 disabled:opacity-50"
                 >
                   {saving ? t("chat:secretCardSaving") : t("chat:secretCardSave")}
                 </button>
                 <Link
                   to="/settings/connections"
-                  className="text-meta text-neutral-400 underline-offset-2 hover:text-neutral-300 hover:underline"
+                  className="text-meta text-ink-muted underline-offset-2 hover:text-neutral-300 hover:underline"
                 >
                   {t("chat:secretCardOpenConnections")}
                 </Link>

@@ -15,10 +15,10 @@ export function DocsPage() {
   return (
     <div className="h-full min-h-0 overflow-y-auto px-6 py-8">
       <div className="mx-auto max-w-xl">
-        <h1 className="text-lg font-semibold text-white">{t("common:docs.title")}</h1>
-        <p className="mt-2 text-sm text-surface-muted">
+        <h1 className="text-lg font-semibold text-ink-primary">{t("common:docs.title")}</h1>
+        <p className="mt-2 text-sm text-ink-muted">
           {t("common:docs.intro")}{" "}
-          <code className="rounded bg-white/5 px-1 py-0.5 text-xs text-neutral-300">docs/</code>.
+          <code className="rounded bg-white/5 px-1 py-0.5 text-xs text-ink-secondary">docs/</code>.
         </p>
         <ul className="mt-6 flex flex-col gap-2">
           {LINKS.map((item) => (

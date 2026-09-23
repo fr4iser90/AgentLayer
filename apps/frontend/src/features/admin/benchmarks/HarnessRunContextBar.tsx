@@ -34,15 +34,15 @@ export function HarnessRunContextBar({ auth }: Props) {
   return (
     <section className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2">
       <div className="min-w-0">
-        <p className="text-meta text-surface-muted">{t("admin:benchHarnessContextHint")}</p>
+        <p className="text-meta text-ink-muted">{t("admin:benchHarnessContextHint")}</p>
         {loading ? (
-          <p className="mt-0.5 text-meta text-surface-muted">{t("admin:loading")}</p>
+          <p className="mt-0.5 text-meta text-ink-muted">{t("admin:loading")}</p>
         ) : fingerprint ? (
           <p className="mt-0.5 truncate font-mono text-meta text-white/70" title={fingerprint}>
             {fingerprint.slice(0, 40)}…
           </p>
         ) : (
-          <p className="mt-0.5 text-meta text-surface-muted">—</p>
+          <p className="mt-0.5 text-meta text-ink-muted">—</p>
         )}
       </div>
       <Link

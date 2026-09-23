@@ -155,9 +155,9 @@ export function ProjectsPage() {
   return (
     <div className="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col gap-4 overflow-hidden p-4 md:p-6">
       <header className="shrink-0">
-        <h1 className="text-lg font-semibold text-white">{t("workspace:projectsTitle")}</h1>
-        <p className="mt-1 max-w-2xl text-sm text-surface-muted">{t("workspace:projectsIntro")}</p>
-        <p className="mt-1 text-xs text-surface-muted">
+        <h1 className="text-lg font-semibold text-ink-primary">{t("workspace:projectsTitle")}</h1>
+        <p className="mt-1 max-w-2xl text-sm text-ink-muted">{t("workspace:projectsIntro")}</p>
+        <p className="mt-1 text-xs text-ink-muted">
           {scope === "company"
             ? t("workspace:projectsCompanyScopeNote")
             : t("workspace:projectsOwnerScopeNote")}
@@ -192,7 +192,7 @@ export function ProjectsPage() {
                         "rounded-md px-2 py-1 text-xs font-semibold uppercase tracking-wide transition-colors",
                         active
                           ? "border-b-2 border-sky-500 text-sky-300"
-                          : "border-b-2 border-transparent text-surface-muted hover:text-neutral-200",
+                          : "border-b-2 border-transparent text-ink-muted hover:text-neutral-200",
                       ].join(" ")}
                     >
                       {t(tab.labelKey)}
@@ -201,13 +201,13 @@ export function ProjectsPage() {
                 })}
               </div>
             ) : (
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-muted">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                 {t("workspace:projectsListTitle")}
               </h2>
             )}
             <button
               type="button"
-              className="rounded-md border border-white/10 px-2 py-1 text-meta text-neutral-300 hover:bg-white/5 disabled:opacity-40"
+              className="rounded-md border border-white/10 px-2 py-1 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
               disabled={loading}
               onClick={() => void reload()}
             >
@@ -216,9 +216,9 @@ export function ProjectsPage() {
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-2">
             {loading ? (
-              <p className="px-2 py-2 text-xs text-surface-muted">{t("common:nav.loading")}</p>
+              <p className="px-2 py-2 text-xs text-ink-muted">{t("common:nav.loading")}</p>
             ) : workspaces.length === 0 ? (
-              <p className="px-2 py-2 text-xs text-surface-muted">
+              <p className="px-2 py-2 text-xs text-ink-muted">
                 {scope === "company" && companyTenantId === null
                   ? t("workspace:projectsCompanyNoTenant")
                   : t("workspace:projectsEmpty")}
@@ -240,14 +240,14 @@ export function ProjectsPage() {
                         onClick={() => selectWorkspace(w.id)}
                       >
                         <span className="flex items-center gap-1.5">
-                          <span className="min-w-0 flex-1 truncate text-sm text-neutral-100">{w.name}</span>
+                          <span className="min-w-0 flex-1 truncate text-sm text-ink-primary">{w.name}</span>
                           {scope === "mine" && w.visibility === "tenant" ? (
                             <span className="shrink-0 rounded bg-sky-950/60 px-1 py-0.5 text-meta uppercase tracking-wide text-sky-300">
                               {t("workspace:visibilityCompanyTag")}
                             </span>
                           ) : null}
                         </span>
-                        <span className="mt-0.5 block truncate text-meta text-surface-muted">
+                        <span className="mt-0.5 block truncate text-meta text-ink-muted">
                           {w.source}
                           {w.git_url ? ` · ${w.git_url}` : ""}
                         </span>
@@ -262,21 +262,21 @@ export function ProjectsPage() {
 
         <section className="flex min-h-0 flex-col rounded-xl border border-surface-border bg-card">
           {!selected ? (
-            <p className="p-4 text-sm text-surface-muted">{t("workspace:selectProjectBrowseFiles")}</p>
+            <p className="p-4 text-sm text-ink-muted">{t("workspace:selectProjectBrowseFiles")}</p>
           ) : (
             <>
               <div className="shrink-0 space-y-3 border-b border-surface-border p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h2 className="truncate text-base font-medium text-white">{selected.name}</h2>
-                    <p className="mt-1 break-all font-mono text-meta text-surface-muted">
+                    <h2 className="truncate text-base font-medium text-ink-primary">{selected.name}</h2>
+                    <p className="mt-1 break-all font-mono text-meta text-ink-muted">
                       {selected.path || "—"}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Link
                       to={`/chat?workspace=${encodeURIComponent(selected.id)}`}
-                      className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-neutral-200 hover:bg-white/5"
+                      className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
                     >
                       {t("workspace:projectsOpenChat")}
                     </Link>
@@ -295,34 +295,34 @@ export function ProjectsPage() {
                 </div>
                 <dl className="grid gap-2 text-xs sm:grid-cols-2">
                   <div>
-                    <dt className="text-surface-muted">{t("workspace:projectsFieldSource")}</dt>
-                    <dd className="text-neutral-200">{selected.source}</dd>
+                    <dt className="text-ink-muted">{t("workspace:projectsFieldSource")}</dt>
+                    <dd className="text-ink-primary">{selected.source}</dd>
                   </div>
                   <div>
-                    <dt className="text-surface-muted">{t("workspace:projectsFieldBranch")}</dt>
-                    <dd className="text-neutral-200">{selected.git_branch || "—"}</dd>
+                    <dt className="text-ink-muted">{t("workspace:projectsFieldBranch")}</dt>
+                    <dd className="text-ink-primary">{selected.git_branch || "—"}</dd>
                   </div>
                   <div className="sm:col-span-2">
-                    <dt className="text-surface-muted">{t("workspace:projectsFieldGit")}</dt>
-                    <dd className="break-all text-neutral-200">{selected.git_url || "—"}</dd>
+                    <dt className="text-ink-muted">{t("workspace:projectsFieldGit")}</dt>
+                    <dd className="break-all text-ink-primary">{selected.git_url || "—"}</dd>
                   </div>
                   <div>
-                    <dt className="text-surface-muted">{t("workspace:projectsFieldUpdated")}</dt>
-                    <dd className="text-neutral-200">{selected.updated_at || "—"}</dd>
+                    <dt className="text-ink-muted">{t("workspace:projectsFieldUpdated")}</dt>
+                    <dd className="text-ink-primary">{selected.updated_at || "—"}</dd>
                   </div>
                 </dl>
               </div>
 
               <div className="flex min-h-0 flex-1 flex-col">
                 <div className="flex shrink-0 items-center justify-between gap-2 border-b border-surface-border px-3 py-2">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-surface-muted">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                     {t("workspace:projectFilesTitle")}
                   </h3>
                   <div className="flex items-center gap-2">
                     {browsePath ? (
                       <button
                         type="button"
-                        className="rounded border border-white/10 px-2 py-0.5 text-meta text-neutral-300 hover:bg-white/5"
+                        className="rounded border border-white/10 px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5"
                         onClick={() => setBrowsePath(parentPath(browsePath))}
                       >
                         {t("workspace:projectsTreeUp")}
@@ -330,7 +330,7 @@ export function ProjectsPage() {
                     ) : null}
                     <button
                       type="button"
-                      className="rounded border border-white/10 px-2 py-0.5 text-meta text-neutral-300 hover:bg-white/5"
+                      className="rounded border border-white/10 px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5"
                       disabled={treeLoading}
                       onClick={() => void loadTree()}
                     >
@@ -338,16 +338,16 @@ export function ProjectsPage() {
                     </button>
                   </div>
                 </div>
-                <p className="shrink-0 truncate border-b border-white/5 px-3 py-1 font-mono text-meta text-surface-muted">
+                <p className="shrink-0 truncate border-b border-white/5 px-3 py-1 font-mono text-meta text-ink-muted">
                   {browsePath || "."}
                 </p>
                 <div className="min-h-0 flex-1 overflow-y-auto p-2">
                   {treeError ? (
                     <p className="px-2 py-2 text-xs text-rose-300">{treeError}</p>
                   ) : treeLoading ? (
-                    <p className="px-2 py-2 text-xs text-surface-muted">{t("common:nav.loading")}</p>
+                    <p className="px-2 py-2 text-xs text-ink-muted">{t("common:nav.loading")}</p>
                   ) : entries.length === 0 ? (
-                    <p className="px-2 py-2 text-xs text-surface-muted">{t("workspace:projectsTreeEmpty")}</p>
+                    <p className="px-2 py-2 text-xs text-ink-muted">{t("workspace:projectsTreeEmpty")}</p>
                   ) : (
                     <ul className="space-y-0.5">
                       {entries.map((e) => (
@@ -358,20 +358,20 @@ export function ProjectsPage() {
                               className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs text-sky-200 hover:bg-white/5"
                               onClick={() => setBrowsePath(e.path)}
                             >
-                              <span className="text-surface-muted">/</span>
+                              <span className="text-ink-muted">/</span>
                               <span className="truncate">{e.name}</span>
                               {e.is_symlink ? (
-                                <span className="text-meta text-surface-muted">
+                                <span className="text-meta text-ink-muted">
                                   {t("workspace:treeEntrySymlink")}
                                 </span>
                               ) : null}
                             </button>
                           ) : (
-                            <div className="flex items-center gap-2 rounded px-2 py-1 text-xs text-neutral-300">
-                              <span className="text-surface-muted">·</span>
+                            <div className="flex items-center gap-2 rounded px-2 py-1 text-xs text-ink-secondary">
+                              <span className="text-ink-muted">·</span>
                               <span className="truncate">{e.name}</span>
                               {e.is_symlink ? (
-                                <span className="text-meta text-surface-muted">
+                                <span className="text-meta text-ink-muted">
                                   {t("workspace:treeEntrySymlink")}
                                 </span>
                               ) : null}

@@ -37,7 +37,7 @@ export function MessageTurnActivity({ entries, running = false, waitHint = null 
 
   return (
     <div className="mb-2 rounded-lg border border-white/8 bg-black/25 px-2.5 py-2">
-      <p className="mb-1.5 text-meta font-semibold uppercase tracking-wide text-surface-muted">
+      <p className="mb-1.5 text-meta font-semibold uppercase tracking-wide text-ink-muted">
         {t("chat:messageRuntimeLabel")}
       </p>
       {steps.length === 0 ? (
@@ -50,9 +50,9 @@ export function MessageTurnActivity({ entries, running = false, waitHint = null 
           {steps.map((e) => (
             <li
               key={e.id}
-              className="border-l-2 border-violet-500/40 pl-2 text-meta leading-snug text-neutral-300"
+              className="border-l-2 border-violet-500/40 pl-2 text-meta leading-snug text-ink-secondary"
             >
-              <span className="text-meta font-medium uppercase tracking-wide text-surface-muted">
+              <span className="text-meta font-medium uppercase tracking-wide text-ink-muted">
                 {e.kind === "llm"
                   ? t("chat:activityKindLlm")
                   : e.kind === "llm_queue"
@@ -76,7 +76,7 @@ export function MessageTurnActivity({ entries, running = false, waitHint = null 
                   ) || e.text
                 : e.text}
               {e.durationMs != null && e.durationMs >= 0 ? (
-                <span className="ml-1 tabular-nums text-neutral-500">
+                <span className="ml-1 tabular-nums text-ink-muted">
                   {e.durationMs < 1000
                     ? `${e.durationMs}ms`
                     : `${(e.durationMs / 1000).toFixed(1)}s`}

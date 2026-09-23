@@ -1,0 +1,390 @@
+{
+  "src/components/NotificationBell.tsx": [
+    "text-black",
+    "text-sky-400"
+  ],
+  "src/components/SchemaForm.tsx": [
+    "text-red-400"
+  ],
+  "src/features/admin/agentConfig/ExperimentDetailPanel.tsx": [
+    "text-indigo-300",
+    "text-red-200",
+    "text-red-300"
+  ],
+  "src/features/admin/benchmarks/BenchmarkInsightsPanel.tsx": [
+    "text-red-400",
+    "text-rose-300"
+  ],
+  "src/features/admin/benchmarks/BenchmarkRunOverridePanel.tsx": [
+    "text-amber-100",
+    "text-amber-200",
+    "text-red-200",
+    "text-sky-400"
+  ],
+  "src/features/admin/benchmarks/BenchmarkStatsPanel.tsx": [
+    "text-red-400"
+  ],
+  "src/features/admin/benchmarks/HarnessRunContextBar.tsx": [
+    "text-sky-200"
+  ],
+  "src/features/admin/operatorSettings/OperatorSettingsStickySave.tsx": [
+    "text-emerald-400",
+    "text-red-400"
+  ],
+  "src/features/chat/AgentActivityPanel.tsx": [
+    "text-indigo-500"
+  ],
+  "src/features/chat/AssistantTurnBlock.tsx": [
+    "text-violet-200"
+  ],
+  "src/features/chat/ConversationGoalPanels.tsx": [
+    "text-amber-100",
+    "text-rose-200"
+  ],
+  "src/features/chat/MessageFeedbackButtons.tsx": [
+    "text-emerald-300",
+    "text-red-300"
+  ],
+  "src/features/chat/PermissionAskCard.tsx": [
+    "text-black"
+  ],
+  "src/features/chat/ProposalMessageBody.tsx": [
+    "text-sky-100",
+    "text-sky-400"
+  ],
+  "src/features/chat/TurnNavigator.tsx": [
+    "text-sky-100"
+  ],
+  "src/features/dashboard/AgentUpdateBadge.tsx": [
+    "text-black"
+  ],
+  "src/features/dashboard/CardGridBlock.tsx": [
+    "text-amber-300",
+    "text-violet-200"
+  ],
+  "src/features/dashboard/DashboardBlocks.tsx": [
+    "text-emerald-400",
+    "text-red-400",
+    "text-rose-400",
+    "text-sky-200"
+  ],
+  "src/features/dashboard/DashboardBoardFilesPanel.tsx": [
+    "text-rose-300"
+  ],
+  "src/features/dashboard/DashboardCanvasSurface.tsx": [
+    "text-amber-200",
+    "text-emerald-100",
+    "text-emerald-200",
+    "text-sky-200",
+    "text-violet-200"
+  ],
+  "src/features/dashboard/DashboardEmbeddedChat.tsx": [
+    "text-amber-200",
+    "text-emerald-100",
+    "text-red-200"
+  ],
+  "src/features/dashboard/DashboardEmbeddedThreadMenu.tsx": [
+    "text-sky-100"
+  ],
+  "src/features/dashboard/DashboardGridInner.tsx": [
+    "text-amber-200",
+    "text-emerald-100",
+    "text-emerald-200",
+    "text-sky-200",
+    "text-violet-200"
+  ],
+  "src/features/dashboard/DashboardLayoutProposalInline.tsx": [
+    "text-red-200"
+  ],
+  "src/features/dashboard/DashboardLayoutProposalPanel.tsx": [
+    "text-red-200"
+  ],
+  "src/features/dashboard/DashboardOnboardingBanner.tsx": [
+    "text-emerald-50"
+  ],
+  "src/features/dashboard/DashboardOverviewPanel.tsx": [
+    "text-black"
+  ],
+  "src/features/dashboard/DashboardRefBlock.tsx": [
+    "text-amber-300",
+    "text-sky-400"
+  ],
+  "src/features/dashboard/DashboardSidebarNav.tsx": [
+    "text-black"
+  ],
+  "src/features/dashboard/EmbedBlock.tsx": [
+    "text-amber-200",
+    "text-red-200"
+  ],
+  "src/features/dashboard/FormulaCalcBlock.tsx": [
+    "text-amber-100",
+    "text-red-300"
+  ],
+  "src/features/dashboard/MediaPlayerBlock.tsx": [
+    "text-amber-200",
+    "text-red-400",
+    "text-sky-100"
+  ],
+  "src/features/dashboard/ProjectWorkspaceControls.tsx": [
+    "text-violet-100"
+  ],
+  "src/features/dashboard/ProjectsImportModal.tsx": [
+    "text-amber-300",
+    "text-emerald-300",
+    "text-red-300"
+  ],
+  "src/features/dashboard/ShareWidgetBlock.tsx": [
+    "text-amber-300",
+    "text-sky-400"
+  ],
+  "src/features/dashboard/gallery/GalleryBlockBody.tsx": [
+    "text-red-400"
+  ],
+  "src/features/dashboard/media/MediaSharePanel.tsx": [
+    "text-red-400",
+    "text-sky-100"
+  ],
+  "src/features/media/MediaMiniPlayer.tsx": [
+    "text-sky-100"
+  ],
+  "src/features/media/MediaMiniPlayerPanel.tsx": [
+    "text-red-300",
+    "text-sky-50",
+    "text-white"
+  ],
+  "src/features/voice/ChatComposerVoiceControls.tsx": [
+    "text-sky-500"
+  ],
+  "src/features/voice/VoiceHandsFreeBar.tsx": [
+    "text-rose-300",
+    "text-violet-100"
+  ],
+  "src/features/voice/VoiceMicButton.tsx": [
+    "text-rose-100"
+  ],
+  "src/features/workspace/CodingWorkspacePanels.tsx": [
+    "text-amber-100"
+  ],
+  "src/features/workspace/WorkspaceMcpModal.tsx": [
+    "text-sky-200"
+  ],
+  "src/pages/ChatPage.tsx": [
+    "text-amber-100",
+    "text-amber-200",
+    "text-black",
+    "text-emerald-200",
+    "text-red-300",
+    "text-sky-100",
+    "text-sky-200",
+    "text-sky-400",
+    "text-sky-500",
+    "text-violet-100"
+  ],
+  "src/pages/DashboardPage.tsx": [
+    "text-emerald-100",
+    "text-red-200",
+    "text-red-300",
+    "text-sky-100",
+    "text-sky-300",
+    "text-sky-400",
+    "text-violet-100"
+  ],
+  "src/pages/DashboardPublicSharePage.tsx": [
+    "text-red-300"
+  ],
+  "src/pages/DocsPage.tsx": [
+    "text-sky-400"
+  ],
+  "src/pages/LegalPage.tsx": [
+    "text-sky-400"
+  ],
+  "src/pages/LoginPage.tsx": [
+    "text-red-400",
+    "text-sky-400"
+  ],
+  "src/pages/MySchedulesPage.tsx": [
+    "text-red-100"
+  ],
+  "src/pages/ProjectsPage.tsx": [
+    "text-rose-200",
+    "text-rose-300",
+    "text-sky-200",
+    "text-sky-300"
+  ],
+  "src/pages/SetupWizardPage.tsx": [
+    "text-amber-400",
+    "text-emerald-400",
+    "text-red-400",
+    "text-sky-200",
+    "text-sky-400"
+  ],
+  "src/pages/StudioPage.tsx": [
+    "text-black",
+    "text-emerald-300",
+    "text-red-200",
+    "text-sky-400"
+  ],
+  "src/pages/TasksPage.tsx": [
+    "text-indigo-200",
+    "text-red-400",
+    "text-sky-200"
+  ],
+  "src/pages/admin/AdminAgentConfig.tsx": [
+    "text-red-200",
+    "text-sky-400"
+  ],
+  "src/pages/admin/AdminAgentSubmissions.tsx": [
+    "text-amber-200",
+    "text-amber-300",
+    "text-red-200"
+  ],
+  "src/pages/admin/AdminAgentTraces.tsx": [
+    "text-emerald-400",
+    "text-red-400",
+    "text-sky-300"
+  ],
+  "src/pages/admin/AdminAgents.tsx": [
+    "text-amber-100",
+    "text-amber-200",
+    "text-amber-300",
+    "text-emerald-300",
+    "text-rose-300"
+  ],
+  "src/pages/admin/AdminBenchmarks.tsx": [
+    "text-amber-300",
+    "text-emerald-100",
+    "text-emerald-200",
+    "text-emerald-300",
+    "text-red-100",
+    "text-red-300",
+    "text-red-400",
+    "text-rose-200",
+    "text-rose-300",
+    "text-sky-200",
+    "text-sky-300",
+    "text-sky-400",
+    "text-violet-100",
+    "text-violet-200",
+    "text-white"
+  ],
+  "src/pages/admin/AdminHarnessConfig.tsx": [
+    "text-red-200",
+    "text-sky-400"
+  ],
+  "src/pages/admin/AdminScheduledJobs.tsx": [
+    "text-sky-400"
+  ],
+  "src/pages/admin/AdminSchedules.tsx": [
+    "text-red-100"
+  ],
+  "src/pages/admin/AdminTools.tsx": [
+    "text-amber-100",
+    "text-sky-100",
+    "text-slate-200",
+    "text-violet-100"
+  ],
+  "src/pages/admin/AdminUsers.tsx": [
+    "text-amber-400",
+    "text-emerald-300",
+    "text-emerald-400",
+    "text-red-400",
+    "text-sky-300",
+    "text-sky-400"
+  ],
+  "src/pages/admin/interfaces/AdminInterfacesAutomationPage.tsx": [
+    "text-sky-400"
+  ],
+  "src/pages/admin/interfaces/AdminInterfacesLegalSection.tsx": [
+    "text-sky-400"
+  ],
+  "src/pages/admin/interfaces/AdminInterfacesLlmSection.tsx": [
+    "text-amber-100",
+    "text-amber-200",
+    "text-amber-300",
+    "text-black",
+    "text-emerald-100",
+    "text-emerald-300",
+    "text-rose-100",
+    "text-sky-100",
+    "text-sky-200"
+  ],
+  "src/pages/admin/interfaces/AdminInterfacesMemorySection.tsx": [
+    "text-amber-100",
+    "text-black",
+    "text-sky-200"
+  ],
+  "src/pages/admin/interfaces/AdminInterfacesOverviewPage.tsx": [
+    "text-sky-400"
+  ],
+  "src/pages/admin/interfaces/AdminInterfacesPlatformSection.tsx": [
+    "text-amber-100",
+    "text-black"
+  ],
+  "src/pages/org/OrgContentCms.tsx": [
+    "text-amber-300",
+    "text-sky-300",
+    "text-sky-400"
+  ],
+  "src/pages/org/OrgGrantsPage.tsx": [
+    "text-amber-300",
+    "text-emerald-300",
+    "text-rose-300"
+  ],
+  "src/pages/org/OrgSetupPage.tsx": [
+    "text-red-400"
+  ],
+  "src/pages/org/OrgTeamPage.tsx": [
+    "text-emerald-400",
+    "text-red-400"
+  ],
+  "src/pages/settings/AgentSettings.tsx": [
+    "text-amber-400",
+    "text-emerald-400",
+    "text-indigo-300",
+    "text-sky-400"
+  ],
+  "src/pages/settings/ConnectionsSettings.tsx": [
+    "text-amber-400",
+    "text-emerald-300",
+    "text-emerald-400",
+    "text-sky-200",
+    "text-sky-400"
+  ],
+  "src/pages/settings/DelegateSettings.tsx": [
+    "text-indigo-300"
+  ],
+  "src/pages/settings/FriendsSettings.tsx": [
+    "text-amber-300",
+    "text-amber-400",
+    "text-emerald-300",
+    "text-sky-300",
+    "text-sky-400"
+  ],
+  "src/pages/settings/NotificationsSettings.tsx": [
+    "text-emerald-200",
+    "text-red-200",
+    "text-sky-400"
+  ],
+  "src/pages/settings/ProfileSettings.tsx": [
+    "text-amber-400",
+    "text-emerald-300",
+    "text-sky-300",
+    "text-sky-400"
+  ],
+  "src/pages/settings/SharesSettings.tsx": [
+    "text-amber-400",
+    "text-emerald-400",
+    "text-sky-400"
+  ],
+  "src/pages/settings/ToolsSettings.tsx": [
+    "text-amber-200",
+    "text-amber-400",
+    "text-emerald-200",
+    "text-orange-200",
+    "text-sky-200",
+    "text-sky-400"
+  ],
+  "src/pages/settings/VoiceSettings.tsx": [
+    "text-amber-100"
+  ]
+}

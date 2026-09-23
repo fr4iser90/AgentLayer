@@ -145,21 +145,21 @@ export function ChatRuntimeBar({
     const extras: ReactNode[] = [];
     if (softLimit > 0 && softLimit !== windowTokens) {
       extras.push(
-        <span key="soft" className="text-neutral-500">
+        <span key="soft" className="text-ink-muted">
           {t("chat:contextSoftHint", { soft: softLimit.toLocaleString() })}
         </span>
       );
     }
     if (messagesInPrompt != null && !hasProviderPrompt) {
       extras.push(
-        <span key="msgs" className="text-neutral-500">
+        <span key="msgs" className="text-ink-muted">
           {t("chat:contextMessagesHint", { count: messagesInPrompt })}
         </span>
       );
     }
     if (budgetSource) {
       extras.push(
-        <span key="src" className="text-neutral-500">
+        <span key="src" className="text-ink-muted">
           {t("chat:contextBudgetSourceHint", { source: budgetSource })}
         </span>
       );
@@ -181,10 +181,10 @@ export function ChatRuntimeBar({
 
   return (
     <div
-      className={`rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-meta leading-snug text-neutral-300 ${className}`}
+      className={`rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-meta leading-snug text-ink-secondary ${className}`}
     >
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-        <span className="font-semibold uppercase tracking-wide text-surface-muted">{t("workspace:mcp")}</span>
+        <span className="font-semibold uppercase tracking-wide text-ink-muted">{t("workspace:mcp")}</span>
         {scope === "workspace" ? (
           <span
             className="rounded border border-sky-500/35 bg-sky-950/40 px-1 py-0.5 text-meta font-medium uppercase tracking-wide text-sky-200/90"
@@ -195,9 +195,9 @@ export function ChatRuntimeBar({
         ) : null}
         {mcpAddon ? <span className="flex items-center">{mcpAddon}</span> : null}
         {!mcp ? (
-          <span className="text-neutral-500">—</span>
+          <span className="text-ink-muted">—</span>
         ) : !mcp.enabled ? (
-          <span className="text-neutral-500">{t("workspace:disabled")}</span>
+          <span className="text-ink-muted">{t("workspace:disabled")}</span>
         ) : !mcp.import_ok ? (
           <span className="text-amber-300/90" title={t("workspace:mcpPackageMissingTitle")}>
             {t("workspace:packageMissing")}
@@ -207,21 +207,21 @@ export function ChatRuntimeBar({
             {t("workspace:configError")}
           </span>
         ) : servers.length === 0 ? (
-          <span className="text-neutral-500">{t("workspace:noServers")}</span>
+          <span className="text-ink-muted">{t("workspace:noServers")}</span>
         ) : (
           <span
             className="tabular-nums"
             title={servers.map((s) => `${s.id}: ${s.connected ? `${s.tool_count} tools` : s.error || "down"}`).join("\n")}
           >
             <span className={connected > 0 ? "text-emerald-400/95" : "text-amber-300/90"}>{connected}</span>
-            <span className="text-neutral-500">/{servers.length}</span>
-            <span className="ml-1 text-neutral-500">{t("workspace:servers")}</span>
+            <span className="text-ink-muted">/{servers.length}</span>
+            <span className="ml-1 text-ink-muted">{t("workspace:servers")}</span>
           </span>
         )}
         {showContext ? (
           <>
-            <span className="text-neutral-600">·</span>
-            <span className="font-semibold uppercase tracking-wide text-surface-muted">
+            <span className="text-ink-faint">·</span>
+            <span className="font-semibold uppercase tracking-wide text-ink-muted">
               {t("chat:contextBudgetLabel")}
             </span>
             <span
@@ -230,7 +230,7 @@ export function ChatRuntimeBar({
                   ? "text-red-300/95"
                   : contextWarn === "soft"
                     ? "text-amber-300/90"
-                    : "text-neutral-200"
+                    : "text-ink-primary"
               }`}
               title={contextTitle}
             >
@@ -242,7 +242,7 @@ export function ChatRuntimeBar({
                 <span className="ml-1 text-amber-300/85">{t("chat:contextLoopCompacted")}</span>
               ) : null}
               {mergedMeta?.messages_dropped ? (
-                <span className="ml-1 text-neutral-500">
+                <span className="ml-1 text-ink-muted">
                   {t("chat:contextDropped", { count: mergedMeta.messages_dropped })}
                 </span>
               ) : null}
@@ -251,16 +251,16 @@ export function ChatRuntimeBar({
         ) : null}
         {showTokens ? (
           <>
-            <span className="text-neutral-600">·</span>
-            <span className="font-semibold uppercase tracking-wide text-surface-muted">{t("dashboard:tokens")}</span>
-            <span className="tabular-nums text-neutral-200">
+            <span className="text-ink-faint">·</span>
+            <span className="font-semibold uppercase tracking-wide text-ink-muted">{t("dashboard:tokens")}</span>
+            <span className="tabular-nums text-ink-primary">
               {t("dashboard:tokenUsage", {
                 in: usage.prompt.toLocaleString(),
                 out: usage.completion.toLocaleString(),
                 total: usage.total.toLocaleString(),
               })}
               {usage.rounds > 0 ? (
-                <span className="text-neutral-500"> {t("dashboard:llmRounds", { count: usage.rounds })}</span>
+                <span className="text-ink-muted"> {t("dashboard:llmRounds", { count: usage.rounds })}</span>
               ) : null}
             </span>
           </>

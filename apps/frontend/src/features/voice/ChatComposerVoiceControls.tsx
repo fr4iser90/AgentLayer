@@ -39,7 +39,7 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
   if (!voiceStatus) {
     return (
       <div className="w-full">
-        <p className="text-meta leading-snug text-surface-muted">{t("chat:voiceComposerLoading")}</p>
+        <p className="text-meta leading-snug text-ink-muted">{t("chat:voiceComposerLoading")}</p>
       </div>
     );
   }
@@ -61,7 +61,7 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
   return (
     <div className="w-full space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-meta font-medium uppercase tracking-wide text-surface-muted">
+        <span className="text-meta font-medium uppercase tracking-wide text-ink-muted">
           {t("chat:voiceComposerTitle")}
         </span>
         <Link
@@ -73,7 +73,7 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
       </div>
       <label
         className={`flex cursor-pointer items-center gap-2 text-meta font-medium uppercase tracking-wide ${
-          ttsOk ? "text-surface-muted" : "text-neutral-500"
+          ttsOk ? "text-ink-muted" : "text-ink-muted"
         }`}
         title={ttsOk ? t("chat:voiceComposerReadAloudHint") : t("chat:voiceComposerTtsOff")}
       >
@@ -86,12 +86,12 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
         />
         <span>{t("chat:voiceComposerReadAloud")}</span>
       </label>
-      <p className="pl-6 text-meta leading-snug text-surface-muted">
+      <p className="pl-6 text-meta leading-snug text-ink-muted">
         {ttsOk ? t("chat:voiceComposerReadAloudHint") : t("chat:voiceComposerTtsOff")}
       </p>
       <label
         className={`flex cursor-pointer items-center gap-2 text-meta font-medium uppercase tracking-wide ${
-          sttOk ? "text-surface-muted" : "text-neutral-500"
+          sttOk ? "text-ink-muted" : "text-ink-muted"
         }`}
         title={sttOk ? t("chat:voiceComposerInputHint") : t("chat:voiceComposerSttOff")}
       >
@@ -104,17 +104,17 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
         />
         <span>{t("chat:voiceComposerInput")}</span>
       </label>
-      <p className="pl-6 text-meta leading-snug text-surface-muted">
+      <p className="pl-6 text-meta leading-snug text-ink-muted">
         {sttOk ? t("chat:voiceComposerInputHint") : t("chat:voiceComposerSttOff")}
       </p>
       {sttOk &&
       voiceStatus.prefs.input_enabled &&
       (voiceStatus.prefs.mode_web === "push_to_talk" ||
         voiceStatus.prefs.mode_web === "toggle") ? (
-        <label className="block text-meta text-surface-muted">
+        <label className="block text-meta text-ink-muted">
           {t("chat:voiceComposerMicMode")}
           <select
-            className="mt-1 w-full rounded-lg border border-surface-border bg-field px-2.5 py-1.5 text-sm text-neutral-100"
+            className="mt-1 w-full rounded-lg border border-surface-border bg-field px-2.5 py-1.5 text-sm text-ink-primary"
             value={
               voiceStatus.prefs.mode_web === "toggle" ? "toggle" : "push_to_talk"
             }

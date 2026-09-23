@@ -141,20 +141,20 @@ export function MediaSharePanel() {
   };
 
   if (loading) {
-    return <p className="text-xs text-surface-muted">{t("dashboard:loading")}</p>;
+    return <p className="text-xs text-ink-muted">{t("dashboard:loading")}</p>;
   }
 
   const ownedUploads = uploads.filter((u) => u.access !== "shared");
 
   return (
     <div className="dashboard-grid-no-drag mt-4 rounded-lg border border-white/10 bg-black/30 p-3">
-      <h4 className="text-xs font-medium uppercase tracking-wide text-surface-muted">
+      <h4 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
         {t("dashboard:mediaSharePanelTitle")}
       </h4>
-      <p className="mt-1 text-meta leading-snug text-surface-muted">{t("dashboard:mediaSharePanelHint")}</p>
+      <p className="mt-1 text-meta leading-snug text-ink-muted">{t("dashboard:mediaSharePanelHint")}</p>
       {err ? <p className="mt-2 text-xs text-red-400">{err}</p> : null}
       {ownedUploads.length === 0 ? (
-        <p className="mt-2 text-xs text-surface-muted">{t("dashboard:mediaShareNoUploads")}</p>
+        <p className="mt-2 text-xs text-ink-muted">{t("dashboard:mediaShareNoUploads")}</p>
       ) : (
         <ul className="mt-2 space-y-2">
           {ownedUploads.map((u) => {
@@ -164,20 +164,20 @@ export function MediaSharePanel() {
               <li key={u.id} className="rounded-md border border-white/10 p-2">
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between text-left text-sm text-white"
+                  className="flex w-full items-center justify-between text-left text-sm text-ink-primary"
                   onClick={() => (open ? setExpandedId(null) : openItem(u.id, u.license))}
                 >
                   <span className="truncate">{label}</span>
-                  <span className="ml-2 shrink-0 text-meta text-surface-muted">
+                  <span className="ml-2 shrink-0 text-meta text-ink-muted">
                     {u.shareable ? t("dashboard:mediaShareable") : t("dashboard:mediaNeedsLicense")}
                   </span>
                 </button>
                 {open ? (
                   <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
-                    <label className="block text-meta uppercase text-surface-muted">
+                    <label className="block text-meta uppercase text-ink-muted">
                       {t("dashboard:mediaLicenseLabel")}
                       <select
-                        className="mt-1 block w-full rounded border border-surface-border bg-field px-2 py-1 text-xs text-white"
+                        className="mt-1 block w-full rounded border border-surface-border bg-field px-2 py-1 text-xs text-ink-primary"
                         value={license}
                         onChange={(e) => setLicense(e.target.value)}
                       >
@@ -190,7 +190,7 @@ export function MediaSharePanel() {
                     </label>
                     <input
                       type="text"
-                      className="w-full rounded border border-surface-border bg-field px-2 py-1 text-xs text-white"
+                      className="w-full rounded border border-surface-border bg-field px-2 py-1 text-xs text-ink-primary"
                       placeholder={t("dashboard:mediaLicenseNotePlaceholder")}
                       value={licenseNote}
                       onChange={(e) => setLicenseNote(e.target.value)}
@@ -198,7 +198,7 @@ export function MediaSharePanel() {
                     <button
                       type="button"
                       disabled={busy}
-                      className="rounded border border-surface-border px-2 py-1 text-meta text-white hover:bg-white/5"
+                      className="rounded border border-surface-border px-2 py-1 text-meta text-ink-primary hover:bg-white/5"
                       onClick={() => void saveLicense(u.id)}
                     >
                       {t("dashboard:mediaSaveLicense")}
@@ -208,13 +208,13 @@ export function MediaSharePanel() {
                         <div className="flex flex-wrap gap-2 pt-2">
                           <input
                             type="email"
-                            className="min-w-[10rem] flex-1 rounded border border-surface-border bg-field px-2 py-1 text-xs text-white"
+                            className="min-w-[10rem] flex-1 rounded border border-surface-border bg-field px-2 py-1 text-xs text-ink-primary"
                             placeholder={t("dashboard:mediaShareEmailPlaceholder")}
                             value={shareEmail}
                             onChange={(e) => setShareEmail(e.target.value)}
                           />
                           <select
-                            className="rounded border border-surface-border bg-field px-2 py-1 text-xs text-white"
+                            className="rounded border border-surface-border bg-field px-2 py-1 text-xs text-ink-primary"
                             value={sharePerm}
                             onChange={(e) =>
                               setSharePerm(e.target.value as "play" | "play_and_download")
@@ -233,7 +233,7 @@ export function MediaSharePanel() {
                           </button>
                         </div>
                         {grants.length > 0 ? (
-                          <ul className="mt-2 space-y-1 text-meta text-surface-muted">
+                          <ul className="mt-2 space-y-1 text-meta text-ink-muted">
                             {grants.map((g) => (
                               <li key={g.id} className="flex items-center justify-between gap-2">
                                 <span>

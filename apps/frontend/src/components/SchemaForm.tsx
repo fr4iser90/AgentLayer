@@ -36,17 +36,17 @@ export function SchemaForm({ properties, required = [], values, onChange }: Prop
         if (isFile) {
           return (
             <label key={key} className="flex flex-col gap-1">
-              <span className="text-sm text-neutral-300">
+              <span className="text-sm text-ink-secondary">
                 {label}
                 {req ? <span className="text-red-400"> *</span> : null}
               </span>
               {prop.description ? (
-                <span className="text-xs text-surface-muted">{prop.description}</span>
+                <span className="text-xs text-ink-muted">{prop.description}</span>
               ) : null}
               <input
                 type="file"
                 accept="image/*"
-                className="text-sm text-neutral-300 file:mr-2 file:rounded file:border-0 file:bg-neutral-700 file:px-2 file:py-1 file:text-sm"
+                className="text-sm text-ink-secondary file:mr-2 file:rounded file:border-0 file:bg-neutral-700 file:px-2 file:py-1 file:text-sm"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
                   if (!f) {
@@ -69,12 +69,12 @@ export function SchemaForm({ properties, required = [], values, onChange }: Prop
         if (prop.enum && prop.enum.length > 0) {
           return (
             <label key={key} className="flex flex-col gap-1">
-              <span className="text-sm text-neutral-300">{label}</span>
+              <span className="text-sm text-ink-secondary">{label}</span>
               {prop.description ? (
-                <span className="text-xs text-surface-muted">{prop.description}</span>
+                <span className="text-xs text-ink-muted">{prop.description}</span>
               ) : null}
               <select
-                className="rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-neutral-100"
+                className="rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
                 value={(values[key] as string) ?? ""}
                 onChange={(e) => onChange(key, e.target.value === "" ? undefined : e.target.value)}
               >
@@ -98,16 +98,16 @@ export function SchemaForm({ properties, required = [], values, onChange }: Prop
                 : Number(v);
           return (
             <label key={key} className="flex flex-col gap-1">
-              <span className="text-sm text-neutral-300">
+              <span className="text-sm text-ink-secondary">
                 {label}
                 {req ? <span className="text-red-400"> *</span> : null}
               </span>
               {prop.description ? (
-                <span className="text-xs text-surface-muted">{prop.description}</span>
+                <span className="text-xs text-ink-muted">{prop.description}</span>
               ) : null}
               <input
                 type="number"
-                className="rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-neutral-100"
+                className="rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
                 min={prop.minimum}
                 max={prop.maximum}
                 value={numVal === "" ? "" : numVal}
@@ -130,16 +130,16 @@ export function SchemaForm({ properties, required = [], values, onChange }: Prop
 
         return (
           <label key={key} className="flex flex-col gap-1">
-            <span className="text-sm text-neutral-300">
+            <span className="text-sm text-ink-secondary">
               {label}
               {req ? <span className="text-red-400"> *</span> : null}
             </span>
             {prop.description ? (
-              <span className="text-xs text-surface-muted">{prop.description}</span>
+              <span className="text-xs text-ink-muted">{prop.description}</span>
             ) : null}
             {multiline ? (
               <textarea
-                className="min-h-[88px] rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-neutral-100"
+                className="min-h-[88px] rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
                 value={strVal}
                 placeholder={prop.default !== undefined ? String(prop.default) : undefined}
                 onChange={(e) => onChange(key, e.target.value)}
@@ -147,7 +147,7 @@ export function SchemaForm({ properties, required = [], values, onChange }: Prop
             ) : (
               <input
                 type="text"
-                className="rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-neutral-100"
+                className="rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
                 value={strVal}
                 onChange={(e) => onChange(key, e.target.value)}
               />

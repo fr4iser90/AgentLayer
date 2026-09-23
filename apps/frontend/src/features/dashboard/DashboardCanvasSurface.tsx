@@ -438,7 +438,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
             <button
               key={definition.type}
               type="button"
-              className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
+              className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-ink-on-fill hover:bg-sky-500"
               onClick={() => addBlock(definition.type)}
             >
               {t(definition.addLabelKey as "dashboard:addList")}
@@ -447,11 +447,11 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-2 text-meta text-surface-muted">
+      <div className="flex flex-wrap items-center gap-2 text-meta text-ink-muted">
         <span>{t("dashboard:canvasHint")}</span>
         <button
           type="button"
-          className="rounded border border-surface-border px-2 py-0.5 text-neutral-200 hover:bg-white/5"
+          className="rounded border border-surface-border px-2 py-0.5 text-ink-primary hover:bg-white/5"
           title={t("dashboard:canvasZoomOut")}
           onClick={() => nudgeZoom(0.9)}
         >
@@ -459,7 +459,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
         </button>
         <button
           type="button"
-          className="rounded border border-surface-border px-2 py-0.5 text-neutral-200 hover:bg-white/5"
+          className="rounded border border-surface-border px-2 py-0.5 text-ink-primary hover:bg-white/5"
           title={t("dashboard:canvasZoomIn")}
           onClick={() => nudgeZoom(1.1)}
         >
@@ -467,14 +467,14 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
         </button>
         <button
           type="button"
-          className="rounded border border-surface-border px-2 py-0.5 text-neutral-200 hover:bg-white/5"
+          className="rounded border border-surface-border px-2 py-0.5 text-ink-primary hover:bg-white/5"
           onClick={() => fitAll()}
         >
           {t("dashboard:canvasFit")}
         </button>
         <button
           type="button"
-          className="rounded border border-surface-border px-2 py-0.5 text-neutral-200 hover:bg-white/5"
+          className="rounded border border-surface-border px-2 py-0.5 text-ink-primary hover:bg-white/5"
           onClick={() => {
             setZoom(1);
             if (editMode) persistViewport({ zoom: 1 });
@@ -482,11 +482,11 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
         >
           {t("dashboard:canvasZoomReset")}
         </button>
-        <span className="font-mono text-neutral-400">{Math.round(zoom * 100)}%</span>
+        <span className="font-mono text-ink-muted">{Math.round(zoom * 100)}%</span>
       </div>
 
       {!layout.blocks.length ? (
-        <p className="text-sm text-surface-muted">{t("dashboard:noBlocksInLayout")}</p>
+        <p className="text-sm text-ink-muted">{t("dashboard:noBlocksInLayout")}</p>
       ) : null}
 
       <div
@@ -577,14 +577,14 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
                     >
                       {editMode ? (
                         <span
-                          className="shrink-0 cursor-grab px-0.5 text-xs leading-none text-surface-muted active:cursor-grabbing"
+                          className="shrink-0 cursor-grab px-0.5 text-xs leading-none text-ink-muted active:cursor-grabbing"
                           title={t("dashboard:canvasDragHandle")}
                           aria-hidden="true"
                         >
                           ⋮⋮
                         </span>
                       ) : null}
-                      <span className="min-w-0 flex-1 truncate text-meta font-medium uppercase tracking-wide text-surface-muted">
+                      <span className="min-w-0 flex-1 truncate text-meta font-medium uppercase tracking-wide text-ink-muted">
                         {blockTitle(b)}
                       </span>
                       <div className="flex shrink-0 gap-1">

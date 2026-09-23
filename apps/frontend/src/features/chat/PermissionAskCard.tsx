@@ -17,17 +17,17 @@ type Props = {
 export function PermissionAskCard({ request, onReply, disabled }: Props) {
   const { t } = useTranslation(["chat"]);
   return (
-    <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-white">
+    <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-ink-primary">
       <p className="font-medium">
         {t("chat:permissionAskTitle", { tool: request.toolName })}
         {request.round != null ? (
-          <span className="ml-2 text-xs text-surface-muted">
+          <span className="ml-2 text-xs text-ink-muted">
             {t("chat:permissionAskRound", { round: request.round })}
           </span>
         ) : null}
       </p>
       {request.argsPreview ? (
-        <pre className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap break-all rounded bg-black/30 p-2 font-mono text-xs text-surface-muted">
+        <pre className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap break-all rounded bg-black/30 p-2 font-mono text-xs text-ink-muted">
           {request.argsPreview.slice(0, 1200)}
         </pre>
       ) : null}
@@ -43,7 +43,7 @@ export function PermissionAskCard({ request, onReply, disabled }: Props) {
         <button
           type="button"
           disabled={disabled}
-          className="rounded-md border border-surface-border bg-black/20 px-3 py-1.5 text-xs text-white disabled:opacity-50"
+          className="rounded-md border border-surface-border bg-black/20 px-3 py-1.5 text-xs text-ink-primary disabled:opacity-50"
           onClick={() => onReply("always")}
         >
           {t("chat:permissionAllowAlways")}

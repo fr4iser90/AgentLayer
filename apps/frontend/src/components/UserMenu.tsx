@@ -46,14 +46,14 @@ export function UserMenu() {
           className="absolute right-0 z-50 mt-1 min-w-[12rem] rounded-lg border border-surface-border bg-[#1a1a1a] py-1 shadow-xl"
         >
           {email ? (
-            <p className="truncate border-b border-white/10 px-3 py-2 text-xs text-surface-muted" title={email}>
+            <p className="truncate border-b border-white/10 px-3 py-2 text-xs text-ink-muted" title={email}>
               {email}
             </p>
           ) : null}
           <Link
             role="menuitem"
             to="/settings"
-            className="block px-3 py-2 text-sm text-neutral-200 hover:bg-white/10"
+            className="block px-3 py-2 text-sm text-ink-primary hover:bg-white/10"
             onClick={() => setOpen(false)}
           >
             {t("userMenu.settings")}
@@ -62,7 +62,7 @@ export function UserMenu() {
             <Link
               role="menuitem"
               to="/org"
-              className="block px-3 py-2 text-sm text-neutral-200 hover:bg-white/10"
+              className="block px-3 py-2 text-sm text-ink-primary hover:bg-white/10"
               onClick={() => setOpen(false)}
             >
               {t("userMenu.organization")}
@@ -72,14 +72,14 @@ export function UserMenu() {
             <Link
               role="menuitem"
               to="/admin"
-              className="block px-3 py-2 text-sm text-neutral-200 hover:bg-white/10"
+              className="block px-3 py-2 text-sm text-ink-primary hover:bg-white/10"
               onClick={() => setOpen(false)}
             >
               {t("userMenu.platformAdmin")}
             </Link>
           ) : null}
           <div className="border-t border-white/10 px-3 py-2">
-            <p className="mb-1.5 text-meta font-medium uppercase tracking-wide text-surface-muted">
+            <p className="mb-1.5 text-meta font-medium uppercase tracking-wide text-ink-muted">
               {t("language.label")}
             </p>
             <div className="flex flex-wrap gap-1">
@@ -93,8 +93,8 @@ export function UserMenu() {
                     className={[
                       "rounded px-2 py-1 text-xs",
                       active
-                        ? "bg-white/15 text-white"
-                        : "text-surface-muted hover:bg-white/10 hover:text-neutral-200",
+                        ? "bg-white/15 text-ink-primary"
+                        : "text-ink-muted hover:bg-white/10 hover:text-neutral-200",
                     ].join(" ")}
                     onClick={() => void i18n.changeLanguage(lng)}
                   >
@@ -107,7 +107,7 @@ export function UserMenu() {
           <button
             type="button"
             role="menuitem"
-            className="w-full px-3 py-2 text-left text-sm text-surface-muted hover:bg-white/10 hover:text-neutral-200"
+            className="w-full px-3 py-2 text-left text-sm text-ink-muted hover:bg-white/10 hover:text-neutral-200"
             onClick={() => {
               setOpen(false);
               void logout();

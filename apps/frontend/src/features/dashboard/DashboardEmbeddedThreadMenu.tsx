@@ -59,7 +59,7 @@ export function DashboardEmbeddedThreadMenu({
       <button
         type="button"
         disabled={!canPick}
-        className="flex max-w-full items-center gap-0.5 truncate text-left text-meta text-neutral-300 hover:text-white disabled:opacity-50"
+        className="flex max-w-full items-center gap-0.5 truncate text-left text-meta text-ink-secondary hover:text-white disabled:opacity-50"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={menuId}
@@ -70,7 +70,7 @@ export function DashboardEmbeddedThreadMenu({
         }}
       >
         <span className="truncate">{triggerLabel}</span>
-        {canPick ? <span className="shrink-0 text-surface-muted">▾</span> : null}
+        {canPick ? <span className="shrink-0 text-ink-muted">▾</span> : null}
       </button>
       {open ? (
         <ul
@@ -84,7 +84,7 @@ export function DashboardEmbeddedThreadMenu({
                 type="button"
                 className={[
                   "w-full px-3 py-2 text-left text-xs hover:bg-white/5",
-                  !activeThreadId ? "bg-sky-950/40 text-sky-100" : "text-neutral-200",
+                  !activeThreadId ? "bg-sky-950/40 text-sky-100" : "text-ink-primary",
                 ].join(" ")}
                 onClick={() => {
                   onSelect("");
@@ -103,7 +103,7 @@ export function DashboardEmbeddedThreadMenu({
                   type="button"
                   className={[
                     "w-full px-3 py-2 text-left text-xs hover:bg-white/5",
-                    selected ? "bg-sky-950/40 text-sky-100" : "text-neutral-200",
+                    selected ? "bg-sky-950/40 text-sky-100" : "text-ink-primary",
                   ].join(" ")}
                   onClick={() => {
                     onSelect(row.id);

@@ -135,7 +135,7 @@ export function OrgGrantsPage() {
 
   if (!hasOrgSurface(auth.user)) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-10 text-sm text-surface-muted">
+      <div className="mx-auto max-w-3xl px-4 py-10 text-sm text-ink-muted">
         {t("org:grantsNoOrg")}
       </div>
     );
@@ -143,17 +143,17 @@ export function OrgGrantsPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-      <h1 className="text-2xl font-semibold text-white">{t("org:grantsTitle")}</h1>
-      <p className="mt-2 max-w-3xl text-sm text-surface-muted">{t("org:grantsIntro")}</p>
+      <h1 className="text-2xl font-semibold text-ink-primary">{t("org:grantsTitle")}</h1>
+      <p className="mt-2 max-w-3xl text-sm text-ink-muted">{t("org:grantsIntro")}</p>
 
-      <div className="mt-4 rounded-lg border border-surface-border bg-card px-4 py-3 text-xs text-surface-muted">
+      <div className="mt-4 rounded-lg border border-surface-border bg-card px-4 py-3 text-xs text-ink-muted">
         {t("org:grantsImplicitAdmins")}
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <button
           type="button"
-          className="rounded-md bg-white/10 px-4 py-1.5 text-xs font-medium text-white hover:bg-white/15 disabled:opacity-50"
+          className="rounded-md bg-white/10 px-4 py-1.5 text-xs font-medium text-ink-primary hover:bg-white/15 disabled:opacity-50"
           disabled={loading}
           onClick={() => void load()}
         >
@@ -165,17 +165,17 @@ export function OrgGrantsPage() {
       {error ? <p className="mt-4 text-sm text-rose-300">{error}</p> : null}
 
       {loading ? (
-        <p className="mt-6 text-sm text-surface-muted">{t("org:grantsLoading")}</p>
+        <p className="mt-6 text-sm text-ink-muted">{t("org:grantsLoading")}</p>
       ) : null}
 
       {!loading && rows.length === 0 ? (
-        <p className="mt-6 text-sm text-surface-muted">{t("org:grantsEmpty")}</p>
+        <p className="mt-6 text-sm text-ink-muted">{t("org:grantsEmpty")}</p>
       ) : null}
 
       {!loading && rows.length > 0 ? (
         <table className="mt-6 w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-surface-border text-left text-xs uppercase tracking-wide text-surface-muted">
+            <tr className="border-b border-surface-border text-left text-xs uppercase tracking-wide text-ink-muted">
               <th className="py-2 pr-4 font-medium">{t("org:grantsColWorkspace")}</th>
               <th className="py-2 pr-4 font-medium">{t("org:grantsColMemberAccess")}</th>
               <th className="py-2 font-medium">{t("org:grantsColStatus")}</th>
@@ -185,7 +185,7 @@ export function OrgGrantsPage() {
             {rows.map((row) => (
               <tr key={row.id} className="border-b border-surface-border/60 align-top">
                 <td className="py-3 pr-4">
-                  <span className="font-medium text-white">{row.name}</span>
+                  <span className="font-medium text-ink-primary">{row.name}</span>
                   {row.visibility !== "tenant" ? (
                     <span className="ml-2 rounded bg-amber-950/50 px-1.5 py-0.5 text-meta text-amber-300">
                       {t("org:grantsPrivateTag")}
@@ -198,7 +198,7 @@ export function OrgGrantsPage() {
                   </label>
                   <select
                     id={`grant-${row.id}`}
-                    className="rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-white disabled:opacity-50"
+                    className="rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-ink-primary disabled:opacity-50"
                     value={row.level === null ? "" : row.level}
                     disabled={row.saving || row.visibility !== "tenant"}
                     onChange={(e) => {
@@ -215,13 +215,13 @@ export function OrgGrantsPage() {
                 </td>
                 <td className="py-3 text-xs">
                   {row.saving ? (
-                    <span className="text-surface-muted">{t("org:grantsSaving")}</span>
+                    <span className="text-ink-muted">{t("org:grantsSaving")}</span>
                   ) : row.error ? (
                     <span className="text-rose-300">{row.error}</span>
                   ) : row.visibility !== "tenant" ? (
                     <span className="text-amber-300">{t("org:grantsInertWhilePrivate")}</span>
                   ) : (
-                    <span className="text-surface-muted">{t("org:grantsUpToDate")}</span>
+                    <span className="text-ink-muted">{t("org:grantsUpToDate")}</span>
                   )}
                 </td>
               </tr>

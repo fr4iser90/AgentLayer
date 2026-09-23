@@ -97,7 +97,7 @@ function AddBlockToolbar(props: {
         <button
           key={definition.type}
           type="button"
-          className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
+          className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-ink-on-fill hover:bg-sky-500"
           onClick={() => onAdd(definition.type)}
         >
           {t(definition.addLabelKey as "dashboard:addList")}
@@ -270,7 +270,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
     return (
       <div className="space-y-3">
         {editMode && !hideToolbar ? <AddBlockToolbar definitions={toolbarDefinitions} onAdd={addBlock} /> : null}
-        <p className="text-sm text-surface-muted">{t("dashboard:noBlocksInLayout")}</p>
+        <p className="text-sm text-ink-muted">{t("dashboard:noBlocksInLayout")}</p>
       </div>
     );
   }
@@ -340,7 +340,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                 <div className={blockShellClassForBlock(b)}>
                   {showBlockToolbar || editMode ? (
                     <div className="dashboard-grid-drag-handle sticky top-0 z-10 flex cursor-grab items-center gap-2 border-b border-white/5 bg-card px-2 py-1 active:cursor-grabbing">
-                      <span className="min-w-0 flex-1 truncate text-meta font-medium uppercase tracking-wide text-surface-muted">
+                      <span className="min-w-0 flex-1 truncate text-meta font-medium uppercase tracking-wide text-ink-muted">
                         {blockTitle(b)}
                       </span>
                       <div className="flex shrink-0 gap-1">
@@ -443,7 +443,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
         <AddBlockToolbar definitions={toolbarDefinitions} onAdd={addBlock} />
       ) : null}
       {mobileStack ? (
-        <p className="text-meta text-surface-muted">{t("dashboard:gridMobileStackHint")}</p>
+        <p className="text-meta text-ink-muted">{t("dashboard:gridMobileStackHint")}</p>
       ) : null}
 
       <div ref={containerRef as RefObject<HTMLDivElement>} className="min-h-[200px] min-w-0">

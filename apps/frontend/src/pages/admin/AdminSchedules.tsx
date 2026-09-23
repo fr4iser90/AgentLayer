@@ -49,7 +49,7 @@ type SchedulerJobPreset = {
 function pill(enabled: boolean) {
   return enabled
     ? "bg-emerald-600/25 text-emerald-200 border-emerald-500/40"
-    : "bg-white/10 text-surface-muted border-surface-border";
+    : "bg-white/10 text-ink-muted border-surface-border";
 }
 
 export function AdminSchedules() {
@@ -316,12 +316,12 @@ export function AdminSchedules() {
     <div className="mx-auto max-w-5xl px-6 py-10">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-white">{t("admin:schedulesTitle")}</h1>
-          <p className="mt-2 text-sm text-surface-muted">{t("admin:schedulesIntro")}</p>
+          <h1 className="text-2xl font-semibold text-ink-primary">{t("admin:schedulesTitle")}</h1>
+          <p className="mt-2 text-sm text-ink-muted">{t("admin:schedulesIntro")}</p>
         </div>
         <button
           type="button"
-          className="rounded-md border border-surface-border px-3 py-2 text-sm text-neutral-100 hover:bg-white/5"
+          className="rounded-md border border-surface-border px-3 py-2 text-sm text-ink-primary hover:bg-white/5"
           onClick={() => void refresh()}
           disabled={loading}
         >
@@ -331,10 +331,10 @@ export function AdminSchedules() {
 
       <div className="mt-6 rounded-xl border border-surface-border bg-card p-4">
         <div className="grid gap-3 md:grid-cols-5">
-          <label className="text-xs text-surface-muted">
+          <label className="text-xs text-ink-muted">
             {t("admin:schedulesScope")}
             <select
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-neutral-100"
+              className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary"
               value={scope}
               onChange={(e) => setScope(e.target.value as any)}
             >
@@ -343,20 +343,20 @@ export function AdminSchedules() {
               <option value="dashboard">{t("admin:schedulesScopeDashboard")}</option>
             </select>
           </label>
-          <label className="text-xs text-surface-muted md:col-span-2">
+          <label className="text-xs text-ink-muted md:col-span-2">
             {t("admin:schedulesDashboardId")}
             <input
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-neutral-100"
+              className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary"
               value={dashboardId}
               onChange={(e) => setDashboardId(e.target.value)}
               placeholder={t("admin:optional")}
               disabled={scope !== "dashboard"}
             />
           </label>
-          <label className="text-xs text-surface-muted">
+          <label className="text-xs text-ink-muted">
             {t("admin:schedulesTarget")}
             <select
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-neutral-100"
+              className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary"
               value={target}
               onChange={(e) => setTarget(e.target.value as any)}
             >
@@ -368,10 +368,10 @@ export function AdminSchedules() {
               ))}
             </select>
           </label>
-          <label className="text-xs text-surface-muted">
+          <label className="text-xs text-ink-muted">
             {t("admin:schedulesEnabledFilter")}
             <select
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-neutral-100"
+              className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary"
               value={enabled}
               onChange={(e) => setEnabled(e.target.value as any)}
             >
@@ -382,7 +382,7 @@ export function AdminSchedules() {
           </label>
         </div>
         {scope === "dashboard" ? (
-          <label className="mt-3 flex items-center gap-2 text-xs text-surface-muted">
+          <label className="mt-3 flex items-center gap-2 text-xs text-ink-muted">
             <input
               type="checkbox"
               className="h-4 w-4 rounded border-surface-border"
@@ -393,7 +393,7 @@ export function AdminSchedules() {
           </label>
         ) : null}
         <div className="mt-3 flex items-center justify-between gap-3">
-          <label className="flex items-center gap-2 text-xs text-surface-muted">
+          <label className="flex items-center gap-2 text-xs text-ink-muted">
             <input
               type="checkbox"
               className="h-4 w-4 rounded border-surface-border"
@@ -404,7 +404,7 @@ export function AdminSchedules() {
           </label>
           <button
             type="button"
-            className="rounded-md bg-violet-600/80 px-3 py-2 text-sm font-medium text-white hover:bg-violet-500"
+            className="rounded-md bg-violet-600/80 px-3 py-2 text-sm font-medium text-ink-primary hover:bg-violet-500"
             onClick={() => setCreateOpen(true)}
           >
             {t("admin:schedulesCreate")}
@@ -421,7 +421,7 @@ export function AdminSchedules() {
       <div className="mt-6 overflow-x-auto rounded-xl border border-surface-border">
         <table className="w-full min-w-[840px] border-collapse text-left text-sm">
           <thead className="bg-black/30">
-            <tr className="border-b border-surface-border text-surface-muted">
+            <tr className="border-b border-surface-border text-ink-muted">
               <th className="px-3 py-2 font-medium">{t("admin:schedulesEnabledFilter")}</th>
               <th className="px-3 py-2 font-medium">{t("admin:schedulesTarget")}</th>
               <th className="px-3 py-2 font-medium">{t("admin:schedulesColTitle")}</th>
@@ -435,13 +435,13 @@ export function AdminSchedules() {
           <tbody>
             {!jobs ? (
               <tr>
-                <td colSpan={8} className="px-3 py-10 text-center text-surface-muted">
+                <td colSpan={8} className="px-3 py-10 text-center text-ink-muted">
                   {loading ? t("admin:loading") : t("admin:schedulesNoDataYet")}
                 </td>
               </tr>
             ) : jobs.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-3 py-10 text-center text-surface-muted">
+                <td colSpan={8} className="px-3 py-10 text-center text-ink-muted">
                   {t("admin:schedulesNone")}
                 </td>
               </tr>
@@ -453,40 +453,40 @@ export function AdminSchedules() {
                       {j.enabled ? t("admin:schedulesEnabledLabel") : t("admin:schedulesDisabledLabel")}
                     </span>
                     {j.deleted_at ? (
-                      <span className="ml-2 rounded-md border border-surface-border bg-white/5 px-2 py-0.5 text-xs text-surface-muted">
+                      <span className="ml-2 rounded-md border border-surface-border bg-white/5 px-2 py-0.5 text-xs text-ink-muted">
                         {t("admin:schedulesArchivedLabel")}
                       </span>
                     ) : null}
                   </td>
-                  <td className="px-3 py-2 text-xs text-neutral-100">
+                  <td className="px-3 py-2 text-xs text-ink-primary">
                     {labelForExecutionTarget(j.execution_target, targetCatalog)}
                   </td>
-                  <td className="px-3 py-2 text-neutral-100">{j.title || "—"}</td>
-                  <td className="px-3 py-2 text-surface-muted">{j.interval_minutes} min</td>
-                  <td className="px-3 py-2 font-mono text-meta text-surface-muted">
+                  <td className="px-3 py-2 text-ink-primary">{j.title || "—"}</td>
+                  <td className="px-3 py-2 text-ink-muted">{j.interval_minutes} min</td>
+                  <td className="px-3 py-2 font-mono text-meta text-ink-muted">
                     {j.dashboard_id || "global"}
                   </td>
-                  <td className="px-3 py-2 text-surface-muted">{formatDateTimeLocal(j.last_run_at)}</td>
-                  <td className="px-3 py-2 text-surface-muted">{formatDateTimeLocal(j.created_at)}</td>
+                  <td className="px-3 py-2 text-ink-muted">{formatDateTimeLocal(j.last_run_at)}</td>
+                  <td className="px-3 py-2 text-ink-muted">{formatDateTimeLocal(j.created_at)}</td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
-                        className="rounded-md border border-surface-border px-2 py-1 text-xs text-neutral-100 hover:bg-white/5"
+                        className="rounded-md border border-surface-border px-2 py-1 text-xs text-ink-primary hover:bg-white/5"
                         onClick={() => void toggleEnabled(j.id, !j.enabled)}
                       >
                         {j.enabled ? t("admin:schedulesDisable") : t("admin:schedulesEnable")}
                       </button>
                       <button
                         type="button"
-                        className="rounded-md border border-surface-border px-2 py-1 text-xs text-neutral-100 hover:bg-white/5"
+                        className="rounded-md border border-surface-border px-2 py-1 text-xs text-ink-primary hover:bg-white/5"
                         onClick={() => openEdit(j)}
                       >
                         {t("admin:schedulesEdit")}
                       </button>
                       <button
                         type="button"
-                        className="rounded-md border border-surface-border px-2 py-1 text-xs text-neutral-100 hover:bg-white/5"
+                        className="rounded-md border border-surface-border px-2 py-1 text-xs text-ink-primary hover:bg-white/5"
                         onClick={() => void archiveJob(j.id, !j.deleted_at)}
                       >
                         {j.deleted_at ? t("admin:schedulesUnarchive") : t("admin:schedulesArchive")}
@@ -513,22 +513,22 @@ export function AdminSchedules() {
           <div className="w-full max-w-2xl rounded-xl border border-surface-border bg-card p-4">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
-                <div className="text-lg font-semibold text-white">{t("admin:createScheduleTitle")}</div>
-                <div className="text-xs text-surface-muted">{t("admin:createScheduleHelp")}</div>
+                <div className="text-lg font-semibold text-ink-primary">{t("admin:createScheduleTitle")}</div>
+                <div className="text-xs text-ink-muted">{t("admin:createScheduleHelp")}</div>
               </div>
               <button
                 type="button"
-                className="rounded-md border border-surface-border px-3 py-1.5 text-xs text-neutral-100 hover:bg-white/5"
+                className="rounded-md border border-surface-border px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
                 onClick={() => setCreateOpen(false)}
               >
                 {t("admin:close")}
               </button>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
-              <label className="text-xs text-surface-muted md:col-span-2">
+              <label className="text-xs text-ink-muted md:col-span-2">
                 {t("admin:schedulesPresetOptional")}
                 <select
-                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-neutral-100"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary"
                   value={createPresetId}
                   onChange={(e) => {
                     const pid = e.target.value;
@@ -544,15 +544,15 @@ export function AdminSchedules() {
                   ))}
                 </select>
                 {createPresetId && (presets || []).find((p) => p.id === createPresetId)?.description ? (
-                  <div className="mt-1 text-meta text-surface-muted">
+                  <div className="mt-1 text-meta text-ink-muted">
                     {(presets || []).find((p) => p.id === createPresetId)?.description}
                   </div>
                 ) : null}
               </label>
-              <label className="text-xs text-surface-muted">
+              <label className="text-xs text-ink-muted">
                 Target
                 <select
-                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-neutral-100"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary"
                   value={createTarget}
                   onChange={(e) =>
                     setCreateTarget(normalizeExecutionTargetInput(e.target.value, targetCatalog))
@@ -566,10 +566,10 @@ export function AdminSchedules() {
                 </select>
               </label>
               {createNeedsWorkspace ? (
-                <label className="text-xs text-surface-muted md:col-span-2">
+                <label className="text-xs text-ink-muted md:col-span-2">
                   {t("admin:schedulesWorkspaceRequired")}
                   <select
-                    className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-neutral-100 disabled:opacity-60"
+                    className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary disabled:opacity-60"
                     value={createWorkspaceId}
                     onChange={(e) => setCreateWorkspaceId(e.target.value)}
                     disabled={workspacesLoading}
@@ -588,56 +588,56 @@ export function AdminSchedules() {
                     ))}
                   </select>
                   {createWorkspaceId ? (
-                    <div className="mt-1 break-all font-mono text-meta text-surface-muted">
+                    <div className="mt-1 break-all font-mono text-meta text-ink-muted">
                       {createWorkspaceId}
                     </div>
                   ) : null}
                   {createCodingWorkflow.agent_id ? (
-                    <div className="mt-1 font-mono text-meta text-surface-muted">
+                    <div className="mt-1 font-mono text-meta text-ink-muted">
                       Agent: {createCodingWorkflow.agent_id}
                     </div>
                   ) : null}
                 </label>
               ) : null}
-              <label className="text-xs text-surface-muted">
+              <label className="text-xs text-ink-muted">
                 Interval (minutes)
                 <input
                   type="number"
-                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-neutral-100"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary"
                   value={createInterval}
                   onChange={(e) => setCreateInterval(Number(e.target.value))}
                   min={5}
                   max={10080}
                 />
               </label>
-              <label className="text-xs text-surface-muted md:col-span-2">
+              <label className="text-xs text-ink-muted md:col-span-2">
                 Title
                 <input
-                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-neutral-100"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary"
                   value={createTitle}
                   onChange={(e) => setCreateTitle(e.target.value)}
                   placeholder={t("admin:optional")}
                 />
               </label>
-              <label className="text-xs text-surface-muted md:col-span-2">
+              <label className="text-xs text-ink-muted md:col-span-2">
                 {t("admin:schedulesDashboardIdOptional")}
                 <input
-                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-neutral-100"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary"
                   value={createDashboardId}
                   onChange={(e) => setCreateDashboardId(e.target.value)}
                   placeholder={t("admin:optional")}
                 />
               </label>
-              <label className="text-xs text-surface-muted md:col-span-2">
+              <label className="text-xs text-ink-muted md:col-span-2">
                 <span>{t("admin:instructionsPlaceholder")}</span>
                 <textarea
-                  className="mt-1 min-h-[120px] w-full resize-y rounded-md border border-surface-border bg-field px-2 py-2 text-sm text-neutral-100"
+                  className="mt-1 min-h-[120px] w-full resize-y rounded-md border border-surface-border bg-field px-2 py-2 text-sm text-ink-primary"
                   value={createInstructions}
                   onChange={(e) => setCreateInstructions(e.target.value)}
                   placeholder={t("admin:instructionsPlaceholder")}
                 />
               </label>
-              <label className="flex items-center gap-2 text-xs text-surface-muted">
+              <label className="flex items-center gap-2 text-xs text-ink-muted">
                 <input
                   type="checkbox"
                   className="h-4 w-4 rounded border-surface-border"
@@ -658,7 +658,7 @@ export function AdminSchedules() {
               </Button>
               <button
                 type="button"
-                className="rounded-md bg-violet-600/80 px-3 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-60"
+                className="rounded-md bg-violet-600/80 px-3 py-2 text-sm font-medium text-ink-primary hover:bg-violet-500 disabled:opacity-60"
                 onClick={() => void createJob()}
                 disabled={
                   !createInstructions.trim() ||
@@ -677,41 +677,41 @@ export function AdminSchedules() {
           <div className="w-full max-w-2xl rounded-xl border border-surface-border bg-card p-4">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
-                <div className="text-lg font-semibold text-white">{t("admin:editScheduleTitle")}</div>
-                <div className="text-xs text-surface-muted font-mono">id: {editJob.id}</div>
+                <div className="text-lg font-semibold text-ink-primary">{t("admin:editScheduleTitle")}</div>
+                <div className="text-xs text-ink-muted font-mono">id: {editJob.id}</div>
               </div>
               <button
                 type="button"
-                className="rounded-md border border-surface-border px-3 py-1.5 text-xs text-neutral-100 hover:bg-white/5"
+                className="rounded-md border border-surface-border px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
                 onClick={() => setEditJob(null)}
               >
                 {t("admin:close")}
               </button>
             </div>
             <div className="grid gap-3">
-              <label className="text-xs text-surface-muted">
+              <label className="text-xs text-ink-muted">
                 Title
                 <input
-                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-neutral-100"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                 />
               </label>
-              <label className="text-xs text-surface-muted">
+              <label className="text-xs text-ink-muted">
                 Interval (minutes)
                 <input
                   type="number"
-                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-neutral-100"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary"
                   value={editInterval}
                   onChange={(e) => setEditInterval(Number(e.target.value))}
                   min={5}
                   max={10080}
                 />
               </label>
-              <label className="text-xs text-surface-muted">
+              <label className="text-xs text-ink-muted">
                 Instructions
                 <textarea
-                  className="mt-1 min-h-[140px] w-full resize-y rounded-md border border-surface-border bg-field px-2 py-2 text-sm text-neutral-100"
+                  className="mt-1 min-h-[140px] w-full resize-y rounded-md border border-surface-border bg-field px-2 py-2 text-sm text-ink-primary"
                   value={editInstructions}
                   onChange={(e) => setEditInstructions(e.target.value)}
                 />
@@ -720,14 +720,14 @@ export function AdminSchedules() {
             <div className="mt-4 flex items-center justify-end gap-2">
               <button
                 type="button"
-                className="rounded-md border border-surface-border px-3 py-2 text-sm text-neutral-100 hover:bg-white/5"
+                className="rounded-md border border-surface-border px-3 py-2 text-sm text-ink-primary hover:bg-white/5"
                 onClick={() => setEditJob(null)}
               >
                 Cancel
               </button>
               <button
                 type="button"
-                className="rounded-md bg-violet-600/80 px-3 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-60"
+                className="rounded-md bg-violet-600/80 px-3 py-2 text-sm font-medium text-ink-primary hover:bg-violet-500 disabled:opacity-60"
                 onClick={() => void saveEdit()}
                 disabled={!editInstructions.trim()}
               >

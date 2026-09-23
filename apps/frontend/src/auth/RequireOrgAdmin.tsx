@@ -13,7 +13,7 @@ export function RequireOrgAdmin() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center px-4 text-sm text-surface-muted">
+      <div className="flex min-h-[40vh] items-center justify-center px-4 text-sm text-ink-muted">
         {t("auth:loading")}
       </div>
     );

@@ -86,11 +86,11 @@ export function AgentActivityPanel({
       className={`flex min-h-0 flex-col overflow-hidden rounded-lg border border-white/10 bg-black/30 ${className}`}
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/5 px-2.5 py-1.5">
-        <span className="text-meta font-semibold uppercase tracking-wide text-surface-muted">
+        <span className="text-meta font-semibold uppercase tracking-wide text-ink-muted">
           {t("chat:agentActivity")}
         </span>
         {showSubagentToggle ? (
-          <label className="flex cursor-pointer items-center gap-1.5 text-meta text-surface-muted">
+          <label className="flex cursor-pointer items-center gap-1.5 text-meta text-ink-muted">
             <input
               type="checkbox"
               className="rounded border-surface-border bg-field text-indigo-500"
@@ -103,7 +103,7 @@ export function AgentActivityPanel({
       </div>
       <div className={scrollClass}>
         {visible.length === 0 && !loading ? (
-          <p className="text-meta leading-snug text-surface-muted">
+          <p className="text-meta leading-snug text-ink-muted">
             {emptyHint ?? t("chat:noActivityYet")}
           </p>
         ) : (
@@ -118,15 +118,15 @@ export function AgentActivityPanel({
                 ].join(" ")}
               >
                 <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0">
-                  <span className="text-meta font-medium uppercase tracking-wide text-surface-muted">
+                  <span className="text-meta font-medium uppercase tracking-wide text-ink-muted">
                     {labelForKind(e.kind, t)}
                   </span>
                   {e.subagentAgentId ? (
                     <span className="text-meta text-indigo-300/90">{e.subagentAgentId}</span>
                   ) : null}
-                  <span className="text-neutral-300">{e.text}</span>
+                  <span className="text-ink-secondary">{e.text}</span>
                   {e.durationMs != null && e.durationMs >= 0 ? (
-                    <span className="tabular-nums text-neutral-500">
+                    <span className="tabular-nums text-ink-muted">
                       {e.durationMs < 1000
                         ? `${e.durationMs}ms`
                         : `${(e.durationMs / 1000).toFixed(1)}s`}

@@ -135,10 +135,10 @@ export function GalleryBlockBody(props: {
   return (
     <section className="rounded-xl border border-surface-border bg-card p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-medium text-white">{sectionTitle}</h3>
+        <h3 className="text-sm font-medium text-ink-primary">{sectionTitle}</h3>
         {!readOnly ? (
           <div className="flex flex-wrap items-center gap-2">
-            <label className="dashboard-grid-no-drag cursor-pointer rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/15">
+            <label className="dashboard-grid-no-drag cursor-pointer rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-white/15">
               {bulkUploading ? "…" : t("dashboard:photosUploadMultiple")}
               <input
                 type="file"
@@ -151,7 +151,7 @@ export function GalleryBlockBody(props: {
             </label>
             <button
               type="button"
-              className="dashboard-grid-no-drag rounded-md bg-violet-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-500"
+              className="dashboard-grid-no-drag rounded-md bg-violet-600/80 px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-violet-500"
               onClick={addPhoto}
             >
               {t("dashboard:photosAdd")}
@@ -164,11 +164,11 @@ export function GalleryBlockBody(props: {
         <p className="mb-2 text-meta text-amber-200/90">{t("dashboard:saveForUpload")}</p>
       ) : null}
       {!readOnly ? (
-        <p className="mb-3 text-meta text-surface-muted">{t("dashboard:photosDragHint")}</p>
+        <p className="mb-3 text-meta text-ink-muted">{t("dashboard:photosDragHint")}</p>
       ) : null}
 
       {photos.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-white/15 py-10 text-center text-sm text-surface-muted">
+        <p className="rounded-lg border border-dashed border-white/15 py-10 text-center text-sm text-ink-muted">
           {readOnly
             ? t("dashboard:photosEmptyReadOnly")
             : t("dashboard:photosEmptyEditable")}
@@ -293,7 +293,7 @@ function GalleryPhotoCard(props: {
           <GalleryImage url={url} alt={caption} />
         </button>
       ) : (
-        <div className="flex h-full min-h-[80px] items-center justify-center text-xs text-surface-muted">
+        <div className="flex h-full min-h-[80px] items-center justify-center text-xs text-ink-muted">
           {readOnly ? t("dashboard:noImage") : t("dashboard:urlOrUpload")}
         </div>
       )}
@@ -305,7 +305,7 @@ function GalleryPhotoCard(props: {
       <div className="overflow-hidden rounded-xl border border-surface-border bg-black/25 shadow-sm">
         {imageArea}
         {caption ? (
-          <p className="border-t border-white/5 p-3 text-xs text-neutral-200">{caption}</p>
+          <p className="border-t border-white/5 p-3 text-xs text-ink-primary">{caption}</p>
         ) : null}
       </div>
     );
@@ -335,18 +335,18 @@ function GalleryPhotoCard(props: {
     >
       <div className="flex items-center gap-1 border-b border-white/5 bg-white/[0.03] px-2 py-1">
         <span
-          className="dashboard-grid-no-drag cursor-grab select-none px-1 text-xs text-surface-muted active:cursor-grabbing"
+          className="dashboard-grid-no-drag cursor-grab select-none px-1 text-xs text-ink-muted active:cursor-grabbing"
           title={t("dashboard:photosDragHandle")}
           aria-hidden
         >
           ⋮⋮
         </span>
-        <span className="text-meta text-surface-muted">{t("dashboard:photosDragHandle")}</span>
+        <span className="text-meta text-ink-muted">{t("dashboard:photosDragHandle")}</span>
       </div>
       {imageArea}
       <div className="space-y-2 p-3">
         <div className="flex flex-wrap items-center gap-2">
-          <label className="dashboard-grid-no-drag cursor-pointer rounded-md bg-white/10 px-2 py-1 text-xs text-white hover:bg-white/15">
+          <label className="dashboard-grid-no-drag cursor-pointer rounded-md bg-white/10 px-2 py-1 text-xs text-ink-primary hover:bg-white/15">
             {uploading ? "…" : t("dashboard:upload")}
             <input
               type="file"
@@ -361,14 +361,14 @@ function GalleryPhotoCard(props: {
         <input
           type="url"
           placeholder={t("dashboard:fileUrlPlaceholder")}
-          className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-neutral-100 placeholder:text-white/25"
+          className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-ink-primary placeholder:text-white/25"
           value={url}
           onChange={(e) => updatePhoto(ri, "url", e.target.value)}
         />
         <input
           type="text"
           placeholder={t("dashboard:captionPlaceholder")}
-          className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-neutral-100"
+          className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-ink-primary"
           value={caption}
           onChange={(e) => updatePhoto(ri, "caption", e.target.value)}
         />

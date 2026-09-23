@@ -48,7 +48,7 @@ function statusClassName(status: string): string {
 
 function Author({ id }: { id: string }) {
   const short = id.length > 8 ? `${id.slice(0, 6)}…` : id;
-  return <span className="font-mono text-meta text-surface-muted" title={id}>{short}</span>;
+  return <span className="font-mono text-meta text-ink-muted" title={id}>{short}</span>;
 }
 
 export function AdminAgentSubmissions() {
@@ -165,17 +165,17 @@ export function AdminAgentSubmissions() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-      <h1 className="text-2xl font-semibold text-white">{t("admin:agentSubmissionsTitle")}</h1>
-      <p className="mt-2 max-w-3xl text-sm text-surface-muted">{t("admin:agentSubmissionsIntro")}</p>
+      <h1 className="text-2xl font-semibold text-ink-primary">{t("admin:agentSubmissionsTitle")}</h1>
+      <p className="mt-2 max-w-3xl text-sm text-ink-muted">{t("admin:agentSubmissionsIntro")}</p>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2 text-xs text-surface-muted">
+        <label className="flex items-center gap-2 text-xs text-ink-muted">
           <span className="sr-only">
             {t("admin:agentSubmissionsFilterLabel")}
           </span>
           <select
             id="agents-submissions-filter"
-            className="rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-white"
+            className="rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-ink-primary"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
           >
@@ -187,7 +187,7 @@ export function AdminAgentSubmissions() {
         </label>
         <button
           type="button"
-          className="rounded-md bg-white/10 px-4 py-1.5 text-xs font-medium text-white hover:bg-white/15 disabled:opacity-50"
+          className="rounded-md bg-white/10 px-4 py-1.5 text-xs font-medium text-ink-primary hover:bg-white/15 disabled:opacity-50"
           disabled={loading}
           onClick={() => void loadList()}
         >
@@ -196,9 +196,9 @@ export function AdminAgentSubmissions() {
       </div>
 
       {msg ? <p className="mt-4 text-sm text-amber-300">{msg}</p> : null}
-      {loading ? <p className="mt-6 text-sm text-surface-muted">{t("admin:agentSubmissionsLoading")}</p> : null}
+      {loading ? <p className="mt-6 text-sm text-ink-muted">{t("admin:agentSubmissionsLoading")}</p> : null}
       {!loading && submissions.length === 0 ? (
-        <p className="mt-6 text-sm text-surface-muted">{t("admin:agentSubmissionsNone")}</p>
+        <p className="mt-6 text-sm text-ink-muted">{t("admin:agentSubmissionsNone")}</p>
       ) : null}
 
       {!loading && submissions.length > 0 ? (
@@ -216,7 +216,7 @@ export function AdminAgentSubmissions() {
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-white">{s.title || s.agent_id}</span>
+                    <span className="font-medium text-ink-primary">{s.title || s.agent_id}</span>
                     <span className={`rounded px-1.5 py-0.5 text-meta ${riskClassName(s.risk_level)}`}>
                       {t(`admin:agentSubmissionsRisk${s.risk_level.charAt(0).toUpperCase()}${s.risk_level.slice(1)}`)}
                     </span>
@@ -224,8 +224,8 @@ export function AdminAgentSubmissions() {
                       {t(`admin:agentSubmissionsStatus${s.status.charAt(0).toUpperCase()}${s.status.slice(1)}`)}
                     </span>
                   </div>
-                  <p className="mt-1 font-mono text-meta text-surface-muted">({s.agent_id})</p>
-                  <div className="mt-1 flex items-center gap-2 text-meta text-surface-muted">
+                  <p className="mt-1 font-mono text-meta text-ink-muted">({s.agent_id})</p>
+                  <div className="mt-1 flex items-center gap-2 text-meta text-ink-muted">
                     <Author id={s.author_id} />
                     {s.reviewed_by ? (
                       <span>· {t("admin:agentSubmissionsReviewedBy")}: {s.reviewed_by}</span>
@@ -240,11 +240,11 @@ export function AdminAgentSubmissions() {
             <div className="rounded-xl border border-surface-border bg-card p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-semibold text-white">
+                  <h2 className="text-lg font-semibold text-ink-primary">
                     {selected.title || selected.agent_id}
-                    <span className="ml-2 font-mono text-sm text-surface-muted">({selected.agent_id})</span>
+                    <span className="ml-2 font-mono text-sm text-ink-muted">({selected.agent_id})</span>
                   </h2>
-                  <p className="mt-1 text-xs text-surface-muted">{selected.description || "—"}</p>
+                  <p className="mt-1 text-xs text-ink-muted">{selected.description || "—"}</p>
                 </div>
                 <span className={`rounded px-2 py-1 text-xs ${statusClassName(selected.status)}`}>
                   {t(`admin:agentSubmissionsStatus${selected.status.charAt(0).toUpperCase()}${selected.status.slice(1)}`)}
@@ -253,7 +253,7 @@ export function AdminAgentSubmissions() {
 
               <dl className="mt-4 grid gap-2 text-xs sm:grid-cols-2">
                 <div>
-                  <dt className="text-surface-muted">{t("admin:agentSubmissionsRisk")}</dt>
+                  <dt className="text-ink-muted">{t("admin:agentSubmissionsRisk")}</dt>
                   <dd className="mt-1">
                     <span className={`rounded px-2 py-0.5 text-xs ${riskClassName(selected.risk_level)}`}>
                       {t(`admin:agentSubmissionsRisk${selected.risk_level.charAt(0).toUpperCase()}${selected.risk_level.slice(1)}`)}
@@ -261,50 +261,50 @@ export function AdminAgentSubmissions() {
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-surface-muted">{t("admin:agentSubmissionsAuthor")}</dt>
+                  <dt className="text-ink-muted">{t("admin:agentSubmissionsAuthor")}</dt>
                   <dd className="mt-1"><Author id={selected.author_id} /></dd>
                 </div>
                 <div>
-                  <dt className="text-surface-muted">{t("admin:agentSubmissionsCreatedAt")}</dt>
-                  <dd className="mt-1 text-neutral-200">{formatDateTimeLocal(selected.created_at)}</dd>
+                  <dt className="text-ink-muted">{t("admin:agentSubmissionsCreatedAt")}</dt>
+                  <dd className="mt-1 text-ink-primary">{formatDateTimeLocal(selected.created_at)}</dd>
                 </div>
                 <div>
-                  <dt className="text-surface-muted">{t("admin:agentSubmissionsTargetDir")}</dt>
-                  <dd className="mt-1 font-mono text-neutral-200">{selected.target_dir}</dd>
+                  <dt className="text-ink-muted">{t("admin:agentSubmissionsTargetDir")}</dt>
+                  <dd className="mt-1 font-mono text-ink-primary">{selected.target_dir}</dd>
                 </div>
                 {selected.review_notes ? (
                   <div className="sm:col-span-2">
-                    <dt className="text-surface-muted">{t("admin:agentSubmissionsReviewNotes")}</dt>
-                    <dd className="mt-1 text-neutral-200">{selected.review_notes}</dd>
+                    <dt className="text-ink-muted">{t("admin:agentSubmissionsReviewNotes")}</dt>
+                    <dd className="mt-1 text-ink-primary">{selected.review_notes}</dd>
                   </div>
                 ) : null}
               </dl>
 
               <div className="mt-4">
-                <p className="text-meta font-medium uppercase tracking-wide text-surface-muted">
+                <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
                   {t("admin:agentSubmissionsSystemPrompt")}
                 </p>
-                <pre className="mt-1 max-h-40 overflow-auto rounded bg-black/40 p-2 text-meta text-neutral-300 whitespace-pre-wrap">
+                <pre className="mt-1 max-h-40 overflow-auto rounded bg-black/40 p-2 text-meta text-ink-secondary whitespace-pre-wrap">
                   {selected.system_prompt || "—"}
                 </pre>
               </div>
 
               <div className="mt-3">
-                <p className="text-meta font-medium uppercase tracking-wide text-surface-muted">
+                <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
                   {t("admin:agentSubmissionsYaml")}
                 </p>
                 {preview ? (
-                  <pre className="mt-1 max-h-56 overflow-auto rounded bg-black/40 p-2 text-meta text-neutral-300">
+                  <pre className="mt-1 max-h-56 overflow-auto rounded bg-black/40 p-2 text-meta text-ink-secondary">
                     {preview.yaml_text}
                   </pre>
                 ) : (
-                  <p className="mt-1 text-meta text-surface-muted">{t("admin:agentSubmissionsYamlLoading")}</p>
+                  <p className="mt-1 text-meta text-ink-muted">{t("admin:agentSubmissionsYamlLoading")}</p>
                 )}
               </div>
 
               {preview?.tool_warnings.length ? (
                 <div className="mt-3">
-                  <p className="text-meta font-medium uppercase tracking-wide text-surface-muted">
+                  <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
                     {t("admin:agentSubmissionsToolWarnings")}
                   </p>
                   <ul className="mt-1 list-disc space-y-0.5 pl-4 text-meta text-amber-200">
@@ -326,12 +326,12 @@ export function AdminAgentSubmissions() {
 
               {selected.status === "pending" ? (
                 <div className="mt-4 border-t border-surface-border pt-4">
-                  <label className="block text-xs text-surface-muted" htmlFor="agents-submissions-notes">
+                  <label className="block text-xs text-ink-muted" htmlFor="agents-submissions-notes">
                     {t("admin:agentSubmissionsReviewNotes")}
                   </label>
                   <textarea
                     id="agents-submissions-notes"
-                    className="mt-1 min-h-20 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-xs text-white placeholder:text-neutral-500"
+                    className="mt-1 min-h-20 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-xs text-ink-primary placeholder:text-neutral-500"
                     value={reviewNotes}
                     onChange={(e) => setReviewNotes(e.target.value)}
                     placeholder={t("admin:agentSubmissionsReviewNotesPlaceholder")}
@@ -339,14 +339,14 @@ export function AdminAgentSubmissions() {
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+                      className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
                       onClick={() => setConfirm({ decision: "approve" })}
                     >
                       {t("admin:agentSubmissionsApprove")}
                     </button>
                     <button
                       type="button"
-                      className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50"
+                      className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-red-500 disabled:opacity-50"
                       onClick={() => setConfirm({ decision: "reject" })}
                     >
                       {t("admin:agentSubmissionsReject")}

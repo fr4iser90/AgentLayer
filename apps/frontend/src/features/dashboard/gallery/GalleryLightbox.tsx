@@ -49,7 +49,7 @@ export function GalleryLightbox(props: {
     >
       <button
         type="button"
-        className="absolute right-3 top-3 z-10 rounded-lg bg-white/10 px-3 py-1.5 text-sm text-white hover:bg-white/20 sm:right-4 sm:top-4"
+        className="absolute right-3 top-3 z-10 rounded-lg bg-white/10 px-3 py-1.5 text-sm text-ink-primary hover:bg-white/20 sm:right-4 sm:top-4"
         onClick={onClose}
       >
         {t("dashboard:galleryLightboxClose")}
@@ -74,7 +74,7 @@ export function GalleryLightbox(props: {
       {hasPrev ? (
         <button
           type="button"
-          className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 sm:left-4"
+          className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/10 p-2 text-ink-primary hover:bg-white/20 sm:left-4"
           onClick={(e) => {
             e.stopPropagation();
             goPrev();
@@ -88,7 +88,7 @@ export function GalleryLightbox(props: {
       {hasNext ? (
         <button
           type="button"
-          className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 sm:right-4"
+          className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/10 p-2 text-ink-primary hover:bg-white/20 sm:right-4"
           onClick={(e) => {
             e.stopPropagation();
             goNext();
@@ -101,9 +101,9 @@ export function GalleryLightbox(props: {
 
       <footer className="shrink-0 border-t border-white/10 px-4 py-3 text-center sm:px-6">
         {current.caption ? (
-          <p className="text-sm text-neutral-200">{current.caption}</p>
+          <p className="text-sm text-ink-primary">{current.caption}</p>
         ) : null}
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-1 text-xs text-ink-muted">
           {t("dashboard:galleryLightboxCounter", {
             current: index + 1,
             total: photos.length,

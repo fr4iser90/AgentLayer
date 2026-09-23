@@ -139,10 +139,10 @@ function LevelSelect({
 }) {
   return (
     <label className="block text-sm" htmlFor={id}>
-      <span className="text-surface-muted">{label}</span>
+      <span className="text-ink-muted">{label}</span>
       <select
         id={id}
-        className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
+        className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
         value={value}
         onChange={(e) => onChange(e.target.value as Level)}
       >
@@ -170,8 +170,8 @@ function ConfigEditor({
   return (
     <div className="space-y-6">
       <section>
-        <h3 className="text-sm font-medium text-white">{t("settings:delegateSectionDecisioning")}</h3>
-        <p className="mt-1 text-xs text-surface-muted">{t("settings:delegateDecisioningHelp")}</p>
+        <h3 className="text-sm font-medium text-ink-primary">{t("settings:delegateSectionDecisioning")}</h3>
+        <p className="mt-1 text-xs text-ink-muted">{t("settings:delegateDecisioningHelp")}</p>
         <div className="mt-3">
           <LevelSelect
             id={`${idPrefix}-risk`}
@@ -188,9 +188,9 @@ function ConfigEditor({
       </section>
 
       <section>
-        <h3 className="text-sm font-medium text-white">{t("settings:delegateSectionEscalation")}</h3>
-        <p className="mt-1 text-xs text-surface-muted">{t("settings:delegateEscalationHelp")}</p>
-        <div className="mt-3 space-y-2 text-sm text-white">
+        <h3 className="text-sm font-medium text-ink-primary">{t("settings:delegateSectionEscalation")}</h3>
+        <p className="mt-1 text-xs text-ink-muted">{t("settings:delegateEscalationHelp")}</p>
+        <div className="mt-3 space-y-2 text-sm text-ink-primary">
           {(
             [
               ["ask_on_production_changes", t("settings:delegateEscalateProduction")],
@@ -216,7 +216,7 @@ function ConfigEditor({
       </section>
 
       <section>
-        <h3 className="text-sm font-medium text-white">{t("settings:delegateSectionCommunication")}</h3>
+        <h3 className="text-sm font-medium text-ink-primary">{t("settings:delegateSectionCommunication")}</h3>
         <div className="mt-3 flex flex-wrap gap-4">
           <LevelSelect
             id={`${idPrefix}-directness`}
@@ -241,7 +241,7 @@ function ConfigEditor({
             }
           />
         </div>
-        <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-white">
+        <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
           <input
             type="checkbox"
             checked={config.communication.ask_before_major_changes}
@@ -260,13 +260,13 @@ function ConfigEditor({
       </section>
 
       <section>
-        <h3 className="text-sm font-medium text-white">{t("settings:delegateSectionEngineering")}</h3>
-        <label className="mt-3 block text-sm text-surface-muted" htmlFor={`${idPrefix}-primary-goal`}>
+        <h3 className="text-sm font-medium text-ink-primary">{t("settings:delegateSectionEngineering")}</h3>
+        <label className="mt-3 block text-sm text-ink-muted" htmlFor={`${idPrefix}-primary-goal`}>
           {t("settings:delegatePrimaryGoal")}
         </label>
         <select
           id={`${idPrefix}-primary-goal`}
-          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
+          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
           value={config.engineering.primary_goal}
           onChange={(e) =>
             onChange({
@@ -284,9 +284,9 @@ function ConfigEditor({
             </option>
           ))}
         </select>
-        <p className="mt-3 text-xs text-surface-muted">{t("settings:delegatePrioritiesHelp")}</p>
+        <p className="mt-3 text-xs text-ink-muted">{t("settings:delegatePrioritiesHelp")}</p>
         <textarea
-          className="mt-1 min-h-[72px] w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-white"
+          className="mt-1 min-h-[72px] w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-ink-primary"
           value={prioritiesText}
           onChange={(e) => {
             const priorities = e.target.value
@@ -307,7 +307,7 @@ function ConfigEditor({
           }}
           placeholder={"security\nstability\nmaintainability\nspeed"}
         />
-        <div className="mt-3 space-y-2 text-sm text-white">
+        <div className="mt-3 space-y-2 text-sm text-ink-primary">
           {(
             [
               ["security_first", t("settings:delegateSecurityFirst")],
@@ -333,8 +333,8 @@ function ConfigEditor({
       </section>
 
       <section>
-        <h3 className="text-sm font-medium text-white">{t("settings:delegateSectionAutonomy")}</h3>
-        <div className="mt-3 space-y-2 text-sm text-white">
+        <h3 className="text-sm font-medium text-ink-primary">{t("settings:delegateSectionAutonomy")}</h3>
+        <div className="mt-3 space-y-2 text-sm text-ink-primary">
           {(
             [
               ["can_fix_minor_issues", t("settings:delegateCanFixMinor")],
@@ -360,10 +360,10 @@ function ConfigEditor({
       </section>
 
       <section>
-        <h3 className="text-sm font-medium text-white">{t("settings:delegateSectionGoals")}</h3>
-        <p className="mt-1 text-xs text-surface-muted">{t("settings:delegateGoalsHelp")}</p>
+        <h3 className="text-sm font-medium text-ink-primary">{t("settings:delegateSectionGoals")}</h3>
+        <p className="mt-1 text-xs text-ink-muted">{t("settings:delegateGoalsHelp")}</p>
         <textarea
-          className="mt-2 min-h-[100px] w-full max-w-2xl rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
+          className="mt-2 min-h-[100px] w-full max-w-2xl rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
           value={goalsText}
           onChange={(e) =>
             onChange({
@@ -497,14 +497,14 @@ export function DelegateSettings() {
   };
 
   if (loading) {
-    return <p className="text-sm text-surface-muted">{t("settings:agentLoading")}</p>;
+    return <p className="text-sm text-ink-muted">{t("settings:agentLoading")}</p>;
   }
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="text-xl font-semibold text-white">{t("settings:delegateTitle")}</h1>
-      <p className="mt-2 text-sm text-surface-muted">{t("settings:delegateSubtitle")}</p>
-      <p className="mt-2 text-xs text-surface-muted">
+      <h1 className="text-xl font-semibold text-ink-primary">{t("settings:delegateTitle")}</h1>
+      <p className="mt-2 text-sm text-ink-muted">{t("settings:delegateSubtitle")}</p>
+      <p className="mt-2 text-xs text-ink-muted">
         {t("settings:delegateVsAgent")}{" "}
         <Link to="/settings/agent" className="text-indigo-300 hover:underline">
           {t("settings:agentTitle")}
@@ -515,24 +515,24 @@ export function DelegateSettings() {
         <p className="mt-4 text-sm text-amber-200/90">{t("settings:delegateStorageUnavailable")}</p>
       ) : null}
 
-      {msg ? <p className="mt-4 text-sm text-neutral-300">{msg}</p> : null}
+      {msg ? <p className="mt-4 text-sm text-ink-secondary">{msg}</p> : null}
 
       <section className="mt-8 rounded-lg border border-surface-border bg-card p-4">
-        <h2 className="text-sm font-medium text-white">{t("settings:delegateGlobalTitle")}</h2>
+        <h2 className="text-sm font-medium text-ink-primary">{t("settings:delegateGlobalTitle")}</h2>
         <ConfigEditor config={globalConfig} onChange={setGlobalConfig} idPrefix="global" />
-        <label className="mt-4 block text-sm text-white" htmlFor="delegate-notes">
+        <label className="mt-4 block text-sm text-ink-primary" htmlFor="delegate-notes">
           {t("settings:delegateNotesLabel")}
         </label>
         <textarea
           id="delegate-notes"
-          className="mt-1 min-h-[72px] w-full max-w-2xl rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
+          className="mt-1 min-h-[72px] w-full max-w-2xl rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder={t("settings:delegateNotesPlaceholder")}
         />
         <button
           type="button"
-          className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-500 disabled:opacity-50"
+          className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm text-ink-on-fill hover:bg-indigo-500 disabled:opacity-50"
           disabled={savingGlobal || unavailable}
           onClick={() => void saveGlobal()}
         >
@@ -541,18 +541,18 @@ export function DelegateSettings() {
       </section>
 
       <section className="mt-8 rounded-lg border border-surface-border bg-card p-4">
-        <h2 className="text-sm font-medium text-white">{t("settings:delegateWorkspaceTitle")}</h2>
-        <p className="mt-1 text-xs text-surface-muted">{t("settings:delegateWorkspaceHelp")}</p>
+        <h2 className="text-sm font-medium text-ink-primary">{t("settings:delegateWorkspaceTitle")}</h2>
+        <p className="mt-1 text-xs text-ink-muted">{t("settings:delegateWorkspaceHelp")}</p>
         {workspaces.length === 0 ? (
-          <p className="mt-3 text-sm text-surface-muted">{t("settings:delegateNoWorkspaces")}</p>
+          <p className="mt-3 text-sm text-ink-muted">{t("settings:delegateNoWorkspaces")}</p>
         ) : (
           <>
-            <label className="mt-3 block text-sm text-surface-muted" htmlFor="delegate-ws">
+            <label className="mt-3 block text-sm text-ink-muted" htmlFor="delegate-ws">
               {t("settings:delegateWorkspacePick")}
             </label>
             <select
               id="delegate-ws"
-              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
+              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
               value={workspaceId}
               onChange={(e) => setWorkspaceId(e.target.value)}
             >
@@ -563,7 +563,7 @@ export function DelegateSettings() {
               ))}
             </select>
             {selectedWorkspace ? (
-              <p className="mt-1 text-xs text-surface-muted">{selectedWorkspace.name}</p>
+              <p className="mt-1 text-xs text-ink-muted">{selectedWorkspace.name}</p>
             ) : null}
             <div className="mt-4">
               <ConfigEditor
@@ -574,7 +574,7 @@ export function DelegateSettings() {
             </div>
             <button
               type="button"
-              className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-500 disabled:opacity-50"
+              className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm text-ink-on-fill hover:bg-indigo-500 disabled:opacity-50"
               disabled={savingWorkspace || unavailable || !workspaceId}
               onClick={() => void saveWorkspace()}
             >

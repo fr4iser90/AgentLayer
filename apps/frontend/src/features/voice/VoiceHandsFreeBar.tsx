@@ -17,7 +17,7 @@ export function VoiceHandsFreeBar({ active, listening, busy, onToggle, error }: 
         onClick={onToggle}
         className={`rounded-md px-3 py-1.5 font-medium ${
           active
-            ? "bg-violet-600 text-white hover:bg-violet-500"
+            ? "bg-violet-600 text-ink-on-fill hover:bg-violet-500"
             : "border border-white/15 text-violet-100 hover:bg-white/5"
         }`}
       >

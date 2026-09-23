@@ -153,7 +153,7 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
               </span>
             ) : null}
           </h3>
-          <p className="mt-1 max-w-prose text-meta text-surface-muted">
+          <p className="mt-1 max-w-prose text-meta text-ink-muted">
             {t("admin:benchRunOverridesHint")}
           </p>
         </div>
@@ -172,11 +172,11 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
       ) : null}
 
       {loading ? (
-        <p className="mt-4 text-sm text-surface-muted">{t("admin:loading")}</p>
+        <p className="mt-4 text-sm text-ink-muted">{t("admin:loading")}</p>
       ) : (
         <div className="mt-4 grid min-h-[280px] gap-4 md:grid-cols-2">
           <section className="min-h-0 overflow-auto rounded-lg border border-surface-border bg-[#111] p-3">
-            <h4 className="mb-2 text-sm font-medium text-white">{t("admin:agentConfigKnobs")}</h4>
+            <h4 className="mb-2 text-sm font-medium text-ink-primary">{t("admin:agentConfigKnobs")}</h4>
             <ul className="space-y-1">
               {knobs.map((k) => {
                 const ov = overrideMap.get(k.id);
@@ -188,7 +188,7 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
                       type="button"
                       onClick={() => setSelectedId(k.id)}
                       className={`w-full rounded px-2 py-1.5 text-left text-sm ${
-                        active ? "bg-white/10 text-white" : "text-surface-muted hover:bg-white/5"
+                        active ? "bg-white/10 text-ink-primary" : "text-ink-muted hover:bg-white/5"
                       }`}
                     >
                       <span className="font-mono text-xs">{k.id}</span>
@@ -210,15 +210,15 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
           </section>
 
           <section className="flex min-h-0 flex-col gap-3 overflow-auto rounded-lg border border-surface-border bg-[#111] p-3">
-            <h4 className="text-sm font-medium text-white">{t("admin:benchRunOverrideEditTitle")}</h4>
+            <h4 className="text-sm font-medium text-ink-primary">{t("admin:benchRunOverrideEditTitle")}</h4>
             {selected ? (
               <>
-                <p className="text-xs text-surface-muted">
+                <p className="text-xs text-ink-muted">
                   {selected.layer ? `[${selected.layer}] ` : ""}
                   {selected.doc}
                 </p>
 
-                <div className="rounded border border-surface-border/60 bg-black/20 p-2 text-xs text-surface-muted">
+                <div className="rounded border border-surface-border/60 bg-black/20 p-2 text-xs text-ink-muted">
                   <p className="font-medium text-white/90">{t("admin:benchRunOverrideHarnessBaseline")}</p>
                   <p className="mt-1 font-mono">{formatKnobValue(selected, undefined)}</p>
                   <p className="mt-2">
@@ -239,9 +239,9 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
                   })}
                 </div>
 
-                <label className="text-xs text-surface-muted">{t("admin:benchRunOverrideValueLabel")}</label>
+                <label className="text-xs text-ink-muted">{t("admin:benchRunOverrideValueLabel")}</label>
                 <textarea
-                  className="min-h-[80px] w-full rounded border border-surface-border bg-field p-2 font-mono text-sm text-white"
+                  className="min-h-[80px] w-full rounded border border-surface-border bg-field p-2 font-mono text-sm text-ink-primary"
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                 />
@@ -250,7 +250,7 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
                   <button
                     type="button"
                     onClick={() => setOverrideForKnob(selected)}
-                    className="rounded bg-amber-700 px-3 py-2 text-sm text-white hover:bg-amber-600"
+                    className="rounded bg-amber-700 px-3 py-2 text-sm text-ink-on-fill hover:bg-amber-600"
                   >
                     {t("admin:benchRunOverrideSetBtn")}
                   </button>
@@ -258,7 +258,7 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
                     <button
                       type="button"
                       onClick={() => clearOverride(selected.id)}
-                      className="rounded border border-white/15 px-3 py-2 text-sm text-surface-muted hover:bg-white/5"
+                      className="rounded border border-white/15 px-3 py-2 text-sm text-ink-muted hover:bg-white/5"
                     >
                       {t("admin:benchRunOverrideUseHarness")}
                     </button>
@@ -266,7 +266,7 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
                 </div>
               </>
             ) : (
-              <p className="text-sm text-surface-muted">{t("admin:agentConfigSelectKnob")}</p>
+              <p className="text-sm text-ink-muted">{t("admin:agentConfigSelectKnob")}</p>
             )}
           </section>
         </div>

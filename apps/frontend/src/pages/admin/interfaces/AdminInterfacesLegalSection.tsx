@@ -13,11 +13,11 @@ export function AdminInterfacesLegalSection() {
 
   return (
     <section className="mt-8 rounded-xl border border-surface-border bg-card p-5">
-      <h2 className="text-sm font-medium text-white">{t("admin:ifPlatformLegalTitle")}</h2>
-      <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformLegalIntro")}</p>
-      <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformLegalAvvHint")}</p>
+      <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifPlatformLegalTitle")}</h2>
+      <p className="mt-2 text-xs text-ink-muted">{t("admin:ifPlatformLegalIntro")}</p>
+      <p className="mt-2 text-xs text-ink-muted">{t("admin:ifPlatformLegalAvvHint")}</p>
 
-      <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
+      <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
         <input
           type="checkbox"
           className="rounded border-surface-border"
@@ -27,12 +27,12 @@ export function AdminInterfacesLegalSection() {
         {t("admin:ifPlatformLegalEnabled")}
       </label>
 
-      <label className="mt-4 block text-xs text-surface-muted" htmlFor="legal-jurisdiction">
+      <label className="mt-4 block text-xs text-ink-muted" htmlFor="legal-jurisdiction">
         {t("admin:ifPlatformLegalJurisdiction")}
       </label>
       <select
         id="legal-jurisdiction"
-        className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
+        className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
         value={s.legalJurisdiction}
         onChange={(e) => s.setLegalJurisdiction(e.target.value)}
       >
@@ -42,9 +42,9 @@ export function AdminInterfacesLegalSection() {
           </option>
         ))}
       </select>
-      <p className="mt-1 text-meta text-surface-muted">{t("admin:ifPlatformLegalJurisdictionHint")}</p>
+      <p className="mt-1 text-meta text-ink-muted">{t("admin:ifPlatformLegalJurisdictionHint")}</p>
 
-      <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
+      <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
         <input
           type="checkbox"
           className="rounded border-surface-border"
@@ -56,22 +56,22 @@ export function AdminInterfacesLegalSection() {
       </label>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <label className="block text-xs text-surface-muted" htmlFor="legal-entity-name">
+        <label className="block text-xs text-ink-muted" htmlFor="legal-entity-name">
           {t("admin:ifPlatformLegalEntityName")}
           <input
             id="legal-entity-name"
-            className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
+            className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
             value={s.legalEntityName}
             onChange={(e) => s.setLegalEntityName(e.target.value)}
             placeholder={t("admin:ifPlatformLegalEntityNamePlaceholder")}
           />
         </label>
-        <label className="block text-xs text-surface-muted" htmlFor="legal-entity-email">
+        <label className="block text-xs text-ink-muted" htmlFor="legal-entity-email">
           {t("admin:ifPlatformLegalEntityEmail")}
           <input
             id="legal-entity-email"
             type="email"
-            className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
+            className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
             value={s.legalEntityEmail}
             onChange={(e) => s.setLegalEntityEmail(e.target.value)}
             placeholder={t("admin:ifPlatformLegalEntityEmailPlaceholder")}
@@ -79,61 +79,61 @@ export function AdminInterfacesLegalSection() {
         </label>
       </div>
 
-      <label className="mt-4 block text-xs text-surface-muted" htmlFor="legal-entity-address">
+      <label className="mt-4 block text-xs text-ink-muted" htmlFor="legal-entity-address">
         {t("admin:ifPlatformLegalEntityAddress")}
         <textarea
           id="legal-entity-address"
           rows={2}
-          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
+          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
           value={s.legalEntityAddress}
           onChange={(e) => s.setLegalEntityAddress(e.target.value)}
           placeholder={t("admin:ifPlatformLegalEntityAddressPlaceholder")}
         />
       </label>
 
-      <label className="mt-4 block text-xs text-surface-muted" htmlFor="legal-entity-phone">
+      <label className="mt-4 block text-xs text-ink-muted" htmlFor="legal-entity-phone">
         {t("admin:ifPlatformLegalEntityPhone")}
         <input
           id="legal-entity-phone"
-          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
+          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
           value={s.legalEntityPhone}
           onChange={(e) => s.setLegalEntityPhone(e.target.value)}
         />
       </label>
 
       <details className="mt-6 rounded-lg border border-white/10 bg-black/15 p-4">
-        <summary className="cursor-pointer text-xs font-medium text-white">
+        <summary className="cursor-pointer text-xs font-medium text-ink-primary">
           {t("admin:ifPlatformLegalOverridesTitle")}
         </summary>
-        <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformLegalOverridesIntro")}</p>
-        <label className="mt-4 block text-xs text-surface-muted" htmlFor="legal-impressum-md">
+        <p className="mt-2 text-xs text-ink-muted">{t("admin:ifPlatformLegalOverridesIntro")}</p>
+        <label className="mt-4 block text-xs text-ink-muted" htmlFor="legal-impressum-md">
           {t("admin:ifPlatformLegalImpressumOverride")}
           <textarea
             id="legal-impressum-md"
             rows={6}
-            className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-white"
+            className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-ink-primary"
             value={s.legalImpressumMd}
             onChange={(e) => s.setLegalImpressumMd(e.target.value)}
             placeholder={t("admin:ifPlatformLegalOverridePlaceholder")}
           />
         </label>
-        <label className="mt-4 block text-xs text-surface-muted" htmlFor="legal-privacy-md">
+        <label className="mt-4 block text-xs text-ink-muted" htmlFor="legal-privacy-md">
           {t("admin:ifPlatformLegalPrivacyOverride")}
           <textarea
             id="legal-privacy-md"
             rows={8}
-            className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-white"
+            className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-ink-primary"
             value={s.legalPrivacyMd}
             onChange={(e) => s.setLegalPrivacyMd(e.target.value)}
             placeholder={t("admin:ifPlatformLegalOverridePlaceholder")}
           />
         </label>
-        <label className="mt-4 block text-xs text-surface-muted" htmlFor="legal-terms-md">
+        <label className="mt-4 block text-xs text-ink-muted" htmlFor="legal-terms-md">
           {t("admin:ifPlatformLegalTermsOverride")}
           <textarea
             id="legal-terms-md"
             rows={8}
-            className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-white"
+            className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-ink-primary"
             value={s.legalTermsMd}
             onChange={(e) => s.setLegalTermsMd(e.target.value)}
             placeholder={t("admin:ifPlatformLegalOverridePlaceholder")}

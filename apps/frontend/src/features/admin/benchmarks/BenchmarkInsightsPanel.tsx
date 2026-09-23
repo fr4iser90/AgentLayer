@@ -31,7 +31,7 @@ function PatternBars({
 }) {
   const entries = Object.entries(patterns).sort((a, b) => b[1] - a[1]);
   if (entries.length === 0) {
-    return <p className="text-xs text-surface-muted">{t("admin:agentConfigAnalysisNoPatterns")}</p>;
+    return <p className="text-xs text-ink-muted">{t("admin:agentConfigAnalysisNoPatterns")}</p>;
   }
   const max = Math.max(...entries.map(([, c]) => c), 1);
   return (
@@ -40,7 +40,7 @@ function PatternBars({
         <li key={pid}>
           <div className="mb-0.5 flex justify-between text-xs">
             <span className="font-mono text-white/90">{pid}</span>
-            <span className="text-surface-muted">{count}</span>
+            <span className="text-ink-muted">{count}</span>
           </div>
           <div className="h-2 overflow-hidden rounded bg-white/5">
             <div
@@ -68,12 +68,12 @@ function AnalysisSummary({
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <div className="rounded-lg border border-surface-border bg-black/20 p-3">
-        <p className="text-meta uppercase text-surface-muted">{t("admin:agentConfigAnalysisRuns")}</p>
-        <p className="mt-1 text-xl font-semibold text-white">{analysis.run_count}</p>
+        <p className="text-meta uppercase text-ink-muted">{t("admin:agentConfigAnalysisRuns")}</p>
+        <p className="mt-1 text-xl font-semibold text-ink-primary">{analysis.run_count}</p>
       </div>
       <div className="rounded-lg border border-surface-border bg-black/20 p-3">
-        <p className="text-meta uppercase text-surface-muted">{t("admin:agentConfigAnalysisTopModel")}</p>
-        <p className="mt-1 truncate text-sm font-mono text-white">
+        <p className="text-meta uppercase text-ink-muted">{t("admin:agentConfigAnalysisTopModel")}</p>
+        <p className="mt-1 truncate text-sm font-mono text-ink-primary">
           {topModel ? formatBenchmarkProviderModel(topModel) : "—"}
         </p>
         {topModel ? (
@@ -83,11 +83,11 @@ function AnalysisSummary({
         ) : null}
       </div>
       <div className="rounded-lg border border-surface-border bg-black/20 p-3">
-        <p className="text-meta uppercase text-surface-muted">{t("admin:agentConfigAnalysisScenarios")}</p>
-        <p className="mt-1 text-xl font-semibold text-white">{scenarios.length}</p>
+        <p className="text-meta uppercase text-ink-muted">{t("admin:agentConfigAnalysisScenarios")}</p>
+        <p className="mt-1 text-xl font-semibold text-ink-primary">{scenarios.length}</p>
       </div>
       <div className="rounded-lg border border-surface-border bg-black/20 p-3">
-        <p className="text-meta uppercase text-surface-muted">{t("admin:agentConfigAnalysisWeakScenarios")}</p>
+        <p className="text-meta uppercase text-ink-muted">{t("admin:agentConfigAnalysisWeakScenarios")}</p>
         <p className="mt-1 text-xl font-semibold text-rose-300">{weak}</p>
       </div>
     </div>
@@ -172,11 +172,11 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
         <label className="block text-xs">
-          <span className="text-surface-muted">{t("admin:agentConfigAnalysisCohortFilter")}</span>
+          <span className="text-ink-muted">{t("admin:agentConfigAnalysisCohortFilter")}</span>
           <select
             value={cohortFilter}
             onChange={(e) => setCohortFilter(e.target.value)}
-            className="mt-1 block min-w-[160px] rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
+            className="mt-1 block min-w-[160px] rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-ink-primary"
           >
             <option value="">{t("admin:agentConfigAnalysisAllCohorts")}</option>
             {cohorts.map((c) => (
@@ -190,19 +190,19 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
           type="button"
           onClick={() => void loadAnalysis()}
           disabled={loading}
-          className="rounded border border-white/15 bg-black/30 px-3 py-1.5 text-xs text-white hover:bg-white/10 disabled:opacity-50"
+          className="rounded border border-white/15 bg-black/30 px-3 py-1.5 text-xs text-ink-primary hover:bg-white/10 disabled:opacity-50"
         >
           {loading ? t("admin:loading") : t("admin:agentConfigAnalysisRefresh")}
         </button>
       </div>
 
       <section className="rounded-xl border border-surface-border bg-card p-4">
-        <h2 className="text-sm font-medium text-white">{t("admin:agentConfigAnalysisCompare")}</h2>
+        <h2 className="text-sm font-medium text-ink-primary">{t("admin:agentConfigAnalysisCompare")}</h2>
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <select
             value={compareA}
             onChange={(e) => setCompareA(e.target.value)}
-            className="rounded border border-white/10 bg-field px-2 py-1.5 text-xs text-white"
+            className="rounded border border-white/10 bg-field px-2 py-1.5 text-xs text-ink-primary"
           >
             <option value="">{t("admin:agentConfigAnalysisCohortA")}</option>
             {cohorts.map((c) => (
@@ -211,11 +211,11 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
               </option>
             ))}
           </select>
-          <span className="text-xs text-surface-muted">vs</span>
+          <span className="text-xs text-ink-muted">vs</span>
           <select
             value={compareB}
             onChange={(e) => setCompareB(e.target.value)}
-            className="rounded border border-white/10 bg-field px-2 py-1.5 text-xs text-white"
+            className="rounded border border-white/10 bg-field px-2 py-1.5 text-xs text-ink-primary"
           >
             <option value="">{t("admin:agentConfigAnalysisCohortB")}</option>
             {cohorts.map((c) => (
@@ -228,7 +228,7 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
             type="button"
             onClick={() => void onCompare()}
             disabled={!compareA || !compareB || compareA === compareB || loading}
-            className="rounded bg-indigo-700/80 px-3 py-1.5 text-xs text-white hover:bg-indigo-600 disabled:opacity-50"
+            className="rounded bg-indigo-700/80 px-3 py-1.5 text-xs text-ink-primary hover:bg-indigo-600 disabled:opacity-50"
           >
             {t("admin:agentConfigAnalysisCompareBtn")}
           </button>
@@ -240,8 +240,8 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
               const label = side === "a" ? compareA : compareB;
               return (
                 <div key={side} className="rounded border border-white/10 p-2">
-                  <p className="mb-2 text-xs font-medium text-white">{label}</p>
-                  <p className="text-xs text-surface-muted">
+                  <p className="mb-2 text-xs font-medium text-ink-primary">{label}</p>
+                  <p className="text-xs text-ink-muted">
                     {t("admin:agentConfigAnalysisRuns")}: {block.run_count}
                   </p>
                   <PatternBars patterns={block.top_patterns ?? {}} t={t} />
@@ -255,14 +255,14 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
 
       {loading && !analysis ? (
-        <p className="text-xs text-surface-muted">{t("admin:loading")}</p>
+        <p className="text-xs text-ink-muted">{t("admin:loading")}</p>
       ) : analysis ? (
         <>
           <AnalysisSummary analysis={analysis} t={t} />
 
           <div className="grid gap-4 lg:grid-cols-2">
             <section className="rounded-xl border border-surface-border bg-card p-4">
-              <h2 className="text-sm font-medium text-white">
+              <h2 className="text-sm font-medium text-ink-primary">
                 {t("admin:agentConfigAnalysisFailurePatterns")}
               </h2>
               <div className="mt-3">
@@ -272,13 +272,13 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
 
             {(analysis.by_scenario?.length ?? 0) > 0 ? (
               <section className="rounded-xl border border-surface-border bg-card p-4">
-                <h2 className="text-sm font-medium text-white">
+                <h2 className="text-sm font-medium text-ink-primary">
                   {t("admin:agentConfigAnalysisByScenario")}
                 </h2>
                 <div className="mt-3 overflow-x-auto">
                   <table className="w-full min-w-[420px] text-left text-xs">
                     <thead>
-                      <tr className="text-surface-muted">
+                      <tr className="text-ink-muted">
                         <th className="py-1 pr-3">{t("admin:benchColScenario")}</th>
                         <th className="py-1 pr-3">{t("admin:benchStatsPassRate")}</th>
                         <th className="py-1 pr-3">{t("admin:agentConfigAnalysisPatterns")}</th>
@@ -291,7 +291,7 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
                           <td className={`py-1.5 pr-3 ${passRateTone(row.pass_rate)}`}>
                             {formatPassRate(row.pass_rate)}
                           </td>
-                          <td className="py-1.5 pr-3 font-mono text-meta text-surface-muted">
+                          <td className="py-1.5 pr-3 font-mono text-meta text-ink-muted">
                             {row.patterns.length ? row.patterns.join(", ") : "—"}
                           </td>
                         </tr>
@@ -304,7 +304,7 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
           </div>
 
           {analysis.run_count === 0 ? (
-            <p className="text-sm text-surface-muted">{t("admin:agentConfigAnalysisNoRuns")}</p>
+            <p className="text-sm text-ink-muted">{t("admin:agentConfigAnalysisNoRuns")}</p>
           ) : null}
         </>
       ) : null}

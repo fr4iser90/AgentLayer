@@ -268,17 +268,17 @@ export function BlockSettingsModal({
         <header className="shrink-0 border-b border-surface-border px-4 py-3">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <h2 id="block-settings-title" className="text-sm font-semibold text-white">
+              <h2 id="block-settings-title" className="text-sm font-semibold text-ink-primary">
                 {t("dashboard:blockSettingsTitle")}
               </h2>
-              <p className="mt-0.5 text-meta text-surface-muted">
+              <p className="mt-0.5 text-meta text-ink-muted">
                 {blockTypeLabel(block.type)} ·{" "}
                 <span className="font-mono text-white/70">{block.id}</span>
               </p>
             </div>
             <button
               type="button"
-              className="rounded px-2 py-1 text-surface-muted hover:bg-white/10 hover:text-white"
+              className="rounded px-2 py-1 text-ink-muted hover:bg-white/10 hover:text-white"
               onClick={onClose}
               aria-label={t("dashboard:blockSettingsClose")}
             >
@@ -293,8 +293,8 @@ export function BlockSettingsModal({
                 className={[
                   "rounded-t-md px-3 py-1.5 text-xs font-medium transition-colors",
                   tab === item.id
-                    ? "border border-b-0 border-white/15 bg-black/40 text-white"
-                    : "text-surface-muted hover:text-white",
+                    ? "border border-b-0 border-white/15 bg-black/40 text-ink-primary"
+                    : "text-ink-muted hover:text-white",
                 ].join(" ")}
                 onClick={() => setTab(item.id)}
               >
@@ -307,24 +307,24 @@ export function BlockSettingsModal({
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 text-sm">
           {tab === "general" ? (
             <div className="space-y-4">
-              <p className="text-xs leading-snug text-surface-muted">
+              <p className="text-xs leading-snug text-ink-muted">
                 {autoSave
                   ? t("dashboard:blockSettingsIntroAutoSave")
                   : t("dashboard:blockSettingsIntroDraft")}
               </p>
               <label className="block space-y-1">
-                <span className="text-meta text-surface-muted">
+                <span className="text-meta text-ink-muted">
                   {t("dashboard:blockSettingsTitleLabel")}
                 </span>
                 <input
-                  className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-white outline-none focus:border-sky-500/50"
+                  className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-ink-primary outline-none focus:border-sky-500/50"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </label>
               <div className="space-y-1">
-                <span className="text-meta text-surface-muted">{t("dashboard:blockSettingsBlockId")}</span>
-                <p className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 font-mono text-meta text-neutral-300">
+                <span className="text-meta text-ink-muted">{t("dashboard:blockSettingsBlockId")}</span>
+                <p className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 font-mono text-meta text-ink-secondary">
                   {block.id}
                 </p>
               </div>
@@ -334,14 +334,14 @@ export function BlockSettingsModal({
           {tab === "data" && supportsDataTab(block.type) ? (
             <div className="space-y-4">
               <label className="block space-y-1">
-                <span className="text-meta text-surface-muted">{t("dashboard:blockSettingsDataPath")}</span>
+                <span className="text-meta text-ink-muted">{t("dashboard:blockSettingsDataPath")}</span>
                 <input
-                  className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 font-mono text-xs text-white outline-none focus:border-sky-500/50"
+                  className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 font-mono text-xs text-ink-primary outline-none focus:border-sky-500/50"
                   value={dataPath}
                   onChange={(e) => setDataPath(e.target.value)}
                   placeholder={t("dashboard:blockSettingsDataPathPlaceholder")}
                 />
-                <span className="text-meta text-surface-muted">{t("dashboard:blockSettingsDataPathHint")}</span>
+                <span className="text-meta text-ink-muted">{t("dashboard:blockSettingsDataPathHint")}</span>
               </label>
               <div className="rounded-lg border border-sky-500/20 bg-sky-950/20 px-3 py-2 text-xs text-sky-100/90">
                 <span className="block text-meta font-medium uppercase tracking-wide text-sky-300/80">
@@ -351,7 +351,7 @@ export function BlockSettingsModal({
               </div>
               {block.type === "card_grid" && columnFields.length ? (
                 <div className="space-y-2">
-                  <span className="text-meta text-surface-muted">{t("dashboard:blockSettingsCardFields")}</span>
+                  <span className="text-meta text-ink-muted">{t("dashboard:blockSettingsCardFields")}</span>
                   <ul className="flex flex-wrap gap-2">
                     {columnFields.map((field) => (
                       <li key={field}>
@@ -373,26 +373,26 @@ export function BlockSettingsModal({
 
           {tab === "share" && supportsShareTab(block.type) ? (
             <div className="space-y-4">
-              <p className="text-xs leading-snug text-surface-muted">
+              <p className="text-xs leading-snug text-ink-muted">
                 {t("dashboard:blockSettingsShareIntro")}
               </p>
               {shareLoading ? (
-                <p className="text-xs text-surface-muted">{t("dashboard:blockSettingsShareLoading")}</p>
+                <p className="text-xs text-ink-muted">{t("dashboard:blockSettingsShareLoading")}</p>
               ) : shareCandidates.length === 0 ? (
-                <p className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-surface-muted">
+                <p className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-ink-muted">
                   {t("dashboard:blockSettingsShareNone")}
                 </p>
               ) : (
                 <div className="space-y-1">
                   <label
-                    className="block text-meta text-surface-muted"
+                    className="block text-meta text-ink-muted"
                     htmlFor="block-settings-share-target"
                   >
                     {t("dashboard:blockSettingsShareTarget")}
                   </label>
                   <select
                     id="block-settings-share-target"
-                    className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-white outline-none focus:border-sky-500/50"
+                    className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-ink-primary outline-none focus:border-sky-500/50"
                     value={shareKey}
                     onChange={(e) => setShareKey(e.target.value)}
                   >
@@ -403,7 +403,7 @@ export function BlockSettingsModal({
                       </option>
                     ))}
                   </select>
-                  <span className="block text-meta text-surface-muted">
+                  <span className="block text-meta text-ink-muted">
                     {t("dashboard:blockSettingsShareTargetHint")}
                   </span>
                 </div>
@@ -415,7 +415,7 @@ export function BlockSettingsModal({
               ) : null}
               <div className="space-y-1">
                 <label
-                  className="block text-meta text-surface-muted"
+                  className="block text-meta text-ink-muted"
                   htmlFor="block-settings-share-days"
                 >
                   {t("dashboard:blockSettingsShareDays")}
@@ -425,13 +425,13 @@ export function BlockSettingsModal({
                   type="number"
                   min={1}
                   max={90}
-                  className="w-24 rounded-lg border border-surface-border bg-field px-3 py-2 text-white"
+                  className="w-24 rounded-lg border border-surface-border bg-field px-3 py-2 text-ink-primary"
                   value={daysAhead}
                   onChange={(e) =>
                     setDaysAhead(Math.min(90, Math.max(1, Number(e.target.value) || 7)))
                   }
                 />
-                <span className="block text-meta text-surface-muted">
+                <span className="block text-meta text-ink-muted">
                   {t("dashboard:blockSettingsShareDaysHint")}
                 </span>
               </div>
@@ -442,13 +442,13 @@ export function BlockSettingsModal({
             <div className="space-y-4">
               {supportsDisplayPreset(block.type) ? (
                 <div className="space-y-2">
-                  <span className="text-meta text-surface-muted">{t("dashboard:blockSettingsPreset")}</span>
+                  <span className="text-meta text-ink-muted">{t("dashboard:blockSettingsPreset")}</span>
                   <div className="flex flex-wrap gap-2">
                     {(["compact", "standard", "comfortable"] as DisplayPresetId[]).map((preset) => (
                       <button
                         key={preset}
                         type="button"
-                        className="rounded-lg border border-white/15 bg-black/30 px-3 py-1.5 text-xs text-neutral-200 hover:border-sky-500/40 hover:bg-sky-950/30"
+                        className="rounded-lg border border-white/15 bg-black/30 px-3 py-1.5 text-xs text-ink-primary hover:border-sky-500/40 hover:bg-sky-950/30"
                         onClick={() => applyPreset(preset)}
                       >
                         {t(`dashboard:blockSettingsPreset_${preset}`)}
@@ -465,8 +465,8 @@ export function BlockSettingsModal({
                   onChange={(e) => setFillGrid(e.target.checked)}
                 />
                 <span>
-                  <span className="block text-white">{t("dashboard:blockSettingsFillGrid")}</span>
-                  <span className="text-meta text-surface-muted">
+                  <span className="block text-ink-primary">{t("dashboard:blockSettingsFillGrid")}</span>
+                  <span className="text-meta text-ink-muted">
                     {t("dashboard:blockSettingsFillGridHint")}
                   </span>
                 </span>
@@ -474,14 +474,14 @@ export function BlockSettingsModal({
               {block.type === "card_grid" ? (
                 <>
                   <label className="block space-y-1">
-                    <span className="text-meta text-surface-muted">
+                    <span className="text-meta text-ink-muted">
                       {t("dashboard:blockSettingsGridColumns")}
                     </span>
                     <input
                       type="number"
                       min={1}
                       max={5}
-                      className="w-24 rounded-lg border border-surface-border bg-field px-3 py-2 text-white"
+                      className="w-24 rounded-lg border border-surface-border bg-field px-3 py-2 text-ink-primary"
                       value={gridColumns}
                       onChange={(e) => setGridColumns(Number(e.target.value) || 3)}
                     />
@@ -540,7 +540,7 @@ export function BlockSettingsModal({
           </Button>
           <button
             type="button"
-            className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+            className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
             onClick={() => void save()}
             disabled={isSaving}
           >

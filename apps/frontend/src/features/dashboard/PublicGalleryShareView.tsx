@@ -48,12 +48,12 @@ export function PublicGalleryShareView(props: {
   const galleryBlocks = layout.blocks.filter((b) => b.type === "gallery");
 
   return (
-    <div className="min-h-dvh bg-neutral-950 text-white">
+    <div className="min-h-dvh bg-neutral-950 text-ink-primary">
       <header className="sticky top-0 z-20 border-b border-white/10 bg-neutral-950/85 px-4 py-4 backdrop-blur-md sm:px-8 sm:py-5">
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{title}</h1>
-        {subtitle ? <p className="mt-1 text-sm text-neutral-400">{subtitle}</p> : null}
+        {subtitle ? <p className="mt-1 text-sm text-ink-muted">{subtitle}</p> : null}
         {introTexts.length > 0 ? (
-          <div className="mt-3 max-w-2xl whitespace-pre-wrap text-sm leading-relaxed text-neutral-300">
+          <div className="mt-3 max-w-2xl whitespace-pre-wrap text-sm leading-relaxed text-ink-secondary">
             {introTexts.join("\n\n")}
           </div>
         ) : null}
@@ -78,7 +78,7 @@ export function PublicGalleryShareView(props: {
                       <p className="text-lg font-medium sm:text-xl">{hero.headline}</p>
                     ) : null}
                     {hero.caption ? (
-                      <p className="mt-1 text-sm text-neutral-300">{hero.caption}</p>
+                      <p className="mt-1 text-sm text-ink-secondary">{hero.caption}</p>
                     ) : null}
                   </div>
                 ) : null}

@@ -60,11 +60,11 @@ const SHELL_CLASS_CHAT =
   "fixed inset-0 z-30 flex min-h-0 flex-col bg-[#0a0a0a] md:static md:z-auto md:h-full md:w-[min(100%,300px)] md:shrink-0 md:border-r md:border-surface-border";
 
 function diffLineClass(line: string): string {
-  if (line.startsWith("+++") || line.startsWith("---")) return "text-neutral-500";
+  if (line.startsWith("+++") || line.startsWith("---")) return "text-ink-muted";
   if (line.startsWith("@@")) return "text-sky-400/90";
   if (line.startsWith("+")) return "text-emerald-300/95";
   if (line.startsWith("-")) return "text-red-300/95";
-  return "text-neutral-300";
+  return "text-ink-secondary";
 }
 
 function PanelTabs({
@@ -81,7 +81,7 @@ function PanelTabs({
   const { t } = useTranslation(["dashboard", "errors"]);
   const tabClass = (active: boolean) =>
     `rounded-md px-2.5 py-1 text-meta font-medium transition-colors ${
-      active ? "bg-white/15 text-white" : "text-surface-muted hover:bg-white/10 hover:text-neutral-200"
+      active ? "bg-white/15 text-ink-primary" : "text-ink-muted hover:bg-white/10 hover:text-neutral-200"
     }`;
 
   return (
@@ -313,7 +313,7 @@ export function CodingWorkspacePanels({
 
   if (!workspaceId) {
     return (
-      <div className={`${shellClass} items-center justify-center px-3 py-6 text-center text-xs text-surface-muted`}>
+      <div className={`${shellClass} items-center justify-center px-3 py-6 text-center text-xs text-ink-muted`}>
         <p>{t("workspace:selectProjectBrowseFiles")}</p>
       </div>
     );
@@ -323,10 +323,10 @@ export function CodingWorkspacePanels({
     <div className={shellClass}>
       {variant === "chat" && onMobileClose ? (
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-surface-border px-3 py-2 md:hidden">
-          <p className="min-w-0 truncate text-sm font-medium text-white">{t("workspace:projectFilesTitle")}</p>
+          <p className="min-w-0 truncate text-sm font-medium text-ink-primary">{t("workspace:projectFilesTitle")}</p>
           <button
             type="button"
-            className="shrink-0 rounded-md px-2 py-1 text-xs text-surface-muted hover:bg-white/5 hover:text-neutral-200"
+            className="shrink-0 rounded-md px-2 py-1 text-xs text-ink-muted hover:bg-white/5 hover:text-neutral-200"
             onClick={onMobileClose}
           >
             {t("dashboard:close")}
@@ -343,10 +343,10 @@ export function CodingWorkspacePanels({
           />
           {panelTab === "files" ? (
             <>
-              <p className="mt-2 text-meta font-medium uppercase tracking-wide text-surface-muted">
+              <p className="mt-2 text-meta font-medium uppercase tracking-wide text-ink-muted">
                 Workspace files
               </p>
-              <div className="mt-1 flex flex-wrap items-center gap-1 text-meta text-neutral-400">
+              <div className="mt-1 flex flex-wrap items-center gap-1 text-meta text-ink-muted">
                 <button
                   type="button"
                   className="rounded px-1.5 py-0.5 hover:bg-white/10 disabled:opacity-40"
@@ -387,7 +387,7 @@ export function CodingWorkspacePanels({
               <div className="mt-1 flex items-center gap-2">
                 <button
                   type="button"
-                  className="rounded border border-surface-border px-2 py-0.5 text-meta text-neutral-300 hover:bg-white/5 disabled:opacity-40"
+                  className="rounded border border-surface-border px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
                   onClick={goUp}
                   disabled={!browsePath}
                 >
@@ -395,7 +395,7 @@ export function CodingWorkspacePanels({
                 </button>
                 <button
                   type="button"
-                  className="rounded border border-surface-border px-2 py-0.5 text-meta text-neutral-300 hover:bg-white/5 disabled:opacity-40"
+                  className="rounded border border-surface-border px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
                   onClick={() => void loadList()}
                   disabled={listLoading}
                 >
@@ -405,16 +405,16 @@ export function CodingWorkspacePanels({
             </>
           ) : (
             <>
-              <p className="mt-2 text-meta font-medium uppercase tracking-wide text-surface-muted">
+              <p className="mt-2 text-meta font-medium uppercase tracking-wide text-ink-muted">
                 {t("dashboard:gitChanges")}
               </p>
-              <p className="mt-0.5 text-meta text-neutral-500">
+              <p className="mt-0.5 text-meta text-ink-muted">
                 {changesSummary?.branch ? `branch: ${changesSummary.branch}` : t("dashboard:workingTree")}
               </p>
               <div className="mt-1">
                 <button
                   type="button"
-                  className="rounded border border-surface-border px-2 py-0.5 text-meta text-neutral-300 hover:bg-white/5 disabled:opacity-40"
+                  className="rounded border border-surface-border px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
                   onClick={() => void loadChangesSummary()}
                   disabled={changesLoading}
                 >
@@ -431,7 +431,7 @@ export function CodingWorkspacePanels({
               {listError ? (
                 <li className="px-2 py-2 text-red-300/90">{listError}</li>
               ) : entries.length === 0 && !listLoading ? (
-                <li className="px-2 py-2 text-surface-muted">{t("dashboard:filesEmpty")}</li>
+                <li className="px-2 py-2 text-ink-muted">{t("dashboard:filesEmpty")}</li>
               ) : (
                 entries.map((e) => (
                   <li key={e.path}>
@@ -453,11 +453,11 @@ export function CodingWorkspacePanels({
                       }}
                     >
                       {e.is_dir ? (
-                        <Folder aria-hidden className="h-3.5 w-3.5 shrink-0 text-surface-muted" />
+                        <Folder aria-hidden className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
                       ) : (
-                        <File aria-hidden className="h-3.5 w-3.5 shrink-0 text-surface-muted" />
+                        <File aria-hidden className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
                       )}
-                      <span className="min-w-0 flex-1 truncate text-neutral-200">{e.name}</span>
+                      <span className="min-w-0 flex-1 truncate text-ink-primary">{e.name}</span>
                       {e.is_symlink ? (
                         <span className="text-meta text-amber-400/80">{t("workspace:treeEntrySymlink")}</span>
                       ) : null}
@@ -467,13 +467,13 @@ export function CodingWorkspacePanels({
               )}
             </>
           ) : changesLoading && !changesSummary ? (
-            <li className="px-2 py-2 text-surface-muted">{t("dashboard:loading")}</li>
+            <li className="px-2 py-2 text-ink-muted">{t("dashboard:loading")}</li>
           ) : changesError ? (
             <li className="px-2 py-2 text-red-300/90">{changesError}</li>
           ) : !changesSummary?.has_changes ? (
-            <li className="px-2 py-2 text-surface-muted">{t("dashboard:noUncommittedChanges")}</li>
+            <li className="px-2 py-2 text-ink-muted">{t("dashboard:noUncommittedChanges")}</li>
           ) : (changesSummary.files ?? []).length === 0 ? (
-            <li className="px-2 py-2 text-surface-muted">{t("dashboard:changesDetected")}</li>
+            <li className="px-2 py-2 text-ink-muted">{t("dashboard:changesDetected")}</li>
           ) : (
             (changesSummary.files ?? []).map((f) => (
               <li key={f.path}>
@@ -484,8 +484,8 @@ export function CodingWorkspacePanels({
                   }`}
                   onClick={() => void loadChangeDiff(f.path)}
                 >
-                  <span className="truncate font-mono text-meta text-neutral-200">{f.path}</span>
-                  <span className="text-meta text-neutral-500">{f.stat}</span>
+                  <span className="truncate font-mono text-meta text-ink-primary">{f.path}</span>
+                  <span className="text-meta text-ink-muted">{f.stat}</span>
                 </button>
               </li>
             ))
@@ -500,46 +500,46 @@ export function CodingWorkspacePanels({
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col border-t border-surface-border lg:border-t-0">
         <div className="shrink-0 border-b border-surface-border px-3 py-2">
-          <p className="text-meta font-medium uppercase tracking-wide text-surface-muted">
+          <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
             {panelTab === "files" ? t("dashboard:preview") : t("dashboard:diff")}
           </p>
           {panelTab === "files" && fileMeta ? (
-            <p className="mt-0.5 truncate font-mono text-meta text-neutral-500">{fileMeta}</p>
+            <p className="mt-0.5 truncate font-mono text-meta text-ink-muted">{fileMeta}</p>
           ) : null}
           {panelTab === "changes" && selectedChangePath ? (
-            <p className="mt-0.5 truncate font-mono text-meta text-neutral-500">{selectedChangePath}</p>
+            <p className="mt-0.5 truncate font-mono text-meta text-ink-muted">{selectedChangePath}</p>
           ) : null}
         </div>
         <div className="min-h-0 flex-1 overflow-auto p-2">
           {panelTab === "files" ? (
             <>
               {fileLoading ? (
-                <p className="text-xs text-surface-muted">{t("dashboard:loading")}</p>
+                <p className="text-xs text-ink-muted">{t("dashboard:loading")}</p>
               ) : fileError ? (
                 <p className="text-xs text-red-300/90">{fileError}</p>
               ) : fileContent != null ? (
-                <pre className="whitespace-pre-wrap break-words font-mono text-meta leading-relaxed text-neutral-200">
+                <pre className="whitespace-pre-wrap break-words font-mono text-meta leading-relaxed text-ink-primary">
                   {fileContent}
                 </pre>
               ) : (
-                <p className="text-xs text-surface-muted">{t("dashboard:pickFileHint")}</p>
+                <p className="text-xs text-ink-muted">{t("dashboard:pickFileHint")}</p>
               )}
             </>
           ) : changeDiffLoading ? (
-            <p className="text-xs text-surface-muted">{t("dashboard:loadingDiff")}</p>
+            <p className="text-xs text-ink-muted">{t("dashboard:loadingDiff")}</p>
           ) : changeDiffError ? (
             <p className="text-xs text-red-300/90">{changeDiffError}</p>
           ) : changeDiff != null ? (
             <DiffView text={changeDiff} truncated={changeDiffTruncated} />
           ) : changesSummary?.stat && !selectedChangePath ? (
-            <pre className="whitespace-pre-wrap font-mono text-meta leading-relaxed text-neutral-400">
+            <pre className="whitespace-pre-wrap font-mono text-meta leading-relaxed text-ink-muted">
               {changesSummary.stat}
               {changesSummary.stat_truncated ? "\n…[truncated]" : ""}
             </pre>
           ) : changesSummary?.has_changes ? (
-            <p className="text-xs text-surface-muted">{t("dashboard:selectChangedFileHint")}</p>
+            <p className="text-xs text-ink-muted">{t("dashboard:selectChangedFileHint")}</p>
           ) : changesError ? null : (
-            <p className="text-xs text-surface-muted">{t("dashboard:noChangesToReview")}</p>
+            <p className="text-xs text-ink-muted">{t("dashboard:noChangesToReview")}</p>
           )}
           {panelTab === "changes" && selectedChangePath ? (
             <button

@@ -7,13 +7,13 @@ import { isSingleUser } from "../auth/deploymentMode";
 /** Single canonical admin sidebar — do not nest extra IDE submenus here. */
 const item =
   "block rounded-lg border border-transparent px-3 py-2 text-sm transition-colors";
-const itemActive = "border-white/10 bg-white/10 text-white";
-const itemIdle = "text-surface-muted hover:bg-white/5 hover:text-neutral-200";
+const itemActive = "border-white/10 bg-white/10 text-ink-primary";
+const itemIdle = "text-ink-muted hover:bg-white/5 hover:text-neutral-200";
 
 function NavGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="mt-4 first:mt-0">
-      <p className="mb-1 px-2 text-meta font-medium uppercase tracking-wide text-surface-muted/90">
+      <p className="mb-1 px-2 text-meta font-medium uppercase tracking-wide text-ink-muted/90">
         {label}
       </p>
       <div className="flex flex-col gap-0.5">{children}</div>
@@ -28,7 +28,7 @@ export function AdminLayout() {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-canvas md:flex-row">
       <aside className="shrink-0 border-b border-surface-border bg-panel px-3 py-4 md:w-56 md:border-b-0 md:border-r">
-        <p className="mb-1 px-2 text-meta font-medium uppercase tracking-wide text-surface-muted">
+        <p className="mb-1 px-2 text-meta font-medium uppercase tracking-wide text-ink-muted">
           {t("admin:operatorAdmin")}
         </p>
         <nav className="flex flex-col" aria-label={t("admin:adminSectionsAria")}>

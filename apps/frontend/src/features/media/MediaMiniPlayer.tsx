@@ -93,7 +93,7 @@ export function MediaMiniPlayer() {
             type="button"
             className={`shrink-0 rounded-md px-2 py-1.5 text-xs font-medium ${
               media.panelOpen
-                ? "bg-sky-600/50 text-white"
+                ? "bg-sky-600/50 text-ink-primary"
                 : "border border-sky-500/30 text-sky-100 hover:bg-sky-900/40"
             }`}
             onClick={() => media.setPanelOpen(!media.panelOpen)}
@@ -103,8 +103,8 @@ export function MediaMiniPlayer() {
           </button>
 
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-white">{label}</p>
-            <p className="truncate text-meta text-surface-muted">
+            <p className="truncate text-sm font-medium text-ink-primary">{label}</p>
+            <p className="truncate text-meta text-ink-muted">
               {statusHint}
               {media.binding?.dashboardTitle ? (
                 <span className="text-white/40"> · {media.binding.dashboardTitle}</span>
@@ -112,7 +112,7 @@ export function MediaMiniPlayer() {
             </p>
           </div>
 
-          <label className="flex shrink-0 items-center gap-2 text-meta text-surface-muted">
+          <label className="flex shrink-0 items-center gap-2 text-meta text-ink-muted">
             <span className="hidden sm:inline">{t("dashboard:mediaMiniPlayerVolume")}</span>
             <Volume2 aria-hidden className="h-3.5 w-3.5" />
             <input
@@ -147,7 +147,7 @@ export function MediaMiniPlayer() {
             ) : null}
             <button
               type="button"
-              className="rounded-md px-2 py-1.5 text-xs text-neutral-200 hover:bg-white/10 disabled:opacity-40"
+              className="rounded-md px-2 py-1.5 text-xs text-ink-primary hover:bg-white/10 disabled:opacity-40"
               onClick={media.playPrev}
               disabled={!canPlay}
               aria-label={t("dashboard:mediaMiniPlayerPrev")}
@@ -156,7 +156,7 @@ export function MediaMiniPlayer() {
             </button>
             <button
               type="button"
-              className="rounded-md bg-white/15 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/20 disabled:opacity-40"
+              className="rounded-md bg-white/15 px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-white/20 disabled:opacity-40"
               onClick={media.togglePause}
               disabled={!canPlay || (isPersistentAudio && media.streamLoading)}
               aria-label={
@@ -169,7 +169,7 @@ export function MediaMiniPlayer() {
             </button>
             <button
               type="button"
-              className="rounded-md px-2 py-1.5 text-xs text-neutral-200 hover:bg-white/10 disabled:opacity-40"
+              className="rounded-md px-2 py-1.5 text-xs text-ink-primary hover:bg-white/10 disabled:opacity-40"
               onClick={media.playNext}
               disabled={!canPlay}
               aria-label={t("dashboard:mediaMiniPlayerNext")}
@@ -189,7 +189,7 @@ export function MediaMiniPlayer() {
             ) : null}
             <button
               type="button"
-              className="rounded-md px-2 py-1 text-meta text-surface-muted hover:bg-white/5 hover:text-neutral-200 disabled:opacity-40"
+              className="rounded-md px-2 py-1 text-meta text-ink-muted hover:bg-white/5 hover:text-neutral-200 disabled:opacity-40"
               onClick={media.stop}
               disabled={!hasTrack}
               aria-label={t("dashboard:mediaMiniPlayerStop")}

@@ -17,8 +17,10 @@
     "test:unit:watch": "vitest",
     "e2e:i18n": "node scripts/e2e-playwright-i18n.mjs",
     "probe:overflow": "node scripts/probe-overflow.mjs",
-    "build": "npm run test && npm run test:unit && npm run lint:type-scale && npm run lint:field-surface && npm run lint:surface-ladder && vite build",
-    "preview": "vite preview"
+    "build": "npm run test && npm run test:unit && npm run lint:type-scale && npm run lint:field-surface && npm run lint:surface-ladder && npm run lint:ink-color && vite build",
+    "preview": "vite preview",
+    "lint:ink-color": "node scripts/check-ink-color.mjs",
+    "lint:ink-color:update": "node scripts/check-ink-color.mjs --update"
   },
   "dependencies": {
     "chart.js": "^4.5.1",
