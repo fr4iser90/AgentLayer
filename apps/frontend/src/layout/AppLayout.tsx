@@ -81,7 +81,7 @@ function MoreNavMenu({
       {open ? (
         <div
           role="menu"
-          className="absolute left-0 z-50 mt-1 min-w-[11rem] rounded-lg border border-surface-border bg-raised py-1 shadow-xl"
+          className="absolute left-0 z-50 mt-1 min-w-[11rem] rounded-lg border border-line bg-raised py-1 shadow-xl"
         >
           {hasMobileExtras ? (
             <div className="md:hidden">
@@ -105,7 +105,7 @@ function MoreNavMenu({
                   {t("nav.connections")}
                 </NavLink>
               ) : null}
-              {hasDesktopExtras ? <div className="my-1 border-t border-white/10" /> : null}
+              {hasDesktopExtras ? <div className="my-1 border-t border-line" /> : null}
             </div>
           ) : null}
           {showDashboard ? (
@@ -192,7 +192,7 @@ export function AppLayout() {
 
   const shell = (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden">
-      <header className="flex shrink-0 items-center gap-3 border-b border-surface-border bg-panel px-4 py-2">
+      <header className="flex shrink-0 items-center gap-3 border-b border-line bg-panel px-4 py-2">
         <span className="shrink-0 text-sm font-semibold tracking-tight text-ink-primary">
           {t("app.title")}
         </span>
@@ -277,7 +277,7 @@ export function AppLayout() {
         <Outlet />
       </div>
       <MediaMiniPlayer />
-      <footer className="shrink-0 border-t border-surface-border bg-panel px-4 py-2">
+      <footer className="shrink-0 border-t border-line bg-panel px-4 py-2">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-4 gap-y-1 text-meta text-ink-muted">
           <LegalFooterLinks />
           {showDocsFooter && !signedIn ? (

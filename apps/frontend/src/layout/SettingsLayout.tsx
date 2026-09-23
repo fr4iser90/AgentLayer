@@ -9,7 +9,7 @@ const subLinkBase =
 const subLink = `${subLinkBase} block`;
 const subLinkIcon = `${subLinkBase} flex items-center gap-1.5`;
 
-const subLinkActive = "bg-white/10 text-ink-primary border-white/10";
+const subLinkActive = "bg-white/10 text-ink-primary border-line";
 const subLinkIdle = "text-ink-muted hover:bg-white/5 hover:text-neutral-200";
 
 export function SettingsLayout() {
@@ -18,7 +18,7 @@ export function SettingsLayout() {
   const friendsOn = friendSystemEnabled(user);
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden md:flex-row">
-      <aside className="shrink-0 border-b border-surface-border bg-panel px-3 py-4 md:w-52 md:border-b-0 md:border-r">
+      <aside className="shrink-0 border-b border-line bg-panel px-3 py-4 md:w-52 md:border-b-0 md:border-r">
         <p className="mb-3 px-2 text-meta font-medium uppercase tracking-wide text-ink-muted">
           {t("common:settings")}
         </p>

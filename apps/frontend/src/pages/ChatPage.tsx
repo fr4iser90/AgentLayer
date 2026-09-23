@@ -378,7 +378,7 @@ function composerModEnterLabel(): string {
 
 function ComposerKbd({ children }: { children: string }) {
   return (
-    <kbd className="ml-1.5 inline-flex items-center rounded border border-white/15 bg-black/35 px-1 py-px font-mono text-meta font-normal leading-none text-white/65">
+    <kbd className="ml-1.5 inline-flex items-center rounded border border-line-strong bg-black/35 px-1 py-px font-mono text-meta font-normal leading-none text-white/65">
       {children}
     </kbd>
   );
@@ -834,7 +834,7 @@ export function ChatPage() {
     return (
       <button
         type="button"
-        className="ml-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded border border-white/15 px-1 text-meta font-medium text-sky-300/95 hover:bg-white/10"
+        className="ml-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded border border-line-strong px-1 text-meta font-medium text-sky-300/95 hover:bg-white/10"
         title={t("workspace:editMcpServersWorkspaceOnlyTitle")}
         onClick={() => setShowWorkspaceMcpModal(true)}
       >
@@ -3254,14 +3254,14 @@ export function ChatPage() {
       closeSidebarAriaLabel={t("chat:closeChatsSidebar")}
       sidebar={
         <>
-          <div className="shrink-0 border-b border-surface-border p-3">
+          <div className="shrink-0 border-b border-line p-3">
             <button
               type="button"
               onClick={() => {
                 void startNewChat();
                 setThreadSidebarOpen(false);
               }}
-              className="w-full rounded-lg border border-surface-border bg-white/5 px-3 py-2 text-left text-sm text-ink-primary hover:bg-white/10"
+              className="w-full rounded-lg border border-line bg-white/5 px-3 py-2 text-left text-sm text-ink-primary hover:bg-white/10"
             >
               {t("chat:newChat")}
             </button>
@@ -3351,10 +3351,10 @@ export function ChatPage() {
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {!activeThreadId ? (
           <>
-            <div className="flex shrink-0 items-center gap-2 border-b border-surface-border px-4 py-2 md:hidden">
+            <div className="flex shrink-0 items-center gap-2 border-b border-line px-4 py-2 md:hidden">
               <button
                 type="button"
-                className="rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-meta font-medium text-ink-secondary hover:bg-white/10"
+                className="rounded-lg border border-line bg-black/30 px-2.5 py-1.5 text-meta font-medium text-ink-secondary hover:bg-white/10"
                 aria-expanded={threadSidebarOpen}
                 onClick={() => setThreadSidebarOpen(true)}
               >
@@ -3372,7 +3372,7 @@ export function ChatPage() {
                 void startNewChat();
                 setThreadSidebarOpen(false);
               }}
-              className="rounded-lg border border-surface-border bg-white/10 px-4 py-2 text-sm text-ink-primary hover:bg-white/15"
+              className="rounded-lg border border-line bg-white/10 px-4 py-2 text-sm text-ink-primary hover:bg-white/15"
             >
               {t("chat:newChat")}
             </button>
@@ -3382,7 +3382,7 @@ export function ChatPage() {
           <>
         <div
           className={[
-            "shrink-0 border-b border-surface-border px-4 sm:px-6",
+            "shrink-0 border-b border-line px-4 sm:px-6",
             composerHeaderCollapsed ? "py-2" : "py-3",
           ].join(" ")}
         >
@@ -3394,7 +3394,7 @@ export function ChatPage() {
           >
             <button
               type="button"
-              className="shrink-0 rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-meta font-medium text-ink-secondary hover:bg-white/10 md:hidden"
+              className="shrink-0 rounded-lg border border-line bg-black/30 px-2.5 py-1.5 text-meta font-medium text-ink-secondary hover:bg-white/10 md:hidden"
               aria-expanded={threadSidebarOpen}
               aria-label={t("chat:openChatsSidebar")}
               onClick={() => setThreadSidebarOpen(true)}
@@ -3407,7 +3407,7 @@ export function ChatPage() {
             {activeThread ? <DashboardChatVisibilityBadge thread={activeThread} /> : null}
             <button
               type="button"
-              className="shrink-0 rounded-lg border border-surface-border bg-black/30 px-2 py-1 text-meta font-medium text-ink-secondary hover:bg-white/10"
+              className="shrink-0 rounded-lg border border-line bg-black/30 px-2 py-1 text-meta font-medium text-ink-secondary hover:bg-white/10"
               aria-expanded={!composerHeaderCollapsed}
               aria-controls="chat-composer-header-panel"
               title={
@@ -3459,7 +3459,7 @@ export function ChatPage() {
                   <label className="block text-meta font-medium uppercase tracking-wide text-ink-muted">
                     {t("chat:assistantLabel")}
                   </label>
-                  <p className="mt-0.5 rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-ink-secondary">
+                  <p className="mt-0.5 rounded-lg border border-line bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-ink-secondary">
                     {t("chat:generalAssistant")}
                   </p>
                   <p className="mt-1 text-meta leading-snug text-ink-muted">
@@ -3473,7 +3473,7 @@ export function ChatPage() {
                     </label>
                     <div className="mt-0.5 flex flex-wrap gap-1.5">
                       <select
-                        className="min-w-0 flex-1 rounded-lg border border-surface-border bg-field px-2.5 py-1.5 text-sm text-ink-primary"
+                        className="min-w-0 flex-1 rounded-lg border border-line bg-field px-2.5 py-1.5 text-sm text-ink-primary"
                         value={selectedWorkspaceId ?? ""}
                         onChange={(e) => setComposerWorkspace(e.target.value || null)}
                       >
@@ -3491,7 +3491,7 @@ export function ChatPage() {
                           "shrink-0 rounded-lg border px-2.5 py-1.5 text-meta font-medium",
                           projectPanelOpen
                             ? "border-sky-500/60 bg-sky-950/50 text-sky-100"
-                            : "border-surface-border bg-black/30 text-ink-secondary hover:bg-white/10",
+                            : "border-line bg-black/30 text-ink-secondary hover:bg-white/10",
                         ].join(" ")}
                         disabled={!selectedWorkspaceId}
                         title={selectedWorkspaceId ? t("chat:showProjectTree") : t("chat:selectProjectFirst")}
@@ -3534,7 +3534,7 @@ export function ChatPage() {
                 ) : null}
               </div>
               {workspaces.length === 0 ? (
-                <div className="rounded-lg border border-surface-border bg-black/25 px-3 py-2">
+                <div className="rounded-lg border border-line bg-black/25 px-3 py-2">
                   <p className="text-xs leading-snug text-ink-muted">
                     {isAdminUser ? t("chat:noProjectsAdmin") : t("chat:noProjectsUser")}
                   </p>
@@ -3558,7 +3558,7 @@ export function ChatPage() {
                   <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
                     <input
                       type="checkbox"
-                      className="rounded border-surface-border"
+                      className="rounded border-line"
                       checked={!!activeThread?.delegateAutoRespondEnabled}
                       onChange={(e) => {
                         const enabled = e.target.checked;
@@ -3579,7 +3579,7 @@ export function ChatPage() {
                         type="number"
                         min={15}
                         max={600}
-                        className="ml-2 w-16 rounded border border-surface-border bg-field px-1.5 py-0.5 text-sm text-ink-primary"
+                        className="ml-2 w-16 rounded border border-line bg-field px-1.5 py-0.5 text-sm text-ink-primary"
                         value={activeThread.delegateAutoRespondAfterSec ?? 60}
                         onChange={(e) => {
                           const sec = Number(e.target.value);
@@ -3602,7 +3602,7 @@ export function ChatPage() {
             </div>
             {mode === "agent" ? (
               <div className="flex min-h-0 w-full flex-col gap-1.5">
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-black/30 px-2.5 py-1.5">
                   <Link
                     to={
                       activeThreadId
@@ -3635,13 +3635,13 @@ export function ChatPage() {
                 />
               </div>
             ) : (
-              <div className="flex min-h-0 items-center rounded-lg border border-white/10 bg-black/30 px-2.5 py-2">
+              <div className="flex min-h-0 items-center rounded-lg border border-line bg-black/30 px-2.5 py-2">
                 <p className="text-meta leading-snug text-ink-muted">
                   {t("chat:switchToAgentModeHint")}
                 </p>
               </div>
             )}
-            <div className="flex min-w-0 flex-col gap-2 lg:border-l lg:border-surface-border lg:pl-4">
+            <div className="flex min-w-0 flex-col gap-2 lg:border-l lg:border-line lg:pl-4">
               {mode === "agent" ? (
                 <ChatRuntimeBar
                   runtime={chatRuntime}
@@ -3658,7 +3658,7 @@ export function ChatPage() {
                   {t("chat:replyModeLabel")}
                 </label>
                 <select
-                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-field px-2.5 py-1.5 text-sm text-ink-primary"
+                  className="mt-0.5 w-full rounded-lg border border-line bg-field px-2.5 py-1.5 text-sm text-ink-primary"
                   value={mode}
                   onChange={(e) => setMode(e.target.value as ChatMode)}
                   title={t("chat:replyModeTitle")}
@@ -3672,7 +3672,7 @@ export function ChatPage() {
                 <label className="flex cursor-pointer items-center gap-2 text-meta font-medium uppercase tracking-wide text-ink-muted">
                   <input
                     type="checkbox"
-                    className="rounded border-surface-border bg-field text-sky-500"
+                    className="rounded border-line bg-field text-sky-500"
                     checked={agentStreamLlmUi}
                     disabled={mode === "chat"}
                     onChange={(e) => {
@@ -3770,7 +3770,7 @@ export function ChatPage() {
               userTurns={userTurns}
               activeId={selectedTurnId}
               onSelect={handleSelectTurn}
-              className="shrink-0 border-b border-surface-border px-4 py-2"
+              className="shrink-0 border-b border-line px-4 py-2"
             />
           ) : null}
           <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -3785,7 +3785,7 @@ export function ChatPage() {
               />
             ) : null}
             {userTurns.length > 0 ? (
-              <aside className="hidden w-44 shrink-0 overflow-y-auto border-r border-surface-border px-2 py-4 lg:block">
+              <aside className="hidden w-44 shrink-0 overflow-y-auto border-r border-line px-2 py-4 lg:block">
                 <TurnNavigator
                   userTurns={userTurns}
                   activeId={selectedTurnId}
@@ -3799,7 +3799,7 @@ export function ChatPage() {
             >
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-surface-border bg-white/5 text-lg font-semibold text-ink-secondary">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-line bg-white/5 text-lg font-semibold text-ink-secondary">
                   AL
                 </div>
                 <h1 className="mt-4 text-2xl font-semibold tracking-tight text-ink-primary">
@@ -3807,13 +3807,13 @@ export function ChatPage() {
                 </h1>
                 <p className="mt-2 max-w-md text-sm text-ink-muted">{t("chat:emptyIntro")}</p>
                 <ul className="mt-6 max-w-md space-y-2 text-left text-sm text-ink-muted">
-                  <li className="rounded-md border border-surface-border/80 bg-black/20 px-3 py-2">
+                  <li className="rounded-md border border-line/80 bg-black/20 px-3 py-2">
                     {t("chat:emptyStarterBind")}
                   </li>
-                  <li className="rounded-md border border-surface-border/80 bg-black/20 px-3 py-2">
+                  <li className="rounded-md border border-line/80 bg-black/20 px-3 py-2">
                     {t("chat:emptyStarterContinue")}
                   </li>
-                  <li className="rounded-md border border-surface-border/80 bg-black/20 px-3 py-2">
+                  <li className="rounded-md border border-line/80 bg-black/20 px-3 py-2">
                     {t("chat:suggested1")}
                   </li>
                 </ul>
@@ -3940,13 +3940,13 @@ export function ChatPage() {
           </div>
         </div>
 
-        <div className="shrink-0 border-t border-surface-border bg-[#0c0c0c] px-4 py-4 sm:px-6">
+        <div className="shrink-0 border-t border-line bg-[#0c0c0c] px-4 py-4 sm:px-6">
           <div className="relative mx-auto max-w-3xl">
             {showScrollFab ? (
               <button
                 type="button"
                 onClick={() => scrollToBottom("smooth")}
-                className="absolute -top-12 right-0 z-10 rounded-full border border-surface-border bg-[#1a1a1a] px-3 py-1.5 text-xs text-ink-primary shadow-lg hover:bg-[#252525]"
+                className="absolute -top-12 right-0 z-10 rounded-full border border-line bg-[#1a1a1a] px-3 py-1.5 text-xs text-ink-primary shadow-lg hover:bg-[#252525]"
                 aria-label={t("chat:scrollToBottomAria")}
               >
                 {t("chat:newMessages")}
@@ -4064,7 +4064,7 @@ export function ChatPage() {
               className={`relative rounded-2xl border bg-[#141414] p-3 shadow-xl transition-colors ${
                 composerDragActive
                   ? "border-sky-500/70 ring-2 ring-sky-500/25"
-                  : "border-surface-border"
+                  : "border-line"
               }`}
               onDragEnter={(e) => {
                 e.preventDefault();
@@ -4103,7 +4103,7 @@ export function ChatPage() {
                   aria-live="polite"
                   aria-busy="true"
                 >
-                  <div className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-black/70 px-4 py-2.5 text-sm text-ink-primary">
+                  <div className="flex items-center gap-2.5 rounded-lg border border-line bg-black/70 px-4 py-2.5 text-sm text-ink-primary">
                     <svg
                       className="h-4 w-4 shrink-0 animate-spin text-sky-400"
                       xmlns="http://www.w3.org/2000/svg"
@@ -4180,7 +4180,7 @@ export function ChatPage() {
                   {pendingAttachments.map((a, idx) => (
                     <li
                       key={`${a.name}-${idx}`}
-                      className="flex max-w-full items-center gap-1 rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-xs text-ink-secondary"
+                      className="flex max-w-full items-center gap-1 rounded-lg border border-line bg-black/30 px-2 py-1 text-xs text-ink-secondary"
                     >
                       <span className="truncate" title={a.kind === "unsupported" ? a.hint : a.name}>
                         {a.name}
@@ -4231,7 +4231,7 @@ export function ChatPage() {
                     (chatRuntime?.vision?.available === false &&
                       /* still allow non-image files */ false)
                   }
-                  className="rounded-lg border border-white/10 bg-black/20 p-2 text-ink-muted hover:bg-white/5 hover:text-neutral-200 disabled:opacity-40"
+                  className="rounded-lg border border-line bg-black/20 p-2 text-ink-muted hover:bg-white/5 hover:text-neutral-200 disabled:opacity-40"
                   title={
                     chatRuntime?.vision?.available === false
                       ? t("chat:attachVisionUnavailable")
@@ -4334,7 +4334,7 @@ export function ChatPage() {
                     <li key={s}>
                       <button
                         type="button"
-                        className="w-full rounded-lg border border-surface-border bg-[#141414] px-4 py-3 text-left text-sm text-ink-secondary hover:bg-white/5"
+                        className="w-full rounded-lg border border-line bg-[#141414] px-4 py-3 text-left text-sm text-ink-secondary hover:bg-white/5"
                         onClick={() => setDraft(s)}
                       >
                         {s}

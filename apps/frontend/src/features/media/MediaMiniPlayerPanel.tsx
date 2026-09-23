@@ -112,7 +112,7 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
     <div className="max-h-[min(42vh,320px)] overflow-y-auto border-b border-sky-500/20 bg-sky-950/80 px-3 py-2">
       <div className="mx-auto max-w-5xl space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-md border border-white/10 p-0.5 text-meta">
+          <div className="flex rounded-md border border-line p-0.5 text-meta">
             <button
               type="button"
               className={`rounded px-2 py-1 ${tab === "queue" ? "bg-white/15 text-white" : "text-ink-muted hover:text-neutral-200"}`}
@@ -207,7 +207,7 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
                   className={`rounded-full px-2 py-0.5 text-meta ${
                     media.libraryFilter === f
                       ? "bg-sky-600/50 text-ink-primary"
-                      : "border border-white/10 text-ink-muted hover:bg-white/5"
+                      : "border border-line text-ink-muted hover:bg-white/5"
                   }`}
                   onClick={() => media.setLibraryFilter(f)}
                 >
@@ -216,7 +216,7 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
               ))}
             </div>
 
-            <div className="space-y-1.5 rounded-lg border border-white/10 bg-black/30 p-2">
+            <div className="space-y-1.5 rounded-lg border border-line bg-black/30 p-2">
               <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
                 {t("dashboard:mediaFooterAddRadio")}
               </p>
@@ -226,14 +226,14 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
                   value={streamUrl}
                   onChange={(e) => setStreamUrl(e.target.value)}
                   placeholder={t("dashboard:mediaFooterStreamPlaceholder")}
-                  className="min-w-[10rem] flex-1 rounded border border-white/10 bg-field px-2 py-1 font-mono text-meta text-ink-primary"
+                  className="min-w-[10rem] flex-1 rounded border border-line bg-field px-2 py-1 font-mono text-meta text-ink-primary"
                 />
                 <input
                   type="text"
                   value={addTitle}
                   onChange={(e) => setAddTitle(e.target.value)}
                   placeholder={t("dashboard:mediaFooterTitlePlaceholder")}
-                  className="w-28 rounded border border-white/10 bg-field px-2 py-1 text-meta text-ink-primary"
+                  className="w-28 rounded border border-line bg-field px-2 py-1 text-meta text-ink-primary"
                 />
                 <button
                   type="button"
@@ -250,12 +250,12 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
                   value={embedUrl}
                   onChange={(e) => setEmbedUrl(e.target.value)}
                   placeholder={t("dashboard:embedUrlPlaceholder")}
-                  className="min-w-[10rem] flex-1 rounded border border-white/10 bg-field px-2 py-1 font-mono text-meta text-ink-primary"
+                  className="min-w-[10rem] flex-1 rounded border border-line bg-field px-2 py-1 font-mono text-meta text-ink-primary"
                 />
                 <button
                   type="button"
                   disabled={busy || !embedUrl.trim()}
-                  className="rounded border border-white/15 px-2 py-1 text-meta text-ink-primary hover:bg-white/5 disabled:opacity-40"
+                  className="rounded border border-line-strong px-2 py-1 text-meta text-ink-primary hover:bg-white/5 disabled:opacity-40"
                   onClick={onAddEmbed}
                 >
                   {t("dashboard:mediaAddEmbed")}
@@ -263,7 +263,7 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
                 <button
                   type="button"
                   disabled={busy}
-                  className="rounded border border-white/15 px-2 py-1 text-meta text-ink-primary hover:bg-white/5 disabled:opacity-40"
+                  className="rounded border border-line-strong px-2 py-1 text-meta text-ink-primary hover:bg-white/5 disabled:opacity-40"
                   onClick={() => fileRef.current?.click()}
                 >
                   {t("dashboard:mediaUploadTrack")}

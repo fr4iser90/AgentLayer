@@ -18,7 +18,7 @@ export function VoiceHandsFreeBar({ active, listening, busy, onToggle, error }: 
         className={`rounded-md px-3 py-1.5 font-medium ${
           active
             ? "bg-violet-600 text-ink-on-fill hover:bg-violet-500"
-            : "border border-white/15 text-violet-100 hover:bg-white/5"
+            : "border border-line-strong text-violet-100 hover:bg-white/5"
         }`}
       >
         {active ? t("chat:voiceHandsFreeStop") : t("chat:voiceHandsFreeStart")}

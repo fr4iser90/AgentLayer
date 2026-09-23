@@ -75,9 +75,9 @@ export function NotificationBell() {
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-1 flex w-[min(22rem,calc(100vw-2rem))] flex-col rounded-lg border border-surface-border bg-raised shadow-xl"
+          className="absolute right-0 z-50 mt-1 flex w-[min(22rem,calc(100vw-2rem))] flex-col rounded-lg border border-line bg-raised shadow-xl"
         >
-          <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
+          <div className="flex items-center justify-between gap-2 border-b border-line px-3 py-2">
             <p className="text-sm font-medium text-ink-primary">{t("notifications:inboxTitle")}</p>
             {unread > 0 ? (
               <button
@@ -100,7 +100,7 @@ export function NotificationBell() {
                   key={n.id}
                   role="menuitem"
                   className={[
-                    "border-b border-white/5 px-3 py-2.5 last:border-b-0",
+                    "border-b border-line-subtle px-3 py-2.5 last:border-b-0",
                     n.read ? "opacity-70" : "bg-white/[0.02]",
                   ].join(" ")}
                 >
@@ -144,7 +144,7 @@ export function NotificationBell() {
               ))
             )}
           </div>
-          <div className="border-t border-white/10 px-3 py-2">
+          <div className="border-t border-line px-3 py-2">
             <Link
               to="/settings/notifications"
               className="text-xs text-sky-400 hover:text-sky-300"

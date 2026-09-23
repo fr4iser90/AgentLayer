@@ -228,7 +228,7 @@ export function AdminAgentConfig() {
 
   const knobEditor = (
     <div className="grid min-h-0 flex-1 gap-4 md:grid-cols-2">
-      <section className="min-h-0 overflow-auto rounded-lg border border-surface-border bg-[#111] p-3">
+      <section className="min-h-0 overflow-auto rounded-lg border border-line bg-[#111] p-3">
         <h2 className="mb-2 text-sm font-medium text-ink-primary">{t("admin:agentConfigKnobs")}</h2>
         <ul className="space-y-1">
           {knobs.map((k) => (
@@ -253,7 +253,7 @@ export function AdminAgentConfig() {
         </ul>
       </section>
 
-      <section className="flex min-h-0 flex-col gap-3 overflow-auto rounded-lg border border-surface-border bg-[#111] p-3">
+      <section className="flex min-h-0 flex-col gap-3 overflow-auto rounded-lg border border-line bg-[#111] p-3">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:agentConfigApply")}</h2>
         {selected ? (
           <>
@@ -261,7 +261,7 @@ export function AdminAgentConfig() {
               {selected.layer ? `[${selected.layer}] ` : ""}
               {selected.doc}
             </p>
-            <div className="rounded border border-surface-border/60 bg-black/20 p-2 text-xs text-ink-muted">
+            <div className="rounded border border-line/60 bg-black/20 p-2 text-xs text-ink-muted">
               <p className="font-medium text-white/90">{t("admin:agentConfigEffectiveNow")}</p>
               <p className="mt-1 font-mono">{formatKnobValue(selected)}</p>
               <p className="mt-2">
@@ -288,7 +288,7 @@ export function AdminAgentConfig() {
             ) : null}
             <label className="text-xs text-ink-muted">{t("admin:agentConfigValue")}</label>
             <textarea
-              className="min-h-[80px] w-full rounded border border-surface-border bg-field p-2 font-mono text-sm text-ink-primary disabled:opacity-50"
+              className="min-h-[80px] w-full rounded border border-line bg-field p-2 font-mono text-sm text-ink-primary disabled:opacity-50"
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               disabled={selected.writable === false}
@@ -296,7 +296,7 @@ export function AdminAgentConfig() {
             <label className="text-xs text-ink-muted">{t("admin:agentConfigHypothesis")}</label>
             <p className="text-meta text-ink-muted/80">{t("admin:agentConfigHypothesisHint")}</p>
             <input
-              className="w-full rounded border border-surface-border bg-field p-2 text-sm text-ink-primary disabled:opacity-50"
+              className="w-full rounded border border-line bg-field p-2 text-sm text-ink-primary disabled:opacity-50"
               value={hypothesis}
               onChange={(e) => setHypothesis(e.target.value)}
               disabled={selected.writable === false}
@@ -319,7 +319,7 @@ export function AdminAgentConfig() {
             <h3 className="mt-4 text-sm font-medium text-ink-primary">{t("admin:agentConfigChangelog")}</h3>
             <ul className="space-y-2 text-xs text-ink-muted">
               {(events as { id?: string; at?: string; patches?: unknown[] }[]).slice(0, 10).map((ev) => (
-                <li key={ev.id} className="rounded border border-surface-border/60 p-2">
+                <li key={ev.id} className="rounded border border-line/60 p-2">
                   <div>{ev.at}</div>
                   <pre className="mt-1 overflow-auto whitespace-pre-wrap">{JSON.stringify(ev.patches, null, 2)}</pre>
                 </li>
@@ -372,7 +372,7 @@ export function AdminAgentConfig() {
         <div className="flex min-h-0 flex-1 flex-col gap-4">
           <p className="text-xs text-ink-muted">{t("admin:agentConfigModelsHint")}</p>
           <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[240px_1fr]">
-            <section className="min-h-0 overflow-auto rounded-lg border border-surface-border bg-[#111] p-3">
+            <section className="min-h-0 overflow-auto rounded-lg border border-line bg-[#111] p-3">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <h2 className="text-sm font-medium text-ink-primary">{t("admin:agentConfigModelsList")}</h2>
                 <button
@@ -407,7 +407,7 @@ export function AdminAgentConfig() {
             </section>
 
             <div className="flex min-h-0 flex-1 flex-col gap-3">
-              <section className="shrink-0 rounded-lg border border-surface-border bg-[#111] p-3">
+              <section className="shrink-0 rounded-lg border border-line bg-[#111] p-3">
                 <div className="grid gap-3 md:grid-cols-3">
                   <label className="block text-sm">
                     <span className="text-xs text-ink-muted">{t("admin:agentConfigModelsProvider")}</span>
@@ -417,7 +417,7 @@ export function AdminAgentConfig() {
                         setModelScopeOverrideId(null);
                         setModelScopeCatalog(e.target.value);
                       }}
-                      className="mt-1 w-full rounded border border-surface-border bg-field px-2 py-1.5 text-sm text-ink-primary"
+                      className="mt-1 w-full rounded border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
                     >
                       <option value="">—</option>
                       {benchProviders.map((p) => (
@@ -436,7 +436,7 @@ export function AdminAgentConfig() {
                         setModelScopeModel(e.target.value);
                       }}
                       placeholder={t("admin:agentConfigModelsModelHint")}
-                      className="mt-1 w-full rounded border border-surface-border bg-field px-2 py-1.5 font-mono text-sm text-ink-primary"
+                      className="mt-1 w-full rounded border border-line bg-field px-2 py-1.5 font-mono text-sm text-ink-primary"
                     />
                   </label>
                   <label className="block text-sm">
@@ -444,7 +444,7 @@ export function AdminAgentConfig() {
                     <input
                       value={modelScopeLabel}
                       onChange={(e) => setModelScopeLabel(e.target.value)}
-                      className="mt-1 w-full rounded border border-surface-border bg-field px-2 py-1.5 text-sm text-ink-primary"
+                      className="mt-1 w-full rounded border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
                     />
                   </label>
                 </div>

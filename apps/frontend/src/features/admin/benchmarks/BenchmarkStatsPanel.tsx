@@ -98,7 +98,7 @@ function ModelLeaderboardTable({
         </thead>
         <tbody>
           {rows.map((row, idx) => (
-            <tr key={`${row.catalog_owned_by}:${row.model}`} className="border-t border-white/5">
+            <tr key={`${row.catalog_owned_by}:${row.model}`} className="border-t border-line-subtle">
               <td className="py-1.5 pr-3 text-ink-muted">{idx + 1}</td>
               <td className="py-1.5 pr-3 font-mono text-meta">{formatBenchmarkProviderModel(row)}</td>
               <td className="py-1.5 pr-3">{row.runs}</td>
@@ -138,7 +138,7 @@ function ScenarioGroupCard({
 }) {
   const title = showSuite ? `${group.suite} · ${group.scenario_id}` : group.scenario_id;
   return (
-    <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+    <div className="rounded-lg border border-line bg-black/20 p-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="font-mono text-sm text-ink-primary">{title}</h3>
         <div className="flex flex-wrap gap-3 text-meta text-ink-muted">
@@ -171,7 +171,7 @@ function ScenarioGroupCard({
           </thead>
           <tbody>
             {group.models.map((row, idx) => (
-              <tr key={`${row.catalog_owned_by}:${row.model}`} className="border-t border-white/5">
+              <tr key={`${row.catalog_owned_by}:${row.model}`} className="border-t border-line-subtle">
                 <td className="py-1 pr-2 text-ink-muted">{idx + 1}</td>
                 <td className="py-1 pr-2 font-mono">{formatBenchmarkProviderModel(row)}</td>
                 <td className="py-1 pr-2">
@@ -260,7 +260,7 @@ export function BenchmarkStatsPanel({
 
   return (
     <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
-      <section className="rounded-xl border border-surface-border bg-card p-4">
+      <section className="rounded-xl border border-line bg-card p-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-sm font-medium text-ink-primary">{t("admin:benchStatsTitle")}</h2>
@@ -284,7 +284,7 @@ export function BenchmarkStatsPanel({
               <select
                 value={suiteFilter}
                 onChange={(e) => setSuiteFilter(e.target.value)}
-                className="mt-1 block rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-ink-primary"
+                className="mt-1 block rounded border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
               >
                 <option value="">{t("admin:benchStatsAllSuites")}</option>
                 {suiteOptions
@@ -301,7 +301,7 @@ export function BenchmarkStatsPanel({
               <select
                 value={sinceDays}
                 onChange={(e) => setSinceDays(e.target.value)}
-                className="mt-1 block rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-ink-primary"
+                className="mt-1 block rounded border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
               >
                 {SINCE_DAY_OPTIONS.map((opt) => (
                   <option key={opt.value || "all"} value={opt.value}>
@@ -315,7 +315,7 @@ export function BenchmarkStatsPanel({
               <select
                 value={minSamples}
                 onChange={(e) => setMinSamples(e.target.value)}
-                className="mt-1 block rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-ink-primary"
+                className="mt-1 block rounded border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
               >
                 {MIN_SAMPLE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -329,7 +329,7 @@ export function BenchmarkStatsPanel({
               <select
                 value={badgeMinSamples}
                 onChange={(e) => setBadgeMinSamples(e.target.value)}
-                className="mt-1 block rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-ink-primary"
+                className="mt-1 block rounded border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
               >
                 {BADGE_MIN_SAMPLE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -343,7 +343,7 @@ export function BenchmarkStatsPanel({
               <select
                 value={fastestMinPassRate}
                 onChange={(e) => setFastestMinPassRate(e.target.value)}
-                className="mt-1 block max-w-[11rem] rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-ink-primary"
+                className="mt-1 block max-w-[11rem] rounded border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
               >
                 {FASTEST_PASS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -356,7 +356,7 @@ export function BenchmarkStatsPanel({
               type="button"
               onClick={() => void loadStats()}
               disabled={loading}
-              className="rounded-lg border border-white/15 bg-black/30 px-3 py-1.5 text-xs text-ink-primary hover:bg-white/10 disabled:opacity-50"
+              className="rounded-lg border border-line-strong bg-black/30 px-3 py-1.5 text-xs text-ink-primary hover:bg-white/10 disabled:opacity-50"
             >
               {loading ? t("admin:loading") : t("admin:agentTracesRefresh")}
             </button>
@@ -380,7 +380,7 @@ export function BenchmarkStatsPanel({
         {error ? <p className="mt-2 text-sm text-red-400">{error}</p> : null}
       </section>
 
-      <section className="rounded-xl border border-surface-border bg-card p-4">
+      <section className="rounded-xl border border-line bg-card p-4">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:benchStatsInsightsTitle")}</h2>
         <p className="mt-1 text-xs text-ink-muted">{t("admin:benchStatsInsightsHint")}</p>
         <div className="mt-4">
@@ -392,7 +392,7 @@ export function BenchmarkStatsPanel({
         </div>
       </section>
 
-      <section className="rounded-xl border border-surface-border bg-card p-4">
+      <section className="rounded-xl border border-line bg-card p-4">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:benchStatsLeaderboard")}</h2>
         <p className="mt-1 text-xs text-ink-muted">{t("admin:benchStatsLeaderboardHint")}</p>
         <div className="mt-3">
@@ -404,7 +404,7 @@ export function BenchmarkStatsPanel({
         </div>
       </section>
 
-      <section className="rounded-xl border border-surface-border bg-card p-4">
+      <section className="rounded-xl border border-line bg-card p-4">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:benchStatsByScenario")}</h2>
         <p className="mt-1 text-xs text-ink-muted">{t("admin:benchStatsByScenarioHint")}</p>
         <div className="mt-3 space-y-3">

@@ -181,7 +181,7 @@ export function ChatRuntimeBar({
 
   return (
     <div
-      className={`rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-meta leading-snug text-ink-secondary ${className}`}
+      className={`rounded-lg border border-line bg-black/30 px-2.5 py-1.5 text-meta leading-snug text-ink-secondary ${className}`}
     >
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
         <span className="font-semibold uppercase tracking-wide text-ink-muted">{t("workspace:mcp")}</span>

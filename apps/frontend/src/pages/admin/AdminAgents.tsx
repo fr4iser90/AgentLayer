@@ -366,7 +366,7 @@ export function AdminAgents() {
       <h1 className="text-2xl font-semibold text-ink-primary">{t("admin:agentsTitle")}</h1>
       <p className="mt-2 max-w-3xl text-sm text-ink-muted">{t("admin:agentsIntro")}</p>
 
-      <section className="mt-6 rounded-xl border border-surface-border bg-card p-4">
+      <section className="mt-6 rounded-xl border border-line bg-card p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold text-ink-primary">{t("admin:agentsImportTitle")}</h2>
@@ -377,7 +377,7 @@ export function AdminAgents() {
           </label>
           <select
             id="agents-import-source-type"
-            className="w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-ink-primary sm:w-56"
+            className="w-full rounded-md border border-line bg-field px-2 py-1.5 text-xs text-ink-primary sm:w-56"
             value={importSourceType}
             onChange={(e) => setImportSourceType(e.target.value)}
           >
@@ -395,13 +395,13 @@ export function AdminAgents() {
           <label className="flex flex-col gap-1 text-xs text-ink-muted">
             <span>{t("admin:agentsImportPaste")}</span>
             <textarea
-              className="min-h-40 rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-ink-primary placeholder:text-neutral-500"
+              className="min-h-40 rounded-md border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary placeholder:text-neutral-500"
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
               placeholder={t("admin:agentsImportPastePlaceholder")}
             />
           </label>
-          <div className="rounded-md border border-white/10 bg-black/20 p-3 text-xs text-ink-muted">
+          <div className="rounded-md border border-line bg-black/20 p-3 text-xs text-ink-muted">
             <label className="block">
               <span>{t("admin:agentsImportUpload")}</span>
               <input
@@ -432,7 +432,7 @@ export function AdminAgents() {
         {importMsg ? <p className="mt-3 text-sm text-ink-muted">{importMsg}</p> : null}
         {importResult ? (
           <div className="mt-4 space-y-3">
-            <div className="rounded-md border border-white/10 bg-black/20 p-3 text-xs text-ink-secondary">
+            <div className="rounded-md border border-line bg-black/20 p-3 text-xs text-ink-secondary">
               {t("admin:toolsImportDetected")}:{" "}
               <span className="font-mono text-ink-primary">{importResult.source_type}</span>{" "}
               <span className="text-ink-muted">
@@ -448,7 +448,7 @@ export function AdminAgents() {
             </div>
 
             <div className="grid gap-3 lg:grid-cols-2">
-              <article className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-ink-primary">
+              <article className="rounded-lg border border-line bg-black/20 p-3 text-xs text-ink-primary">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-sm font-semibold text-ink-primary">
                     {String(importResult.agent_draft.agent_yaml.id ?? "")}
@@ -465,7 +465,7 @@ export function AdminAgents() {
                 </pre>
               </article>
 
-              <article className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-ink-primary">
+              <article className="rounded-lg border border-line bg-black/20 p-3 text-xs text-ink-primary">
                 <h3 className="text-sm font-semibold text-ink-primary">{t("admin:agentsImportSystemPrompt")}</h3>
                 <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap rounded bg-black/40 p-2 text-meta text-ink-secondary">
                   {importResult.agent_draft.system_prompt_preview || "—"}
@@ -474,7 +474,7 @@ export function AdminAgents() {
             </div>
 
             <div className="grid gap-3 lg:grid-cols-2">
-              <article className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-ink-primary">
+              <article className="rounded-lg border border-line bg-black/20 p-3 text-xs text-ink-primary">
                 <h3 className="text-sm font-semibold text-ink-primary">{t("admin:agentsImportToolMapping")}</h3>
                 <ul className="mt-2 space-y-1">
                   {importResult.tool_mapping.matched_existing.map((m) => (
@@ -491,7 +491,7 @@ export function AdminAgents() {
                 ) : null}
               </article>
 
-              <article className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-ink-primary">
+              <article className="rounded-lg border border-line bg-black/20 p-3 text-xs text-ink-primary">
                 <h3 className="text-sm font-semibold text-ink-primary">{t("admin:agentsImportConfigPatches")}</h3>
                 <ul className="mt-2 space-y-2">
                   {importResult.config_patches.map((p) => (
@@ -546,7 +546,7 @@ export function AdminAgents() {
                   className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${
                     selectedId === a.id
                       ? "border-sky-500/40 bg-sky-950/20"
-                      : "border-surface-border bg-card hover:border-white/15"
+                      : "border-line bg-card hover:border-line-strong"
                   }`}
                 >
                   <div className="flex items-start gap-2">
@@ -568,7 +568,7 @@ export function AdminAgents() {
           </ul>
 
           {selected ? (
-            <div className="rounded-xl border border-surface-border bg-card p-4">
+            <div className="rounded-xl border border-line bg-card p-4">
               <h2 className="flex items-center gap-2 text-lg font-semibold text-ink-primary">
                 <AgentIcon icon={selected.icon} name={selected.name} />
                 {selected.name}
@@ -609,7 +609,7 @@ export function AdminAgents() {
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <label className="text-xs text-ink-muted">{t("admin:agentsEffectivePreview")}</label>
                 <select
-                  className="rounded border border-surface-border bg-field px-2 py-1 text-xs text-ink-primary"
+                  className="rounded border border-line bg-field px-2 py-1 text-xs text-ink-primary"
                   value={previewRole}
                   onChange={(e) => setPreviewRole(e.target.value as "admin" | "user")}
                 >
@@ -617,7 +617,7 @@ export function AdminAgents() {
                   <option value="user">{t("admin:toolsMinRoleUser")}</option>
                 </select>
                 <input
-                  className="w-72 rounded border border-surface-border bg-field px-2 py-1 text-xs text-ink-primary placeholder:text-neutral-500"
+                  className="w-72 rounded border border-line bg-field px-2 py-1 text-xs text-ink-primary placeholder:text-neutral-500"
                   value={previewUserId}
                   onChange={(e) => setPreviewUserId(e.target.value)}
                   placeholder={t("admin:agentsPreviewUserIdPlaceholder")}
@@ -628,7 +628,7 @@ export function AdminAgents() {
                 <p className="mt-3 text-xs text-ink-muted">{t("admin:agentsLoadingDetail")}</p>
               ) : (
                 <>
-                  <div className="mt-4 rounded-lg border border-white/10 bg-black/20 p-3">
+                  <div className="mt-4 rounded-lg border border-line bg-black/20 p-3">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
@@ -671,7 +671,7 @@ export function AdminAgents() {
                       <label className="text-xs text-ink-muted">
                         {t("admin:agentsPolicyScope")}
                         <select
-                          className="mt-1 w-full rounded border border-surface-border bg-field px-2 py-1 text-xs text-ink-primary"
+                          className="mt-1 w-full rounded border border-line bg-field px-2 py-1 text-xs text-ink-primary"
                           value={policyScope}
                           onChange={(e) => setPolicyScope(e.target.value as "global" | "tenant" | "user")}
                         >
@@ -686,7 +686,7 @@ export function AdminAgents() {
                         <label className="text-xs text-ink-muted">
                           {t("admin:agentsTenantId")}
                           <input
-                            className="mt-1 w-full rounded border border-surface-border bg-field px-2 py-1 text-xs text-ink-primary placeholder:text-neutral-500"
+                            className="mt-1 w-full rounded border border-line bg-field px-2 py-1 text-xs text-ink-primary placeholder:text-neutral-500"
                             value={policyTenantId}
                             onChange={(e) => setPolicyTenantId(e.target.value)}
                             placeholder={t("admin:agentsTenantIdPlaceholder")}
@@ -696,7 +696,7 @@ export function AdminAgents() {
                       <label className="text-xs text-ink-muted">
                         {t("admin:agentsUserId")}
                         <input
-                          className="mt-1 w-full rounded border border-surface-border bg-field px-2 py-1 text-xs text-ink-primary placeholder:text-neutral-500"
+                          className="mt-1 w-full rounded border border-line bg-field px-2 py-1 text-xs text-ink-primary placeholder:text-neutral-500"
                           value={policyUserId}
                           onChange={(e) => setPolicyUserId(e.target.value)}
                           placeholder={t("admin:agentsUserIdPlaceholder")}
@@ -705,7 +705,7 @@ export function AdminAgents() {
                       <label className="text-xs text-ink-muted">
                         {t("admin:agentsDirectAccess")}
                         <select
-                          className="mt-1 w-full rounded border border-surface-border bg-field px-2 py-1 text-xs text-ink-primary"
+                          className="mt-1 w-full rounded border border-line bg-field px-2 py-1 text-xs text-ink-primary"
                           value={directState}
                           onChange={(e) => setDirectState(e.target.value as "inherit" | "allow" | "deny")}
                         >
@@ -717,7 +717,7 @@ export function AdminAgents() {
                       <label className="text-xs text-ink-muted">
                         {t("admin:agentsDelegateAccess")}
                         <select
-                          className="mt-1 w-full rounded border border-surface-border bg-field px-2 py-1 text-xs text-ink-primary"
+                          className="mt-1 w-full rounded border border-line bg-field px-2 py-1 text-xs text-ink-primary"
                           value={delegateState}
                           onChange={(e) => setDelegateState(e.target.value as "inherit" | "allow" | "deny")}
                         >
@@ -765,7 +765,7 @@ export function AdminAgents() {
                     </div>
                   </div>
 
-                  <div className="mt-4 rounded-lg border border-white/10 bg-black/20 p-3">
+                  <div className="mt-4 rounded-lg border border-line bg-black/20 p-3">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
@@ -783,7 +783,7 @@ export function AdminAgents() {
                       </p>
                     </div>
                     <textarea
-                      className="mt-3 min-h-52 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-ink-primary placeholder:text-neutral-500"
+                      className="mt-3 min-h-52 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary placeholder:text-neutral-500"
                       value={promptText}
                       onChange={(e) => setPromptText(e.target.value)}
                       maxLength={12000}
@@ -816,7 +816,7 @@ export function AdminAgents() {
                           promptVersions.map((v) => (
                             <div
                               key={v.id}
-                              className="flex flex-wrap items-center justify-between gap-2 rounded border border-white/10 bg-white/[0.03] px-2 py-2"
+                              className="flex flex-wrap items-center justify-between gap-2 rounded border border-line bg-white/[0.03] px-2 py-2"
                             >
                               <div>
                                 <p className="font-mono text-xs text-ink-primary">

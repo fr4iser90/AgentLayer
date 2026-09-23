@@ -15,7 +15,7 @@ function verdictTone(verdict: string | undefined): string {
   if (v === "accept") return "text-emerald-300 bg-emerald-950/40 border-emerald-500/30";
   if (v === "reject" || v === "regression_tool_calling") return "text-rose-300 bg-rose-950/40 border-rose-500/30";
   if (v === "mixed") return "text-amber-200 bg-amber-950/30 border-amber-500/30";
-  return "text-ink-muted bg-white/5 border-white/10";
+  return "text-ink-muted bg-white/5 border-line";
 }
 
 function ReviewCard({ review }: { review: BenchmarkReview }) {
@@ -114,7 +114,7 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
 
   return (
     <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(200px,280px)_1fr]">
-      <section className="min-h-0 overflow-auto rounded-lg border border-surface-border bg-[#111] p-2">
+      <section className="min-h-0 overflow-auto rounded-lg border border-line bg-[#111] p-2">
         <h2 className="mb-2 px-1 text-xs font-medium uppercase text-ink-muted">
           {t("admin:agentConfigExperimentsList")}
         </h2>
@@ -145,12 +145,12 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
         )}
       </section>
 
-      <section className="min-h-0 overflow-auto rounded-lg border border-surface-border bg-[#111] p-4">
+      <section className="min-h-0 overflow-auto rounded-lg border border-line bg-[#111] p-4">
         {!selected ? (
           <p className="text-sm text-ink-muted">{t("admin:agentConfigExperimentSelect")}</p>
         ) : (
           <>
-            <header className="mb-4 border-b border-white/10 pb-3">
+            <header className="mb-4 border-b border-line pb-3">
               <h2 className="text-base font-medium text-ink-primary">{selected.label}</h2>
               <div className="mt-2 flex flex-wrap gap-2 text-xs text-ink-muted">
                 <span className="rounded bg-white/5 px-2 py-0.5">{selected.status ?? "open"}</span>
@@ -186,7 +186,7 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
                     <h3 className="mb-2 text-xs font-medium uppercase text-ink-muted">
                       {t("admin:agentConfigExperimentPendingPatches")}
                     </h3>
-                    <pre className="max-h-40 overflow-auto rounded border border-white/10 bg-black/30 p-2 text-meta text-ink-muted">
+                    <pre className="max-h-40 overflow-auto rounded border border-line bg-black/30 p-2 text-meta text-ink-muted">
                       {JSON.stringify(report.experiment.pending_patches_json, null, 2)}
                     </pre>
                   </section>
@@ -202,7 +202,7 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
                         <li key={rid}>
                           <Link
                             to={`/admin/benchmarks?run=${encodeURIComponent(rid)}`}
-                            className="rounded border border-white/10 bg-black/30 px-2 py-1 font-mono text-meta text-indigo-300 hover:bg-white/5"
+                            className="rounded border border-line bg-black/30 px-2 py-1 font-mono text-meta text-indigo-300 hover:bg-white/5"
                             title={rid}
                           >
                             {rid.slice(0, 8)}…
@@ -229,10 +229,10 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
                   <h3 className="mb-2 text-xs font-medium uppercase text-ink-muted">
                     {t("admin:agentConfigExperimentReviews")}
                   </h3>
-                  <div className="mb-4 rounded-lg border border-surface-border bg-black/20 p-3">
+                  <div className="mb-4 rounded-lg border border-line bg-black/20 p-3">
                     <p className="mb-2 text-xs text-ink-muted">{t("admin:agentConfigReviewSubmitHint")}</p>
                     <textarea
-                      className="mb-2 min-h-[72px] w-full rounded border border-white/10 bg-field p-2 text-sm text-ink-primary"
+                      className="mb-2 min-h-[72px] w-full rounded border border-line bg-field p-2 text-sm text-ink-primary"
                       placeholder={t("admin:agentConfigReviewSummaryPlaceholder")}
                       value={reviewSummary}
                       onChange={(e) => setReviewSummary(e.target.value)}

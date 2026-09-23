@@ -49,7 +49,7 @@ type SchedulerJobPreset = {
 function pill(enabled: boolean) {
   return enabled
     ? "bg-emerald-600/25 text-emerald-200 border-emerald-500/40"
-    : "bg-white/10 text-ink-muted border-surface-border";
+    : "bg-white/10 text-ink-muted border-line";
 }
 
 export function AdminSchedules() {
@@ -321,7 +321,7 @@ export function AdminSchedules() {
         </div>
         <button
           type="button"
-          className="rounded-md border border-surface-border px-3 py-2 text-sm text-ink-primary hover:bg-white/5"
+          className="rounded-md border border-line px-3 py-2 text-sm text-ink-primary hover:bg-white/5"
           onClick={() => void refresh()}
           disabled={loading}
         >
@@ -329,12 +329,12 @@ export function AdminSchedules() {
         </button>
       </div>
 
-      <div className="mt-6 rounded-xl border border-surface-border bg-card p-4">
+      <div className="mt-6 rounded-xl border border-line bg-card p-4">
         <div className="grid gap-3 md:grid-cols-5">
           <label className="text-xs text-ink-muted">
             {t("admin:schedulesScope")}
             <select
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary"
+              className="mt-1 w-full rounded-md border border-line bg-field px-2 py-1 text-sm text-ink-primary"
               value={scope}
               onChange={(e) => setScope(e.target.value as any)}
             >
@@ -346,7 +346,7 @@ export function AdminSchedules() {
           <label className="text-xs text-ink-muted md:col-span-2">
             {t("admin:schedulesDashboardId")}
             <input
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary"
+              className="mt-1 w-full rounded-md border border-line bg-field px-2 py-1 text-sm text-ink-primary"
               value={dashboardId}
               onChange={(e) => setDashboardId(e.target.value)}
               placeholder={t("admin:optional")}
@@ -356,7 +356,7 @@ export function AdminSchedules() {
           <label className="text-xs text-ink-muted">
             {t("admin:schedulesTarget")}
             <select
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary"
+              className="mt-1 w-full rounded-md border border-line bg-field px-2 py-1 text-sm text-ink-primary"
               value={target}
               onChange={(e) => setTarget(e.target.value as any)}
             >
@@ -371,7 +371,7 @@ export function AdminSchedules() {
           <label className="text-xs text-ink-muted">
             {t("admin:schedulesEnabledFilter")}
             <select
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary"
+              className="mt-1 w-full rounded-md border border-line bg-field px-2 py-1 text-sm text-ink-primary"
               value={enabled}
               onChange={(e) => setEnabled(e.target.value as any)}
             >
@@ -385,7 +385,7 @@ export function AdminSchedules() {
           <label className="mt-3 flex items-center gap-2 text-xs text-ink-muted">
             <input
               type="checkbox"
-              className="h-4 w-4 rounded border-surface-border"
+              className="h-4 w-4 rounded border-line"
               checked={includeGlobal}
               onChange={(e) => setIncludeGlobal(e.target.checked)}
             />
@@ -396,7 +396,7 @@ export function AdminSchedules() {
           <label className="flex items-center gap-2 text-xs text-ink-muted">
             <input
               type="checkbox"
-              className="h-4 w-4 rounded border-surface-border"
+              className="h-4 w-4 rounded border-line"
               checked={includeArchived}
               onChange={(e) => setIncludeArchived(e.target.checked)}
             />
@@ -418,10 +418,10 @@ export function AdminSchedules() {
         </div>
       ) : null}
 
-      <div className="mt-6 overflow-x-auto rounded-xl border border-surface-border">
+      <div className="mt-6 overflow-x-auto rounded-xl border border-line">
         <table className="w-full min-w-[840px] border-collapse text-left text-sm">
           <thead className="bg-black/30">
-            <tr className="border-b border-surface-border text-ink-muted">
+            <tr className="border-b border-line text-ink-muted">
               <th className="px-3 py-2 font-medium">{t("admin:schedulesEnabledFilter")}</th>
               <th className="px-3 py-2 font-medium">{t("admin:schedulesTarget")}</th>
               <th className="px-3 py-2 font-medium">{t("admin:schedulesColTitle")}</th>
@@ -447,13 +447,13 @@ export function AdminSchedules() {
               </tr>
             ) : (
               jobs.map((j) => (
-                <tr key={j.id} className="border-b border-white/5">
+                <tr key={j.id} className="border-b border-line-subtle">
                   <td className="px-3 py-2">
                     <span className={`rounded-md border px-2 py-0.5 text-xs ${pill(j.enabled)}`}>
                       {j.enabled ? t("admin:schedulesEnabledLabel") : t("admin:schedulesDisabledLabel")}
                     </span>
                     {j.deleted_at ? (
-                      <span className="ml-2 rounded-md border border-surface-border bg-white/5 px-2 py-0.5 text-xs text-ink-muted">
+                      <span className="ml-2 rounded-md border border-line bg-white/5 px-2 py-0.5 text-xs text-ink-muted">
                         {t("admin:schedulesArchivedLabel")}
                       </span>
                     ) : null}
@@ -472,21 +472,21 @@ export function AdminSchedules() {
                     <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
-                        className="rounded-md border border-surface-border px-2 py-1 text-xs text-ink-primary hover:bg-white/5"
+                        className="rounded-md border border-line px-2 py-1 text-xs text-ink-primary hover:bg-white/5"
                         onClick={() => void toggleEnabled(j.id, !j.enabled)}
                       >
                         {j.enabled ? t("admin:schedulesDisable") : t("admin:schedulesEnable")}
                       </button>
                       <button
                         type="button"
-                        className="rounded-md border border-surface-border px-2 py-1 text-xs text-ink-primary hover:bg-white/5"
+                        className="rounded-md border border-line px-2 py-1 text-xs text-ink-primary hover:bg-white/5"
                         onClick={() => openEdit(j)}
                       >
                         {t("admin:schedulesEdit")}
                       </button>
                       <button
                         type="button"
-                        className="rounded-md border border-surface-border px-2 py-1 text-xs text-ink-primary hover:bg-white/5"
+                        className="rounded-md border border-line px-2 py-1 text-xs text-ink-primary hover:bg-white/5"
                         onClick={() => void archiveJob(j.id, !j.deleted_at)}
                       >
                         {j.deleted_at ? t("admin:schedulesUnarchive") : t("admin:schedulesArchive")}
@@ -510,7 +510,7 @@ export function AdminSchedules() {
 
       {createOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-2xl rounded-xl border border-surface-border bg-card p-4">
+          <div className="w-full max-w-2xl rounded-xl border border-line bg-card p-4">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <div className="text-lg font-semibold text-ink-primary">{t("admin:createScheduleTitle")}</div>
@@ -518,7 +518,7 @@ export function AdminSchedules() {
               </div>
               <button
                 type="button"
-                className="rounded-md border border-surface-border px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
+                className="rounded-md border border-line px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
                 onClick={() => setCreateOpen(false)}
               >
                 {t("admin:close")}
@@ -528,7 +528,7 @@ export function AdminSchedules() {
               <label className="text-xs text-ink-muted md:col-span-2">
                 {t("admin:schedulesPresetOptional")}
                 <select
-                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary"
+                  className="mt-1 w-full rounded-md border border-line bg-field px-2 py-1 text-sm text-ink-primary"
                   value={createPresetId}
                   onChange={(e) => {
                     const pid = e.target.value;
@@ -552,7 +552,7 @@ export function AdminSchedules() {
               <label className="text-xs text-ink-muted">
                 Target
                 <select
-                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary"
+                  className="mt-1 w-full rounded-md border border-line bg-field px-2 py-1 text-sm text-ink-primary"
                   value={createTarget}
                   onChange={(e) =>
                     setCreateTarget(normalizeExecutionTargetInput(e.target.value, targetCatalog))
@@ -569,7 +569,7 @@ export function AdminSchedules() {
                 <label className="text-xs text-ink-muted md:col-span-2">
                   {t("admin:schedulesWorkspaceRequired")}
                   <select
-                    className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary disabled:opacity-60"
+                    className="mt-1 w-full rounded-md border border-line bg-field px-2 py-1 text-sm text-ink-primary disabled:opacity-60"
                     value={createWorkspaceId}
                     onChange={(e) => setCreateWorkspaceId(e.target.value)}
                     disabled={workspacesLoading}
@@ -603,7 +603,7 @@ export function AdminSchedules() {
                 Interval (minutes)
                 <input
                   type="number"
-                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary"
+                  className="mt-1 w-full rounded-md border border-line bg-field px-2 py-1 text-sm text-ink-primary"
                   value={createInterval}
                   onChange={(e) => setCreateInterval(Number(e.target.value))}
                   min={5}
@@ -613,7 +613,7 @@ export function AdminSchedules() {
               <label className="text-xs text-ink-muted md:col-span-2">
                 Title
                 <input
-                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary"
+                  className="mt-1 w-full rounded-md border border-line bg-field px-2 py-1 text-sm text-ink-primary"
                   value={createTitle}
                   onChange={(e) => setCreateTitle(e.target.value)}
                   placeholder={t("admin:optional")}
@@ -622,7 +622,7 @@ export function AdminSchedules() {
               <label className="text-xs text-ink-muted md:col-span-2">
                 {t("admin:schedulesDashboardIdOptional")}
                 <input
-                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary"
+                  className="mt-1 w-full rounded-md border border-line bg-field px-2 py-1 text-sm text-ink-primary"
                   value={createDashboardId}
                   onChange={(e) => setCreateDashboardId(e.target.value)}
                   placeholder={t("admin:optional")}
@@ -631,7 +631,7 @@ export function AdminSchedules() {
               <label className="text-xs text-ink-muted md:col-span-2">
                 <span>{t("admin:instructionsPlaceholder")}</span>
                 <textarea
-                  className="mt-1 min-h-[120px] w-full resize-y rounded-md border border-surface-border bg-field px-2 py-2 text-sm text-ink-primary"
+                  className="mt-1 min-h-[120px] w-full resize-y rounded-md border border-line bg-field px-2 py-2 text-sm text-ink-primary"
                   value={createInstructions}
                   onChange={(e) => setCreateInstructions(e.target.value)}
                   placeholder={t("admin:instructionsPlaceholder")}
@@ -640,7 +640,7 @@ export function AdminSchedules() {
               <label className="flex items-center gap-2 text-xs text-ink-muted">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded border-surface-border"
+                  className="h-4 w-4 rounded border-line"
                   checked={createEnabled}
                   onChange={(e) => setCreateEnabled(e.target.checked)}
                 />
@@ -674,7 +674,7 @@ export function AdminSchedules() {
 
       {editJob ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-2xl rounded-xl border border-surface-border bg-card p-4">
+          <div className="w-full max-w-2xl rounded-xl border border-line bg-card p-4">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <div className="text-lg font-semibold text-ink-primary">{t("admin:editScheduleTitle")}</div>
@@ -682,7 +682,7 @@ export function AdminSchedules() {
               </div>
               <button
                 type="button"
-                className="rounded-md border border-surface-border px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
+                className="rounded-md border border-line px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
                 onClick={() => setEditJob(null)}
               >
                 {t("admin:close")}
@@ -692,7 +692,7 @@ export function AdminSchedules() {
               <label className="text-xs text-ink-muted">
                 Title
                 <input
-                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary"
+                  className="mt-1 w-full rounded-md border border-line bg-field px-2 py-1 text-sm text-ink-primary"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                 />
@@ -701,7 +701,7 @@ export function AdminSchedules() {
                 Interval (minutes)
                 <input
                   type="number"
-                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary"
+                  className="mt-1 w-full rounded-md border border-line bg-field px-2 py-1 text-sm text-ink-primary"
                   value={editInterval}
                   onChange={(e) => setEditInterval(Number(e.target.value))}
                   min={5}
@@ -711,7 +711,7 @@ export function AdminSchedules() {
               <label className="text-xs text-ink-muted">
                 Instructions
                 <textarea
-                  className="mt-1 min-h-[140px] w-full resize-y rounded-md border border-surface-border bg-field px-2 py-2 text-sm text-ink-primary"
+                  className="mt-1 min-h-[140px] w-full resize-y rounded-md border border-line bg-field px-2 py-2 text-sm text-ink-primary"
                   value={editInstructions}
                   onChange={(e) => setEditInstructions(e.target.value)}
                 />
@@ -720,7 +720,7 @@ export function AdminSchedules() {
             <div className="mt-4 flex items-center justify-end gap-2">
               <button
                 type="button"
-                className="rounded-md border border-surface-border px-3 py-2 text-sm text-ink-primary hover:bg-white/5"
+                className="rounded-md border border-line px-3 py-2 text-sm text-ink-primary hover:bg-white/5"
                 onClick={() => setEditJob(null)}
               >
                 Cancel

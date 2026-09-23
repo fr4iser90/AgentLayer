@@ -43,10 +43,10 @@ export function UserMenu() {
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-1 min-w-[12rem] rounded-lg border border-surface-border bg-[#1a1a1a] py-1 shadow-xl"
+          className="absolute right-0 z-50 mt-1 min-w-[12rem] rounded-lg border border-line bg-[#1a1a1a] py-1 shadow-xl"
         >
           {email ? (
-            <p className="truncate border-b border-white/10 px-3 py-2 text-xs text-ink-muted" title={email}>
+            <p className="truncate border-b border-line px-3 py-2 text-xs text-ink-muted" title={email}>
               {email}
             </p>
           ) : null}
@@ -78,7 +78,7 @@ export function UserMenu() {
               {t("userMenu.platformAdmin")}
             </Link>
           ) : null}
-          <div className="border-t border-white/10 px-3 py-2">
+          <div className="border-t border-line px-3 py-2">
             <p className="mb-1.5 text-meta font-medium uppercase tracking-wide text-ink-muted">
               {t("language.label")}
             </p>

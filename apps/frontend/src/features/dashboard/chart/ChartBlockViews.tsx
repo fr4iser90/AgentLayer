@@ -170,7 +170,7 @@ export function ChartBlockBody(props: {
     );
 
   return (
-    <section className="rounded-xl border border-surface-border bg-card p-4">
+    <section className="rounded-xl border border-line bg-card p-4">
       {displayMode === "grid" ? (
         <h3 className="mb-3 text-sm font-medium text-ink-primary">{sectionTitle}</h3>
       ) : null}
@@ -184,11 +184,11 @@ export function ChartBlockBody(props: {
         {el}
       </div>
       {!readOnly ? (
-        <div className="dashboard-grid-no-drag mt-4 space-y-3 border-t border-white/5 pt-4">
+        <div className="dashboard-grid-no-drag mt-4 space-y-3 border-t border-line-subtle pt-4">
           <div>
             <label className="mb-1 block text-meta uppercase text-ink-muted">{t("dashboard:chartTypeLabel")}</label>
             <select
-              className="w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-ink-primary"
+              className="w-full rounded-md border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
               value={chart.chartType}
               onChange={(e) =>
                 patchChart(dp, setData, {
@@ -207,7 +207,7 @@ export function ChartBlockBody(props: {
               {t("dashboard:chartCategoriesLabel")}
             </label>
             <textarea
-              className="min-h-[72px] w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-ink-primary"
+              className="min-h-[72px] w-full rounded-md border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
               value={chart.labels.join("\n")}
               onChange={(e) => {
                 const labels = e.target.value.split("\n").map((s) => s.trimEnd());
@@ -230,7 +230,7 @@ export function ChartBlockBody(props: {
             />
           </div>
           {chart.series.map((s, si) => (
-            <div key={si} className="rounded-lg border border-white/5 bg-black/20 p-2">
+            <div key={si} className="rounded-lg border border-line-subtle bg-black/20 p-2">
               <div className="mb-1 flex items-center justify-between gap-2">
                 <span className="text-meta text-ink-muted">{t("dashboard:chartSeriesN", { n: si + 1 })}</span>
                 {chart.series.length > 1 ? (
@@ -251,7 +251,7 @@ export function ChartBlockBody(props: {
               </div>
               <input
                 type="text"
-                className="mb-2 w-full rounded border border-surface-border bg-field px-2 py-1 text-xs text-ink-primary"
+                className="mb-2 w-full rounded border border-line bg-field px-2 py-1 text-xs text-ink-primary"
                 placeholder={t("dashboard:chartSeriesLabelPlaceholder")}
                 value={s.label}
                 onChange={(e) =>
@@ -267,7 +267,7 @@ export function ChartBlockBody(props: {
               </label>
               <input
                 type="text"
-                className="w-full rounded border border-surface-border bg-field px-2 py-1 text-xs text-ink-primary"
+                className="w-full rounded border border-line bg-field px-2 py-1 text-xs text-ink-primary"
                 value={s.data.join(", ")}
                 onChange={(e) => {
                   const parts = e.target.value.split(",").map((x) => Number(x.trim()) || 0);
@@ -369,7 +369,7 @@ export function SparklineBlockBody(props: {
   };
 
   return (
-    <section className="rounded-xl border border-surface-border bg-card p-3">
+    <section className="rounded-xl border border-line bg-card p-3">
       <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">{sectionTitle}</p>
       <div className="mt-2 h-16 w-full">
         <Line data={chartData} options={options} />
@@ -379,7 +379,7 @@ export function SparklineBlockBody(props: {
           <label className="mb-1 block text-meta text-ink-muted">{t("dashboard:sparklineValuesLabel")}</label>
           <input
             type="text"
-            className="w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-ink-primary"
+            className="w-full rounded-md border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
             value={values.join(", ")}
             onChange={(e) => {
               const nums = e.target.value

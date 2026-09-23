@@ -23,7 +23,7 @@ function MessageBody({ content }: { content: string }) {
                 key={i}
                 src={p.image_url.url}
                 alt=""
-                className="max-h-64 max-w-full rounded-md border border-white/10 object-contain"
+                className="max-h-64 max-w-full rounded-md border border-line object-contain"
               />
             );
           }

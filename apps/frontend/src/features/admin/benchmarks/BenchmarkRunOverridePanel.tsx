@@ -175,7 +175,7 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
         <p className="mt-4 text-sm text-ink-muted">{t("admin:loading")}</p>
       ) : (
         <div className="mt-4 grid min-h-[280px] gap-4 md:grid-cols-2">
-          <section className="min-h-0 overflow-auto rounded-lg border border-surface-border bg-[#111] p-3">
+          <section className="min-h-0 overflow-auto rounded-lg border border-line bg-[#111] p-3">
             <h4 className="mb-2 text-sm font-medium text-ink-primary">{t("admin:agentConfigKnobs")}</h4>
             <ul className="space-y-1">
               {knobs.map((k) => {
@@ -209,7 +209,7 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
             </ul>
           </section>
 
-          <section className="flex min-h-0 flex-col gap-3 overflow-auto rounded-lg border border-surface-border bg-[#111] p-3">
+          <section className="flex min-h-0 flex-col gap-3 overflow-auto rounded-lg border border-line bg-[#111] p-3">
             <h4 className="text-sm font-medium text-ink-primary">{t("admin:benchRunOverrideEditTitle")}</h4>
             {selected ? (
               <>
@@ -218,7 +218,7 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
                   {selected.doc}
                 </p>
 
-                <div className="rounded border border-surface-border/60 bg-black/20 p-2 text-xs text-ink-muted">
+                <div className="rounded border border-line/60 bg-black/20 p-2 text-xs text-ink-muted">
                   <p className="font-medium text-white/90">{t("admin:benchRunOverrideHarnessBaseline")}</p>
                   <p className="mt-1 font-mono">{formatKnobValue(selected, undefined)}</p>
                   <p className="mt-2">
@@ -241,7 +241,7 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
 
                 <label className="text-xs text-ink-muted">{t("admin:benchRunOverrideValueLabel")}</label>
                 <textarea
-                  className="min-h-[80px] w-full rounded border border-surface-border bg-field p-2 font-mono text-sm text-ink-primary"
+                  className="min-h-[80px] w-full rounded border border-line bg-field p-2 font-mono text-sm text-ink-primary"
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                 />
@@ -258,7 +258,7 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
                     <button
                       type="button"
                       onClick={() => clearOverride(selected.id)}
-                      className="rounded border border-white/15 px-3 py-2 text-sm text-ink-muted hover:bg-white/5"
+                      className="rounded border border-line-strong px-3 py-2 text-sm text-ink-muted hover:bg-white/5"
                     >
                       {t("admin:benchRunOverrideUseHarness")}
                     </button>

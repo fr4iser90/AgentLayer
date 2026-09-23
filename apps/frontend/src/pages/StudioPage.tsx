@@ -200,7 +200,7 @@ export function StudioPage() {
         <div className="flex flex-wrap items-start gap-2">
           <button
             type="button"
-            className="shrink-0 rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-meta font-medium text-ink-secondary hover:bg-white/10 md:hidden"
+            className="shrink-0 rounded-lg border border-line bg-black/30 px-2.5 py-1.5 text-meta font-medium text-ink-secondary hover:bg-white/10 md:hidden"
             aria-expanded={presetSidebarOpen}
             aria-label={t("common:studio.openPresetsSidebar")}
             onClick={() => setPresetSidebarOpen(true)}
@@ -284,11 +284,11 @@ export function StudioPage() {
                 <img
                   src={previewUrl}
                   alt={t("common:studio.generatedImageAlt")}
-                  className="max-h-[480px] max-w-full rounded-lg border border-surface-border"
+                  className="max-h-[480px] max-w-full rounded-lg border border-line"
                 />
               </div>
             ) : jobResult ? (
-              <pre className="mt-4 max-h-64 overflow-auto rounded-lg border border-surface-border bg-[#111] p-3 text-xs text-ink-secondary">
+              <pre className="mt-4 max-h-64 overflow-auto rounded-lg border border-line bg-[#111] p-3 text-xs text-ink-secondary">
                 {JSON.stringify(jobResult, null, 2)}
               </pre>
             ) : null}

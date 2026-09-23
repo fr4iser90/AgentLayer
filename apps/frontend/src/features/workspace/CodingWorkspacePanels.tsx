@@ -54,10 +54,10 @@ type Props = {
 };
 
 const SHELL_CLASS_BUILD =
-  "flex max-h-[40vh] min-h-0 shrink-0 flex-col border-b border-surface-border bg-[#0a0a0a] lg:h-full lg:max-h-none lg:w-[min(100%,480px)] lg:shrink-0 lg:flex-row lg:border-b-0 lg:border-r";
+  "flex max-h-[40vh] min-h-0 shrink-0 flex-col border-b border-line bg-[#0a0a0a] lg:h-full lg:max-h-none lg:w-[min(100%,480px)] lg:shrink-0 lg:flex-row lg:border-b-0 lg:border-r";
 
 const SHELL_CLASS_CHAT =
-  "fixed inset-0 z-30 flex min-h-0 flex-col bg-[#0a0a0a] md:static md:z-auto md:h-full md:w-[min(100%,300px)] md:shrink-0 md:border-r md:border-surface-border";
+  "fixed inset-0 z-30 flex min-h-0 flex-col bg-[#0a0a0a] md:static md:z-auto md:h-full md:w-[min(100%,300px)] md:shrink-0 md:border-r md:border-line";
 
 function diffLineClass(line: string): string {
   if (line.startsWith("+++") || line.startsWith("---")) return "text-ink-muted";
@@ -322,7 +322,7 @@ export function CodingWorkspacePanels({
   return (
     <div className={shellClass}>
       {variant === "chat" && onMobileClose ? (
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-surface-border px-3 py-2 md:hidden">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-3 py-2 md:hidden">
           <p className="min-w-0 truncate text-sm font-medium text-ink-primary">{t("workspace:projectFilesTitle")}</p>
           <button
             type="button"
@@ -333,8 +333,8 @@ export function CodingWorkspacePanels({
           </button>
         </div>
       ) : null}
-      <div className="flex min-h-0 w-full flex-1 flex-col border-surface-border lg:w-52 lg:shrink-0 lg:border-r">
-        <div className="shrink-0 border-b border-surface-border px-2 py-2">
+      <div className="flex min-h-0 w-full flex-1 flex-col border-line lg:w-52 lg:shrink-0 lg:border-r">
+        <div className="shrink-0 border-b border-line px-2 py-2">
           <PanelTabs
             panelTab={panelTab}
             onTab={setPanelTab}
@@ -387,7 +387,7 @@ export function CodingWorkspacePanels({
               <div className="mt-1 flex items-center gap-2">
                 <button
                   type="button"
-                  className="rounded border border-surface-border px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
+                  className="rounded border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
                   onClick={goUp}
                   disabled={!browsePath}
                 >
@@ -395,7 +395,7 @@ export function CodingWorkspacePanels({
                 </button>
                 <button
                   type="button"
-                  className="rounded border border-surface-border px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
+                  className="rounded border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
                   onClick={() => void loadList()}
                   disabled={listLoading}
                 >
@@ -414,7 +414,7 @@ export function CodingWorkspacePanels({
               <div className="mt-1">
                 <button
                   type="button"
-                  className="rounded border border-surface-border px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
+                  className="rounded border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
                   onClick={() => void loadChangesSummary()}
                   disabled={changesLoading}
                 >
@@ -492,14 +492,14 @@ export function CodingWorkspacePanels({
           )}
         </ul>
         {panelTab === "files" && listTruncated ? (
-          <p className="shrink-0 border-t border-surface-border px-2 py-1 text-meta text-amber-300/80">
+          <p className="shrink-0 border-t border-line px-2 py-1 text-meta text-amber-300/80">
             {t("dashboard:listTruncated")}
           </p>
         ) : null}
       </div>
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col border-t border-surface-border lg:border-t-0">
-        <div className="shrink-0 border-b border-surface-border px-3 py-2">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col border-t border-line lg:border-t-0">
+        <div className="shrink-0 border-b border-line px-3 py-2">
           <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
             {panelTab === "files" ? t("dashboard:preview") : t("dashboard:diff")}
           </p>

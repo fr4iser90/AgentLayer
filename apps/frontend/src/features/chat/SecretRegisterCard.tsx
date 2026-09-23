@@ -120,7 +120,7 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
                       onChange={(e) =>
                         setFieldValues((prev) => ({ ...prev, [f.name]: e.target.value }))
                       }
-                      className="mt-0.5 w-full rounded-lg border border-white/10 bg-field px-2.5 py-1.5 text-sm text-ink-primary outline-none focus:border-amber-600/50"
+                      className="mt-0.5 w-full rounded-lg border border-line bg-field px-2.5 py-1.5 text-sm text-ink-primary outline-none focus:border-amber-600/50"
                     />
                   </label>
                 ))
@@ -133,7 +133,7 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
                     disabled={disabled}
                     value={rawSecret}
                     onChange={(e) => setRawSecret(e.target.value)}
-                    className="mt-0.5 w-full rounded-lg border border-white/10 bg-field px-2.5 py-1.5 text-sm text-ink-primary outline-none focus:border-amber-600/50"
+                    className="mt-0.5 w-full rounded-lg border border-line bg-field px-2.5 py-1.5 text-sm text-ink-primary outline-none focus:border-amber-600/50"
                   />
                 </label>
               )}

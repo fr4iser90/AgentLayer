@@ -1174,7 +1174,7 @@ export function DashboardPage() {
                   <button
                     type="button"
                     onClick={() => confirmInstallCatalogRow(row)}
-                    className="flex h-full min-h-[148px] w-full flex-col rounded-xl border border-surface-border bg-card p-5 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
+                    className="flex h-full min-h-[148px] w-full flex-col rounded-xl border border-line bg-card p-5 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
                   >
                     <span className="text-base font-medium text-ink-primary">{row.label}</span>
                     {row.description ? (
@@ -1215,7 +1215,7 @@ export function DashboardPage() {
               role="dialog"
               aria-modal="true"
               aria-labelledby="ws-install-title"
-              className="relative w-full max-w-md rounded-xl border border-surface-border bg-card p-6 shadow-xl"
+              className="relative w-full max-w-md rounded-xl border border-line bg-card p-6 shadow-xl"
             >
               <h2 id="ws-install-title" className="text-lg font-semibold text-ink-primary">
                 {t("dashboard:installPackConfirmTitle", { label: installModalRow.label })}
@@ -1262,7 +1262,7 @@ export function DashboardPage() {
 
   const dashboardSidebar = (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 border-b border-surface-border p-2">
+      <div className="shrink-0 border-b border-line p-2">
         <p className="px-1.5 pb-1 text-meta font-semibold uppercase tracking-wide text-ink-muted">
           {t("dashboard:actions")}
         </p>
@@ -1352,7 +1352,7 @@ export function DashboardPage() {
         <button
           type="button"
           onClick={() => setNewWsModalOpen(true)}
-          className="flex flex-col rounded-xl border border-surface-border bg-card p-6 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
+          className="flex flex-col rounded-xl border border-line bg-card p-6 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
         >
           <span className="text-base font-semibold text-ink-primary">{t("dashboard:newDashboardTitle")}</span>
           <span className="mt-2 text-sm text-ink-muted">{t("dashboard:newDashboardSubtitle")}</span>
@@ -1360,7 +1360,7 @@ export function DashboardPage() {
         <button
           type="button"
           onClick={() => openCatalog()}
-          className="flex flex-col rounded-xl border border-surface-border bg-card p-6 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
+          className="flex flex-col rounded-xl border border-line bg-card p-6 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
         >
           <span className="text-base font-semibold text-ink-primary">{t("dashboard:catalogTitle")}</span>
           <span className="mt-2 text-sm text-ink-muted">{t("dashboard:catalogIntro")}</span>
@@ -1409,14 +1409,14 @@ export function DashboardPage() {
             value={catalogQuery}
             onChange={(e) => setCatalogQuery(e.target.value)}
             placeholder={t("dashboard:filterByNamePlaceholder")}
-            className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-sky-500/50"
+            className="w-full rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-sky-500/50"
           />
         </div>
         <div>
           <label className="mb-1 block text-xs text-ink-muted">{t("dashboard:catalogCategoryLabel")}</label>
           <select
             disabled
-            className="rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-white/50"
+            className="rounded-lg border border-line bg-field px-3 py-2 text-sm text-white/50"
             value="all"
             onChange={() => {}}
           >
@@ -1433,7 +1433,7 @@ export function DashboardPage() {
             return (
               <li
                 key={row.kind}
-                className="flex flex-col rounded-xl border border-surface-border bg-card p-5"
+                className="flex flex-col rounded-xl border border-line bg-card p-5"
               >
                 <span className="text-base font-medium text-ink-primary">{row.label}</span>
                 {row.description ? (
@@ -1441,7 +1441,7 @@ export function DashboardPage() {
                 ) : null}
                 <div className="mt-4 flex flex-wrap gap-2">
                   {isInstalled ? (
-                    <span className="rounded-md border border-white/10 px-2 py-1 text-xs text-ink-muted">
+                    <span className="rounded-md border border-line px-2 py-1 text-xs text-ink-muted">
                       {t("dashboard:catalogInstalledBadge")}
                     </span>
                   ) : (
@@ -1457,7 +1457,7 @@ export function DashboardPage() {
                   {isInstalled && row.has_template ? (
                     <button
                       type="button"
-                      className="rounded-lg border border-surface-border px-3 py-1.5 text-sm text-ink-primary hover:bg-white/5"
+                      className="rounded-lg border border-line px-3 py-1.5 text-sm text-ink-primary hover:bg-white/5"
                       onClick={() => void createWs(row)}
                     >
                       {t("dashboard:catalogCreateDashboardBtn")}
@@ -1477,7 +1477,7 @@ export function DashboardPage() {
     main = (
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {!(boardFocus && isCanvasBoard) ? (
-          <div className="shrink-0 border-b border-surface-border px-4 py-3 md:px-6">
+          <div className="shrink-0 border-b border-line px-4 py-3 md:px-6">
             <p className="text-sm text-ink-muted">
               Dashboard /{" "}
               <span className="text-ink-primary">
@@ -1514,13 +1514,13 @@ export function DashboardPage() {
                         "rounded-lg border px-3 py-1.5 text-xs",
                         boardFocus
                           ? "border-sky-500/50 bg-sky-950/40 text-sky-100"
-                          : "border-surface-border text-ink-primary hover:bg-white/5",
+                          : "border-line text-ink-primary hover:bg-white/5",
                       ].join(" ")}
                       onClick={() => setBoardFocus((v) => !v)}
                     >
                       {boardFocus ? t("dashboard:boardFocusExit") : t("dashboard:boardFocusEnter")}
                     </button>
-                    <div className="flex overflow-hidden rounded-lg border border-surface-border text-xs">
+                    <div className="flex overflow-hidden rounded-lg border border-line text-xs">
                       {(
                         [
                           ["full", "chatDockFull"],
@@ -1548,7 +1548,7 @@ export function DashboardPage() {
                 {!boardFocus ? (
                   <>
                 {isViewer ? (
-                  <p className="mb-4 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-ink-muted">
+                  <p className="mb-4 rounded-lg border border-line bg-white/[0.03] px-3 py-2 text-xs text-ink-muted">
                     {detail?.access_scope === "granular" ? (
                       <>{t("dashboard:viewerReadOnlyGranular")}</>
                     ) : (
@@ -1561,7 +1561,7 @@ export function DashboardPage() {
                     <label className="mb-1 block text-xs text-ink-muted">{t("dashboard:dashboardTitleLabel")}</label>
                     <input
                       readOnly={!canEditStructure}
-                      className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-sky-500/50 read-only:cursor-default read-only:opacity-90"
+                      className="w-full rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-sky-500/50 read-only:cursor-default read-only:opacity-90"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                     />
@@ -1571,14 +1571,14 @@ export function DashboardPage() {
                       !layoutEditMode ? (
                         <button
                           type="button"
-                          className="rounded-lg border border-surface-border px-4 py-2 text-sm text-ink-primary hover:bg-white/5"
+                          className="rounded-lg border border-line px-4 py-2 text-sm text-ink-primary hover:bg-white/5"
                           onClick={() => startLayoutEdit()}
                         >
                           {t("dashboard:editLayout")}
                         </button>
                       ) : (
                         <>
-                          <div className="flex overflow-hidden rounded-lg border border-surface-border">
+                          <div className="flex overflow-hidden rounded-lg border border-line">
                             <button
                               type="button"
                               className={[
@@ -1641,7 +1641,7 @@ export function DashboardPage() {
                     {detail && canEditStructure ? (
                       <button
                         type="button"
-                        className="rounded-lg border border-surface-border px-4 py-2 text-sm text-ink-primary hover:bg-white/5"
+                        className="rounded-lg border border-line px-4 py-2 text-sm text-ink-primary hover:bg-white/5"
                         onClick={() => setSettingsOpen(true)}
                       >
                         {t("dashboard:settingsLabel")}
@@ -1701,7 +1701,7 @@ export function DashboardPage() {
                       !layoutEditMode ? (
                         <button
                           type="button"
-                          className="rounded-lg border border-surface-border px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
+                          className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
                           onClick={() => startLayoutEdit()}
                         >
                           {t("dashboard:editLayout")}
@@ -1729,7 +1729,7 @@ export function DashboardPage() {
                     {detail && canEditStructure ? (
                       <button
                         type="button"
-                        className="rounded-lg border border-surface-border px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
+                        className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
                         onClick={() => setSettingsOpen(true)}
                       >
                         {t("dashboard:settingsLabel")}
@@ -1775,7 +1775,7 @@ export function DashboardPage() {
           {dashboardReady && chatDock !== "hidden" ? (
             <aside
               className={[
-                "flex w-full shrink-0 flex-col border-t border-surface-border bg-panel lg:min-h-0 lg:border-t-0 lg:border-l lg:border-surface-border",
+                "flex w-full shrink-0 flex-col border-t border-line bg-panel lg:min-h-0 lg:border-t-0 lg:border-l lg:border-line",
                 chatDock === "mini"
                   ? "lg:w-[min(220px,28vw)] lg:max-w-[220px]"
                   : "lg:w-[min(400px,36vw)] lg:max-w-md",
@@ -1854,10 +1854,10 @@ export function DashboardPage() {
         sidebar={dashboardSidebar}
       >
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="flex shrink-0 items-center gap-2 border-b border-surface-border px-4 py-2 md:hidden">
+          <div className="flex shrink-0 items-center gap-2 border-b border-line px-4 py-2 md:hidden">
             <button
               type="button"
-              className="rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-meta font-medium text-ink-secondary hover:bg-white/10"
+              className="rounded-lg border border-line bg-black/30 px-2.5 py-1.5 text-meta font-medium text-ink-secondary hover:bg-white/10"
               aria-expanded={actionsSidebarOpen}
               aria-label={t("dashboard:openActionsSidebar")}
               onClick={() => setActionsSidebarOpen(true)}
@@ -1876,7 +1876,7 @@ export function DashboardPage() {
           onClose={() => setSettingsOpen(false)}
         >
           <div className="space-y-4">
-            <div className="rounded-xl border border-surface-border bg-black/20 p-4">
+            <div className="rounded-xl border border-line bg-black/20 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                 {t("dashboard:dashboardInfoTitle")}
               </p>
@@ -1896,7 +1896,7 @@ export function DashboardPage() {
             <DashboardBoardFilesPanel dashboardId={detail.id} />
 
             {canEditContent ? (
-              <div className="rounded-xl border border-surface-border bg-black/20 p-4">
+              <div className="rounded-xl border border-line bg-black/20 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                   {t("dashboard:templateExport")} / {t("dashboard:templateImport")}
                 </p>
@@ -1905,7 +1905,7 @@ export function DashboardPage() {
                   <button
                     type="button"
                     disabled={templateBusy}
-                    className="rounded-lg border border-surface-border px-3 py-2 text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
+                    className="rounded-lg border border-line px-3 py-2 text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
                     onClick={() => void exportTemplate()}
                   >
                     {t("dashboard:templateExport")}
@@ -1928,7 +1928,7 @@ export function DashboardPage() {
               </div>
             ) : null}
 
-            <div className="rounded-xl border border-surface-border bg-black/20 p-4">
+            <div className="rounded-xl border border-line bg-black/20 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                 {t("dashboard:dashboardAgentTitle")}
               </p>
@@ -1958,13 +1958,13 @@ export function DashboardPage() {
                   });
                 }}
                 placeholder={t("dashboard:agentPromptExtraPlaceholder")}
-                className="mt-1 w-full resize-y rounded-lg border border-surface-border bg-field px-3 py-2 font-mono text-sm leading-relaxed text-ink-primary outline-none placeholder:text-white/25 focus:border-sky-500/50 read-only:cursor-default read-only:opacity-90"
+                className="mt-1 w-full resize-y rounded-lg border border-line bg-field px-3 py-2 font-mono text-sm leading-relaxed text-ink-primary outline-none placeholder:text-white/25 focus:border-sky-500/50 read-only:cursor-default read-only:opacity-90"
               />
               <p className="mt-2 text-meta text-ink-muted">{t("dashboard:agentPromptExtraSavedHint")}</p>
               <p className="mt-3 text-meta text-ink-muted">{t("dashboard:agentPromptScrollHint")}</p>
             </div>
 
-            <div className="rounded-xl border border-surface-border bg-black/20 p-4">
+            <div className="rounded-xl border border-line bg-black/20 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                 {t("dashboard:dashboardToolPrefsTitle")}
               </p>
@@ -1976,7 +1976,7 @@ export function DashboardPage() {
               ) : null}
               <div className="mt-3 flex flex-wrap gap-2">
                 {dashboardToolAllowlist.length === 0 ? (
-                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-ink-muted">
+                  <span className="rounded-full border border-line bg-white/[0.04] px-3 py-1 text-xs text-ink-muted">
                     {t("dashboard:dashboardToolDefaultAll")}
                   </span>
                 ) : (
@@ -2009,7 +2009,7 @@ export function DashboardPage() {
                     <select
                       id="ws-tool-pick"
                       disabled={pickableCatalogTools.length === 0}
-                      className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-sky-500/50 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="w-full rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-sky-500/50 disabled:cursor-not-allowed disabled:opacity-50"
                       defaultValue=""
                       onChange={(e) => {
                         const v = e.currentTarget.value;
@@ -2044,11 +2044,11 @@ export function DashboardPage() {
                           }
                         }}
                         placeholder={t("dashboard:shareToolNamePlaceholder")}
-                        className="min-w-0 flex-1 rounded-lg border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary outline-none focus:border-sky-500/50"
+                        className="min-w-0 flex-1 rounded-lg border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary outline-none focus:border-sky-500/50"
                       />
                       <button
                         type="button"
-                        className="shrink-0 rounded-lg border border-surface-border px-3 py-2 text-sm text-ink-primary hover:bg-white/5"
+                        className="shrink-0 rounded-lg border border-line px-3 py-2 text-sm text-ink-primary hover:bg-white/5"
                         onClick={() => {
                           addToolToDashboardAllowlist(manualToolName);
                           setManualToolName("");
@@ -2067,7 +2067,7 @@ export function DashboardPage() {
 
             {canManageMembers ? (
               <>
-              <div className="rounded-xl border border-surface-border bg-black/20 p-4">
+              <div className="rounded-xl border border-line bg-black/20 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                   {t("dashboard:membersTitle")}
                 </p>
@@ -2083,7 +2083,7 @@ export function DashboardPage() {
                       value={memberEmail}
                       onChange={(e) => setMemberEmail(e.target.value)}
                       placeholder={t("dashboard:shareEmailPlaceholder")}
-                      className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-sky-500/50"
+                      className="w-full rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-sky-500/50"
                     />
                   </div>
                   <div>
@@ -2093,7 +2093,7 @@ export function DashboardPage() {
                     <select
                       value={memberRole}
                       onChange={(e) => setMemberRole(e.target.value as "viewer" | "editor" | "co_owner")}
-                      className="rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+                      className="rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary"
                     >
                       <option value="viewer">{t("dashboard:membersRoleViewer")}</option>
                       <option value="editor">{t("dashboard:membersRoleEditor")}</option>
@@ -2112,7 +2112,7 @@ export function DashboardPage() {
                 {members.length === 0 ? (
                   <p className="mt-3 text-xs text-ink-muted">{t("dashboard:membersNoneYet")}</p>
                 ) : (
-                  <ul className="mt-3 divide-y divide-white/5 text-sm">
+                  <ul className="mt-3 divide-y divide-line-subtle text-sm">
                     {members.map((m) => (
                       <li
                         key={m.user_id}
@@ -2136,7 +2136,7 @@ export function DashboardPage() {
                 )}
               </div>
 
-              <div className="mt-4 rounded-xl border border-surface-border bg-black/20 p-4">
+              <div className="mt-4 rounded-xl border border-line bg-black/20 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                   {t("admin:dashboardBlockSharingTitle")}
                 </p>
@@ -2156,7 +2156,7 @@ export function DashboardPage() {
                       value={blockShareEmail}
                       onChange={(e) => setBlockShareEmail(e.target.value)}
                       placeholder={t("dashboard:shareEmailPlaceholder")}
-                      className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-sky-500/50"
+                      className="w-full rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-sky-500/50"
                     />
                   </div>
                   <div className="min-w-[140px]">
@@ -2168,7 +2168,7 @@ export function DashboardPage() {
                       onChange={(e) =>
                         setBlockSharePermission(e.target.value === "edit" ? "edit" : "view")
                       }
-                      className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-sky-500/50"
+                      className="w-full rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-sky-500/50"
                     >
                       <option value="view">{t("dashboard:blockShareViewOnly")}</option>
                       <option value="edit">{t("dashboard:blockShareEdit")}</option>
@@ -2189,7 +2189,7 @@ export function DashboardPage() {
                 {gridLayout.blocks.length === 0 ? (
                   <p className="mt-1 text-xs text-ink-muted">{t("dashboard:noBlocksInLayoutYet")}</p>
                 ) : (
-                  <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-lg border border-white/5 p-2 text-sm">
+                  <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-lg border border-line-subtle p-2 text-sm">
                     {gridLayout.blocks.map((b) => {
                       const id = typeof b.id === "string" ? b.id : String(b.id ?? "");
                       const props = b.props && typeof b.props === "object" && !Array.isArray(b.props) ? b.props as { title?: string } : {};
@@ -2204,7 +2204,7 @@ export function DashboardPage() {
                             onChange={(e) =>
                               setBlockSharePick((prev) => ({ ...prev, [id]: e.target.checked }))
                             }
-                            className="rounded border-surface-border"
+                            className="rounded border-line"
                           />
                           <label htmlFor={`bshare-${id}`} className="cursor-pointer text-ink-primary">
                             <span className="text-ink-muted">{b.type}</span> · {label}
@@ -2218,7 +2218,7 @@ export function DashboardPage() {
                 {blockGrants.length === 0 ? (
                   <p className="mt-3 text-xs text-ink-muted">{t("dashboard:granularSharesNoneYet")}</p>
                 ) : (
-                  <ul className="mt-3 divide-y divide-white/5 text-sm">
+                  <ul className="mt-3 divide-y divide-line-subtle text-sm">
                     {blockGrants.map((g) => (
                       <li
                         key={g.user_id}
@@ -2278,7 +2278,7 @@ export function DashboardPage() {
                       value={publicShareLabel}
                       onChange={(e) => setPublicShareLabel(e.target.value)}
                       placeholder={t("dashboard:publicShareLabelPlaceholder")}
-                      className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-violet-500/50"
+                      className="w-full rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-violet-500/50"
                     />
                   </div>
                   <div className="min-w-[180px]">
@@ -2289,7 +2289,7 @@ export function DashboardPage() {
                       type="datetime-local"
                       value={publicShareExpiresAt}
                       onChange={(e) => setPublicShareExpiresAt(e.target.value)}
-                      className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-violet-500/50"
+                      className="w-full rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-violet-500/50"
                     />
                   </div>
                   <div className="min-w-[160px]">
@@ -2301,7 +2301,7 @@ export function DashboardPage() {
                       value={publicSharePassword}
                       onChange={(e) => setPublicSharePassword(e.target.value)}
                       placeholder={t("dashboard:publicSharePasswordOptional")}
-                      className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-violet-500/50"
+                      className="w-full rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-violet-500/50"
                       autoComplete="new-password"
                     />
                   </div>
@@ -2320,7 +2320,7 @@ export function DashboardPage() {
                 {gridLayout.blocks.length === 0 ? (
                   <p className="mt-1 text-xs text-ink-muted">{t("dashboard:noBlocksInLayoutYet")}</p>
                 ) : (
-                  <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-lg border border-white/5 p-2 text-sm">
+                  <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-lg border border-line-subtle p-2 text-sm">
                     {gridLayout.blocks.map((b) => {
                       const id = typeof b.id === "string" ? b.id : String(b.id ?? "");
                       const props =
@@ -2338,7 +2338,7 @@ export function DashboardPage() {
                             onChange={(e) =>
                               setPublicSharePick((prev) => ({ ...prev, [id]: e.target.checked }))
                             }
-                            className="rounded border-surface-border"
+                            className="rounded border-line"
                           />
                           <label htmlFor={`pshare-${id}`} className="cursor-pointer text-ink-primary">
                             <span className="text-ink-muted">{b.type}</span> · {label}
@@ -2351,7 +2351,7 @@ export function DashboardPage() {
                 {publicShares.length === 0 ? (
                   <p className="mt-3 text-xs text-ink-muted">{t("dashboard:publicSharesNoneYet")}</p>
                 ) : (
-                  <ul className="mt-3 divide-y divide-white/5 text-sm">
+                  <ul className="mt-3 divide-y divide-line-subtle text-sm">
                     {publicShares.map((s) => {
                       const revoked = Boolean(s.revoked_at);
                       const scopeLabel =
@@ -2397,7 +2397,7 @@ export function DashboardPage() {
               </div>
               </>
             ) : (
-              <div className="rounded-xl border border-surface-border bg-black/20 p-4">
+              <div className="rounded-xl border border-line bg-black/20 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                   {t("dashboard:membersTitle")}
                 </p>
@@ -2460,7 +2460,7 @@ export function DashboardPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="ws-new-title"
-            className="relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl border border-surface-border bg-card p-6 shadow-xl"
+            className="relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl border border-line bg-card p-6 shadow-xl"
           >
             <h2 id="ws-new-title" className="text-lg font-semibold text-ink-primary">
               {t("dashboard:newDashboardModalTitle")}
@@ -2474,7 +2474,7 @@ export function DashboardPage() {
                   <li key={row.kind}>
                     <button
                       type="button"
-                      className="w-full rounded-lg border border-surface-border px-3 py-2 text-left text-sm text-ink-primary hover:bg-white/5"
+                      className="w-full rounded-lg border border-line px-3 py-2 text-left text-sm text-ink-primary hover:bg-white/5"
                       onClick={() => void createWs(row)}
                     >
                       {row.label}
@@ -2518,7 +2518,7 @@ export function DashboardPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="ws-tpl-install-title"
-            className="relative w-full max-w-md rounded-xl border border-surface-border bg-card p-6 shadow-xl"
+            className="relative w-full max-w-md rounded-xl border border-line bg-card p-6 shadow-xl"
           >
             <h2 id="ws-tpl-install-title" className="text-lg font-semibold text-ink-primary">
               {t("dashboard:installPackConfirmTitle", { label: installModalRow.label })}
@@ -2554,7 +2554,7 @@ export function DashboardPage() {
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-md rounded-xl border border-surface-border bg-card p-6 shadow-xl"
+            className="w-full max-w-md rounded-xl border border-line bg-card p-6 shadow-xl"
           >
             <h2 className="text-lg font-semibold text-ink-primary">{t("dashboard:pinBlockTitle")}</h2>
             <label className="mt-4 block text-sm text-ink-muted">
@@ -2562,7 +2562,7 @@ export function DashboardPage() {
               <select
                 value={pinTargetId}
                 onChange={(e) => setPinTargetId(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+                className="mt-1 w-full rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary"
               >
                 {pinTargetOptions.map((w) => (
                   <option key={w.id} value={w.id}>

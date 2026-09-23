@@ -69,15 +69,15 @@ export function AdminAgentTraces() {
         <button
           type="button"
           onClick={() => void loadRuns()}
-          className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-ink-primary hover:bg-white/10"
+          className="rounded-lg border border-line bg-white/5 px-3 py-1.5 text-sm text-ink-primary hover:bg-white/10"
         >
           {t("admin:agentTracesRefresh")}
         </button>
       </div>
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
       <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
-        <div className="flex w-72 shrink-0 flex-col overflow-hidden rounded-xl border border-surface-border bg-card">
-          <div className="border-b border-white/5 px-3 py-2 text-xs font-medium uppercase tracking-wide text-ink-muted">
+        <div className="flex w-72 shrink-0 flex-col overflow-hidden rounded-xl border border-line bg-card">
+          <div className="border-b border-line-subtle px-3 py-2 text-xs font-medium uppercase tracking-wide text-ink-muted">
             {t("admin:agentTracesRecentRuns")}
           </div>
           <ul className="min-h-0 flex-1 overflow-y-auto p-2 text-sm">
@@ -105,7 +105,7 @@ export function AdminAgentTraces() {
             )}
           </ul>
         </div>
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-xl border border-surface-border bg-black/30 p-4">
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-xl border border-line bg-black/30 p-4">
           {!selectedId || !detail ? (
             <p className="text-sm text-ink-muted">{t("admin:agentTracesSelectHint")}</p>
           ) : (
@@ -135,7 +135,7 @@ export function AdminAgentTraces() {
                   {detail.tool_invocations.map((inv) => (
                     <li
                       key={String(inv.id)}
-                      className="rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2"
+                      className="rounded-lg border border-line-subtle bg-white/[0.02] px-3 py-2"
                     >
                       <span className="font-medium text-sky-300">{String(inv.tool_name)}</span>
                       <span className={inv.ok ? " text-emerald-400" : " text-red-400"}>

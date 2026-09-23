@@ -451,7 +451,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
         <span>{t("dashboard:canvasHint")}</span>
         <button
           type="button"
-          className="rounded border border-surface-border px-2 py-0.5 text-ink-primary hover:bg-white/5"
+          className="rounded border border-line px-2 py-0.5 text-ink-primary hover:bg-white/5"
           title={t("dashboard:canvasZoomOut")}
           onClick={() => nudgeZoom(0.9)}
         >
@@ -459,7 +459,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
         </button>
         <button
           type="button"
-          className="rounded border border-surface-border px-2 py-0.5 text-ink-primary hover:bg-white/5"
+          className="rounded border border-line px-2 py-0.5 text-ink-primary hover:bg-white/5"
           title={t("dashboard:canvasZoomIn")}
           onClick={() => nudgeZoom(1.1)}
         >
@@ -467,14 +467,14 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
         </button>
         <button
           type="button"
-          className="rounded border border-surface-border px-2 py-0.5 text-ink-primary hover:bg-white/5"
+          className="rounded border border-line px-2 py-0.5 text-ink-primary hover:bg-white/5"
           onClick={() => fitAll()}
         >
           {t("dashboard:canvasFit")}
         </button>
         <button
           type="button"
-          className="rounded border border-surface-border px-2 py-0.5 text-ink-primary hover:bg-white/5"
+          className="rounded border border-line px-2 py-0.5 text-ink-primary hover:bg-white/5"
           onClick={() => {
             setZoom(1);
             if (editMode) persistViewport({ zoom: 1 });
@@ -493,8 +493,8 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
         ref={viewportRef}
         className={[
           fillViewport
-            ? "relative min-h-0 h-full w-full flex-1 cursor-grab overflow-hidden rounded-xl border border-surface-border bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.06)_1px,transparent_0)] bg-[length:24px_24px] bg-black/20 active:cursor-grabbing"
-            : "relative h-[min(85vh,calc(100dvh-12rem))] min-h-[420px] w-full flex-1 cursor-grab overflow-hidden rounded-xl border border-surface-border bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.06)_1px,transparent_0)] bg-[length:24px_24px] bg-black/20 active:cursor-grabbing",
+            ? "relative min-h-0 h-full w-full flex-1 cursor-grab overflow-hidden rounded-xl border border-line bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.06)_1px,transparent_0)] bg-[length:24px_24px] bg-black/20 active:cursor-grabbing"
+            : "relative h-[min(85vh,calc(100dvh-12rem))] min-h-[420px] w-full flex-1 cursor-grab overflow-hidden rounded-xl border border-line bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.06)_1px,transparent_0)] bg-[length:24px_24px] bg-black/20 active:cursor-grabbing",
           spaceDown ? "cursor-grab active:cursor-grabbing" : "",
           dragging ? "select-none" : "",
         ].join(" ")}
@@ -544,7 +544,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
                       ? "border-orange-500/50 ring-2 ring-orange-500/40"
                       : hasUnread
                         ? "border-orange-500/25"
-                        : "border-surface-border",
+                        : "border-line",
                 ].join(" ")}
                 style={{
                   left: rect.left,
@@ -563,7 +563,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
                   {showBlockToolbar || editMode ? (
                     <div
                       className={[
-                        "flex shrink-0 select-none items-center gap-2 border-b border-white/5 bg-card px-2 py-1",
+                        "flex shrink-0 select-none items-center gap-2 border-b border-line-subtle bg-card px-2 py-1",
                         editMode
                           ? "cursor-grab active:cursor-grabbing"
                           : "",

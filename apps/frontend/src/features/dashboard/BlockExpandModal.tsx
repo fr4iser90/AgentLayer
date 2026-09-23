@@ -38,7 +38,7 @@ export function BlockExpandModal(props: {
       aria-modal="true"
       aria-label={t("dashboard:blockExpandDialogLabel", { title })}
     >
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-6">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-6">
         <h2 className="min-w-0 truncate text-sm font-medium text-ink-primary sm:text-base">{title}</h2>
         <button
           type="button"
@@ -49,7 +49,7 @@ export function BlockExpandModal(props: {
         </button>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 sm:p-6">
-        <div className="mx-auto max-w-6xl rounded-xl border border-surface-border bg-card p-3 sm:p-4">
+        <div className="mx-auto max-w-6xl rounded-xl border border-line bg-card p-3 sm:p-4">
           <DashboardBlockTile
             block={block}
             data={data}

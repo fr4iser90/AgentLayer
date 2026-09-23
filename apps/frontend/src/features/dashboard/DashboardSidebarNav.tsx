@@ -289,9 +289,9 @@ export function DashboardSidebarNav(props: {
   return (
     <div className="flex min-h-0 flex-1 flex-col" onKeyDown={onKeyDown}>
       {showSearch ? (
-        <div className="shrink-0 border-b border-surface-border px-2 py-2">
+        <div className="shrink-0 border-b border-line px-2 py-2">
           <input
-            className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-field px-2.5 py-1.5 text-xs text-ink-primary outline-none focus:border-sky-500/50"
+            className="dashboard-grid-no-drag w-full rounded-md border border-line bg-field px-2.5 py-1.5 text-xs text-ink-primary outline-none focus:border-sky-500/50"
             placeholder={t("dashboard:searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}

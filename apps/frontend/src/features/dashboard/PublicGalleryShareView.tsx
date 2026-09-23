@@ -49,7 +49,7 @@ export function PublicGalleryShareView(props: {
 
   return (
     <div className="min-h-dvh bg-neutral-950 text-ink-primary">
-      <header className="sticky top-0 z-20 border-b border-white/10 bg-neutral-950/85 px-4 py-4 backdrop-blur-md sm:px-8 sm:py-5">
+      <header className="sticky top-0 z-20 border-b border-line bg-neutral-950/85 px-4 py-4 backdrop-blur-md sm:px-8 sm:py-5">
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{title}</h1>
         {subtitle ? <p className="mt-1 text-sm text-ink-muted">{subtitle}</p> : null}
         {introTexts.length > 0 ? (

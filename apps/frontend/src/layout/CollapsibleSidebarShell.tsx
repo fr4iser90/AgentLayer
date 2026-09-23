@@ -28,7 +28,7 @@ export function CollapsibleSidebarShell({
   className = "",
 }: Props) {
   const desktopAsideClass = [
-    "hidden h-full min-h-0 shrink-0 flex-col border-r border-surface-border",
+    "hidden h-full min-h-0 shrink-0 flex-col border-r border-line",
     sidebarSurfaceClass,
     desktopWidthClass,
     "md:flex",
@@ -38,7 +38,7 @@ export function CollapsibleSidebarShell({
     .join(" ");
 
   const mobileAsideClass = [
-    "relative flex h-full max-h-[100dvh] w-[min(100vw-3rem,280px)] flex-col overflow-hidden border-r border-surface-border shadow-xl",
+    "relative flex h-full max-h-[100dvh] w-[min(100vw-3rem,280px)] flex-col overflow-hidden border-r border-line shadow-xl",
     sidebarSurfaceClass,
     sidebarClassName,
   ]

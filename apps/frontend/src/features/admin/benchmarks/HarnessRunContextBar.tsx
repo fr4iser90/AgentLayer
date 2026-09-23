@@ -32,7 +32,7 @@ export function HarnessRunContextBar({ auth }: Props) {
   }, [reload]);
 
   return (
-    <section className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+    <section className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-black/20 px-3 py-2">
       <div className="min-w-0">
         <p className="text-meta text-ink-muted">{t("admin:benchHarnessContextHint")}</p>
         {loading ? (

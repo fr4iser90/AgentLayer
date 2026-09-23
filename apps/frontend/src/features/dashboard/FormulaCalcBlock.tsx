@@ -124,7 +124,7 @@ export function FormulaCalcBlockBody({
               <label key={inp.key} className="block text-xs text-ink-muted">
                 {inp.label}
                 <select
-                  className="mt-1 w-full rounded border border-surface-border bg-field px-2 py-1.5 text-sm text-ink-primary"
+                  className="mt-1 w-full rounded border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
                   disabled={readOnly}
                   value={values[inp.key] ?? ""}
                   onChange={(e) => setValues((v) => ({ ...v, [inp.key]: e.target.value }))}
@@ -148,7 +148,7 @@ export function FormulaCalcBlockBody({
               ) : null}
               <div className="relative mt-1">
                 <input
-                  className="w-full rounded border border-surface-border bg-field px-2 py-1.5 text-sm text-ink-primary"
+                  className="w-full rounded border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
                   type="number"
                   step={inp.step ?? (control === "percent" ? 1 : "any")}
                   disabled={readOnly}

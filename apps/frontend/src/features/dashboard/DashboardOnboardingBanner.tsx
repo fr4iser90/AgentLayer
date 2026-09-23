@@ -50,7 +50,7 @@ export function DashboardOnboardingBanner({
         </div>
         <button
           type="button"
-          className="shrink-0 rounded-md border border-white/10 px-2 py-1 text-meta text-ink-muted hover:bg-white/5"
+          className="shrink-0 rounded-md border border-line px-2 py-1 text-meta text-ink-muted hover:bg-white/5"
           onClick={() => {
             dismissOnboarding(dashboardId);
             onDismiss();

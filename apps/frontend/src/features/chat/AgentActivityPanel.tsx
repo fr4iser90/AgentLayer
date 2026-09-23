@@ -31,7 +31,7 @@ function borderForKind(kind: string): string {
   if (kind === "session") return "border-neutral-600";
   if (kind === "context_inject") return "border-amber-500/45";
   if (kind === "agent.done") return "border-emerald-600/40";
-  return "border-surface-border";
+  return "border-line";
 }
 
 function labelForKind(kind: string, tr: TFunction<"chat">): string {
@@ -83,9 +83,9 @@ export function AgentActivityPanel({
 
   return (
     <div
-      className={`flex min-h-0 flex-col overflow-hidden rounded-lg border border-white/10 bg-black/30 ${className}`}
+      className={`flex min-h-0 flex-col overflow-hidden rounded-lg border border-line bg-black/30 ${className}`}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/5 px-2.5 py-1.5">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line-subtle px-2.5 py-1.5">
         <span className="text-meta font-semibold uppercase tracking-wide text-ink-muted">
           {t("chat:agentActivity")}
         </span>
@@ -93,7 +93,7 @@ export function AgentActivityPanel({
           <label className="flex cursor-pointer items-center gap-1.5 text-meta text-ink-muted">
             <input
               type="checkbox"
-              className="rounded border-surface-border bg-field text-indigo-500"
+              className="rounded border-line bg-field text-indigo-500"
               checked={showSubagents}
               onChange={(e) => onShowSubagentsChange?.(e.target.checked)}
             />

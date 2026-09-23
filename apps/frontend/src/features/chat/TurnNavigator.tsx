@@ -51,7 +51,7 @@ export function TurnNavigator({ userTurns, activeId, onSelect, className = "" }:
                 className={`w-full rounded-lg border px-2 py-1.5 text-left text-meta leading-snug transition-colors ${
                   active
                     ? "border-sky-500/50 bg-sky-950/40 text-sky-100"
-                    : "border-transparent text-ink-muted hover:border-white/10 hover:bg-white/5 hover:text-neutral-200"
+                    : "border-transparent text-ink-muted hover:border-line hover:bg-white/5 hover:text-neutral-200"
                 }`}
               >
                 <span className="mr-1.5 tabular-nums text-meta text-ink-muted">{turn.index}</span>
@@ -82,7 +82,7 @@ export function TurnNavigatorHorizontal({ userTurns, activeId, onSelect, classNa
             className={`shrink-0 rounded-full border px-2.5 py-1 text-meta transition-colors ${
               active
                 ? "border-sky-500/50 bg-sky-950/40 text-sky-100"
-                : "border-white/10 text-ink-muted hover:bg-white/5"
+                : "border-line text-ink-muted hover:bg-white/5"
             }`}
           >
             <span className="mr-1 tabular-nums text-meta opacity-70">{turn.index}</span>

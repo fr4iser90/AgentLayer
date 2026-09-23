@@ -45,7 +45,7 @@ function TaskList({
             "rounded-lg border px-3 py-2.5",
             activeTaskId === task.id
               ? "border-indigo-500/50 bg-indigo-950/30"
-              : "border-surface-border bg-card",
+              : "border-line bg-card",
           ].join(" ")}
         >
           <div className="flex flex-wrap items-start justify-between gap-2">
@@ -58,7 +58,7 @@ function TaskList({
             <div className="flex shrink-0 flex-col gap-1">
               <button
                 type="button"
-                className="rounded border border-white/10 px-2 py-1 text-meta text-ink-secondary hover:bg-white/5"
+                className="rounded border border-line px-2 py-1 text-meta text-ink-secondary hover:bg-white/5"
                 onClick={() => onBind(task.id)}
               >
                 {activeTaskId === task.id ? t("tasks:boundToChat") : t("tasks:bindToChat")}
@@ -180,7 +180,7 @@ export function TasksPage() {
           </div>
           <Link
             to={conversationId ? `/chat?c=${encodeURIComponent(conversationId)}` : "/chat"}
-            className="rounded-lg border border-white/10 px-3 py-2 text-sm text-sky-400/90 hover:bg-white/5"
+            className="rounded-lg border border-line px-3 py-2 text-sm text-sky-400/90 hover:bg-white/5"
           >
             {t_0("tasks:backToChat")}
           </Link>
@@ -214,7 +214,7 @@ export function TasksPage() {
               value={globalGoal}
               onChange={(e) => setGlobalGoal(e.target.value)}
               placeholder={t_0("tasks:newGlobalGoalPlaceholder")}
-              className="min-w-0 flex-1 rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+              className="min-w-0 flex-1 rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary"
             />
             <button
               type="button"
@@ -249,7 +249,7 @@ export function TasksPage() {
           </div>
         </section>
 
-        <section className="mt-10 border-t border-surface-border pt-8">
+        <section className="mt-10 border-t border-line pt-8">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">
             {t_0("tasks:projectTasks")}
           </h2>
@@ -257,7 +257,7 @@ export function TasksPage() {
           <label className="mt-3 block text-xs text-ink-muted">
             {t_0("tasks:workspaceLabel")}
             <select
-              className="mt-1 block w-full max-w-md rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+              className="mt-1 block w-full max-w-md rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary"
               value={selectedWorkspaceId ?? ""}
               onChange={(e) => onWorkspaceChange(e.target.value)}
             >
@@ -281,7 +281,7 @@ export function TasksPage() {
                       ? t_0("tasks:newProjectTaskFor", { name: selectedWorkspace.name })
                       : t_0("tasks:newProjectTask")
                   }
-                  className="min-w-0 flex-1 rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+                  className="min-w-0 flex-1 rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary"
                 />
                 <button
                   type="button"

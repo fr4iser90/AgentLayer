@@ -171,8 +171,8 @@ export function ProjectsPage() {
       ) : null}
 
       <div className="grid min-h-0 flex-1 gap-4 md:grid-cols-[minmax(14rem,20rem)_1fr]">
-        <section className="flex min-h-0 flex-col rounded-xl border border-surface-border bg-card">
-          <div className="flex items-center justify-between gap-2 border-b border-surface-border px-3 py-2">
+        <section className="flex min-h-0 flex-col rounded-xl border border-line bg-card">
+          <div className="flex items-center justify-between gap-2 border-b border-line px-3 py-2">
             {hasOrgSurface(auth.user) ? (
               <div
                 role="tablist"
@@ -207,7 +207,7 @@ export function ProjectsPage() {
             )}
             <button
               type="button"
-              className="rounded-md border border-white/10 px-2 py-1 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
+              className="rounded-md border border-line px-2 py-1 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
               disabled={loading}
               onClick={() => void reload()}
             >
@@ -260,12 +260,12 @@ export function ProjectsPage() {
           </div>
         </section>
 
-        <section className="flex min-h-0 flex-col rounded-xl border border-surface-border bg-card">
+        <section className="flex min-h-0 flex-col rounded-xl border border-line bg-card">
           {!selected ? (
             <p className="p-4 text-sm text-ink-muted">{t("workspace:selectProjectBrowseFiles")}</p>
           ) : (
             <>
-              <div className="shrink-0 space-y-3 border-b border-surface-border p-4">
+              <div className="shrink-0 space-y-3 border-b border-line p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h2 className="truncate text-base font-medium text-ink-primary">{selected.name}</h2>
@@ -276,7 +276,7 @@ export function ProjectsPage() {
                   <div className="flex flex-wrap gap-2">
                     <Link
                       to={`/chat?workspace=${encodeURIComponent(selected.id)}`}
-                      className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
+                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
                     >
                       {t("workspace:projectsOpenChat")}
                     </Link>
@@ -314,7 +314,7 @@ export function ProjectsPage() {
               </div>
 
               <div className="flex min-h-0 flex-1 flex-col">
-                <div className="flex shrink-0 items-center justify-between gap-2 border-b border-surface-border px-3 py-2">
+                <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-3 py-2">
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                     {t("workspace:projectFilesTitle")}
                   </h3>
@@ -322,7 +322,7 @@ export function ProjectsPage() {
                     {browsePath ? (
                       <button
                         type="button"
-                        className="rounded border border-white/10 px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5"
+                        className="rounded border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5"
                         onClick={() => setBrowsePath(parentPath(browsePath))}
                       >
                         {t("workspace:projectsTreeUp")}
@@ -330,7 +330,7 @@ export function ProjectsPage() {
                     ) : null}
                     <button
                       type="button"
-                      className="rounded border border-white/10 px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5"
+                      className="rounded border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5"
                       disabled={treeLoading}
                       onClick={() => void loadTree()}
                     >
@@ -338,7 +338,7 @@ export function ProjectsPage() {
                     </button>
                   </div>
                 </div>
-                <p className="shrink-0 truncate border-b border-white/5 px-3 py-1 font-mono text-meta text-ink-muted">
+                <p className="shrink-0 truncate border-b border-line-subtle px-3 py-1 font-mono text-meta text-ink-muted">
                   {browsePath || "."}
                 </p>
                 <div className="min-h-0 flex-1 overflow-y-auto p-2">

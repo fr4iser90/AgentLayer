@@ -387,7 +387,7 @@ function BenchmarkFailuresSummary({
           </thead>
           <tbody>
             {rows.map((row, i) => (
-              <tr key={`${row.scenario_id}-${row.profile_label}-${i}`} className="border-t border-white/5">
+              <tr key={`${row.scenario_id}-${row.profile_label}-${i}`} className="border-t border-line-subtle">
                 <td className="py-1 pr-2 font-mono align-top">{row.scenario_id}</td>
                 <td className="py-1 pr-2 font-mono align-top text-meta">
                   {formatBenchmarkProviderModel(row)}
@@ -453,7 +453,7 @@ function BenchmarkScenarioDetailWithAttempts({
                 className={`rounded px-2 py-0.5 font-mono text-meta ${
                   active
                     ? "bg-sky-600 text-ink-on-fill"
-                    : "border border-white/15 bg-black/30 text-white/80 hover:bg-white/10"
+                    : "border border-line-strong bg-black/30 text-white/80 hover:bg-white/10"
                 }`}
                 title={
                   snap.passed
@@ -473,7 +473,7 @@ function BenchmarkScenarioDetailWithAttempts({
         </div>
       ) : null}
       {Array.isArray(prior) && prior.length > 0 ? (
-        <div className="rounded border border-white/10 bg-black/25 p-2 text-meta">
+        <div className="rounded border border-line bg-black/25 p-2 text-meta">
           <div className="mb-1 font-medium text-ink-muted">{t("admin:benchPriorAttempts")}</div>
           <ul className="list-inside list-disc space-y-0.5 text-white/75">
             {prior.map((reason, i) => (
@@ -522,7 +522,7 @@ function BenchmarkScenarioDetail({
   const streamOnly = responseFromStreamOnly(res);
 
   return (
-    <div className="space-y-3 rounded-lg border border-white/10 bg-black/20 p-3 text-xs">
+    <div className="space-y-3 rounded-lg border border-line bg-black/20 p-3 text-xs">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-mono text-meta text-white/70">{res.scenario_id}</span>
         <CopyScenarioDetailsButton res={res} />
@@ -715,7 +715,7 @@ function BenchmarkScenarioDetail({
                   } else if (row.ok === false) result = String(row.error || t("admin:benchDetailToolFailed"));
                   else if (row.ok === true) result = t("admin:benchDetailToolOk");
                   return (
-                    <tr key={i} className="border-t border-white/5">
+                    <tr key={i} className="border-t border-line-subtle">
                       <td className="px-2 py-1">{row.round ?? "—"}</td>
                       <td className="px-2 py-1">{row.name || "—"}</td>
                       <td className="max-w-[10rem] truncate px-2 py-1" title={args}>
@@ -1821,13 +1821,13 @@ export function AdminBenchmarks() {
 
       {tab === "run" && !loading ? (
         <div className="min-h-0 flex-1 overflow-y-auto space-y-4">
-          <section className="rounded-xl border border-surface-border bg-card p-4">
+          <section className="rounded-xl border border-line bg-card p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-sm font-medium text-ink-primary">{t("admin:benchRunModeTitle")}</h2>
                 <p className="mt-1 text-xs text-ink-muted">{t("admin:benchRunModeHint")}</p>
               </div>
-              <div className="inline-flex rounded-lg border border-white/10 bg-black/30 p-1">
+              <div className="inline-flex rounded-lg border border-line bg-black/30 p-1">
                 <button
                   type="button"
                   onClick={() => setRunMode("manual")}
@@ -1854,7 +1854,7 @@ export function AdminBenchmarks() {
             </div>
           </section>
 
-          <section className="rounded-xl border border-surface-border bg-card p-4">
+          <section className="rounded-xl border border-line bg-card p-4">
             <h2 className="text-sm font-medium text-ink-primary">{t("admin:benchRunIdentity")}</h2>
             <p className="mt-1 text-xs text-ink-muted">{t("admin:benchRunIdentityDesc")}</p>
             <label className="mt-3 block text-xs text-ink-muted">{t("admin:benchRunAs")}</label>
@@ -1862,7 +1862,7 @@ export function AdminBenchmarks() {
               <select
                 value={runAsUserId}
                 onChange={(e) => setRunAsUserId(e.target.value)}
-                className="min-w-[16rem] flex-1 rounded-lg border border-white/10 bg-field px-3 py-2 text-sm text-ink-primary"
+                className="min-w-[16rem] flex-1 rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary"
               >
                 {tenantUsers.map((u) => (
                   <option key={u.id} value={u.id}>
@@ -1885,7 +1885,7 @@ export function AdminBenchmarks() {
                 <select
                   value={friendUserId}
                   onChange={(e) => setFriendUserId(e.target.value)}
-                  className="mt-1 w-full max-w-md rounded-lg border border-white/10 bg-field px-3 py-2 text-sm text-ink-primary"
+                  className="mt-1 w-full max-w-md rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary"
                 >
                   {friendCandidates.length === 0 ? (
                     <option value="">{t("admin:benchFriendUserEmpty")}</option>
@@ -1900,7 +1900,7 @@ export function AdminBenchmarks() {
                 <p className="mt-1 text-meta text-ink-muted">{t("admin:benchFriendUserHint")}</p>
               </>
             ) : null}
-            <div className="mt-4 border-t border-white/5 pt-3">
+            <div className="mt-4 border-t border-line-subtle pt-3">
               <p className="text-xs font-medium text-ink-primary">{t("admin:benchSecretReadiness")}</p>
               {readinessLoading ? (
                 <p className="mt-2 text-xs text-ink-muted">{t("admin:loading")}</p>
@@ -1960,7 +1960,7 @@ export function AdminBenchmarks() {
                   type="button"
                   disabled={cleaningWorkspaces || readinessLoading}
                   onClick={() => void onCleanupBenchWorkspaces()}
-                  className="mt-3 rounded-lg border border-white/15 bg-black/30 px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-white/10 disabled:opacity-50"
+                  className="mt-3 rounded-lg border border-line-strong bg-black/30 px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-white/10 disabled:opacity-50"
                 >
                   {cleaningWorkspaces
                     ? t("admin:benchCleanupRunning")
@@ -1973,7 +1973,7 @@ export function AdminBenchmarks() {
               {cleanupFeedback ? (
                 <p className="mt-2 text-xs text-emerald-300/90">{cleanupFeedback}</p>
               ) : null}
-              <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-black/20 p-2 text-xs text-ink-muted hover:border-sky-400/40 hover:bg-sky-950/10">
+              <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-lg border border-line bg-black/20 p-2 text-xs text-ink-muted hover:border-sky-400/40 hover:bg-sky-950/10">
                 <input
                   type="checkbox"
                   checked={retainWorkspaces}
@@ -1997,7 +1997,7 @@ export function AdminBenchmarks() {
             </div>
           </section>
 
-          <section className="rounded-xl border border-surface-border bg-card p-4">
+          <section className="rounded-xl border border-line bg-card p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h2 className="text-sm font-medium text-ink-primary">{t("admin:benchProfiles")}</h2>
@@ -2049,7 +2049,7 @@ export function AdminBenchmarks() {
                     <div
                       key={p.catalog_owned_by}
                       className={`rounded-lg border p-3 ${
-                        checked ? "border-sky-500/30 bg-sky-950/20" : "border-white/10 bg-black/20"
+                        checked ? "border-sky-500/30 bg-sky-950/20" : "border-line bg-black/20"
                       }`}
                     >
                       <label className="flex cursor-pointer items-start gap-3 rounded-md p-1 hover:bg-white/5">
@@ -2099,7 +2099,7 @@ export function AdminBenchmarks() {
                             ) : null}
                           </div>
                           {catalogModels.length > 0 ? (
-                            <div className="mt-2 max-h-52 space-y-1 overflow-y-auto rounded border border-white/5 bg-black/20 p-2">
+                            <div className="mt-2 max-h-52 space-y-1 overflow-y-auto rounded border border-line-subtle bg-black/20 p-2">
                               {catalogModels.map((id) => {
                                 const isOn = selectedModels.includes(id);
                                 return (
@@ -2108,7 +2108,7 @@ export function AdminBenchmarks() {
                                     className={`flex cursor-pointer items-center gap-3 rounded border px-2 py-1 ${
                                       isOn
                                         ? "border-sky-400/40 bg-sky-950/40 text-ink-primary"
-                                        : "border-transparent hover:border-white/10 hover:bg-white/5"
+                                        : "border-transparent hover:border-line hover:bg-white/5"
                                     }`}
                                   >
                                     <input
@@ -2135,7 +2135,7 @@ export function AdminBenchmarks() {
                                         e.target.value
                                       )
                                     }
-                                    className="min-w-0 flex-1 rounded border border-white/10 bg-field px-2 py-1.5 text-sm font-mono"
+                                    className="min-w-0 flex-1 rounded border border-line bg-field px-2 py-1.5 text-sm font-mono"
                                     placeholder={
                                       defaultProviderModel(p) || t("admin:benchModelMissing")
                                     }
@@ -2177,7 +2177,7 @@ export function AdminBenchmarks() {
                               className={`mt-3 rounded-lg border p-3 ${
                                 isReviewerProvider
                                   ? "border-violet-500/35 bg-violet-950/20"
-                                  : "border-white/10 bg-black/20"
+                                  : "border-line bg-black/20"
                               }`}
                             >
                               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2209,7 +2209,7 @@ export function AdminBenchmarks() {
                                   value={reviewerValue}
                                   disabled={!isReviewerProvider || reviewerOptions.length === 0}
                                   onChange={(e) => setReviewerModel(e.target.value)}
-                                  className="mt-1 w-full rounded-lg border border-white/10 bg-field px-3 py-2 text-xs text-ink-primary disabled:opacity-50"
+                                  className="mt-1 w-full rounded-lg border border-line bg-field px-3 py-2 text-xs text-ink-primary disabled:opacity-50"
                                 >
                                   {reviewerValue && !reviewerOptions.includes(reviewerValue) ? (
                                     <option value={reviewerValue}>{reviewerValue}</option>
@@ -2263,7 +2263,7 @@ export function AdminBenchmarks() {
                 <select
                   value={tuningMode}
                   onChange={(e) => setTuningMode(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-field px-3 py-2 text-xs text-ink-primary"
+                  className="mt-1 w-full rounded-lg border border-line bg-field px-3 py-2 text-xs text-ink-primary"
                 >
                   <option value="fast">{t("admin:benchTuneModeFast")}</option>
                   <option value="standard">{t("admin:benchTuneModeStandard")}</option>
@@ -2275,7 +2275,7 @@ export function AdminBenchmarks() {
                 <select
                   value={reviewerMode}
                   onChange={(e) => setReviewerMode(e.target.value as "off" | "patch_and_test")}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-field px-3 py-2 text-xs text-ink-primary"
+                  className="mt-1 w-full rounded-lg border border-line bg-field px-3 py-2 text-xs text-ink-primary"
                 >
                   <option value="off">{tLoose("admin:benchTuneReviewerOff")}</option>
                   <option value="patch_and_test">{tLoose("admin:benchTuneReviewerPatchAndTest")}</option>
@@ -2290,7 +2290,7 @@ export function AdminBenchmarks() {
                   disabled={reviewerMode !== "patch_and_test"}
                   value={maxPatchRounds}
                   onChange={(e) => setMaxPatchRounds(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-field px-3 py-2 text-xs text-ink-primary disabled:opacity-50"
+                  className="mt-1 w-full rounded-lg border border-line bg-field px-3 py-2 text-xs text-ink-primary disabled:opacity-50"
                 />
               </label>
             </div>
@@ -2337,7 +2337,7 @@ export function AdminBenchmarks() {
                   return (
                     <div
                       key={session.id}
-                      className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs"
+                      className="rounded-lg border border-line bg-black/20 p-3 text-xs"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="min-w-0">
@@ -2398,7 +2398,7 @@ export function AdminBenchmarks() {
                             </p>
                           )}
                           {attempts.length ? (
-                            <div className="mt-2 overflow-x-auto rounded border border-white/5 bg-black/20">
+                            <div className="mt-2 overflow-x-auto rounded border border-line-subtle bg-black/20">
                               <table className="w-full min-w-[560px] text-left text-meta">
                                 <thead className="text-ink-muted">
                                   <tr>
@@ -2414,7 +2414,7 @@ export function AdminBenchmarks() {
                                   {attempts.map((a) => (
                                     <tr
                                       key={a.preset_id}
-                                      className={`border-t border-white/5 ${
+                                      className={`border-t border-line-subtle ${
                                         a.preset_id === bestAttempt?.preset_id
                                           ? "bg-emerald-500/10"
                                           : ""
@@ -2515,12 +2515,12 @@ export function AdminBenchmarks() {
 
           {runMode === "manual" ? (
           <>
-          <section className="rounded-xl border border-surface-border bg-card p-4">
+          <section className="rounded-xl border border-line bg-card p-4">
             <label className="block text-xs text-ink-muted">{t("admin:benchSuite")}</label>
             <select
               value={suite}
               onChange={(e) => onSuiteChange(e.target.value)}
-              className="mt-1 w-full max-w-md rounded-lg border border-white/10 bg-field px-3 py-2 text-sm text-ink-primary"
+              className="mt-1 w-full max-w-md rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary"
             >
               {suites.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -2533,7 +2533,7 @@ export function AdminBenchmarks() {
             ) : null}
           </section>
 
-          <section className="rounded-xl border border-surface-border bg-card p-4">
+          <section className="rounded-xl border border-line bg-card p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h2 className="text-sm font-medium text-ink-primary">{t("admin:benchScenarios")}</h2>
@@ -2561,7 +2561,7 @@ export function AdminBenchmarks() {
                   <div
                     key={sc.id}
                     className={`rounded-lg border p-3 ${
-                      checked ? "border-sky-500/30 bg-sky-950/20" : "border-white/10 bg-black/20"
+                      checked ? "border-sky-500/30 bg-sky-950/20" : "border-line bg-black/20"
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -2627,7 +2627,7 @@ export function AdminBenchmarks() {
                           {expanded ? t("admin:benchHidePrompt") : t("admin:benchShowPrompt")}
                         </button>
                         {expanded ? (
-                          <div className="mt-2 space-y-1 rounded border border-white/5 bg-black/30 p-2 text-meta">
+                          <div className="mt-2 space-y-1 rounded border border-line-subtle bg-black/30 p-2 text-meta">
                             <p className="text-ink-muted">{t("admin:benchPrompt")}</p>
                             <p className="whitespace-pre-wrap text-white/90">
                               {benchmarkScenarioPrompt(sc, promptLocale, promptVariant)}
@@ -2643,7 +2643,7 @@ export function AdminBenchmarks() {
             </div>
           </section>
 
-          <details className="rounded-xl border border-surface-border bg-card p-4">
+          <details className="rounded-xl border border-line bg-card p-4">
             <summary className="cursor-pointer text-sm font-medium text-ink-primary">
               {t("admin:benchAdvancedOptions")}
               <span className="ml-2 text-xs font-normal text-ink-muted">
@@ -2659,7 +2659,7 @@ export function AdminBenchmarks() {
             onChange={setRunOverrides}
           />
 
-          <section className="rounded-xl border border-surface-border bg-raised p-4 space-y-3">
+          <section className="rounded-xl border border-line bg-raised p-4 space-y-3">
             <div>
               <h3 className="text-xs font-medium uppercase text-ink-muted">
                 {t("admin:benchRunOptionsTitle")}
@@ -2675,7 +2675,7 @@ export function AdminBenchmarks() {
                   value={cohortLabel}
                   onChange={(e) => setCohortLabel(e.target.value)}
                   placeholder={t("admin:benchCohortLabelPlaceholder")}
-                  className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-ink-primary"
+                  className="mt-1 w-full rounded border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
                 />
                 <span className="mt-1 block text-meta text-ink-muted">
                   {t("admin:benchCohortLabelHint")}
@@ -2686,7 +2686,7 @@ export function AdminBenchmarks() {
                 <select
                   value={promptVariant}
                   onChange={(e) => setPromptVariant(e.target.value)}
-                  className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-ink-primary"
+                  className="mt-1 w-full rounded border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
                 >
                   {availablePromptVariants.map((variant) => (
                     <option key={variant} value={variant}>
@@ -2703,7 +2703,7 @@ export function AdminBenchmarks() {
                 <select
                   value={promptLocale}
                   onChange={(e) => setPromptLocale(e.target.value)}
-                  className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-ink-primary"
+                  className="mt-1 w-full rounded border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
                 >
                   {availablePromptLocales.map((loc) => (
                     <option key={loc} value={loc}>
@@ -2724,7 +2724,7 @@ export function AdminBenchmarks() {
                   value={scenarioTimeoutSec}
                   onChange={(e) => setScenarioTimeoutSec(e.target.value)}
                   placeholder={t("admin:benchScenarioTimeoutPlaceholder")}
-                  className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-ink-primary"
+                  className="mt-1 w-full rounded border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
                 />
                 <span className="mt-1 block text-meta text-ink-muted">
                   {t("admin:benchScenarioTimeoutHint")}
@@ -2739,7 +2739,7 @@ export function AdminBenchmarks() {
                   value={maxToolRoundsOverride}
                   onChange={(e) => setMaxToolRoundsOverride(e.target.value)}
                   placeholder={t("admin:benchMaxToolRoundsPlaceholder")}
-                  className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-ink-primary"
+                  className="mt-1 w-full rounded border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
                 />
                 <span className="mt-1 block text-meta text-ink-muted">
                   {t("admin:benchMaxToolRoundsHint")}
@@ -2754,7 +2754,7 @@ export function AdminBenchmarks() {
                   value={scenarioFailureRetries}
                   onChange={(e) => setScenarioFailureRetries(e.target.value)}
                   placeholder={t("admin:benchScenarioFailureRetriesPlaceholder")}
-                  className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-ink-primary"
+                  className="mt-1 w-full rounded border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
                 />
                 <span className="mt-1 block text-meta text-ink-muted">
                   {t("admin:benchScenarioFailureRetriesHint")}
@@ -2768,7 +2768,7 @@ export function AdminBenchmarks() {
           </>
           ) : null}
 
-          <section className="sticky bottom-0 z-10 rounded-xl border border-surface-border bg-[#101010]/95 p-4 shadow-2xl shadow-black/40 backdrop-blur">
+          <section className="sticky bottom-0 z-10 rounded-xl border border-line bg-[#101010]/95 p-4 shadow-2xl shadow-black/40 backdrop-blur">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -2829,8 +2829,8 @@ export function AdminBenchmarks() {
 
       {tab === "history" ? (
         <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
-          <div className="flex w-80 shrink-0 flex-col overflow-hidden rounded-xl border border-surface-border bg-card">
-            <div className="flex items-center justify-between gap-2 border-b border-white/5 px-3 py-2">
+          <div className="flex w-80 shrink-0 flex-col overflow-hidden rounded-xl border border-line bg-card">
+            <div className="flex items-center justify-between gap-2 border-b border-line-subtle px-3 py-2">
               <span className="text-xs font-medium uppercase text-ink-muted">
                 {t("admin:benchHistory")}
               </span>
@@ -2860,7 +2860,7 @@ export function AdminBenchmarks() {
                 runs.map((r) => (
                   <div
                     key={r.id}
-                    className={`flex items-stretch border-b border-white/5 ${
+                    className={`flex items-stretch border-b border-line-subtle ${
                       selectedId === r.id ? "bg-white/10" : ""
                     }`}
                   >
@@ -2933,7 +2933,7 @@ export function AdminBenchmarks() {
               )}
             </div>
           </div>
-          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-xl border border-surface-border bg-card p-4">
+          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-xl border border-line bg-card p-4">
             {!detail ? (
               <p className="text-sm text-ink-muted">{t("admin:benchSelectRun")}</p>
             ) : (
@@ -3053,28 +3053,28 @@ export function AdminBenchmarks() {
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      className="rounded border border-white/15 bg-black/30 px-2.5 py-1 text-meta text-white/90 hover:bg-white/10"
+                      className="rounded border border-line-strong bg-black/30 px-2.5 py-1 text-meta text-white/90 hover:bg-white/10"
                       onClick={() => downloadAttemptsCsv(detail)}
                     >
                       {t("admin:benchExportAttemptsCsv")}
                     </button>
                     <button
                       type="button"
-                      className="rounded border border-white/15 bg-black/30 px-2.5 py-1 text-meta text-white/90 hover:bg-white/10"
+                      className="rounded border border-line-strong bg-black/30 px-2.5 py-1 text-meta text-white/90 hover:bg-white/10"
                       onClick={() => downloadFailuresCsv(detail)}
                     >
                       {t("admin:benchExportFailuresCsv")}
                     </button>
                     <button
                       type="button"
-                      className="rounded border border-white/15 bg-black/30 px-2.5 py-1 text-meta text-white/90 hover:bg-white/10"
+                      className="rounded border border-line-strong bg-black/30 px-2.5 py-1 text-meta text-white/90 hover:bg-white/10"
                       onClick={() => downloadFailuresJson(detail)}
                     >
                       {t("admin:benchExportFailuresJson")}
                     </button>
                     <button
                       type="button"
-                      className="rounded border border-white/15 bg-black/30 px-2.5 py-1 text-meta text-white/90 hover:bg-white/10"
+                      className="rounded border border-line-strong bg-black/30 px-2.5 py-1 text-meta text-white/90 hover:bg-white/10"
                       onClick={() => downloadFullReportJson(detail)}
                     >
                       {t("admin:benchExportFullJson")}
@@ -3163,7 +3163,7 @@ export function AdminBenchmarks() {
                       const canExpand = scenarioHasDiagnostics(res) || Boolean(res.failure_reason);
                       return (
                         <Fragment key={rowKey}>
-                          <tr className="border-t border-white/5">
+                          <tr className="border-t border-line-subtle">
                             <td className="py-1.5 pr-1 align-top">
                               <div className="flex flex-col items-start gap-0.5">
                                 {canExpand ? (
@@ -3237,7 +3237,7 @@ export function AdminBenchmarks() {
                             <td className="py-1.5 pr-2">{Math.round(res.latency_ms)}</td>
                           </tr>
                           {expanded ? (
-                            <tr className="border-t border-white/5">
+                            <tr className="border-t border-line-subtle">
                               <td colSpan={8} className="py-2 pr-2">
                                 <BenchmarkScenarioDetailWithAttempts
                                   res={res}
@@ -3301,7 +3301,7 @@ export function AdminBenchmarks() {
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-md rounded-xl border border-surface-border bg-[#1a1a1a] p-5 shadow-2xl"
+            className="w-full max-w-md rounded-xl border border-line bg-[#1a1a1a] p-5 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-base font-semibold text-ink-primary">{t("admin:benchBulkDeleteTitle")}</h2>
@@ -3311,7 +3311,7 @@ export function AdminBenchmarks() {
               <select
                 value={bulkDeleteSuite}
                 onChange={(e) => setBulkDeleteSuite(e.target.value)}
-                className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-ink-primary"
+                className="mt-1 w-full rounded border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
               >
                 <option value="">{t("admin:benchStatsAllSuites")}</option>
                 {historySuiteOptions.map((s) => (
@@ -3326,7 +3326,7 @@ export function AdminBenchmarks() {
               <select
                 value={bulkDeleteOlderThanDays}
                 onChange={(e) => setBulkDeleteOlderThanDays(e.target.value)}
-                className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-ink-primary"
+                className="mt-1 w-full rounded border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
               >
                 <option value="">{t("admin:benchBulkDeleteAnyAge")}</option>
                 <option value="30">{t("admin:benchBulkDeleteOlder30d")}</option>

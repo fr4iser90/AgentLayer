@@ -43,7 +43,7 @@ export function PermissionAskCard({ request, onReply, disabled }: Props) {
         <button
           type="button"
           disabled={disabled}
-          className="rounded-md border border-surface-border bg-black/20 px-3 py-1.5 text-xs text-ink-primary disabled:opacity-50"
+          className="rounded-md border border-line bg-black/20 px-3 py-1.5 text-xs text-ink-primary disabled:opacity-50"
           onClick={() => onReply("always")}
         >
           {t("chat:permissionAllowAlways")}
