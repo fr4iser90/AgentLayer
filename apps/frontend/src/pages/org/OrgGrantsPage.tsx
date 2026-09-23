@@ -135,25 +135,25 @@ export function OrgGrantsPage() {
 
   if (!hasOrgSurface(auth.user)) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-10 text-sm text-ink-muted">
+      <div className="mx-auto max-w-3xl px-wide py-page text-sm text-ink-muted">
         {t("org:grantsNoOrg")}
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-5xl px-wide py-deep sm:px-broad">
       <h1 className="text-2xl font-semibold text-ink-primary">{t("org:grantsTitle")}</h1>
-      <p className="mt-2 max-w-3xl text-sm text-ink-muted">{t("org:grantsIntro")}</p>
+      <p className="mt-base max-w-3xl text-sm text-ink-muted">{t("org:grantsIntro")}</p>
 
-      <div className="mt-4 rounded-card border border-line bg-card px-4 py-3 text-xs text-ink-muted">
+      <div className="mt-wide rounded-card border border-line bg-card px-wide py-soft text-xs text-ink-muted">
         {t("org:grantsImplicitAdmins")}
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
+      <div className="mt-broad flex flex-wrap items-center gap-soft">
         <button
           type="button"
-          className="rounded-tile bg-white/10 px-4 py-1.5 text-xs font-medium text-ink-primary hover:bg-white/15 disabled:opacity-50"
+          className="rounded-tile bg-white/10 px-wide py-snug text-xs font-medium text-ink-primary hover:bg-white/15 disabled:opacity-50"
           disabled={loading}
           onClick={() => void load()}
         >
@@ -161,44 +161,44 @@ export function OrgGrantsPage() {
         </button>
       </div>
 
-      {message ? <p className="mt-4 text-sm text-emerald-300">{message}</p> : null}
-      {error ? <p className="mt-4 text-sm text-rose-300">{error}</p> : null}
+      {message ? <p className="mt-wide text-sm text-emerald-300">{message}</p> : null}
+      {error ? <p className="mt-wide text-sm text-rose-300">{error}</p> : null}
 
       {loading ? (
-        <p className="mt-6 text-sm text-ink-muted">{t("org:grantsLoading")}</p>
+        <p className="mt-broad text-sm text-ink-muted">{t("org:grantsLoading")}</p>
       ) : null}
 
       {!loading && rows.length === 0 ? (
-        <p className="mt-6 text-sm text-ink-muted">{t("org:grantsEmpty")}</p>
+        <p className="mt-broad text-sm text-ink-muted">{t("org:grantsEmpty")}</p>
       ) : null}
 
       {!loading && rows.length > 0 ? (
-        <table className="mt-6 w-full border-collapse text-sm">
+        <table className="mt-broad w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-muted">
-              <th className="py-2 pr-4 font-medium">{t("org:grantsColWorkspace")}</th>
-              <th className="py-2 pr-4 font-medium">{t("org:grantsColMemberAccess")}</th>
-              <th className="py-2 font-medium">{t("org:grantsColStatus")}</th>
+              <th className="py-base pr-wide font-medium">{t("org:grantsColWorkspace")}</th>
+              <th className="py-base pr-wide font-medium">{t("org:grantsColMemberAccess")}</th>
+              <th className="py-base font-medium">{t("org:grantsColStatus")}</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
               <tr key={row.id} className="border-b border-line/60 align-top">
-                <td className="py-3 pr-4">
+                <td className="py-soft pr-wide">
                   <span className="font-medium text-ink-primary">{row.name}</span>
                   {row.visibility !== "tenant" ? (
-                    <span className="ml-2 rounded-tile bg-amber-950/50 px-1.5 py-0.5 text-meta text-amber-300">
+                    <span className="ml-base rounded-tile bg-amber-950/50 px-snug py-hair text-meta text-amber-300">
                       {t("org:grantsPrivateTag")}
                     </span>
                   ) : null}
                 </td>
-                <td className="py-3 pr-4">
+                <td className="py-soft pr-wide">
                   <label className="sr-only" htmlFor={`grant-${row.id}`}>
                     {t("org:grantsColMemberAccess")} — {row.name}
                   </label>
                   <select
                     id={`grant-${row.id}`}
-                    className="rounded-tile border border-line bg-field px-2 py-1.5 text-xs text-ink-primary disabled:opacity-50"
+                    className="rounded-tile border border-line bg-field px-base py-snug text-xs text-ink-primary disabled:opacity-50"
                     value={row.level === null ? "" : row.level}
                     disabled={row.saving || row.visibility !== "tenant"}
                     onChange={(e) => {
@@ -213,7 +213,7 @@ export function OrgGrantsPage() {
                     ))}
                   </select>
                 </td>
-                <td className="py-3 text-xs">
+                <td className="py-soft text-xs">
                   {row.saving ? (
                     <span className="text-ink-muted">{t("org:grantsSaving")}</span>
                   ) : row.error ? (
@@ -231,7 +231,7 @@ export function OrgGrantsPage() {
       ) : null}
 
       {!loading && privateCount > 0 ? (
-        <p className="mt-4 text-xs text-amber-300/90">{t("org:grantsPrivateWarning")}</p>
+        <p className="mt-wide text-xs text-amber-300/90">{t("org:grantsPrivateWarning")}</p>
       ) : null}
     </div>
   );

@@ -19,7 +19,7 @@ import {
  * indistinguishable from editable ones.
  */
 const FIELD_BASE = [
-  "w-full rounded-card border border-line bg-field px-3 py-1.5 text-body text-ink-primary",
+  "w-full rounded-card border border-line bg-field px-soft py-snug text-body text-ink-primary",
   "placeholder:text-field-placeholder",
   "transition-colors duration-fast ease-standard",
   "focus:border-line-focus focus:outline-none focus:shadow-focus",
@@ -78,7 +78,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
   return (
     <select
       ref={ref}
-      className={[FIELD_BASE, "cursor-pointer pr-8", className]
+      className={[FIELD_BASE, "cursor-pointer pr-deep", className]
         .filter(Boolean)
         .join(" ")}
       {...rest}

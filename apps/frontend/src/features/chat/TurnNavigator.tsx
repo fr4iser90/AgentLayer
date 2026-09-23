@@ -33,13 +33,13 @@ export function TurnNavigator({ userTurns, activeId, onSelect, className = "" }:
 
   return (
     <nav
-      className={`flex flex-col gap-1 ${className}`}
+      className={`flex flex-col gap-tight ${className}`}
       aria-label={t("chat:conversationPromptsAria")}
     >
-      <span className="px-1 text-meta font-medium uppercase tracking-wide text-ink-muted">
+      <span className="px-tight text-meta font-medium uppercase tracking-wide text-ink-muted">
         {t("chat:prompts")}
       </span>
-      <ul className="flex flex-col gap-0.5 lg:max-h-[min(60vh,28rem)] lg:overflow-y-auto">
+      <ul className="flex flex-col gap-hair lg:max-h-[min(60vh,28rem)] lg:overflow-y-auto">
         {userTurns.map((turn) => {
           const active = turn.id === activeId;
           return (
@@ -48,13 +48,13 @@ export function TurnNavigator({ userTurns, activeId, onSelect, className = "" }:
                 type="button"
                 onClick={() => onSelect(turn.id)}
                 title={turn.label}
-                className={`w-full rounded-card border px-2 py-1.5 text-left text-meta leading-snug transition-colors ${
+                className={`w-full rounded-card border px-base py-snug text-left text-meta leading-snug transition-colors ${
                   active
                     ? "border-sky-500/50 bg-sky-950/40 text-sky-100"
                     : "border-transparent text-ink-muted hover:border-line hover:bg-white/5 hover:text-neutral-200"
                 }`}
               >
-                <span className="mr-1.5 tabular-nums text-meta text-ink-muted">{turn.index}</span>
+                <span className="mr-snug tabular-nums text-meta text-ink-muted">{turn.index}</span>
                 <span className="line-clamp-2">{turn.label}</span>
               </button>
             </li>
@@ -70,7 +70,7 @@ export function TurnNavigatorHorizontal({ userTurns, activeId, onSelect, classNa
   const { t } = useTranslation(["chat"]);
   if (userTurns.length === 0) return null;
   return (
-    <div className={`flex gap-1.5 overflow-x-auto pb-1 lg:hidden ${className}`}>
+    <div className={`flex gap-snug overflow-x-auto pb-tight lg:hidden ${className}`}>
       {userTurns.map((turn) => {
         const active = turn.id === activeId;
         return (
@@ -79,13 +79,13 @@ export function TurnNavigatorHorizontal({ userTurns, activeId, onSelect, classNa
             type="button"
             onClick={() => onSelect(turn.id)}
             title={turn.label}
-            className={`shrink-0 rounded-pill border px-2.5 py-1 text-meta transition-colors ${
+            className={`shrink-0 rounded-pill border px-firm py-tight text-meta transition-colors ${
               active
                 ? "border-sky-500/50 bg-sky-950/40 text-sky-100"
                 : "border-line text-ink-muted hover:bg-white/5"
             }`}
           >
-            <span className="mr-1 tabular-nums text-meta opacity-70">{turn.index}</span>
+            <span className="mr-tight tabular-nums text-meta opacity-70">{turn.index}</span>
             <span className="max-w-[8rem] truncate">{turn.label}</span>
           </button>
         );

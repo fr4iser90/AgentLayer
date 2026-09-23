@@ -20,7 +20,7 @@ function StatusPill(props: { status: string }) {
           ? "bg-violet-600/30 text-violet-200 border-violet-500/40"
           : "bg-white/10 text-ink-muted border-line";
   return (
-    <span className={`shrink-0 rounded-pill border px-2 py-0.5 text-meta font-medium uppercase ${cls}`}>
+    <span className={`shrink-0 rounded-pill border px-base py-hair text-meta font-medium uppercase ${cls}`}>
       {props.status || "—"}
     </span>
   );
@@ -130,19 +130,19 @@ export function ProjectRowDetailDrawer(props: {
   }, [enableRunNow, detailRowId]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-stretch justify-end bg-black/60 p-4">
-      <div className="h-full w-full max-w-lg overflow-auto rounded-sheet border border-line bg-card p-4 shadow-2xl">
-        <div className="mb-4 flex items-start justify-between gap-3">
+    <div className="fixed inset-0 z-50 flex items-stretch justify-end bg-black/60 p-wide">
+      <div className="h-full w-full max-w-lg overflow-auto rounded-sheet border border-line bg-card p-wide shadow-2xl">
+        <div className="mb-wide flex items-start justify-between gap-soft">
           <div>
             <div className="text-xs uppercase tracking-wide text-ink-muted">{t("dashboard:project")}</div>
             <div className="text-lg font-semibold text-ink-primary">
               {String((detailRow as any).title ?? "").trim() || t("dashboard:untitled")}
             </div>
-            <div className="mt-1 text-xs text-ink-muted">id: {detailRowId}</div>
+            <div className="mt-tight text-xs text-ink-muted">id: {detailRowId}</div>
           </div>
           <button
             type="button"
-            className="rounded-tile border border-line px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
+            className="rounded-tile border border-line px-soft py-snug text-xs text-ink-primary hover:bg-white/5"
             onClick={onClose}
           >
             {t("dashboard:close")}
@@ -166,15 +166,15 @@ export function ProjectRowDetailDrawer(props: {
         ) : null}
 
         {enableRunNow ? (
-          <div className="mb-4 rounded-sheet border border-line bg-black/20 p-3">
-            <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="mb-wide rounded-sheet border border-line bg-black/20 p-soft">
+            <div className="mb-base flex items-center justify-between gap-base">
               <div className="text-xs font-medium uppercase tracking-wide text-ink-muted">
                 {t("dashboard:runNow")}
               </div>
               <button
                 type="button"
                 disabled={runNowBusy || !runNowInstructions.trim() || !runNowWorkspaceId.trim()}
-                className="rounded-tile bg-violet-600/80 px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-tile bg-violet-600/80 px-soft py-snug text-xs font-medium text-ink-primary hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={async () => {
                   setRunNowBusy(true);
                   setRunNowMsg(null);
@@ -211,39 +211,39 @@ export function ProjectRowDetailDrawer(props: {
               </button>
             </div>
             {!enableWorkspaceLink ? (
-              <label className="mb-2 block text-meta text-ink-muted">
+              <label className="mb-base block text-meta text-ink-muted">
                 {t("dashboard:workspaceIdUuid")}
                 <input
                   value={runNowWorkspaceId}
                   onChange={(e) => setRunNowWorkspaceId(e.target.value)}
-                  className="mt-1 w-full rounded-card border border-line bg-field px-3 py-1.5 font-mono text-xs text-ink-primary outline-none focus:border-violet-400/60"
+                  className="mt-tight w-full rounded-card border border-line bg-field px-soft py-snug font-mono text-xs text-ink-primary outline-none focus:border-violet-400/60"
                   placeholder={t("dashboard:workspaceUuidPlaceholder")}
                 />
               </label>
             ) : runNowWorkspaceId ? (
-              <p className="mb-2 truncate font-mono text-meta text-ink-muted">{runNowWorkspaceId}</p>
+              <p className="mb-base truncate font-mono text-meta text-ink-muted">{runNowWorkspaceId}</p>
             ) : (
-              <p className="mb-2 text-xs text-amber-300/90">{t("dashboard:workspaceRequiredForRun")}</p>
+              <p className="mb-base text-xs text-amber-300/90">{t("dashboard:workspaceRequiredForRun")}</p>
             )}
             <textarea
               value={runNowInstructions}
               onChange={(e) => setRunNowInstructions(e.target.value)}
-              className="min-h-[110px] w-full resize-y rounded-card border border-line bg-field px-3 py-2 text-xs text-ink-primary outline-none focus:border-violet-400/60"
+              className="min-h-[110px] w-full resize-y rounded-card border border-line bg-field px-soft py-base text-xs text-ink-primary outline-none focus:border-violet-400/60"
               placeholder={t("dashboard:describeWhatToDo")}
             />
-            {runNowMsg ? <div className="mt-2 text-xs text-ink-muted">{runNowMsg}</div> : null}
+            {runNowMsg ? <div className="mt-base text-xs text-ink-muted">{runNowMsg}</div> : null}
           </div>
         ) : null}
 
         {enableRunNow ? (
-          <div className="mb-4 rounded-sheet border border-line bg-black/10 p-3">
-            <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="mb-wide rounded-sheet border border-line bg-black/10 p-soft">
+            <div className="mb-base flex items-center justify-between gap-base">
               <div className="text-xs font-medium uppercase tracking-wide text-ink-muted">
                 {t("dashboard:recentRuns")}
               </div>
               <button
                 type="button"
-                className="rounded-tile border border-line px-2 py-1 text-meta text-ink-primary hover:bg-white/5 disabled:opacity-60"
+                className="rounded-tile border border-line px-base py-tight text-meta text-ink-primary hover:bg-white/5 disabled:opacity-60"
                 disabled={recentRunsBusy}
                 onClick={() => void refreshRecentRuns()}
               >
@@ -255,18 +255,18 @@ export function ProjectRowDetailDrawer(props: {
             ) : recentRuns && recentRuns.length === 0 ? (
               <div className="text-xs text-ink-muted">{t("dashboard:recentRunsNoneYet")}</div>
             ) : recentRuns ? (
-              <div className="space-y-2">
+              <div className="space-y-base">
                 {recentRuns.map((r) => (
-                  <div key={String(r.id)} className="rounded-card border border-line bg-black/20 p-2">
-                    <div className="flex items-center justify-between gap-2">
+                  <div key={String(r.id)} className="rounded-card border border-line bg-black/20 p-base">
+                    <div className="flex items-center justify-between gap-base">
                       <div className="truncate text-xs text-ink-primary">
                         {String(r.project_title ?? "") || "Run"}
                       </div>
                       <StatusPill status={String(r.status ?? "")} />
                     </div>
-                    <div className="mt-1 text-meta text-ink-muted">{String(r.created_at ?? "")}</div>
+                    <div className="mt-tight text-meta text-ink-muted">{String(r.created_at ?? "")}</div>
                     {r.error ? (
-                      <div className="mt-1 text-meta text-red-200/90">{String(r.error)}</div>
+                      <div className="mt-tight text-meta text-red-200/90">{String(r.error)}</div>
                     ) : null}
                   </div>
                 ))}
@@ -277,15 +277,15 @@ export function ProjectRowDetailDrawer(props: {
           </div>
         ) : null}
 
-        <div className="grid gap-3">
+        <div className="grid gap-soft">
           {cols
             .filter((c) => c?.field && c.field !== "pinned")
             .map((c) => (
               <div key={String(c.field)}>
-                <div className="mb-1 text-xs font-medium uppercase tracking-wide text-ink-muted">
+                <div className="mb-tight text-xs font-medium uppercase tracking-wide text-ink-muted">
                   {c.label || c.field}
                 </div>
-                <div className="rounded-card border border-line bg-black/20 p-2 text-sm text-ink-primary">
+                <div className="rounded-card border border-line bg-black/20 p-base text-sm text-ink-primary">
                   {String(((detailRow as any) ?? {})[c.field] ?? "").trim() || "—"}
                 </div>
               </div>

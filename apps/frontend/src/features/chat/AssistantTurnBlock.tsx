@@ -29,8 +29,8 @@ const ReasoningPanel = memo(function ReasoningPanel({
   if (!trimmed) return null;
   const defaultOpen = getAgentShowReasoning();
   return (
-    <details className="mb-3 group" defaultOpen={defaultOpen}>
-      <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-tile border border-sky-500/35 bg-sky-950/40 px-2 py-1 text-meta font-medium text-sky-100/90 marker:content-none [&::-webkit-details-marker]:hidden hover:bg-sky-950/55">
+    <details className="mb-soft group" defaultOpen={defaultOpen}>
+      <summary className="inline-flex cursor-pointer list-none items-center gap-snug rounded-tile border border-sky-500/35 bg-sky-950/40 px-base py-tight text-meta font-medium text-sky-100/90 marker:content-none [&::-webkit-details-marker]:hidden hover:bg-sky-950/55">
         <span
           className={`relative flex h-1.5 w-1.5 shrink-0 ${running ? "animate-pulse" : ""}`}
           aria-hidden
@@ -46,7 +46,7 @@ const ReasoningPanel = memo(function ReasoningPanel({
           {t("chat:thinkingBadgeCollapseHint")}
         </span>
       </summary>
-      <pre className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-line-subtle bg-black/30 px-3 py-2 font-sans text-xs leading-relaxed text-ink-muted">
+      <pre className="mt-base max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-line-subtle bg-black/30 px-soft py-base font-sans text-xs leading-relaxed text-ink-muted">
         {trimmed}
       </pre>
     </details>
@@ -96,7 +96,7 @@ const InterleavedStreamBody = memo(function InterleavedStreamBody({
   onToggleRunCardExpanded?: (cardId: string) => void;
 }) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-soft">
       {segments.map((seg) => {
         if (seg.type === "text") {
           const trimmed = seg.text.trim();
@@ -188,12 +188,12 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
 
   return (
     <li className="flex w-full justify-end scroll-mt-4">
-      <div className="max-w-[min(100%,42rem)] rounded-sheet border border-line bg-[#1e1e1e] px-4 py-3 text-sm text-ink-primary shadow-sm">
-        <span className="mb-1 flex items-center gap-2 text-meta font-medium uppercase tracking-wide text-ink-muted">
+      <div className="max-w-[min(100%,42rem)] rounded-sheet border border-line bg-[#1e1e1e] px-wide py-soft text-sm text-ink-primary shadow-sm">
+        <span className="mb-tight flex items-center gap-base text-meta font-medium uppercase tracking-wide text-ink-muted">
           <Mascot character="volt" state={mascotState} size={20} ariaLabel={null} />
           {t("chat:roleAssistant")}
           {standInAuto ? (
-            <span className="rounded-tile bg-violet-900/40 px-1.5 py-0.5 text-meta font-normal normal-case text-violet-200">
+            <span className="rounded-tile bg-violet-900/40 px-snug py-hair text-meta font-normal normal-case text-violet-200">
               {t("chat:standInAutoBadge")}
             </span>
           ) : null}
@@ -202,7 +202,7 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
           ) : null}
         </span>
         {running && runStartedAtMs != null ? (
-          <TurnElapsedRuntime startedAtMs={runStartedAtMs} className="mb-2" />
+          <TurnElapsedRuntime startedAtMs={runStartedAtMs} className="mb-base" />
         ) : null}
         <ReasoningPanel text={reasoningContent ?? ""} running={running} />
         {hasStreamBody ? (
@@ -219,8 +219,8 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
           <p className="text-neutral-300/90">{waitHint?.trim() || t("chat:agentRunning")}</p>
         ) : null}
         {turnCancelled && !running ? (
-          <div className="mt-3 flex justify-start">
-            <span className="inline-flex items-center rounded-tile border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-meta font-medium uppercase tracking-wide text-amber-100/95">
+          <div className="mt-soft flex justify-start">
+            <span className="inline-flex items-center rounded-tile border border-amber-500/40 bg-amber-500/10 px-base py-hair text-meta font-medium uppercase tracking-wide text-amber-100/95">
               {t("chat:turnCancelledBadge")}
             </span>
           </div>

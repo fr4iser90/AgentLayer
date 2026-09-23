@@ -97,17 +97,17 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
   }, [auth, base, onPublished, t, text, title]);
 
   return (
-    <section className="rounded-sheet border border-line bg-card p-5">
+    <section className="rounded-sheet border border-line bg-card p-roomy">
       <h2 className="text-sm font-medium text-ink-primary">{t("org:knowledgePublishTitle")}</h2>
-      <p className="mt-2 text-xs text-ink-muted">{t("org:cmsSetupHint")}</p>
+      <p className="mt-base text-xs text-ink-muted">{t("org:cmsSetupHint")}</p>
 
-      <div className="mt-4">
+      <div className="mt-wide">
         <label className="block text-xs text-ink-muted" htmlFor="org-knowledge-title">
           {t("org:knowledgeTitleLabel")}
         </label>
         <input
           id="org-knowledge-title"
-          className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+          className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder={t("org:knowledgeTitlePlaceholder")}
@@ -115,18 +115,18 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
         />
       </div>
 
-      <label className="mt-4 block text-xs text-ink-muted" htmlFor="org-knowledge-text">
+      <label className="mt-wide block text-xs text-ink-muted" htmlFor="org-knowledge-text">
         {t("org:knowledgeTextLabel")}
       </label>
       <textarea
         id="org-knowledge-text"
-        className="mt-1 min-h-48 w-full rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+        className="mt-tight min-h-48 w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={t("org:knowledgeTextPlaceholder")}
       />
 
-      <div className="mt-3 flex flex-wrap items-center gap-3">
+      <div className="mt-soft flex flex-wrap items-center gap-soft">
         <input
           ref={fileInputRef}
           type="file"
@@ -136,7 +136,7 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
         />
         <button
           type="button"
-          className="rounded-tile border border-line px-3 py-1.5 text-sm text-ink-primary hover:bg-white/5"
+          className="rounded-tile border border-line px-soft py-snug text-sm text-ink-primary hover:bg-white/5"
           onClick={() => fileInputRef.current?.click()}
         >
           {t("org:knowledgeFileButton")}
@@ -144,15 +144,15 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
         <button
           type="button"
           disabled={busy}
-          className="rounded-tile bg-sky-600 px-4 py-1.5 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+          className="rounded-tile bg-sky-600 px-wide py-snug text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
           onClick={() => void publish()}
         >
           {busy ? t("org:knowledgePublishing") : t("org:cmsPublish")}
         </button>
       </div>
 
-      {msg ? <p className="mt-3 text-sm text-emerald-400/90">{msg}</p> : null}
-      {err ? <p className="mt-3 text-sm text-red-400/90">{err}</p> : null}
+      {msg ? <p className="mt-soft text-sm text-emerald-400/90">{msg}</p> : null}
+      {err ? <p className="mt-soft text-sm text-red-400/90">{err}</p> : null}
     </section>
   );
 }

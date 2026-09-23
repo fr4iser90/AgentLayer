@@ -337,7 +337,7 @@ export default function SharesSettings() {
    */
   function renderPolicyField(field: string, resourceId: string, draft: SharePolicy) {
     const cls =
-      "mt-1 w-full rounded-tile border border-line bg-canvas px-2 py-1.5 text-ink-primary text-sm";
+      "mt-tight w-full rounded-tile border border-line bg-canvas px-base py-snug text-ink-primary text-sm";
     switch (field) {
       case "days_ahead":
         return (
@@ -437,23 +437,23 @@ export default function SharesSettings() {
     !!newResourceType && (!needsIdentifier || !!newResourceIdentifier.trim());
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8">
+    <div className="mx-auto max-w-4xl space-y-deep">
       <div>
-        <h1 className="flex items-center gap-2 text-lg font-semibold text-ink-primary">
+        <h1 className="flex items-center gap-base text-lg font-semibold text-ink-primary">
           <LinkIcon aria-hidden className="h-5 w-5" />
           {t("settings:sharesTitle")}
         </h1>
-        <p className="mt-2 text-sm text-ink-muted">{t("settings:sharesSubtitle")}</p>
+        <p className="mt-base text-sm text-ink-muted">{t("settings:sharesSubtitle")}</p>
       </div>
 
-      <div className="flex gap-4 border-b border-line pb-1">
+      <div className="flex gap-wide border-b border-line pb-tight">
         <button
           type="button"
           onClick={() => {
             setActiveTab("outgoing");
             setSelectedFriend(null);
           }}
-          className={`px-3 py-2 text-sm font-medium transition-colors ${
+          className={`px-soft py-base text-sm font-medium transition-colors ${
             activeTab === "outgoing"
               ? "text-ink-primary border-b-2 border-sky-500"
               : "text-ink-muted hover:text-white"
@@ -467,7 +467,7 @@ export default function SharesSettings() {
             setActiveTab("incoming");
             setSelectedFriend(null);
           }}
-          className={`px-3 py-2 text-sm font-medium transition-colors ${
+          className={`px-soft py-base text-sm font-medium transition-colors ${
             activeTab === "incoming"
               ? "text-ink-primary border-b-2 border-sky-500"
               : "text-ink-muted hover:text-white"
@@ -482,7 +482,7 @@ export default function SharesSettings() {
       ) : err ? (
         <p className="text-sm text-amber-400">{err}</p>
       ) : activeTab === "outgoing" ? (
-        <div className="space-y-6">
+        <div className="space-y-broad">
           {Object.entries(groupByUser(outgoing)).map(([userId, shares]) => {
             const friend = shares[0];
             const resourceNames = shares
@@ -491,7 +491,7 @@ export default function SharesSettings() {
             return (
               <div
                 key={userId}
-                className="rounded-sheet border border-line bg-card p-4 cursor-pointer hover:bg-white/[0.02] transition-colors"
+                className="rounded-sheet border border-line bg-card p-wide cursor-pointer hover:bg-white/[0.02] transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   void loadFriendShares(friend);
@@ -500,7 +500,7 @@ export default function SharesSettings() {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="font-medium text-ink-primary">{friend.display_name || friend.email}</div>
-                    <div className="text-sm text-ink-muted mt-1">{resourceNames.join(", ")}</div>
+                    <div className="text-sm text-ink-muted mt-tight">{resourceNames.join(", ")}</div>
                   </div>
                   <div className="text-sm text-ink-muted">
                     {t("settings:sharesResourcesCount", {
@@ -513,13 +513,13 @@ export default function SharesSettings() {
           })}
 
           {Object.keys(groupByUser(outgoing)).length === 0 && (
-            <div className="p-8 text-center text-ink-muted rounded-sheet border border-line bg-card">
+            <div className="p-deep text-center text-ink-muted rounded-sheet border border-line bg-card">
               {t("settings:sharesNoneOutgoing")}
             </div>
           )}
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-broad">
           {Object.entries(groupByUser(incoming)).map(([userId, shares]) => {
             const friend = shares[0];
             const resourceNames = shares
@@ -528,12 +528,12 @@ export default function SharesSettings() {
             return (
               <div
                 key={userId}
-                className="rounded-sheet border border-line bg-card p-4"
+                className="rounded-sheet border border-line bg-card p-wide"
               >
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="font-medium text-ink-primary">{friend.display_name || friend.email}</div>
-                    <div className="text-sm text-ink-muted mt-1">{resourceNames.join(", ")}</div>
+                    <div className="text-sm text-ink-muted mt-tight">{resourceNames.join(", ")}</div>
                   </div>
                   <div className="text-sm text-ink-muted">
                     {t("settings:sharesResourcesCount", { count: shares.length })}
@@ -544,7 +544,7 @@ export default function SharesSettings() {
           })}
 
           {Object.keys(groupByUser(incoming)).length === 0 && (
-            <div className="p-8 text-center text-ink-muted rounded-sheet border border-line bg-card">
+            <div className="p-deep text-center text-ink-muted rounded-sheet border border-line bg-card">
               {t("settings:sharesNoneIncoming")}
             </div>
           )}
@@ -552,20 +552,20 @@ export default function SharesSettings() {
       )}
 
       {!loading && (
-        <div className="rounded-sheet border border-line bg-card p-4">
+        <div className="rounded-sheet border border-line bg-card p-wide">
           <h3 className="font-medium text-ink-primary">
             {t("settings:sharesPublishedTitle")}
           </h3>
-          <p className="mt-1 text-sm text-ink-muted">
+          <p className="mt-tight text-sm text-ink-muted">
             {t("settings:sharesPublishedHint")}
           </p>
 
           {myProjections.length === 0 ? (
-            <p className="mt-4 text-sm text-ink-muted">
+            <p className="mt-wide text-sm text-ink-muted">
               {t("settings:sharesPublishedNone")}
             </p>
           ) : (
-            <div className="mt-4 space-y-3">
+            <div className="mt-wide space-y-soft">
               {myProjections.map((row) => {
                 const key = projectionKey(row.resource_type, row.resource_identifier);
                 const draft = kindDraft[key] ?? row.projection_kind ?? "";
@@ -573,13 +573,13 @@ export default function SharesSettings() {
                 return (
                   <div
                     key={key}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-line/60 p-3"
+                    className="flex flex-wrap items-center justify-between gap-soft rounded-card border border-line/60 p-soft"
                   >
                     <div className="min-w-[10rem]">
                       <div className="text-ink-primary">
                         {displayResourceName(row.resource_type, catalog)}
                       </div>
-                      <div className="mt-0.5 text-xs text-ink-muted">
+                      <div className="mt-hair text-xs text-ink-muted">
                         {t("settings:sharesPublishedIdentifier", {
                           value: row.resource_identifier,
                         })}{" "}
@@ -592,7 +592,7 @@ export default function SharesSettings() {
                       </div>
                     </div>
                     {row.available_kinds.length > 0 ? (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-base">
                         <select
                           value={draft}
                           disabled={publishing}
@@ -602,7 +602,7 @@ export default function SharesSettings() {
                           onChange={(e) =>
                             setKindDraft((prev) => ({ ...prev, [key]: e.target.value }))
                           }
-                          className="rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                          className="rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
                         >
                           {row.available_kinds.map((kind) => (
                             <option key={kind} value={kind}>
@@ -614,7 +614,7 @@ export default function SharesSettings() {
                           type="button"
                           disabled={publishing || unchanged || !draft}
                           onClick={() => void publishKind(row)}
-                          className="rounded-tile bg-emerald-700 px-3 py-1.5 text-sm text-ink-on-fill disabled:opacity-50"
+                          className="rounded-tile bg-emerald-700 px-soft py-snug text-sm text-ink-on-fill disabled:opacity-50"
                         >
                           {t("settings:sharesPublishButton")}
                         </button>
@@ -633,18 +633,18 @@ export default function SharesSettings() {
       )}
 
       {selectedFriend && friendShares && (
-        <div className="rounded-sheet border border-line bg-card overflow-hidden mt-8">
-          <div className="p-4 border-b border-line">
+        <div className="rounded-sheet border border-line bg-card overflow-hidden mt-deep">
+          <div className="p-wide border-b border-line">
             <h3 className="font-medium text-ink-primary">
               {selectedFriend.display_name || selectedFriend.email}
             </h3>
-            <p className="text-sm text-ink-muted mt-1">{t("settings:sharesManageFriend")}</p>
+            <p className="text-sm text-ink-muted mt-tight">{t("settings:sharesManageFriend")}</p>
           </div>
 
-          <div className="p-4 space-y-6">
+          <div className="p-wide space-y-broad">
             <div>
-              <h4 className="text-sm font-medium mb-4 text-ink-primary">{t("settings:sharesWhatYouShare")}</h4>
-              <div className="space-y-4">
+              <h4 className="text-sm font-medium mb-wide text-ink-primary">{t("settings:sharesWhatYouShare")}</h4>
+              <div className="space-y-wide">
                 {resourceTypesForFriend(friendShares).map((resourceId) => {
                   const enabled = friendShares.outgoing.includes(resourceId);
                   const grant = grantForResource(friendShares.outgoing_grants, resourceId);
@@ -653,7 +653,7 @@ export default function SharesSettings() {
                   return (
                     <div
                       key={resourceId}
-                      className="rounded-card border border-line/60 p-3 space-y-3"
+                      className="rounded-card border border-line/60 p-soft space-y-soft"
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-ink-primary">{displayResourceName(resourceId, catalog)}</span>
@@ -670,7 +670,7 @@ export default function SharesSettings() {
                       </div>
 
                       {enabled && (
-                        <div className="grid gap-3 sm:grid-cols-2 pl-1">
+                        <div className="grid gap-soft sm:grid-cols-2 pl-tight">
                           {(catalogEntry(resourceId, catalog)?.policy_fields || []).map(
                             (field) => (
                               <div
@@ -696,7 +696,7 @@ export default function SharesSettings() {
                     </div>
                   );
                 })}
-                <div className="flex flex-wrap items-end gap-2 pt-2 border-t border-line/60">
+                <div className="flex flex-wrap items-end gap-base pt-base border-t border-line/60">
                   <label className="block text-sm flex-1 min-w-[12rem]">
                     <span className="text-ink-muted">
                       {t("settings:sharesSelectResourceType")}
@@ -704,7 +704,7 @@ export default function SharesSettings() {
                     <select
                       value={newResourceType}
                       onChange={(e) => setNewResourceType(e.target.value)}
-                      className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1.5 text-ink-primary text-sm"
+                      className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-ink-primary text-sm"
                     >
                       <option value="" disabled>
                         {t("settings:sharesSelectTypePlaceholder")}
@@ -726,7 +726,7 @@ export default function SharesSettings() {
                         value={newResourceIdentifier}
                         placeholder={t("settings:sharesIdentifierPlaceholder")}
                         onChange={(e) => setNewResourceIdentifier(e.target.value)}
-                        className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1.5 text-ink-primary text-sm"
+                        className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-ink-primary text-sm"
                       />
                     </label>
                   )}
@@ -743,7 +743,7 @@ export default function SharesSettings() {
                       setNewResourceType("");
                       setNewResourceIdentifier("");
                     }}
-                    className="rounded-tile bg-emerald-700 px-3 py-1.5 text-sm text-ink-on-fill disabled:opacity-50"
+                    className="rounded-tile bg-emerald-700 px-soft py-snug text-sm text-ink-on-fill disabled:opacity-50"
                   >
                     {t("settings:sharesAddResource")}
                   </button>
@@ -756,16 +756,16 @@ export default function SharesSettings() {
               </div>
             </div>
 
-            <div className="border-t border-line pt-6">
-              <h4 className="text-sm font-medium mb-4 text-ink-primary">{t("settings:sharesWhatTheyShare")}</h4>
-              <div className="space-y-3">
+            <div className="border-t border-line pt-broad">
+              <h4 className="text-sm font-medium mb-wide text-ink-primary">{t("settings:sharesWhatTheyShare")}</h4>
+              <div className="space-y-soft">
                 {resourceTypesForFriend(friendShares).map((resourceId) => {
                   const grant = grantForResource(friendShares.incoming_grants, resourceId);
                   const enabled = friendShares.incoming.includes(resourceId);
                   return (
                     <div
                       key={`in-${resourceId}`}
-                      className="flex items-center justify-between py-2"
+                      className="flex items-center justify-between py-base"
                     >
                       <div>
                         <span className="text-ink-primary">{displayResourceName(resourceId, catalog)}</span>

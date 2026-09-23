@@ -396,25 +396,25 @@ export function AdminTools() {
     return (
       <li
         key={pid}
-        className="rounded-card border border-line bg-card p-3 text-xs text-ink-primary"
+        className="rounded-card border border-line bg-card p-soft text-xs text-ink-primary"
       >
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <div className="flex flex-col gap-base sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1 space-y-base">
+            <div className="flex flex-wrap items-center gap-x-base gap-y-tight">
               <span className="font-mono text-sm font-semibold text-ink-primary">{pid}</span>
               {p.version ? <span className="text-meta text-ink-muted">v{p.version}</span> : null}
               {p.admin_bucket ? (
-                <span className="rounded-tile bg-emerald-950/60 px-1.5 py-0.5 text-meta text-emerald-200/90">
+                <span className="rounded-tile bg-emerald-950/60 px-snug py-hair text-meta text-emerald-200/90">
                   {t("admin:toolsBadgeBucket", { name: p.admin_bucket })}
                 </span>
               ) : null}
               {p.domain ? (
-                <span className="rounded-tile bg-white/10 px-1.5 py-0.5 text-meta text-ink-secondary">
+                <span className="rounded-tile bg-white/10 px-snug py-hair text-meta text-ink-secondary">
                   {t("admin:toolsBadgeDomain", { name: p.domain })}
                 </span>
               ) : null}
               <span
-                className="rounded-tile bg-violet-900/50 px-1.5 py-0.5 text-meta text-violet-100"
+                className="rounded-tile bg-violet-900/50 px-snug py-hair text-meta text-violet-100"
                 title={t("admin:effectiveRunContextTitle")}
               >
                 {t("admin:toolsBadgeRun", { ctx: effCtx })}
@@ -426,25 +426,25 @@ export function AdminTools() {
               </span>
               {effMr ? (
                 <span
-                  className="rounded-tile bg-amber-950/50 px-1.5 py-0.5 text-meta text-amber-100"
+                  className="rounded-tile bg-amber-950/50 px-snug py-hair text-meta text-amber-100"
                   title={t("admin:effectiveMinRoleTitle")}
                 >
                   {t("admin:toolsBadgeAccess", { role: effMr })}
                 </span>
               ) : null}
               {effTenants?.length ? (
-                <span className="rounded-tile bg-slate-800 px-1.5 py-0.5 text-meta text-slate-200">
+                <span className="rounded-tile bg-slate-800 px-snug py-hair text-meta text-slate-200">
                   {t("admin:toolsBadgeTenants", { ids: effTenants.join(",") })}
                 </span>
               ) : null}
               {p.os_support?.length ? (
-                <span className="rounded-tile bg-white/10 px-1.5 py-0.5 text-meta text-ink-secondary">
+                <span className="rounded-tile bg-white/10 px-snug py-hair text-meta text-ink-secondary">
                   {t("admin:toolsBadgeOs", { list: p.os_support.join(",") })}
                 </span>
               ) : null}
               {p.risk_level ? (
                 <span
-                  className={`rounded-tile px-1.5 py-0.5 text-meta font-medium ${riskBadgeClass(p.risk_level)}`}
+                  className={`rounded-tile px-snug py-hair text-meta font-medium ${riskBadgeClass(p.risk_level)}`}
                 >
                   {t("admin:toolsBadgeRisk", { level: p.risk_level })}
                 </span>
@@ -453,7 +453,7 @@ export function AdminTools() {
             <p className="truncate font-mono text-meta text-ink-muted" title={p.source}>
               {p.source}
             </p>
-            <div className="grid gap-1.5 sm:grid-cols-2">
+            <div className="grid gap-snug sm:grid-cols-2">
               <div>
                 <span className="text-ink-muted">{t("admin:toolsColTools")}</span>{" "}
                 <span className="break-all font-mono text-meta text-ink-secondary">
@@ -507,7 +507,7 @@ export function AdminTools() {
               </div>
             </div>
           </div>
-          <label className="flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap text-meta text-ink-primary">
+          <label className="flex shrink-0 cursor-pointer items-center gap-base whitespace-nowrap text-meta text-ink-primary">
             <input
               type="checkbox"
               checked={pol.enabled}
@@ -516,11 +516,11 @@ export function AdminTools() {
             {t("admin:toolsPolicyEnabled")}
           </label>
         </div>
-        <div className="mt-3 grid grid-cols-1 gap-3 border-t border-line pt-3 sm:grid-cols-2">
-          <label className="flex min-w-0 flex-col gap-1 text-meta text-ink-muted">
+        <div className="mt-soft grid grid-cols-1 gap-soft border-t border-line pt-soft sm:grid-cols-2">
+          <label className="flex min-w-0 flex-col gap-tight text-meta text-ink-muted">
             <span className="text-ink-muted">{t("admin:toolsPolicyMinRole")}</span>
             <select
-              className="w-full rounded-tile border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
+              className="w-full rounded-tile border border-line bg-field px-base py-snug text-xs text-ink-primary"
               value={pol.min_role}
               onChange={(e) =>
                 updatePolicy(pid, { min_role: e.target.value === "admin" ? "admin" : "user" })
@@ -530,13 +530,13 @@ export function AdminTools() {
               <option value="admin">{t("admin:toolsMinRoleAdmin")}</option>
             </select>
           </label>
-          <label className="flex min-w-0 flex-col gap-1 text-meta text-ink-muted">
+          <label className="flex min-w-0 flex-col gap-tight text-meta text-ink-muted">
             <span className="text-ink-muted">
               {t("admin:toolsPolicyTenantIds")} (<span className="font-mono">tenants.id</span>)
             </span>
             <input
               type="text"
-              className="w-full rounded-tile border border-line bg-field px-2 py-1.5 font-mono text-xs text-ink-primary placeholder:text-neutral-500"
+              className="w-full rounded-tile border border-line bg-field px-base py-snug font-mono text-xs text-ink-primary placeholder:text-neutral-500"
               placeholder={t("admin:toolsPolicyTenantIdsPlaceholder")}
               value={tenantInputByPkg[pid] ?? ""}
               onChange={(e) => {
@@ -551,18 +551,18 @@ export function AdminTools() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-5xl px-wide py-deep sm:px-broad">
       <h1 className="text-2xl font-semibold text-ink-primary">{t("admin:toolsRegistryTitle")}</h1>
-      <p className="mt-2 max-w-2xl text-sm text-ink-muted">
+      <p className="mt-base max-w-2xl text-sm text-ink-muted">
         {t("admin:toolsRegistryIntro")}{" "}
         <span className="text-ink-muted">{t("admin:toolsRegistryAssignUsers")}</span>
       </p>
 
-      <section className="mt-6 rounded-sheet border border-line bg-card p-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <section className="mt-broad rounded-sheet border border-line bg-card p-wide">
+        <div className="flex flex-col gap-base sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold text-ink-primary">{t("admin:toolsImportTitle")}</h2>
-            <p className="mt-1 max-w-2xl text-xs text-ink-muted">
+            <p className="mt-tight max-w-2xl text-xs text-ink-muted">
               {t("admin:toolsImportIntro")}
             </p>
           </div>
@@ -571,7 +571,7 @@ export function AdminTools() {
           </label>
           <select
             id="tools-import-source-type"
-            className="w-full rounded-tile border border-line bg-field px-2 py-1.5 text-xs text-ink-primary sm:w-56"
+            className="w-full rounded-tile border border-line bg-field px-base py-snug text-xs text-ink-primary sm:w-56"
             value={importSourceType}
             onChange={(e) => setImportSourceType(e.target.value)}
           >
@@ -582,28 +582,28 @@ export function AdminTools() {
             <option value="generic_markdown">{t("admin:toolsImportGeneric")}</option>
           </select>
         </div>
-        <div className="mt-4 grid gap-3 lg:grid-cols-2">
-          <label className="flex flex-col gap-1 text-xs text-ink-muted">
+        <div className="mt-wide grid gap-soft lg:grid-cols-2">
+          <label className="flex flex-col gap-tight text-xs text-ink-muted">
             <span>{t("admin:toolsImportPaste")}</span>
             <textarea
-              className="min-h-40 rounded-tile border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary placeholder:text-neutral-500"
+              className="min-h-40 rounded-tile border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary placeholder:text-neutral-500"
               value={importMarkdown}
               onChange={(e) => setImportMarkdown(e.target.value)}
               placeholder={t("admin:toolsImportPastePlaceholder")}
             />
           </label>
-          <div className="rounded-tile border border-line bg-black/20 p-3 text-xs text-ink-muted">
+          <div className="rounded-tile border border-line bg-black/20 p-soft text-xs text-ink-muted">
             <label className="block">
               <span>{t("admin:toolsImportUpload")}</span>
               <input
-                className="mt-2 block w-full text-xs text-ink-primary file:mr-3 file:rounded-tile file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:text-white hover:file:bg-white/15"
+                className="mt-base block w-full text-xs text-ink-primary file:mr-soft file:rounded-tile file:border-0 file:bg-white/10 file:px-soft file:py-snug file:text-xs file:text-white hover:file:bg-white/15"
                 type="file"
                 multiple
                 accept=".md,.markdown,.txt,.yaml,.yml,.json,.zip"
                 onChange={(e) => setImportFiles(e.target.files)}
               />
             </label>
-            <ul className="mt-3 list-disc space-y-1 pl-4 text-meta">
+            <ul className="mt-soft list-disc space-y-tight pl-wide text-meta">
               <li>{t("admin:toolsImportAllowed")}</li>
               <li>{t("admin:toolsImportLimits")}</li>
               <li>{t("admin:toolsImportZipSafety")}</li>
@@ -612,49 +612,49 @@ export function AdminTools() {
             <button
               type="button"
               disabled={importBusy || (!importMarkdown.trim() && !(importFiles?.length))}
-              className="mt-4 rounded-tile bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+              className="mt-wide rounded-tile bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
               onClick={() => void analyzeImport()}
             >
               {importBusy ? t("admin:toolsImportAnalyzing") : t("admin:toolsImportAnalyze")}
             </button>
           </div>
         </div>
-        {importMsg ? <p className="mt-3 text-sm text-ink-muted">{importMsg}</p> : null}
+        {importMsg ? <p className="mt-soft text-sm text-ink-muted">{importMsg}</p> : null}
         {importResult ? (
-          <div className="mt-4 space-y-3">
-            <div className="rounded-tile border border-line bg-black/20 p-3 text-xs text-ink-secondary">
+          <div className="mt-wide space-y-soft">
+            <div className="rounded-tile border border-line bg-black/20 p-soft text-xs text-ink-secondary">
               {t("admin:toolsImportDetected")}: <span className="font-mono text-ink-primary">{importResult.source_type}</span>{" "}
               <span className="text-ink-muted">
                 ({Math.round(importResult.source_type_confidence * 100)}%)
               </span>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-base flex flex-wrap gap-base">
                 {importResult.sources.map((s) => (
-                  <span key={s.path} className="rounded-tile bg-white/5 px-2 py-1 font-mono text-meta">
+                  <span key={s.path} className="rounded-tile bg-white/5 px-base py-tight font-mono text-meta">
                     {s.path} · {t("admin:toolsImportChars", { count: s.chars })}
                   </span>
                 ))}
               </div>
             </div>
-            <div className="grid gap-3 lg:grid-cols-2">
+            <div className="grid gap-soft lg:grid-cols-2">
               {importResult.candidates.map((c) => (
-                <article key={`${c.kind}:${c.name}`} className="rounded-card border border-line bg-black/20 p-3 text-xs text-ink-primary">
-                  <div className="flex flex-wrap items-center gap-2">
+                <article key={`${c.kind}:${c.name}`} className="rounded-card border border-line bg-black/20 p-soft text-xs text-ink-primary">
+                  <div className="flex flex-wrap items-center gap-base">
                     <span className="font-mono text-sm font-semibold text-ink-primary">{c.name}</span>
-                    <span className="rounded-tile bg-sky-900/60 px-1.5 py-0.5 text-meta text-sky-100">{c.kind}</span>
-                    <span className="rounded-tile bg-amber-900/60 px-1.5 py-0.5 text-meta text-amber-100">
+                    <span className="rounded-tile bg-sky-900/60 px-snug py-hair text-meta text-sky-100">{c.kind}</span>
+                    <span className="rounded-tile bg-amber-900/60 px-snug py-hair text-meta text-amber-100">
                       {t("admin:toolsImportRisk", { risk: c.risk ?? t("admin:toolsImportUnknown") })}
                     </span>
                     {typeof c.confidence === "number" ? (
-                      <span className="rounded-tile bg-white/10 px-1.5 py-0.5 text-meta">
+                      <span className="rounded-tile bg-white/10 px-snug py-hair text-meta">
                         {Math.round(c.confidence * 100)}%
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-2 text-ink-secondary">{c.title}</p>
-                  {c.summary ? <p className="mt-1 text-ink-muted">{c.summary}</p> : null}
-                  <p className="mt-2 font-mono text-meta text-ink-muted">{c.target_dir}</p>
+                  <p className="mt-base text-ink-secondary">{c.title}</p>
+                  {c.summary ? <p className="mt-tight text-ink-muted">{c.summary}</p> : null}
+                  <p className="mt-base font-mono text-meta text-ink-muted">{c.target_dir}</p>
                   {c.determinism_notes?.length ? (
-                    <ul className="mt-2 list-disc space-y-1 pl-4 text-meta text-ink-muted">
+                    <ul className="mt-base list-disc space-y-tight pl-wide text-meta text-ink-muted">
                       {c.determinism_notes.map((n) => <li key={n}>{n}</li>)}
                     </ul>
                   ) : null}
@@ -665,11 +665,11 @@ export function AdminTools() {
         ) : null}
       </section>
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-wide flex flex-wrap gap-base">
         <button
           type="button"
           disabled={busy}
-          className="rounded-tile bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+          className="rounded-tile bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
           onClick={() => void loadAdmin()}
         >
           {t("admin:toolsRegistryRefresh")}
@@ -677,7 +677,7 @@ export function AdminTools() {
         <button
           type="button"
           disabled={busy}
-          className="rounded-tile bg-white/10 px-4 py-2 text-sm font-medium text-ink-primary hover:bg-white/15 disabled:opacity-50"
+          className="rounded-tile bg-white/10 px-wide py-base text-sm font-medium text-ink-primary hover:bg-white/15 disabled:opacity-50"
           onClick={() => void reloadRegistry()}
         >
           {t("admin:toolsRegistryReload")}
@@ -685,19 +685,19 @@ export function AdminTools() {
         <button
           type="button"
           disabled={busy || loading}
-          className="rounded-tile bg-emerald-700 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-emerald-600 disabled:opacity-50"
+          className="rounded-tile bg-emerald-700 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-emerald-600 disabled:opacity-50"
           onClick={() => void savePolicies()}
         >
           {t("admin:toolsRegistrySavePolicy")}
         </button>
       </div>
 
-      {msg ? <p className="mt-3 text-sm text-ink-muted">{msg}</p> : null}
+      {msg ? <p className="mt-soft text-sm text-ink-muted">{msg}</p> : null}
 
       {loading ? (
-        <p className="mt-8 text-sm text-ink-muted">{t("admin:toolsRegistryLoading")}</p>
+        <p className="mt-deep text-sm text-ink-muted">{t("admin:toolsRegistryLoading")}</p>
       ) : (
-        <div className="mt-6 max-h-[min(72vh,calc(100dvh-11rem))] overflow-y-auto overscroll-contain rounded-card border border-line bg-black/20 pr-1">
+        <div className="mt-broad max-h-[min(72vh,calc(100dvh-11rem))] overflow-y-auto overscroll-contain rounded-card border border-line bg-black/20 pr-tight">
           <div className="flex flex-col divide-y divide-line">
             {ADMIN_BUCKET_ORDER.map((bucket) => {
               const raw = groupedPackages[bucket] ?? [];
@@ -709,9 +709,9 @@ export function AdminTools() {
                 : [{ domain: "", items: sectionPkgs }];
 
               return (
-                <details key={bucket} className="group px-2 py-0.5 open:bg-white/[0.03]">
-                  <summary className="cursor-pointer list-none py-2.5 pl-1 [&::-webkit-details-marker]:hidden">
-                    <div className="flex flex-wrap items-baseline justify-between gap-2 pr-1">
+                <details key={bucket} className="group px-base py-hair open:bg-white/[0.03]">
+                  <summary className="cursor-pointer list-none py-firm pl-tight [&::-webkit-details-marker]:hidden">
+                    <div className="flex flex-wrap items-baseline justify-between gap-base pr-tight">
                       <span className="text-sm font-medium text-ink-primary">
                         <span className="font-mono text-ink-muted">{bucket}</span> ·{" "}
                         {t(ADMIN_BUCKET_LABEL_KEYS[bucket])}
@@ -721,18 +721,18 @@ export function AdminTools() {
                       </span>
                     </div>
                   </summary>
-                  <div className="space-y-4 pb-4 pl-1">
+                  <div className="space-y-wide pb-wide pl-tight">
                     {blocks.map((block) => (
                       <div key={block.domain || "_"}>
                         {subdiv ? (
-                          <h3 className="mb-2 border-l-2 border-sky-600/60 pl-2 text-meta font-semibold uppercase tracking-wide text-sky-200/90">
+                          <h3 className="mb-base border-l-2 border-sky-600/60 pl-base text-meta font-semibold uppercase tracking-wide text-sky-200/90">
                             {t("admin:toolsDomainHeader", {
                               domain: block.domain,
                               count: block.items.length,
                             })}
                           </h3>
                         ) : null}
-                        <ul className="flex flex-col gap-2">{block.items.map((p) => renderCard(p))}</ul>
+                        <ul className="flex flex-col gap-base">{block.items.map((p) => renderCard(p))}</ul>
                       </div>
                     ))}
                   </div>
@@ -744,7 +744,7 @@ export function AdminTools() {
       )}
 
       {!loading && totalPackages === 0 ? (
-        <p className="mt-8 text-sm text-ink-muted">{t("admin:toolsRegistryNoneLoaded")}</p>
+        <p className="mt-deep text-sm text-ink-muted">{t("admin:toolsRegistryNoneLoaded")}</p>
       ) : null}
     </div>
   );

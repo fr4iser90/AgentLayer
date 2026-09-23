@@ -17,25 +17,25 @@ type Props = {
 export function PermissionAskCard({ request, onReply, disabled }: Props) {
   const { t } = useTranslation(["chat"]);
   return (
-    <div className="rounded-card border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-ink-primary">
+    <div className="rounded-card border border-amber-500/40 bg-amber-500/10 px-wide py-soft text-sm text-ink-primary">
       <p className="font-medium">
         {t("chat:permissionAskTitle", { tool: request.toolName })}
         {request.round != null ? (
-          <span className="ml-2 text-xs text-ink-muted">
+          <span className="ml-base text-xs text-ink-muted">
             {t("chat:permissionAskRound", { round: request.round })}
           </span>
         ) : null}
       </p>
       {request.argsPreview ? (
-        <pre className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap break-all rounded-tile bg-black/30 p-2 font-mono text-xs text-ink-muted">
+        <pre className="mt-base max-h-32 overflow-auto whitespace-pre-wrap break-all rounded-tile bg-black/30 p-base font-mono text-xs text-ink-muted">
           {request.argsPreview.slice(0, 1200)}
         </pre>
       ) : null}
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-soft flex flex-wrap gap-base">
         <button
           type="button"
           disabled={disabled}
-          className="rounded-tile bg-amber-500/90 px-3 py-1.5 text-xs font-medium text-black disabled:opacity-50"
+          className="rounded-tile bg-amber-500/90 px-soft py-snug text-xs font-medium text-black disabled:opacity-50"
           onClick={() => onReply("once")}
         >
           {t("chat:permissionAllowOnce")}
@@ -43,7 +43,7 @@ export function PermissionAskCard({ request, onReply, disabled }: Props) {
         <button
           type="button"
           disabled={disabled}
-          className="rounded-tile border border-line bg-black/20 px-3 py-1.5 text-xs text-ink-primary disabled:opacity-50"
+          className="rounded-tile border border-line bg-black/20 px-soft py-snug text-xs text-ink-primary disabled:opacity-50"
           onClick={() => onReply("always")}
         >
           {t("chat:permissionAllowAlways")}

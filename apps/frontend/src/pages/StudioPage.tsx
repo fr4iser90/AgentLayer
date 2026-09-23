@@ -147,7 +147,7 @@ export function StudioPage() {
 
   const presetButtonClass = (runKey: string, extra = "") =>
     [
-      "w-full rounded-card border px-3 py-2 text-left text-sm",
+      "w-full rounded-card border px-soft py-base text-left text-sm",
       selectedRunKey === runKey
         ? "border-white/30 bg-white/10 text-ink-primary"
         : "border-transparent text-ink-muted hover:bg-white/5",
@@ -165,22 +165,22 @@ export function StudioPage() {
       closeSidebarAriaLabel={t("common:studio.closePresetsSidebar")}
       desktopWidthClass="md:w-56"
       sidebar={
-        <div className="flex h-full min-h-0 flex-col overflow-y-auto p-3">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+        <div className="flex h-full min-h-0 flex-col overflow-y-auto p-soft">
+          <p className="mb-base text-xs font-semibold uppercase tracking-wide text-ink-muted">
             {t("common:studio.title")}
           </p>
           {txt2img ? (
             <button
               type="button"
               onClick={() => selectPreset(txt2img.run_key)}
-              className={presetButtonClass(txt2img.run_key, "mb-1")}
+              className={presetButtonClass(txt2img.run_key, "mb-tight")}
             >
               <div className="font-medium">{txt2img.title}</div>
               <div className="text-xs text-ink-muted">{txt2img.engine ?? "comfyui"}</div>
             </button>
           ) : null}
 
-          <p className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+          <p className="mb-base mt-broad text-xs font-semibold uppercase tracking-wide text-ink-muted">
             {t("common:studio.inpaint")}
           </p>
           {inpaint ? (
@@ -196,11 +196,11 @@ export function StudioPage() {
         </div>
       }
     >
-      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 md:p-8">
-        <div className="flex flex-wrap items-start gap-2">
+      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-wide md:p-deep">
+        <div className="flex flex-wrap items-start gap-base">
           <button
             type="button"
-            className="shrink-0 rounded-card border border-line bg-black/30 px-2.5 py-1.5 text-meta font-medium text-ink-secondary hover:bg-white/10 md:hidden"
+            className="shrink-0 rounded-card border border-line bg-black/30 px-firm py-snug text-meta font-medium text-ink-secondary hover:bg-white/10 md:hidden"
             aria-expanded={presetSidebarOpen}
             aria-label={t("common:studio.openPresetsSidebar")}
             onClick={() => setPresetSidebarOpen(true)}
@@ -209,19 +209,19 @@ export function StudioPage() {
           </button>
           <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-semibold text-ink-primary">{t("common:studio.title")}</h1>
-            <p className="mt-1 max-w-2xl text-sm text-ink-muted">{t("common:studio.subtitle")}</p>
+            <p className="mt-tight max-w-2xl text-sm text-ink-muted">{t("common:studio.subtitle")}</p>
           </div>
         </div>
 
         {catalogError ? (
-          <p className="mt-4 rounded-card border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+          <p className="mt-wide rounded-card border border-red-900/50 bg-red-950/40 px-soft py-base text-sm text-red-200">
             {catalogError}
           </p>
         ) : null}
 
         {catalog && !catalogError ? (
-          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-            <span className="rounded-pill bg-emerald-950/80 px-2 py-0.5 text-emerald-300">
+          <div className="mt-wide flex flex-wrap items-center gap-base text-sm">
+            <span className="rounded-pill bg-emerald-950/80 px-base py-hair text-emerald-300">
               {t("common:studio.catalogFromServer")}
             </span>
             <span className="text-ink-muted">v{catalog.studio_version ?? "?"}</span>
@@ -239,18 +239,18 @@ export function StudioPage() {
         ) : null}
 
         {preset ? (
-          <div className="mt-8 max-w-xl">
+          <div className="mt-deep max-w-xl">
             <h2 className="text-lg font-medium text-ink-primary">{preset.title}</h2>
-            <p className="mt-2 whitespace-pre-wrap text-sm text-ink-muted">
+            <p className="mt-base whitespace-pre-wrap text-sm text-ink-muted">
               {preset.description}
             </p>
-            <p className="mt-2 font-mono text-xs text-ink-muted">
+            <p className="mt-base font-mono text-xs text-ink-muted">
               run_key: {preset.run_key}
               {preset.workflow_file ? ` · ${preset.workflow_file}` : ""}
             </p>
 
             {schemaProps ? (
-              <div className="mt-6">
+              <div className="mt-broad">
                 <SchemaForm
                   properties={schemaProps}
                   required={required}
@@ -260,12 +260,12 @@ export function StudioPage() {
               </div>
             ) : null}
 
-            <div className="mt-8 flex flex-wrap items-center gap-3">
+            <div className="mt-deep flex flex-wrap items-center gap-soft">
               <button
                 type="button"
                 disabled={jobLoading}
                 onClick={() => void runJob()}
-                className="rounded-sheet bg-white px-5 py-2.5 text-sm font-semibold text-black hover:bg-neutral-200 disabled:opacity-50"
+                className="rounded-sheet bg-white px-roomy py-firm text-sm font-semibold text-black hover:bg-neutral-200 disabled:opacity-50"
               >
                 {jobLoading ? t("common:studio.running") : t("common:studio.run")}
               </button>
@@ -273,14 +273,14 @@ export function StudioPage() {
             </div>
 
             {jobError ? (
-              <p className="mt-4 rounded-card border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+              <p className="mt-wide rounded-card border border-red-900/50 bg-red-950/40 px-soft py-base text-sm text-red-200">
                 {jobError}
               </p>
             ) : null}
 
             {previewUrl ? (
-              <div className="mt-6">
-                <p className="mb-2 text-sm text-ink-secondary">{t("common:studio.result")}</p>
+              <div className="mt-broad">
+                <p className="mb-base text-sm text-ink-secondary">{t("common:studio.result")}</p>
                 <img
                   src={previewUrl}
                   alt={t("common:studio.generatedImageAlt")}
@@ -288,13 +288,13 @@ export function StudioPage() {
                 />
               </div>
             ) : jobResult ? (
-              <pre className="mt-4 max-h-64 overflow-auto rounded-card border border-line bg-[#111] p-3 text-xs text-ink-secondary">
+              <pre className="mt-wide max-h-64 overflow-auto rounded-card border border-line bg-[#111] p-soft text-xs text-ink-secondary">
                 {JSON.stringify(jobResult, null, 2)}
               </pre>
             ) : null}
           </div>
         ) : catalog && !catalogError ? (
-          <p className="mt-8 text-ink-muted">{t("common:studio.noPresetSelected")}</p>
+          <p className="mt-deep text-ink-muted">{t("common:studio.noPresetSelected")}</p>
         ) : null}
       </div>
     </CollapsibleSidebarShell>

@@ -10,7 +10,7 @@ export function LegalFooterLinks() {
   return (
     <>
       {index.pages.map((page, i) => (
-        <span key={page.slug} className="inline-flex items-center gap-x-4">
+        <span key={page.slug} className="inline-flex items-center gap-x-wide">
           {i > 0 ? (
             <span className="text-white/15" aria-hidden>
               ·

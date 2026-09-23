@@ -107,18 +107,18 @@ export function OrgSetupPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-10">
+    <div className="mx-auto max-w-3xl px-broad py-page">
       <h1 className="text-xl font-semibold text-ink-primary">{t("org:setupPageTitle")}</h1>
-      <p className="mt-2 text-sm text-ink-muted">{t("org:setupPageIntro")}</p>
+      <p className="mt-base text-sm text-ink-muted">{t("org:setupPageIntro")}</p>
 
       {wizardStep === 1 ? (
-        <form onSubmit={(e) => void saveProfile(e)} className="mt-8 space-y-4">
+        <form onSubmit={(e) => void saveProfile(e)} className="mt-deep space-y-wide">
           <label className="block text-xs text-ink-muted" htmlFor="org-name">
             {t("org:setupOrgName")}
           </label>
           <input
             id="org-name"
-            className="w-full rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+            className="w-full rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
@@ -128,7 +128,7 @@ export function OrgSetupPage() {
           </label>
           <input
             id="org-vertical"
-            className="w-full rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+            className="w-full rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
             value={verticalProfile}
             onChange={(e) => setVerticalProfile(e.target.value)}
             required
@@ -138,7 +138,7 @@ export function OrgSetupPage() {
           <button
             type="submit"
             disabled={busy}
-            className="rounded-tile bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+            className="rounded-tile bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
           >
             {t("org:setupContinue")}
           </button>
@@ -146,21 +146,21 @@ export function OrgSetupPage() {
       ) : null}
 
       {wizardStep === 2 ? (
-        <div className="mt-8 space-y-6">
-          <label className="flex cursor-pointer items-start gap-2 text-sm text-ink-primary">
+        <div className="mt-deep space-y-broad">
+          <label className="flex cursor-pointer items-start gap-base text-sm text-ink-primary">
             <input
               type="checkbox"
-              className="mt-1 rounded-tile border-line"
+              className="mt-tight rounded-tile border-line"
               checked={disclaimerAccepted}
               onChange={(e) => setDisclaimerAccepted(e.target.checked)}
             />
             <span>{t("org:setupDisclaimer")}</span>
           </label>
 
-          <div className="rounded-card border border-line p-4">
+          <div className="rounded-card border border-line p-wide">
             <p className="text-sm font-medium text-ink-primary">{t("org:setupContentStep")}</p>
-            <p className="mt-1 text-xs text-ink-muted">{t("org:setupContentHint")}</p>
-            <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
+            <p className="mt-tight text-xs text-ink-muted">{t("org:setupContentHint")}</p>
+            <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
               <input
                 type="checkbox"
                 className="rounded-tile border-line"
@@ -173,7 +173,7 @@ export function OrgSetupPage() {
               {t("org:setupStartEmpty")}
             </label>
             {!startEmpty ? (
-              <div className="mt-4">
+              <div className="mt-wide">
                 <OrgKnowledgePublishSection onPublished={() => setPublished(true)} />
               </div>
             ) : null}
@@ -183,7 +183,7 @@ export function OrgSetupPage() {
           <button
             type="button"
             disabled={busy}
-            className="rounded-tile bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+            className="rounded-tile bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
             onClick={() => void finishSetup()}
           >
             {busy ? t("org:setupFinishing") : t("org:setupFinish")}

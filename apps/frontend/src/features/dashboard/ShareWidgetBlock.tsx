@@ -115,22 +115,22 @@ export function ShareWidgetBlockBody(props: { block: UiBlock }) {
   const kind = preview?.projection_kind;
 
   return (
-    <section className="rounded-sheet border border-line bg-card p-4">
+    <section className="rounded-sheet border border-line bg-card p-wide">
       <h3 className="text-sm font-medium text-ink-primary">
         {label || t("dashboard:shareWidgetTitle")}
       </h3>
-      <p className="mt-1 text-meta uppercase tracking-wide text-ink-muted">
+      <p className="mt-tight text-meta uppercase tracking-wide text-ink-muted">
         {resourceType}
         {kind ? ` · ${kind}` : ""} · {t("dashboard:shareWidgetDays", { count: effectiveDays })}
         {preview?.projection_stale ? ` · ${t("dashboard:shareWidgetStale")}` : ""}
       </p>
       {err ? (
-        <p className="mt-3 text-sm text-amber-300">{err}</p>
+        <p className="mt-soft text-sm text-amber-300">{err}</p>
       ) : (
-        <pre className="mt-3 whitespace-pre-wrap text-sm text-ink-primary font-sans">{summary}</pre>
+        <pre className="mt-soft whitespace-pre-wrap text-sm text-ink-primary font-sans">{summary}</pre>
       )}
       {publicShareToken ? null : (
-        <button type="button" className="mt-2 text-xs text-sky-400 hover:underline" onClick={() => void load()}>
+        <button type="button" className="mt-base text-xs text-sky-400 hover:underline" onClick={() => void load()}>
           {t("dashboard:shareWidgetRefresh")}
         </button>
       )}

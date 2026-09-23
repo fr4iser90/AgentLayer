@@ -92,12 +92,12 @@ function AddBlockToolbar(props: {
   const { t } = useTranslation(["dashboard"]);
   const { definitions, onAdd, compact } = props;
   return (
-    <div className={`flex flex-wrap gap-2 ${compact ? "" : "mb-1"}`}>
+    <div className={`flex flex-wrap gap-base ${compact ? "" : "mb-tight"}`}>
       {definitions.map((definition) => (
         <button
           key={definition.type}
           type="button"
-          className="dashboard-grid-no-drag rounded-card bg-sky-600 px-3 py-1.5 text-xs font-medium text-ink-on-fill hover:bg-sky-500"
+          className="dashboard-grid-no-drag rounded-card bg-sky-600 px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-sky-500"
           onClick={() => onAdd(definition.type)}
         >
           {t(definition.addLabelKey as "dashboard:addList")}
@@ -268,7 +268,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
 
   if (!layout.blocks.length) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-soft">
         {editMode && !hideToolbar ? <AddBlockToolbar definitions={toolbarDefinitions} onAdd={addBlock} /> : null}
         <p className="text-sm text-ink-muted">{t("dashboard:noBlocksInLayout")}</p>
       </div>
@@ -339,15 +339,15 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                 {hasUnread ? <AgentUpdateBadge title={badgeTitle} pulse={isHighlighted} /> : null}
                 <div className={blockShellClassForBlock(b)}>
                   {showBlockToolbar || editMode ? (
-                    <div className="dashboard-grid-drag-handle sticky top-0 z-10 flex cursor-grab items-center gap-2 border-b border-line-subtle bg-card px-2 py-1 active:cursor-grabbing">
+                    <div className="dashboard-grid-drag-handle sticky top-0 z-10 flex cursor-grab items-center gap-base border-b border-line-subtle bg-card px-base py-tight active:cursor-grabbing">
                       <span className="min-w-0 flex-1 truncate text-meta font-medium uppercase tracking-wide text-ink-muted">
                         {blockTitle(b)}
                       </span>
-                      <div className="flex shrink-0 gap-1">
+                      <div className="flex shrink-0 gap-tight">
                         {canExpand ? (
                           <button
                             type="button"
-                            className="dashboard-grid-no-drag rounded-tile px-2 py-0.5 text-xs text-sky-200 hover:bg-sky-950/50"
+                            className="dashboard-grid-no-drag rounded-tile px-base py-hair text-xs text-sky-200 hover:bg-sky-950/50"
                             title={t("dashboard:blockExpand")}
                             aria-label={t("dashboard:blockExpand")}
                             onClick={() => {
@@ -362,7 +362,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                           <button
                             type="button"
                             className={[
-                              "dashboard-grid-no-drag rounded-tile px-2 py-0.5 text-xs",
+                              "dashboard-grid-no-drag rounded-tile px-base py-hair text-xs",
                               chatFocusedBlockId === b.id
                                 ? "bg-emerald-900/60 text-emerald-100"
                                 : "text-emerald-200 hover:bg-emerald-950/50",
@@ -378,7 +378,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                         {canConfigureBlock ? (
                           <button
                             type="button"
-                            className="dashboard-grid-no-drag rounded-tile px-2 py-0.5 text-xs text-amber-200 hover:bg-amber-950/50"
+                            className="dashboard-grid-no-drag rounded-tile px-base py-hair text-xs text-amber-200 hover:bg-amber-950/50"
                             title={t("dashboard:blockSettingsTitle")}
                             aria-label={t("dashboard:blockSettingsTitle")}
                             onClick={() => setSettingsBlockId(b.id)}
@@ -389,7 +389,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                         {onPinBlock && b.type !== "dashboard_ref" ? (
                           <button
                             type="button"
-                            className="dashboard-grid-no-drag rounded-tile px-2 py-0.5 text-xs text-violet-200 hover:bg-violet-950/50"
+                            className="dashboard-grid-no-drag rounded-tile px-base py-hair text-xs text-violet-200 hover:bg-violet-950/50"
                             title={t("dashboard:pinBlockHint")}
                             onClick={() => onPinBlock(b.id)}
                           >
@@ -410,7 +410,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                       </div>
                     </div>
                   ) : null}
-                  <div className="min-h-0 flex-1 p-2">
+                  <div className="min-h-0 flex-1 p-base">
                     <DashboardBlockTile
                       block={b}
                       data={data}
@@ -438,7 +438,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
   );
 
   return (
-    <div className={`min-w-0 space-y-3 ${embedded ? "" : ""}`}>
+    <div className={`min-w-0 space-y-soft ${embedded ? "" : ""}`}>
       {editMode && !hideToolbar ? (
         <AddBlockToolbar definitions={toolbarDefinitions} onAdd={addBlock} />
       ) : null}

@@ -13,14 +13,14 @@ export function DocsPage() {
   ];
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto px-6 py-8">
+    <div className="h-full min-h-0 overflow-y-auto px-broad py-deep">
       <div className="mx-auto max-w-xl">
         <h1 className="text-lg font-semibold text-ink-primary">{t("common:docs.title")}</h1>
-        <p className="mt-2 text-sm text-ink-muted">
+        <p className="mt-base text-sm text-ink-muted">
           {t("common:docs.intro")}{" "}
-          <code className="rounded-tile bg-white/5 px-1 py-0.5 text-xs text-ink-secondary">docs/</code>.
+          <code className="rounded-tile bg-white/5 px-tight py-hair text-xs text-ink-secondary">docs/</code>.
         </p>
-        <ul className="mt-6 flex flex-col gap-2">
+        <ul className="mt-broad flex flex-col gap-base">
           {LINKS.map((item) => (
             <li key={item.href}>
               <a

@@ -86,39 +86,39 @@ function ModelLeaderboardTable({
       <table className="w-full min-w-[640px] text-left text-xs">
         <thead>
           <tr className="text-ink-muted">
-            <th className="py-1 pr-3">#</th>
-            <th className="py-1 pr-3">{t("admin:benchColProviderModel")}</th>
-            <th className="py-1 pr-3">{t("admin:benchStatsRuns")}</th>
-            <th className="py-1 pr-3">{t("admin:benchStatsSamples")}</th>
-            <th className="py-1 pr-3">{t("admin:benchStatsPassRate")}</th>
-            <th className="py-1 pr-3">{t("admin:benchColMs")} Ø</th>
-            <th className="py-1 pr-3">{t("admin:benchStatsMedianMs")}</th>
-            <th className="py-1 pr-3">{t("admin:benchStatsBestMs")}</th>
+            <th className="py-tight pr-soft">#</th>
+            <th className="py-tight pr-soft">{t("admin:benchColProviderModel")}</th>
+            <th className="py-tight pr-soft">{t("admin:benchStatsRuns")}</th>
+            <th className="py-tight pr-soft">{t("admin:benchStatsSamples")}</th>
+            <th className="py-tight pr-soft">{t("admin:benchStatsPassRate")}</th>
+            <th className="py-tight pr-soft">{t("admin:benchColMs")} Ø</th>
+            <th className="py-tight pr-soft">{t("admin:benchStatsMedianMs")}</th>
+            <th className="py-tight pr-soft">{t("admin:benchStatsBestMs")}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row, idx) => (
             <tr key={`${row.catalog_owned_by}:${row.model}`} className="border-t border-line-subtle">
-              <td className="py-1.5 pr-3 text-ink-muted">{idx + 1}</td>
-              <td className="py-1.5 pr-3 font-mono text-meta">{formatBenchmarkProviderModel(row)}</td>
-              <td className="py-1.5 pr-3">{row.runs}</td>
-              <td className="py-1.5 pr-3">
+              <td className="py-snug pr-soft text-ink-muted">{idx + 1}</td>
+              <td className="py-snug pr-soft font-mono text-meta">{formatBenchmarkProviderModel(row)}</td>
+              <td className="py-snug pr-soft">{row.runs}</td>
+              <td className="py-snug pr-soft">
                 {row.samples}
                 {row.skipped > 0 ? (
-                  <span className="ml-1 text-ink-muted">
+                  <span className="ml-tight text-ink-muted">
                     (+{row.skipped} {t("admin:benchStatsSkipped")})
                   </span>
                 ) : null}
               </td>
-              <td className="py-1.5 pr-3">
+              <td className="py-snug pr-soft">
                 <PassRateBadge rate={row.pass_rate} />
-                <span className="ml-1 text-ink-muted">
+                <span className="ml-tight text-ink-muted">
                   {row.passed}/{row.samples}
                 </span>
               </td>
-              <td className="py-1.5 pr-3">{formatMs(row.avg_latency_ms)}</td>
-              <td className="py-1.5 pr-3">{formatMs(row.median_latency_ms)}</td>
-              <td className="py-1.5 pr-3 text-emerald-300/90">{formatMs(row.min_latency_ms)}</td>
+              <td className="py-snug pr-soft">{formatMs(row.avg_latency_ms)}</td>
+              <td className="py-snug pr-soft">{formatMs(row.median_latency_ms)}</td>
+              <td className="py-snug pr-soft text-emerald-300/90">{formatMs(row.min_latency_ms)}</td>
             </tr>
           ))}
         </tbody>
@@ -138,10 +138,10 @@ function ScenarioGroupCard({
 }) {
   const title = showSuite ? `${group.suite} · ${group.scenario_id}` : group.scenario_id;
   return (
-    <div className="rounded-card border border-line bg-black/20 p-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
+    <div className="rounded-card border border-line bg-black/20 p-soft">
+      <div className="flex flex-wrap items-baseline justify-between gap-base">
         <h3 className="font-mono text-sm text-ink-primary">{title}</h3>
-        <div className="flex flex-wrap gap-3 text-meta text-ink-muted">
+        <div className="flex flex-wrap gap-soft text-meta text-ink-muted">
           {group.fastest ? (
             <span>
               {t("admin:benchStatsFastestPassing")}:{" "}
@@ -158,27 +158,27 @@ function ScenarioGroupCard({
           ) : null}
         </div>
       </div>
-      <div className="mt-2 overflow-x-auto">
+      <div className="mt-base overflow-x-auto">
         <table className="w-full min-w-[520px] text-left text-meta">
           <thead>
             <tr className="text-ink-muted">
-              <th className="py-1 pr-2">#</th>
-              <th className="py-1 pr-2">{t("admin:benchColProviderModel")}</th>
-              <th className="py-1 pr-2">{t("admin:benchStatsPassRate")}</th>
-              <th className="py-1 pr-2">{t("admin:benchColMs")} Ø</th>
-              <th className="py-1 pr-2">{t("admin:benchStatsSamples")}</th>
+              <th className="py-tight pr-base">#</th>
+              <th className="py-tight pr-base">{t("admin:benchColProviderModel")}</th>
+              <th className="py-tight pr-base">{t("admin:benchStatsPassRate")}</th>
+              <th className="py-tight pr-base">{t("admin:benchColMs")} Ø</th>
+              <th className="py-tight pr-base">{t("admin:benchStatsSamples")}</th>
             </tr>
           </thead>
           <tbody>
             {group.models.map((row, idx) => (
               <tr key={`${row.catalog_owned_by}:${row.model}`} className="border-t border-line-subtle">
-                <td className="py-1 pr-2 text-ink-muted">{idx + 1}</td>
-                <td className="py-1 pr-2 font-mono">{formatBenchmarkProviderModel(row)}</td>
-                <td className="py-1 pr-2">
+                <td className="py-tight pr-base text-ink-muted">{idx + 1}</td>
+                <td className="py-tight pr-base font-mono">{formatBenchmarkProviderModel(row)}</td>
+                <td className="py-tight pr-base">
                   <PassRateBadge rate={row.pass_rate} />
                 </td>
-                <td className="py-1 pr-2">{formatMs(row.avg_latency_ms)}</td>
-                <td className="py-1 pr-2">{row.samples}</td>
+                <td className="py-tight pr-base">{formatMs(row.avg_latency_ms)}</td>
+                <td className="py-tight pr-base">{row.samples}</td>
               </tr>
             ))}
           </tbody>
@@ -259,15 +259,15 @@ export function BenchmarkStatsPanel({
   }, [fastestMinPassRate, t]);
 
   return (
-    <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
-      <section className="rounded-sheet border border-line bg-card p-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="min-h-0 flex-1 space-y-wide overflow-y-auto">
+      <section className="rounded-sheet border border-line bg-card p-wide">
+        <div className="flex flex-wrap items-end justify-between gap-soft">
           <div>
             <h2 className="text-sm font-medium text-ink-primary">{t("admin:benchStatsTitle")}</h2>
-            <p className="mt-1 text-xs text-ink-muted">{t("admin:benchStatsHint")}</p>
-            <p className="mt-1 text-meta text-ink-muted">{t("admin:benchStatsClearHint")}</p>
+            <p className="mt-tight text-xs text-ink-muted">{t("admin:benchStatsHint")}</p>
+            <p className="mt-tight text-meta text-ink-muted">{t("admin:benchStatsClearHint")}</p>
           </div>
-          <div className="flex flex-wrap items-end gap-2">
+          <div className="flex flex-wrap items-end gap-base">
             {onClearHistory ? (
               <Button
                 type="button"
@@ -284,7 +284,7 @@ export function BenchmarkStatsPanel({
               <select
                 value={suiteFilter}
                 onChange={(e) => setSuiteFilter(e.target.value)}
-                className="mt-1 block rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                className="mt-tight block rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
               >
                 <option value="">{t("admin:benchStatsAllSuites")}</option>
                 {suiteOptions
@@ -301,7 +301,7 @@ export function BenchmarkStatsPanel({
               <select
                 value={sinceDays}
                 onChange={(e) => setSinceDays(e.target.value)}
-                className="mt-1 block rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                className="mt-tight block rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
               >
                 {SINCE_DAY_OPTIONS.map((opt) => (
                   <option key={opt.value || "all"} value={opt.value}>
@@ -315,7 +315,7 @@ export function BenchmarkStatsPanel({
               <select
                 value={minSamples}
                 onChange={(e) => setMinSamples(e.target.value)}
-                className="mt-1 block rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                className="mt-tight block rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
               >
                 {MIN_SAMPLE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -329,7 +329,7 @@ export function BenchmarkStatsPanel({
               <select
                 value={badgeMinSamples}
                 onChange={(e) => setBadgeMinSamples(e.target.value)}
-                className="mt-1 block rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                className="mt-tight block rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
               >
                 {BADGE_MIN_SAMPLE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -343,7 +343,7 @@ export function BenchmarkStatsPanel({
               <select
                 value={fastestMinPassRate}
                 onChange={(e) => setFastestMinPassRate(e.target.value)}
-                className="mt-1 block max-w-[11rem] rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                className="mt-tight block max-w-[11rem] rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
               >
                 {FASTEST_PASS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -356,14 +356,14 @@ export function BenchmarkStatsPanel({
               type="button"
               onClick={() => void loadStats()}
               disabled={loading}
-              className="rounded-card border border-line-strong bg-black/30 px-3 py-1.5 text-xs text-ink-primary hover:bg-white/10 disabled:opacity-50"
+              className="rounded-card border border-line-strong bg-black/30 px-soft py-snug text-xs text-ink-primary hover:bg-white/10 disabled:opacity-50"
             >
               {loading ? t("admin:loading") : t("admin:agentTracesRefresh")}
             </button>
           </div>
         </div>
         {stats?.meta ? (
-          <p className="mt-2 text-meta text-ink-muted">
+          <p className="mt-base text-meta text-ink-muted">
             {t("admin:benchStatsMeta", {
               runs: stats.meta.run_count,
               results: stats.meta.result_count,
@@ -377,13 +377,13 @@ export function BenchmarkStatsPanel({
             })}`}
           </p>
         ) : null}
-        {error ? <p className="mt-2 text-sm text-red-400">{error}</p> : null}
+        {error ? <p className="mt-base text-sm text-red-400">{error}</p> : null}
       </section>
 
-      <section className="rounded-sheet border border-line bg-card p-4">
+      <section className="rounded-sheet border border-line bg-card p-wide">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:benchStatsInsightsTitle")}</h2>
-        <p className="mt-1 text-xs text-ink-muted">{t("admin:benchStatsInsightsHint")}</p>
-        <div className="mt-4">
+        <p className="mt-tight text-xs text-ink-muted">{t("admin:benchStatsInsightsHint")}</p>
+        <div className="mt-wide">
           <BenchmarkInsightsPanel
             auth={auth}
             suiteFilter={suiteFilter}
@@ -392,10 +392,10 @@ export function BenchmarkStatsPanel({
         </div>
       </section>
 
-      <section className="rounded-sheet border border-line bg-card p-4">
+      <section className="rounded-sheet border border-line bg-card p-wide">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:benchStatsLeaderboard")}</h2>
-        <p className="mt-1 text-xs text-ink-muted">{t("admin:benchStatsLeaderboardHint")}</p>
-        <div className="mt-3">
+        <p className="mt-tight text-xs text-ink-muted">{t("admin:benchStatsLeaderboardHint")}</p>
+        <div className="mt-soft">
           {loading && !stats ? (
             <p className="text-xs text-ink-muted">{t("admin:loading")}</p>
           ) : (
@@ -404,10 +404,10 @@ export function BenchmarkStatsPanel({
         </div>
       </section>
 
-      <section className="rounded-sheet border border-line bg-card p-4">
+      <section className="rounded-sheet border border-line bg-card p-wide">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:benchStatsByScenario")}</h2>
-        <p className="mt-1 text-xs text-ink-muted">{t("admin:benchStatsByScenarioHint")}</p>
-        <div className="mt-3 space-y-3">
+        <p className="mt-tight text-xs text-ink-muted">{t("admin:benchStatsByScenarioHint")}</p>
+        <div className="mt-soft space-y-soft">
           {filtered.by_scenario.length === 0 ? (
             <p className="text-xs text-ink-muted">{t("admin:benchStatsNoData")}</p>
           ) : (

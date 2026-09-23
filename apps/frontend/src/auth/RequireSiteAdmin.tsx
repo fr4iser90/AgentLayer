@@ -10,7 +10,7 @@ export function RequireSiteAdmin() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center px-4 text-sm text-ink-muted">
+      <div className="flex min-h-[40vh] items-center justify-center px-wide text-sm text-ink-muted">
         {t("auth:loading")}
       </div>
     );

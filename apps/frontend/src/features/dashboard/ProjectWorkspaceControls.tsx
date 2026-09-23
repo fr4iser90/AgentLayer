@@ -102,21 +102,21 @@ export function ProjectWorkspaceControls({
   };
 
   return (
-    <div className="mb-4 rounded-sheet border border-line bg-black/15 p-3">
-      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-muted">
+    <div className="mb-wide rounded-sheet border border-line bg-black/15 p-soft">
+      <div className="mb-base text-xs font-medium uppercase tracking-wide text-ink-muted">
         {t("dashboard:linkedWorkspace")}
       </div>
       {loading ? (
         <p className="text-xs text-ink-muted">{t("dashboard:loading")}</p>
       ) : (
         <>
-          <label className="mb-2 block text-meta text-ink-muted">
+          <label className="mb-base block text-meta text-ink-muted">
             {t("dashboard:workspacePickerLabel")}
             <select
               value={workspaceId}
               disabled={readOnly}
               onChange={(e) => linkExisting(e.target.value)}
-              className="mt-1 w-full rounded-card border border-line bg-field px-3 py-1.5 text-xs text-ink-primary outline-none focus:border-violet-400/60 disabled:opacity-70"
+              className="mt-tight w-full rounded-card border border-line bg-field px-soft py-snug text-xs text-ink-primary outline-none focus:border-violet-400/60 disabled:opacity-70"
             >
               <option value="">{t("dashboard:workspacePickerNone")}</option>
               {workspaces.map((w) => (
@@ -128,17 +128,17 @@ export function ProjectWorkspaceControls({
             </select>
           </label>
           {matched ? (
-            <p className="mb-2 truncate font-mono text-meta text-ink-muted">{matched.path}</p>
+            <p className="mb-base truncate font-mono text-meta text-ink-muted">{matched.path}</p>
           ) : workspaceId ? (
-            <p className="mb-2 text-meta text-amber-300/90">{t("dashboard:workspaceNotFound")}</p>
+            <p className="mb-base text-meta text-amber-300/90">{t("dashboard:workspaceNotFound")}</p>
           ) : null}
           {!readOnly && remote ? (
             <>
               {hasOrgSurface(user) ? (
-                <label className="mb-2 flex items-start gap-2 text-meta text-ink-muted">
+                <label className="mb-base flex items-start gap-base text-meta text-ink-muted">
                   <input
                     type="checkbox"
-                    className="mt-0.5"
+                    className="mt-hair"
                     checked={shareWithCompany}
                     onChange={(e) => setShareWithCompany(e.target.checked)}
                   />
@@ -149,7 +149,7 @@ export function ProjectWorkspaceControls({
                 type="button"
                 disabled={creating}
                 onClick={() => void createFromRemote()}
-                className="rounded-tile border border-violet-500/40 bg-violet-950/30 px-3 py-1.5 text-xs text-violet-100 hover:bg-violet-900/40 disabled:opacity-60"
+                className="rounded-tile border border-violet-500/40 bg-violet-950/30 px-soft py-snug text-xs text-violet-100 hover:bg-violet-900/40 disabled:opacity-60"
               >
                 {creating ? t("dashboard:workspaceCreating") : t("dashboard:workspaceCreateFromRemote")}
               </button>
@@ -157,7 +157,7 @@ export function ProjectWorkspaceControls({
           ) : null}
         </>
       )}
-      {msg ? <p className="mt-2 text-xs text-ink-muted">{msg}</p> : null}
+      {msg ? <p className="mt-base text-xs text-ink-muted">{msg}</p> : null}
     </div>
   );
 }

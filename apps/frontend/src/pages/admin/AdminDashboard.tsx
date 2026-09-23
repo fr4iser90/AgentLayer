@@ -20,12 +20,12 @@ function StatusCard({
   return (
     <Link
       to={to}
-      className="block rounded-sheet border border-line bg-card p-4 transition-colors hover:border-line-strong hover:bg-white/5"
+      className="block rounded-sheet border border-line bg-card p-wide transition-colors hover:border-line-strong hover:bg-white/5"
     >
       <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">{title}</p>
-      <p className="mt-2 text-sm font-medium text-ink-primary">{status}</p>
-      {detail ? <p className="mt-1 text-xs text-ink-muted">{detail}</p> : null}
-      <p className="mt-3 text-xs text-sky-400/90">{t("admin:openCard")}</p>
+      <p className="mt-base text-sm font-medium text-ink-primary">{status}</p>
+      {detail ? <p className="mt-tight text-xs text-ink-muted">{detail}</p> : null}
+      <p className="mt-soft text-xs text-sky-400/90">{t("admin:openCard")}</p>
     </Link>
   );
 }
@@ -55,16 +55,16 @@ export function AdminDashboard() {
   }, [auth]);
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-10">
+    <div className="mx-auto max-w-3xl px-broad py-page">
       <h1 className="text-xl font-semibold text-ink-primary">{t("admin:overview")}</h1>
-      <p className="mt-2 text-sm text-ink-muted">
+      <p className="mt-base text-sm text-ink-muted">
         {t("admin:adminDashboardIntro")}
       </p>
 
       {loading ? (
-        <p className="mt-8 text-sm text-ink-muted">{t("admin:loadingStatus")}</p>
+        <p className="mt-deep text-sm text-ink-muted">{t("admin:loadingStatus")}</p>
       ) : (
-        <div className="mt-8 grid gap-3 sm:grid-cols-2">
+        <div className="mt-deep grid gap-soft sm:grid-cols-2">
           <StatusCard
             title={t("admin:discord")}
             status={op?.discord_bot_enabled ? t("admin:on") : t("admin:off")}

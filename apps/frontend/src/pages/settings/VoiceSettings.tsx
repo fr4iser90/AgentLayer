@@ -66,16 +66,16 @@ export function VoiceSettings() {
   return (
     <div className="mx-auto max-w-2xl">
       <h1 className="text-xl font-semibold text-ink-primary">{t("settings:voiceTitle")}</h1>
-      <p className="mt-2 text-sm text-ink-muted">{t("settings:voiceIntro")}</p>
+      <p className="mt-base text-sm text-ink-muted">{t("settings:voiceIntro")}</p>
       {disabledGlobally ? (
-        <p className="mt-4 rounded-card border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-sm text-amber-100">
+        <p className="mt-wide rounded-card border border-amber-500/30 bg-amber-950/30 px-soft py-base text-sm text-amber-100">
           {t("settings:voiceDisabledOperator")}
         </p>
       ) : null}
-      {msg ? <p className="mt-3 text-sm text-ink-secondary">{msg}</p> : null}
+      {msg ? <p className="mt-soft text-sm text-ink-secondary">{msg}</p> : null}
 
-      <div className="mt-6 space-y-4 rounded-sheet border border-line bg-card p-5">
-        <label className="flex items-center gap-2 text-sm text-ink-primary">
+      <div className="mt-broad space-y-wide rounded-sheet border border-line bg-card p-roomy">
+        <label className="flex items-center gap-base text-sm text-ink-primary">
           <input
             type="checkbox"
             checked={prefs.input_enabled}
@@ -83,7 +83,7 @@ export function VoiceSettings() {
           />
           {t("settings:voiceInputEnabled")}
         </label>
-        <label className="flex items-center gap-2 text-sm text-ink-primary">
+        <label className="flex items-center gap-base text-sm text-ink-primary">
           <input
             type="checkbox"
             checked={prefs.output_enabled}
@@ -91,7 +91,7 @@ export function VoiceSettings() {
           />
           {t("settings:voiceOutputEnabled")}
         </label>
-        <label className="flex items-center gap-2 text-sm text-ink-primary">
+        <label className="flex items-center gap-base text-sm text-ink-primary">
           <input
             type="checkbox"
             checked={prefs.edit_transcript_before_send}
@@ -104,7 +104,7 @@ export function VoiceSettings() {
         <label className="block text-xs text-ink-muted">
           {t("settings:voiceModeWeb")}
           <select
-            className="mt-1 w-full max-w-md rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+            className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
             value={prefs.mode_web}
             onChange={(e) => setPrefs((p) => ({ ...p, mode_web: e.target.value }))}
           >
@@ -117,7 +117,7 @@ export function VoiceSettings() {
         <label className="block text-xs text-ink-muted">
           {t("settings:voiceLanguage")}
           <input
-            className="mt-1 w-full max-w-xs rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+            className="mt-tight w-full max-w-xs rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
             value={prefs.language}
             onChange={(e) => setPrefs((p) => ({ ...p, language: e.target.value }))}
             placeholder={t("settings:voiceLanguagePlaceholder")}
@@ -126,7 +126,7 @@ export function VoiceSettings() {
         <label className="block text-xs text-ink-muted">
           {t("settings:voiceTtsVoice")}
           <input
-            className="mt-1 w-full max-w-xs rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+            className="mt-tight w-full max-w-xs rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
             value={prefs.voice_id ?? ""}
             onChange={(e) =>
               setPrefs((p) => ({ ...p, voice_id: e.target.value.trim() || null }))
@@ -137,7 +137,7 @@ export function VoiceSettings() {
         <label className="block text-xs text-ink-muted">
           {t("settings:voiceModeTelegram")}
           <select
-            className="mt-1 w-full max-w-md rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+            className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
             value={prefs.mode_telegram}
             onChange={(e) => setPrefs((p) => ({ ...p, mode_telegram: e.target.value }))}
           >
@@ -149,7 +149,7 @@ export function VoiceSettings() {
         <label className="block text-xs text-ink-muted">
           {t("settings:voiceModeDiscord")}
           <select
-            className="mt-1 w-full max-w-md rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+            className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
             value={prefs.mode_discord}
             onChange={(e) => setPrefs((p) => ({ ...p, mode_discord: e.target.value }))}
           >
@@ -162,7 +162,7 @@ export function VoiceSettings() {
           type="button"
           disabled={saving}
           onClick={() => void save()}
-          className="rounded-card bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+          className="rounded-card bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
         >
           {t("settings:voiceSave")}
         </button>

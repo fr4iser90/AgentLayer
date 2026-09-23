@@ -45,8 +45,8 @@ export const ContextInjectionGroup = memo(function ContextInjectionGroup({
   const more = Math.max(0, items.length - highlight.length);
 
   return (
-    <details className="mb-3 group">
-      <summary className="inline-flex max-w-full cursor-pointer list-none flex-wrap items-center gap-1.5 rounded-tile border border-amber-500/35 bg-amber-950/35 px-2.5 py-1.5 text-meta font-medium text-amber-100/90 marker:content-none [&::-webkit-details-marker]:hidden hover:bg-amber-950/50">
+    <details className="mb-soft group">
+      <summary className="inline-flex max-w-full cursor-pointer list-none flex-wrap items-center gap-snug rounded-tile border border-amber-500/35 bg-amber-950/35 px-firm py-snug text-meta font-medium text-amber-100/90 marker:content-none [&::-webkit-details-marker]:hidden hover:bg-amber-950/50">
         <span className="relative flex h-1.5 w-1.5 shrink-0" aria-hidden>
           <span className="absolute inline-flex h-full w-full rounded-pill bg-amber-400/80 opacity-75" />
           <span className="relative inline-flex h-1.5 w-1.5 rounded-pill bg-amber-300" />
@@ -76,7 +76,7 @@ export const ContextInjectionGroup = memo(function ContextInjectionGroup({
           {t("chat:contextInjectCollapseHint")}
         </span>
       </summary>
-      <div className="mt-2 flex flex-col gap-1 border-l border-amber-500/20 pl-2">
+      <div className="mt-base flex flex-col gap-tight border-l border-amber-500/20 pl-base">
         {sorted.map((it) => (
           <ContextInjectionBadge
             key={it.key}

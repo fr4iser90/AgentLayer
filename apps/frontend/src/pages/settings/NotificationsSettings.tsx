@@ -34,20 +34,20 @@ function Toggle(props: {
   return (
     <label
       className={[
-        "flex cursor-pointer items-start gap-3 rounded-card border border-line px-3 py-2.5",
+        "flex cursor-pointer items-start gap-soft rounded-card border border-line px-soft py-firm",
         props.disabled ? "cursor-not-allowed opacity-50" : "hover:bg-white/[0.03]",
       ].join(" ")}
     >
       <input
         type="checkbox"
-        className="mt-1"
+        className="mt-tight"
         checked={props.checked}
         disabled={props.disabled}
         onChange={(e) => props.onChange(e.target.checked)}
       />
       <span className="min-w-0 flex-1">
         <span className="block text-sm text-ink-primary">{props.label}</span>
-        {props.hint ? <span className="mt-0.5 block text-xs text-ink-muted">{props.hint}</span> : null}
+        {props.hint ? <span className="mt-hair block text-xs text-ink-muted">{props.hint}</span> : null}
       </span>
     </label>
   );
@@ -123,31 +123,31 @@ export function NotificationsSettings() {
   }
 
   return (
-    <div className="mx-auto max-w-xl space-y-6">
+    <div className="mx-auto max-w-xl space-y-broad">
       <div>
         <h1 className="text-xl font-semibold text-ink-primary">{t("settings:notificationsTitle")}</h1>
-        <p className="mt-1 text-sm text-ink-muted">{t("settings:notificationsIntro")}</p>
+        <p className="mt-tight text-sm text-ink-muted">{t("settings:notificationsIntro")}</p>
       </div>
 
       {error ? (
-        <div className="rounded-card border border-red-500/40 bg-red-950/30 px-3 py-2 text-sm text-red-200">
+        <div className="rounded-card border border-red-500/40 bg-red-950/30 px-soft py-base text-sm text-red-200">
           {error}
         </div>
       ) : null}
       {saved ? (
-        <div className="rounded-card border border-emerald-500/30 bg-emerald-950/20 px-3 py-2 text-sm text-emerald-200">
+        <div className="rounded-card border border-emerald-500/30 bg-emerald-950/20 px-soft py-base text-sm text-emerald-200">
           {t("settings:notificationsSaved")}
         </div>
       ) : null}
 
-      <section className="space-y-2">
+      <section className="space-y-base">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
           {t("settings:notificationsWebTitle")}
         </h2>
         <p className="text-sm text-ink-muted">{t("settings:notificationsWebHint")}</p>
       </section>
 
-      <section className="space-y-2">
+      <section className="space-y-base">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Telegram</h2>
         {!telegramLinked ? (
           <p className="text-sm text-ink-muted">
@@ -165,7 +165,7 @@ export function NotificationsSettings() {
           onChange={(v) => setPrefs((p) => ({ ...p, telegram_enabled: v }))}
         />
         {prefs.telegram_enabled ? (
-          <div className="ml-2 space-y-2 border-l border-line pl-3">
+          <div className="ml-base space-y-base border-l border-line pl-soft">
             <Toggle
               label={t("settings:notificationsSchedules")}
               checked={prefs.telegram_schedules}
@@ -180,7 +180,7 @@ export function NotificationsSettings() {
         ) : null}
       </section>
 
-      <section className="space-y-2">
+      <section className="space-y-base">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Discord</h2>
         {!discordLinked ? (
           <p className="text-sm text-ink-muted">
@@ -198,7 +198,7 @@ export function NotificationsSettings() {
           onChange={(v) => setPrefs((p) => ({ ...p, discord_enabled: v }))}
         />
         {prefs.discord_enabled ? (
-          <div className="ml-2 space-y-2 border-l border-line pl-3">
+          <div className="ml-base space-y-base border-l border-line pl-soft">
             <Toggle
               label={t("settings:notificationsSchedules")}
               checked={prefs.discord_schedules}
@@ -213,7 +213,7 @@ export function NotificationsSettings() {
         ) : null}
       </section>
 
-      <section className="space-y-2">
+      <section className="space-y-base">
         <Toggle
           label={t("settings:notificationsFailuresOnly")}
           hint={t("settings:notificationsFailuresOnlyHint")}
@@ -222,18 +222,18 @@ export function NotificationsSettings() {
         />
       </section>
 
-      <div className="flex gap-2">
+      <div className="flex gap-base">
         <button
           type="button"
           disabled={saving}
-          className="rounded-card bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+          className="rounded-card bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
           onClick={() => void save()}
         >
           {saving ? t("settings:notificationsSaving") : t("settings:notificationsSave")}
         </button>
         <button
           type="button"
-          className="rounded-card border border-line px-4 py-2 text-sm text-ink-primary hover:bg-white/5"
+          className="rounded-card border border-line px-wide py-base text-sm text-ink-primary hover:bg-white/5"
           onClick={() => void load()}
         >
           {t("settings:reloadFromServer")}

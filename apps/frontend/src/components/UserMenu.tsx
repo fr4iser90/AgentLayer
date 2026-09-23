@@ -43,17 +43,17 @@ export function UserMenu() {
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-1 min-w-[12rem] rounded-card border border-line bg-[#1a1a1a] py-1 shadow-xl"
+          className="absolute right-0 z-50 mt-tight min-w-[12rem] rounded-card border border-line bg-[#1a1a1a] py-tight shadow-xl"
         >
           {email ? (
-            <p className="truncate border-b border-line px-3 py-2 text-xs text-ink-muted" title={email}>
+            <p className="truncate border-b border-line px-soft py-base text-xs text-ink-muted" title={email}>
               {email}
             </p>
           ) : null}
           <Link
             role="menuitem"
             to="/settings"
-            className="block px-3 py-2 text-sm text-ink-primary hover:bg-white/10"
+            className="block px-soft py-base text-sm text-ink-primary hover:bg-white/10"
             onClick={() => setOpen(false)}
           >
             {t("userMenu.settings")}
@@ -62,7 +62,7 @@ export function UserMenu() {
             <Link
               role="menuitem"
               to="/org"
-              className="block px-3 py-2 text-sm text-ink-primary hover:bg-white/10"
+              className="block px-soft py-base text-sm text-ink-primary hover:bg-white/10"
               onClick={() => setOpen(false)}
             >
               {t("userMenu.organization")}
@@ -72,17 +72,17 @@ export function UserMenu() {
             <Link
               role="menuitem"
               to="/admin"
-              className="block px-3 py-2 text-sm text-ink-primary hover:bg-white/10"
+              className="block px-soft py-base text-sm text-ink-primary hover:bg-white/10"
               onClick={() => setOpen(false)}
             >
               {t("userMenu.platformAdmin")}
             </Link>
           ) : null}
-          <div className="border-t border-line px-3 py-2">
-            <p className="mb-1.5 text-meta font-medium uppercase tracking-wide text-ink-muted">
+          <div className="border-t border-line px-soft py-base">
+            <p className="mb-snug text-meta font-medium uppercase tracking-wide text-ink-muted">
               {t("language.label")}
             </p>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-tight">
               {SUPPORTED.map((lng) => {
                 const active = i18n.resolvedLanguage?.startsWith(lng) ?? i18n.language.startsWith(lng);
                 const label = lng === "en" ? t("language.en") : t("language.de");
@@ -91,7 +91,7 @@ export function UserMenu() {
                     key={lng}
                     type="button"
                     className={[
-                      "rounded-tile px-2 py-1 text-xs",
+                      "rounded-tile px-base py-tight text-xs",
                       active
                         ? "bg-white/15 text-ink-primary"
                         : "text-ink-muted hover:bg-white/10 hover:text-neutral-200",
@@ -107,7 +107,7 @@ export function UserMenu() {
           <button
             type="button"
             role="menuitem"
-            className="w-full px-3 py-2 text-left text-sm text-ink-muted hover:bg-white/10 hover:text-neutral-200"
+            className="w-full px-soft py-base text-left text-sm text-ink-muted hover:bg-white/10 hover:text-neutral-200"
             onClick={() => {
               setOpen(false);
               void logout();

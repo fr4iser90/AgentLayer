@@ -18,8 +18,8 @@ export function AdminInterfacesMemoryPage() {
     >
       <AdminInterfacesMemorySection />
       {showContentCms ? (
-        <div className="mt-8">
-          <h2 className="mb-4 text-sm font-medium text-ink-primary">{t("org:knowledgePageTitle")}</h2>
+        <div className="mt-deep">
+          <h2 className="mb-wide text-sm font-medium text-ink-primary">{t("org:knowledgePageTitle")}</h2>
           <OrgContentCms />
         </div>
       ) : null}

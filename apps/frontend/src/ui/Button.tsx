@@ -4,7 +4,7 @@ export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
 
 const BASE = [
-  "inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-card font-medium",
+  "inline-flex select-none items-center justify-center gap-base whitespace-nowrap rounded-card font-medium",
   "transition-colors duration-fast ease-standard",
   "focus-visible:outline-none focus-visible:shadow-focus",
   "disabled:pointer-events-none disabled:opacity-45",
@@ -24,9 +24,9 @@ const VARIANTS: Record<ButtonVariant, string> = {
 };
 
 const SIZES: Record<ButtonSize, string> = {
-  sm: "h-7 px-2.5 text-label",
-  md: "h-8 px-3 text-body",
-  lg: "h-9 px-4 text-body",
+  sm: "h-7 px-firm text-label",
+  md: "h-8 px-soft text-body",
+  lg: "h-9 px-wide text-body",
 };
 
 export function buttonClass(

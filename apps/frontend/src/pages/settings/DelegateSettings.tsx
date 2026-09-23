@@ -142,7 +142,7 @@ function LevelSelect({
       <span className="text-ink-muted">{label}</span>
       <select
         id={id}
-        className="mt-1 w-full max-w-xs rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+        className="mt-tight w-full max-w-xs rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
         value={value}
         onChange={(e) => onChange(e.target.value as Level)}
       >
@@ -168,11 +168,11 @@ function ConfigEditor({
   const prioritiesText = config.engineering.priorities.join("\n");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-broad">
       <section>
         <h3 className="text-sm font-medium text-ink-primary">{t("settings:delegateSectionDecisioning")}</h3>
-        <p className="mt-1 text-xs text-ink-muted">{t("settings:delegateDecisioningHelp")}</p>
-        <div className="mt-3">
+        <p className="mt-tight text-xs text-ink-muted">{t("settings:delegateDecisioningHelp")}</p>
+        <div className="mt-soft">
           <LevelSelect
             id={`${idPrefix}-risk`}
             label={t("settings:delegateRiskTolerance")}
@@ -189,8 +189,8 @@ function ConfigEditor({
 
       <section>
         <h3 className="text-sm font-medium text-ink-primary">{t("settings:delegateSectionEscalation")}</h3>
-        <p className="mt-1 text-xs text-ink-muted">{t("settings:delegateEscalationHelp")}</p>
-        <div className="mt-3 space-y-2 text-sm text-ink-primary">
+        <p className="mt-tight text-xs text-ink-muted">{t("settings:delegateEscalationHelp")}</p>
+        <div className="mt-soft space-y-base text-sm text-ink-primary">
           {(
             [
               ["ask_on_production_changes", t("settings:delegateEscalateProduction")],
@@ -198,7 +198,7 @@ function ConfigEditor({
               ["ask_on_security_findings", t("settings:delegateEscalateSecurity")],
             ] as const
           ).map(([key, label]) => (
-            <label key={key} className="flex cursor-pointer items-center gap-2">
+            <label key={key} className="flex cursor-pointer items-center gap-base">
               <input
                 type="checkbox"
                 checked={config.escalation[key]}
@@ -217,7 +217,7 @@ function ConfigEditor({
 
       <section>
         <h3 className="text-sm font-medium text-ink-primary">{t("settings:delegateSectionCommunication")}</h3>
-        <div className="mt-3 flex flex-wrap gap-4">
+        <div className="mt-soft flex flex-wrap gap-wide">
           <LevelSelect
             id={`${idPrefix}-directness`}
             label={t("settings:delegateDirectness")}
@@ -241,7 +241,7 @@ function ConfigEditor({
             }
           />
         </div>
-        <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
+        <label className="mt-soft flex cursor-pointer items-center gap-base text-sm text-ink-primary">
           <input
             type="checkbox"
             checked={config.communication.ask_before_major_changes}
@@ -261,12 +261,12 @@ function ConfigEditor({
 
       <section>
         <h3 className="text-sm font-medium text-ink-primary">{t("settings:delegateSectionEngineering")}</h3>
-        <label className="mt-3 block text-sm text-ink-muted" htmlFor={`${idPrefix}-primary-goal`}>
+        <label className="mt-soft block text-sm text-ink-muted" htmlFor={`${idPrefix}-primary-goal`}>
           {t("settings:delegatePrimaryGoal")}
         </label>
         <select
           id={`${idPrefix}-primary-goal`}
-          className="mt-1 w-full max-w-xs rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+          className="mt-tight w-full max-w-xs rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
           value={config.engineering.primary_goal}
           onChange={(e) =>
             onChange({
@@ -284,9 +284,9 @@ function ConfigEditor({
             </option>
           ))}
         </select>
-        <p className="mt-3 text-xs text-ink-muted">{t("settings:delegatePrioritiesHelp")}</p>
+        <p className="mt-soft text-xs text-ink-muted">{t("settings:delegatePrioritiesHelp")}</p>
         <textarea
-          className="mt-1 min-h-[72px] w-full max-w-md rounded-tile border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary"
+          className="mt-tight min-h-[72px] w-full max-w-md rounded-tile border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary"
           value={prioritiesText}
           onChange={(e) => {
             const priorities = e.target.value
@@ -307,7 +307,7 @@ function ConfigEditor({
           }}
           placeholder={"security\nstability\nmaintainability\nspeed"}
         />
-        <div className="mt-3 space-y-2 text-sm text-ink-primary">
+        <div className="mt-soft space-y-base text-sm text-ink-primary">
           {(
             [
               ["security_first", t("settings:delegateSecurityFirst")],
@@ -315,7 +315,7 @@ function ConfigEditor({
               ["prefer_refactoring", t("settings:delegatePreferRefactoring")],
             ] as const
           ).map(([key, label]) => (
-            <label key={key} className="flex cursor-pointer items-center gap-2">
+            <label key={key} className="flex cursor-pointer items-center gap-base">
               <input
                 type="checkbox"
                 checked={config.engineering[key]}
@@ -334,7 +334,7 @@ function ConfigEditor({
 
       <section>
         <h3 className="text-sm font-medium text-ink-primary">{t("settings:delegateSectionAutonomy")}</h3>
-        <div className="mt-3 space-y-2 text-sm text-ink-primary">
+        <div className="mt-soft space-y-base text-sm text-ink-primary">
           {(
             [
               ["can_fix_minor_issues", t("settings:delegateCanFixMinor")],
@@ -342,7 +342,7 @@ function ConfigEditor({
               ["can_force_push", t("settings:delegateCanForcePush")],
             ] as const
           ).map(([key, label]) => (
-            <label key={key} className="flex cursor-pointer items-center gap-2">
+            <label key={key} className="flex cursor-pointer items-center gap-base">
               <input
                 type="checkbox"
                 checked={config.autonomy[key]}
@@ -361,9 +361,9 @@ function ConfigEditor({
 
       <section>
         <h3 className="text-sm font-medium text-ink-primary">{t("settings:delegateSectionGoals")}</h3>
-        <p className="mt-1 text-xs text-ink-muted">{t("settings:delegateGoalsHelp")}</p>
+        <p className="mt-tight text-xs text-ink-muted">{t("settings:delegateGoalsHelp")}</p>
         <textarea
-          className="mt-2 min-h-[100px] w-full max-w-2xl rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+          className="mt-base min-h-[100px] w-full max-w-2xl rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
           value={goalsText}
           onChange={(e) =>
             onChange({
@@ -503,8 +503,8 @@ export function DelegateSettings() {
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="text-xl font-semibold text-ink-primary">{t("settings:delegateTitle")}</h1>
-      <p className="mt-2 text-sm text-ink-muted">{t("settings:delegateSubtitle")}</p>
-      <p className="mt-2 text-xs text-ink-muted">
+      <p className="mt-base text-sm text-ink-muted">{t("settings:delegateSubtitle")}</p>
+      <p className="mt-base text-xs text-ink-muted">
         {t("settings:delegateVsAgent")}{" "}
         <Link to="/settings/agent" className="text-indigo-300 hover:underline">
           {t("settings:agentTitle")}
@@ -512,27 +512,27 @@ export function DelegateSettings() {
       </p>
 
       {unavailable ? (
-        <p className="mt-4 text-sm text-amber-200/90">{t("settings:delegateStorageUnavailable")}</p>
+        <p className="mt-wide text-sm text-amber-200/90">{t("settings:delegateStorageUnavailable")}</p>
       ) : null}
 
-      {msg ? <p className="mt-4 text-sm text-ink-secondary">{msg}</p> : null}
+      {msg ? <p className="mt-wide text-sm text-ink-secondary">{msg}</p> : null}
 
-      <section className="mt-8 rounded-card border border-line bg-card p-4">
+      <section className="mt-deep rounded-card border border-line bg-card p-wide">
         <h2 className="text-sm font-medium text-ink-primary">{t("settings:delegateGlobalTitle")}</h2>
         <ConfigEditor config={globalConfig} onChange={setGlobalConfig} idPrefix="global" />
-        <label className="mt-4 block text-sm text-ink-primary" htmlFor="delegate-notes">
+        <label className="mt-wide block text-sm text-ink-primary" htmlFor="delegate-notes">
           {t("settings:delegateNotesLabel")}
         </label>
         <textarea
           id="delegate-notes"
-          className="mt-1 min-h-[72px] w-full max-w-2xl rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+          className="mt-tight min-h-[72px] w-full max-w-2xl rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder={t("settings:delegateNotesPlaceholder")}
         />
         <button
           type="button"
-          className="mt-4 rounded-tile bg-indigo-600 px-4 py-2 text-sm text-ink-on-fill hover:bg-indigo-500 disabled:opacity-50"
+          className="mt-wide rounded-tile bg-indigo-600 px-wide py-base text-sm text-ink-on-fill hover:bg-indigo-500 disabled:opacity-50"
           disabled={savingGlobal || unavailable}
           onClick={() => void saveGlobal()}
         >
@@ -540,19 +540,19 @@ export function DelegateSettings() {
         </button>
       </section>
 
-      <section className="mt-8 rounded-card border border-line bg-card p-4">
+      <section className="mt-deep rounded-card border border-line bg-card p-wide">
         <h2 className="text-sm font-medium text-ink-primary">{t("settings:delegateWorkspaceTitle")}</h2>
-        <p className="mt-1 text-xs text-ink-muted">{t("settings:delegateWorkspaceHelp")}</p>
+        <p className="mt-tight text-xs text-ink-muted">{t("settings:delegateWorkspaceHelp")}</p>
         {workspaces.length === 0 ? (
-          <p className="mt-3 text-sm text-ink-muted">{t("settings:delegateNoWorkspaces")}</p>
+          <p className="mt-soft text-sm text-ink-muted">{t("settings:delegateNoWorkspaces")}</p>
         ) : (
           <>
-            <label className="mt-3 block text-sm text-ink-muted" htmlFor="delegate-ws">
+            <label className="mt-soft block text-sm text-ink-muted" htmlFor="delegate-ws">
               {t("settings:delegateWorkspacePick")}
             </label>
             <select
               id="delegate-ws"
-              className="mt-1 w-full max-w-md rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+              className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
               value={workspaceId}
               onChange={(e) => setWorkspaceId(e.target.value)}
             >
@@ -563,9 +563,9 @@ export function DelegateSettings() {
               ))}
             </select>
             {selectedWorkspace ? (
-              <p className="mt-1 text-xs text-ink-muted">{selectedWorkspace.name}</p>
+              <p className="mt-tight text-xs text-ink-muted">{selectedWorkspace.name}</p>
             ) : null}
-            <div className="mt-4">
+            <div className="mt-wide">
               <ConfigEditor
                 config={workspaceConfig}
                 onChange={setWorkspaceConfig}
@@ -574,7 +574,7 @@ export function DelegateSettings() {
             </div>
             <button
               type="button"
-              className="mt-4 rounded-tile bg-indigo-600 px-4 py-2 text-sm text-ink-on-fill hover:bg-indigo-500 disabled:opacity-50"
+              className="mt-wide rounded-tile bg-indigo-600 px-wide py-base text-sm text-ink-on-fill hover:bg-indigo-500 disabled:opacity-50"
               disabled={savingWorkspace || unavailable || !workspaceId}
               onClick={() => void saveWorkspace()}
             >

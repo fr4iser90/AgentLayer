@@ -265,33 +265,33 @@ export function BlockSettingsModal({
         className="flex h-full w-full max-w-md flex-col border-l border-line bg-panel shadow-2xl sm:max-w-lg"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="shrink-0 border-b border-line px-4 py-3">
-          <div className="flex items-start justify-between gap-2">
+        <header className="shrink-0 border-b border-line px-wide py-soft">
+          <div className="flex items-start justify-between gap-base">
             <div className="min-w-0">
               <h2 id="block-settings-title" className="text-sm font-semibold text-ink-primary">
                 {t("dashboard:blockSettingsTitle")}
               </h2>
-              <p className="mt-0.5 text-meta text-ink-muted">
+              <p className="mt-hair text-meta text-ink-muted">
                 {blockTypeLabel(block.type)} ·{" "}
                 <span className="font-mono text-white/70">{block.id}</span>
               </p>
             </div>
             <button
               type="button"
-              className="rounded-tile px-2 py-1 text-ink-muted hover:bg-white/10 hover:text-white"
+              className="rounded-tile px-base py-tight text-ink-muted hover:bg-white/10 hover:text-white"
               onClick={onClose}
               aria-label={t("dashboard:blockSettingsClose")}
             >
               ×
             </button>
           </div>
-          <nav className="mt-3 flex gap-1 border-b border-line-subtle pb-0" aria-label={t("dashboard:blockSettingsTabsAria")}>
+          <nav className="mt-soft flex gap-tight border-b border-line-subtle pb-0" aria-label={t("dashboard:blockSettingsTabsAria")}>
             {tabs.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 className={[
-                  "rounded-t-tile px-3 py-1.5 text-xs font-medium transition-colors",
+                  "rounded-t-tile px-soft py-snug text-xs font-medium transition-colors",
                   tab === item.id
                     ? "border border-b-0 border-line-strong bg-black/40 text-ink-primary"
                     : "text-ink-muted hover:text-white",
@@ -304,27 +304,27 @@ export function BlockSettingsModal({
           </nav>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 text-sm">
+        <div className="min-h-0 flex-1 overflow-y-auto px-wide py-wide text-sm">
           {tab === "general" ? (
-            <div className="space-y-4">
+            <div className="space-y-wide">
               <p className="text-xs leading-snug text-ink-muted">
                 {autoSave
                   ? t("dashboard:blockSettingsIntroAutoSave")
                   : t("dashboard:blockSettingsIntroDraft")}
               </p>
-              <label className="block space-y-1">
+              <label className="block space-y-tight">
                 <span className="text-meta text-ink-muted">
                   {t("dashboard:blockSettingsTitleLabel")}
                 </span>
                 <input
-                  className="w-full rounded-card border border-line bg-field px-3 py-2 text-ink-primary outline-none focus:border-sky-500/50"
+                  className="w-full rounded-card border border-line bg-field px-soft py-base text-ink-primary outline-none focus:border-sky-500/50"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </label>
-              <div className="space-y-1">
+              <div className="space-y-tight">
                 <span className="text-meta text-ink-muted">{t("dashboard:blockSettingsBlockId")}</span>
-                <p className="rounded-card border border-line bg-black/30 px-3 py-2 font-mono text-meta text-ink-secondary">
+                <p className="rounded-card border border-line bg-black/30 px-soft py-base font-mono text-meta text-ink-secondary">
                   {block.id}
                 </p>
               </div>
@@ -332,30 +332,30 @@ export function BlockSettingsModal({
           ) : null}
 
           {tab === "data" && supportsDataTab(block.type) ? (
-            <div className="space-y-4">
-              <label className="block space-y-1">
+            <div className="space-y-wide">
+              <label className="block space-y-tight">
                 <span className="text-meta text-ink-muted">{t("dashboard:blockSettingsDataPath")}</span>
                 <input
-                  className="w-full rounded-card border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary outline-none focus:border-sky-500/50"
+                  className="w-full rounded-card border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary outline-none focus:border-sky-500/50"
                   value={dataPath}
                   onChange={(e) => setDataPath(e.target.value)}
                   placeholder={t("dashboard:blockSettingsDataPathPlaceholder")}
                 />
                 <span className="text-meta text-ink-muted">{t("dashboard:blockSettingsDataPathHint")}</span>
               </label>
-              <div className="rounded-card border border-sky-500/20 bg-sky-950/20 px-3 py-2 text-xs text-sky-100/90">
+              <div className="rounded-card border border-sky-500/20 bg-sky-950/20 px-soft py-base text-xs text-sky-100/90">
                 <span className="block text-meta font-medium uppercase tracking-wide text-sky-300/80">
                   {t("dashboard:blockSettingsPreviewLabel")}
                 </span>
                 {previewText}
               </div>
               {block.type === "card_grid" && columnFields.length ? (
-                <div className="space-y-2">
+                <div className="space-y-base">
                   <span className="text-meta text-ink-muted">{t("dashboard:blockSettingsCardFields")}</span>
-                  <ul className="flex flex-wrap gap-2">
+                  <ul className="flex flex-wrap gap-base">
                     {columnFields.map((field) => (
                       <li key={field}>
-                        <label className="flex cursor-pointer items-center gap-1.5 rounded-tile border border-line bg-black/30 px-2 py-1 text-xs">
+                        <label className="flex cursor-pointer items-center gap-snug rounded-tile border border-line bg-black/30 px-base py-tight text-xs">
                           <input
                             type="checkbox"
                             checked={cardFields.includes(field)}
@@ -372,18 +372,18 @@ export function BlockSettingsModal({
           ) : null}
 
           {tab === "share" && supportsShareTab(block.type) ? (
-            <div className="space-y-4">
+            <div className="space-y-wide">
               <p className="text-xs leading-snug text-ink-muted">
                 {t("dashboard:blockSettingsShareIntro")}
               </p>
               {shareLoading ? (
                 <p className="text-xs text-ink-muted">{t("dashboard:blockSettingsShareLoading")}</p>
               ) : shareCandidates.length === 0 ? (
-                <p className="rounded-card border border-line bg-black/30 px-3 py-2 text-xs text-ink-muted">
+                <p className="rounded-card border border-line bg-black/30 px-soft py-base text-xs text-ink-muted">
                   {t("dashboard:blockSettingsShareNone")}
                 </p>
               ) : (
-                <div className="space-y-1">
+                <div className="space-y-tight">
                   <label
                     className="block text-meta text-ink-muted"
                     htmlFor="block-settings-share-target"
@@ -392,7 +392,7 @@ export function BlockSettingsModal({
                   </label>
                   <select
                     id="block-settings-share-target"
-                    className="w-full rounded-card border border-line bg-field px-3 py-2 text-ink-primary outline-none focus:border-sky-500/50"
+                    className="w-full rounded-card border border-line bg-field px-soft py-base text-ink-primary outline-none focus:border-sky-500/50"
                     value={shareKey}
                     onChange={(e) => setShareKey(e.target.value)}
                   >
@@ -409,11 +409,11 @@ export function BlockSettingsModal({
                 </div>
               )}
               {blockTargetIsGone(block.props, shareCatalog, shareCandidates) ? (
-                <p className="rounded-card border border-amber-500/25 bg-amber-950/20 px-3 py-2 text-xs text-amber-200/90">
+                <p className="rounded-card border border-amber-500/25 bg-amber-950/20 px-soft py-base text-xs text-amber-200/90">
                   {t("dashboard:blockSettingsShareTargetGone")}
                 </p>
               ) : null}
-              <div className="space-y-1">
+              <div className="space-y-tight">
                 <label
                   className="block text-meta text-ink-muted"
                   htmlFor="block-settings-share-days"
@@ -425,7 +425,7 @@ export function BlockSettingsModal({
                   type="number"
                   min={1}
                   max={90}
-                  className="w-24 rounded-card border border-line bg-field px-3 py-2 text-ink-primary"
+                  className="w-24 rounded-card border border-line bg-field px-soft py-base text-ink-primary"
                   value={daysAhead}
                   onChange={(e) =>
                     setDaysAhead(Math.min(90, Math.max(1, Number(e.target.value) || 7)))
@@ -439,16 +439,16 @@ export function BlockSettingsModal({
           ) : null}
 
           {tab === "display" ? (
-            <div className="space-y-4">
+            <div className="space-y-wide">
               {supportsDisplayPreset(block.type) ? (
-                <div className="space-y-2">
+                <div className="space-y-base">
                   <span className="text-meta text-ink-muted">{t("dashboard:blockSettingsPreset")}</span>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-base">
                     {(["compact", "standard", "comfortable"] as DisplayPresetId[]).map((preset) => (
                       <button
                         key={preset}
                         type="button"
-                        className="rounded-card border border-line-strong bg-black/30 px-3 py-1.5 text-xs text-ink-primary hover:border-sky-500/40 hover:bg-sky-950/30"
+                        className="rounded-card border border-line-strong bg-black/30 px-soft py-snug text-xs text-ink-primary hover:border-sky-500/40 hover:bg-sky-950/30"
                         onClick={() => applyPreset(preset)}
                       >
                         {t(`dashboard:blockSettingsPreset_${preset}`)}
@@ -457,10 +457,10 @@ export function BlockSettingsModal({
                   </div>
                 </div>
               ) : null}
-              <label className="flex items-start gap-2">
+              <label className="flex items-start gap-base">
                 <input
                   type="checkbox"
-                  className="mt-0.5"
+                  className="mt-hair"
                   checked={fillGrid}
                   onChange={(e) => setFillGrid(e.target.checked)}
                 />
@@ -473,7 +473,7 @@ export function BlockSettingsModal({
               </label>
               {block.type === "card_grid" ? (
                 <>
-                  <label className="block space-y-1">
+                  <label className="block space-y-tight">
                     <span className="text-meta text-ink-muted">
                       {t("dashboard:blockSettingsGridColumns")}
                     </span>
@@ -481,12 +481,12 @@ export function BlockSettingsModal({
                       type="number"
                       min={1}
                       max={5}
-                      className="w-24 rounded-card border border-line bg-field px-3 py-2 text-ink-primary"
+                      className="w-24 rounded-card border border-line bg-field px-soft py-base text-ink-primary"
                       value={gridColumns}
                       onChange={(e) => setGridColumns(Number(e.target.value) || 3)}
                     />
                   </label>
-                  <label className="flex items-center gap-2">
+                  <label className="flex items-center gap-base">
                     <input
                       type="checkbox"
                       checked={enableSearch}
@@ -494,7 +494,7 @@ export function BlockSettingsModal({
                     />
                     <span>{t("dashboard:blockSettingsEnableSearch")}</span>
                   </label>
-                  <label className="flex items-center gap-2">
+                  <label className="flex items-center gap-base">
                     <input
                       type="checkbox"
                       checked={enableRowDetail}
@@ -506,7 +506,7 @@ export function BlockSettingsModal({
               ) : null}
               {block.type === "table" ? (
                 <>
-                  <label className="flex items-center gap-2">
+                  <label className="flex items-center gap-base">
                     <input
                       type="checkbox"
                       checked={enableSearch}
@@ -514,7 +514,7 @@ export function BlockSettingsModal({
                     />
                     <span>{t("dashboard:blockSettingsEnableSearch")}</span>
                   </label>
-                  <label className="flex items-center gap-2">
+                  <label className="flex items-center gap-base">
                     <input
                       type="checkbox"
                       checked={enableRowDetail}
@@ -528,7 +528,7 @@ export function BlockSettingsModal({
           ) : null}
         </div>
 
-        <footer className="flex shrink-0 justify-end gap-2 border-t border-line px-4 py-3">
+        <footer className="flex shrink-0 justify-end gap-base border-t border-line px-wide py-soft">
           <Button
             type="button"
             variant="secondary"
@@ -540,7 +540,7 @@ export function BlockSettingsModal({
           </Button>
           <button
             type="button"
-            className="rounded-card bg-sky-600 px-3 py-1.5 text-xs font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+            className="rounded-card bg-sky-600 px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
             onClick={() => void save()}
             disabled={isSaving}
           >

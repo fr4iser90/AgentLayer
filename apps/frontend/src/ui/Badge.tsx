@@ -8,7 +8,7 @@ export type BadgeTone =
   | "danger";
 
 const BASE =
-  "inline-flex select-none items-center gap-1 rounded-pill px-2 py-0.5 text-label font-medium whitespace-nowrap";
+  "inline-flex select-none items-center gap-tight rounded-pill px-base py-hair text-label font-medium whitespace-nowrap";
 
 const TONES: Record<BadgeTone, string> = {
   // /8 is not in Tailwind's opacity scale and silently generates nothing; /10 is.

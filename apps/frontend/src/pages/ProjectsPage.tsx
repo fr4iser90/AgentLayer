@@ -153,11 +153,11 @@ export function ProjectsPage() {
   };
 
   return (
-    <div className="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col gap-4 overflow-hidden p-4 md:p-6">
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col gap-wide overflow-hidden p-wide md:p-broad">
       <header className="shrink-0">
         <h1 className="text-lg font-semibold text-ink-primary">{t("workspace:projectsTitle")}</h1>
-        <p className="mt-1 max-w-2xl text-sm text-ink-muted">{t("workspace:projectsIntro")}</p>
-        <p className="mt-1 text-xs text-ink-muted">
+        <p className="mt-tight max-w-2xl text-sm text-ink-muted">{t("workspace:projectsIntro")}</p>
+        <p className="mt-tight text-xs text-ink-muted">
           {scope === "company"
             ? t("workspace:projectsCompanyScopeNote")
             : t("workspace:projectsOwnerScopeNote")}
@@ -165,19 +165,19 @@ export function ProjectsPage() {
       </header>
 
       {error ? (
-        <p className="shrink-0 rounded-card border border-rose-500/30 bg-rose-950/30 px-3 py-2 text-sm text-rose-200">
+        <p className="shrink-0 rounded-card border border-rose-500/30 bg-rose-950/30 px-soft py-base text-sm text-rose-200">
           {error}
         </p>
       ) : null}
 
-      <div className="grid min-h-0 flex-1 gap-4 md:grid-cols-[minmax(14rem,20rem)_1fr]">
+      <div className="grid min-h-0 flex-1 gap-wide md:grid-cols-[minmax(14rem,20rem)_1fr]">
         <section className="flex min-h-0 flex-col rounded-sheet border border-line bg-card">
-          <div className="flex items-center justify-between gap-2 border-b border-line px-3 py-2">
+          <div className="flex items-center justify-between gap-base border-b border-line px-soft py-base">
             {hasOrgSurface(auth.user) ? (
               <div
                 role="tablist"
                 aria-label={t("workspace:projectsScopeAria")}
-                className="flex items-center gap-1"
+                className="flex items-center gap-tight"
               >
                 {SCOPE_TABS.map((tab) => {
                   const active = scope === tab.id;
@@ -189,7 +189,7 @@ export function ProjectsPage() {
                       aria-selected={active}
                       onClick={() => switchScope(tab.id)}
                       className={[
-                        "rounded-tile px-2 py-1 text-xs font-semibold uppercase tracking-wide transition-colors",
+                        "rounded-tile px-base py-tight text-xs font-semibold uppercase tracking-wide transition-colors",
                         active
                           ? "border-b-2 border-sky-500 text-sky-300"
                           : "border-b-2 border-transparent text-ink-muted hover:text-neutral-200",
@@ -207,24 +207,24 @@ export function ProjectsPage() {
             )}
             <button
               type="button"
-              className="rounded-tile border border-line px-2 py-1 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
+              className="rounded-tile border border-line px-base py-tight text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
               disabled={loading}
               onClick={() => void reload()}
             >
               {t("workspace:projectsRefresh")}
             </button>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-2">
+          <div className="min-h-0 flex-1 overflow-y-auto p-base">
             {loading ? (
-              <p className="px-2 py-2 text-xs text-ink-muted">{t("common:nav.loading")}</p>
+              <p className="px-base py-base text-xs text-ink-muted">{t("common:nav.loading")}</p>
             ) : workspaces.length === 0 ? (
-              <p className="px-2 py-2 text-xs text-ink-muted">
+              <p className="px-base py-base text-xs text-ink-muted">
                 {scope === "company" && companyTenantId === null
                   ? t("workspace:projectsCompanyNoTenant")
                   : t("workspace:projectsEmpty")}
               </p>
             ) : (
-              <ul className="space-y-1">
+              <ul className="space-y-tight">
                 {workspaces.map((w) => {
                   const active = w.id === selectedId;
                   return (
@@ -232,22 +232,22 @@ export function ProjectsPage() {
                       <button
                         type="button"
                         className={[
-                          "w-full rounded-card px-2.5 py-2 text-left transition-colors",
+                          "w-full rounded-card px-firm py-base text-left transition-colors",
                           active
                             ? "border border-sky-500/40 bg-sky-950/30"
                             : "border border-transparent hover:bg-white/5",
                         ].join(" ")}
                         onClick={() => selectWorkspace(w.id)}
                       >
-                        <span className="flex items-center gap-1.5">
+                        <span className="flex items-center gap-snug">
                           <span className="min-w-0 flex-1 truncate text-sm text-ink-primary">{w.name}</span>
                           {scope === "mine" && w.visibility === "tenant" ? (
-                            <span className="shrink-0 rounded-tile bg-sky-950/60 px-1 py-0.5 text-meta uppercase tracking-wide text-sky-300">
+                            <span className="shrink-0 rounded-tile bg-sky-950/60 px-tight py-hair text-meta uppercase tracking-wide text-sky-300">
                               {t("workspace:visibilityCompanyTag")}
                             </span>
                           ) : null}
                         </span>
-                        <span className="mt-0.5 block truncate text-meta text-ink-muted">
+                        <span className="mt-hair block truncate text-meta text-ink-muted">
                           {w.source}
                           {w.git_url ? ` · ${w.git_url}` : ""}
                         </span>
@@ -262,21 +262,21 @@ export function ProjectsPage() {
 
         <section className="flex min-h-0 flex-col rounded-sheet border border-line bg-card">
           {!selected ? (
-            <p className="p-4 text-sm text-ink-muted">{t("workspace:selectProjectBrowseFiles")}</p>
+            <p className="p-wide text-sm text-ink-muted">{t("workspace:selectProjectBrowseFiles")}</p>
           ) : (
             <>
-              <div className="shrink-0 space-y-3 border-b border-line p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="shrink-0 space-y-soft border-b border-line p-wide">
+                <div className="flex flex-wrap items-start justify-between gap-soft">
                   <div className="min-w-0">
                     <h2 className="truncate text-base font-medium text-ink-primary">{selected.name}</h2>
-                    <p className="mt-1 break-all font-mono text-meta text-ink-muted">
+                    <p className="mt-tight break-all font-mono text-meta text-ink-muted">
                       {selected.path || "—"}
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-base">
                     <Link
                       to={`/chat?workspace=${encodeURIComponent(selected.id)}`}
-                      className="rounded-card border border-line px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
+                      className="rounded-card border border-line px-soft py-snug text-xs text-ink-primary hover:bg-white/5"
                     >
                       {t("workspace:projectsOpenChat")}
                     </Link>
@@ -293,7 +293,7 @@ export function ProjectsPage() {
                     </Button>
                   </div>
                 </div>
-                <dl className="grid gap-2 text-xs sm:grid-cols-2">
+                <dl className="grid gap-base text-xs sm:grid-cols-2">
                   <div>
                     <dt className="text-ink-muted">{t("workspace:projectsFieldSource")}</dt>
                     <dd className="text-ink-primary">{selected.source}</dd>
@@ -314,15 +314,15 @@ export function ProjectsPage() {
               </div>
 
               <div className="flex min-h-0 flex-1 flex-col">
-                <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-3 py-2">
+                <div className="flex shrink-0 items-center justify-between gap-base border-b border-line px-soft py-base">
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                     {t("workspace:projectFilesTitle")}
                   </h3>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-base">
                     {browsePath ? (
                       <button
                         type="button"
-                        className="rounded-tile border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5"
+                        className="rounded-tile border border-line px-base py-hair text-meta text-ink-secondary hover:bg-white/5"
                         onClick={() => setBrowsePath(parentPath(browsePath))}
                       >
                         {t("workspace:projectsTreeUp")}
@@ -330,7 +330,7 @@ export function ProjectsPage() {
                     ) : null}
                     <button
                       type="button"
-                      className="rounded-tile border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5"
+                      className="rounded-tile border border-line px-base py-hair text-meta text-ink-secondary hover:bg-white/5"
                       disabled={treeLoading}
                       onClick={() => void loadTree()}
                     >
@@ -338,24 +338,24 @@ export function ProjectsPage() {
                     </button>
                   </div>
                 </div>
-                <p className="shrink-0 truncate border-b border-line-subtle px-3 py-1 font-mono text-meta text-ink-muted">
+                <p className="shrink-0 truncate border-b border-line-subtle px-soft py-tight font-mono text-meta text-ink-muted">
                   {browsePath || "."}
                 </p>
-                <div className="min-h-0 flex-1 overflow-y-auto p-2">
+                <div className="min-h-0 flex-1 overflow-y-auto p-base">
                   {treeError ? (
-                    <p className="px-2 py-2 text-xs text-rose-300">{treeError}</p>
+                    <p className="px-base py-base text-xs text-rose-300">{treeError}</p>
                   ) : treeLoading ? (
-                    <p className="px-2 py-2 text-xs text-ink-muted">{t("common:nav.loading")}</p>
+                    <p className="px-base py-base text-xs text-ink-muted">{t("common:nav.loading")}</p>
                   ) : entries.length === 0 ? (
-                    <p className="px-2 py-2 text-xs text-ink-muted">{t("workspace:projectsTreeEmpty")}</p>
+                    <p className="px-base py-base text-xs text-ink-muted">{t("workspace:projectsTreeEmpty")}</p>
                   ) : (
-                    <ul className="space-y-0.5">
+                    <ul className="space-y-hair">
                       {entries.map((e) => (
                         <li key={e.path}>
                           {e.is_dir ? (
                             <button
                               type="button"
-                              className="flex w-full items-center gap-2 rounded-tile px-2 py-1 text-left text-xs text-sky-200 hover:bg-white/5"
+                              className="flex w-full items-center gap-base rounded-tile px-base py-tight text-left text-xs text-sky-200 hover:bg-white/5"
                               onClick={() => setBrowsePath(e.path)}
                             >
                               <span className="text-ink-muted">/</span>
@@ -367,7 +367,7 @@ export function ProjectsPage() {
                               ) : null}
                             </button>
                           ) : (
-                            <div className="flex items-center gap-2 rounded-tile px-2 py-1 text-xs text-ink-secondary">
+                            <div className="flex items-center gap-base rounded-tile px-base py-tight text-xs text-ink-secondary">
                               <span className="text-ink-muted">·</span>
                               <span className="truncate">{e.name}</span>
                               {e.is_symlink ? (
@@ -382,7 +382,7 @@ export function ProjectsPage() {
                     </ul>
                   )}
                   {treeTruncated ? (
-                    <p className="mt-2 px-2 text-meta text-amber-300/90">
+                    <p className="mt-base px-base text-meta text-amber-300/90">
                       {t("workspace:projectsTreeTruncated")}
                     </p>
                   ) : null}

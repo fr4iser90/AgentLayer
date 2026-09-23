@@ -84,11 +84,11 @@ export function SectionBlockBody(props: {
           title={t("notifications:agentUpdateBadgeSection")}
         />
       ) : null}
-      <header className="dashboard-grid-no-drag flex flex-wrap items-center gap-2 border-b border-line-subtle px-3 py-2">
+      <header className="dashboard-grid-no-drag flex flex-wrap items-center gap-base border-b border-line-subtle px-soft py-base">
         {editMode && !contentReadOnly ? (
           <input
             type="text"
-            className="min-w-0 flex-1 rounded-tile border border-line bg-field px-2 py-1 text-sm text-ink-primary outline-none focus:border-sky-500/50"
+            className="min-w-0 flex-1 rounded-tile border border-line bg-field px-base py-tight text-sm text-ink-primary outline-none focus:border-sky-500/50"
             value={block.props.title ?? ""}
             placeholder={t("dashboard:sectionTitlePlaceholder")}
             onChange={(e) => patchSectionProps({ title: e.target.value })}
@@ -101,7 +101,7 @@ export function SectionBlockBody(props: {
         ) : null}
         <button
           type="button"
-          className="dashboard-grid-no-drag rounded-tile border border-line px-2 py-1 text-meta text-ink-muted hover:bg-white/5"
+          className="dashboard-grid-no-drag rounded-tile border border-line px-base py-tight text-meta text-ink-muted hover:bg-white/5"
           onClick={() => {
             const next = !collapsed;
             setCollapsed(next);
@@ -112,9 +112,9 @@ export function SectionBlockBody(props: {
         </button>
       </header>
       {!collapsed ? (
-        <div className="min-h-0 flex-1 overflow-auto p-2">
+        <div className="min-h-0 flex-1 overflow-auto p-base">
           {nested.blocks.length === 0 && !editMode ? (
-            <p className="px-2 py-4 text-xs text-ink-muted">{t("dashboard:sectionEmpty")}</p>
+            <p className="px-base py-wide text-xs text-ink-muted">{t("dashboard:sectionEmpty")}</p>
           ) : (
             <DashboardGridInner
               layout={nested.blocks.length ? nested : emptyNestedLayout()}

@@ -6,17 +6,17 @@ import { isSingleUser } from "../auth/deploymentMode";
 
 /** Single canonical admin sidebar — do not nest extra IDE submenus here. */
 const item =
-  "block rounded-card border border-transparent px-3 py-2 text-sm transition-colors";
+  "block rounded-card border border-transparent px-soft py-base text-sm transition-colors";
 const itemActive = "border-line bg-white/10 text-ink-primary";
 const itemIdle = "text-ink-muted hover:bg-white/5 hover:text-neutral-200";
 
 function NavGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="mt-4 first:mt-0">
-      <p className="mb-1 px-2 text-meta font-medium uppercase tracking-wide text-ink-muted/90">
+    <div className="mt-wide first:mt-0">
+      <p className="mb-tight px-base text-meta font-medium uppercase tracking-wide text-ink-muted/90">
         {label}
       </p>
-      <div className="flex flex-col gap-0.5">{children}</div>
+      <div className="flex flex-col gap-hair">{children}</div>
     </div>
   );
 }
@@ -27,8 +27,8 @@ export function AdminLayout() {
   const showPeople = !isSingleUser(user);
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-canvas md:flex-row">
-      <aside className="shrink-0 border-b border-line bg-panel px-3 py-4 md:w-56 md:border-b-0 md:border-r">
-        <p className="mb-1 px-2 text-meta font-medium uppercase tracking-wide text-ink-muted">
+      <aside className="shrink-0 border-b border-line bg-panel px-soft py-wide md:w-56 md:border-b-0 md:border-r">
+        <p className="mb-tight px-base text-meta font-medium uppercase tracking-wide text-ink-muted">
           {t("admin:operatorAdmin")}
         </p>
         <nav className="flex flex-col" aria-label={t("admin:adminSectionsAria")}>
@@ -116,7 +116,7 @@ export function AdminLayout() {
         </nav>
         <NavLink
           to="/"
-          className="mt-6 block px-3 py-2 text-xs text-sky-400/90 hover:text-sky-300 hover:underline"
+          className="mt-broad block px-soft py-base text-xs text-sky-400/90 hover:text-sky-300 hover:underline"
         >
           {t("admin:backToApp")}
         </NavLink>

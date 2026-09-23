@@ -25,9 +25,9 @@ export function ProposalCard({
   onSelect: (option: ProposalOption) => void;
 }) {
   return (
-    <div className="my-4 rounded-sheet border border-sky-800/40 bg-[#111827] shadow-lg">
-      <div className="border-b border-sky-800/30 px-4 py-3">
-        <div className="flex items-center gap-2">
+    <div className="my-wide rounded-sheet border border-sky-800/40 bg-[#111827] shadow-lg">
+      <div className="border-b border-sky-800/30 px-wide py-soft">
+        <div className="flex items-center gap-base">
           <svg
             className="h-4 w-4 text-sky-400"
             fill="none"
@@ -44,23 +44,23 @@ export function ProposalCard({
           <h3 className="text-sm font-semibold text-sky-100">{proposal.title}</h3>
         </div>
       </div>
-      <div className="p-3">
-        <ul className="flex flex-col gap-2">
+      <div className="p-soft">
+        <ul className="flex flex-col gap-base">
           {proposal.options.map((opt) => {
             const isSelected = selected === opt.id;
             return (
               <li key={opt.id}>
                 <button
                   type="button"
-                  className={`w-full rounded-card border px-4 py-3 text-left transition-all ${
+                  className={`w-full rounded-card border px-wide py-soft text-left transition-all ${
                     isSelected
                       ? "border-sky-500 bg-sky-950/50 ring-1 ring-sky-500/50"
                       : "border-line bg-black/20 hover:border-sky-700/50 hover:bg-white/5"
                   }`}
                   onClick={() => onSelect(opt)}
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
+                  <div className="flex items-center justify-between gap-soft">
+                    <div className="flex items-center gap-soft">
                       <span
                         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-pill border text-meta font-bold ${
                           isSelected
@@ -79,16 +79,16 @@ export function ProposalCard({
                     {opt.confidence != null ? <ConfidenceBadge value={opt.confidence} /> : null}
                   </div>
                   {opt.description ? (
-                    <p className="mt-1.5 pl-7 text-xs leading-relaxed text-ink-muted">
+                    <p className="mt-snug pl-7 text-xs leading-relaxed text-ink-muted">
                       {opt.description}
                     </p>
                   ) : null}
                   {opt.actions && opt.actions.length > 0 ? (
-                    <ul className="mt-2 pl-7">
+                    <ul className="mt-base pl-7">
                       {opt.actions.map((action, ai) => (
                         <li
                           key={ai}
-                          className="flex items-center gap-1.5 text-meta text-ink-muted"
+                          className="flex items-center gap-snug text-meta text-ink-muted"
                         >
                           <span className="text-ink-muted">→</span>
                           {action}
@@ -116,7 +116,7 @@ function ProposalParseErrorBanner({ count }: { count: number }) {
   const { t } = useTranslation(["chat"]);
   return (
     <p
-      className="my-2 rounded-card border border-amber-700/40 bg-amber-950/35 px-3 py-2 text-xs text-amber-100/90"
+      className="my-base rounded-card border border-amber-700/40 bg-amber-950/35 px-soft py-base text-xs text-amber-100/90"
       role="status"
     >
       {t("chat:proposalParseError", { count })}
@@ -135,7 +135,7 @@ export function AssistantProposalBody({
 
   if (proposals.length === 0) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-base">
         {bodyText ? <div className="whitespace-pre-wrap">{bodyText}</div> : null}
         {showParseError ? <ProposalParseErrorBanner count={failedBlockCount} /> : null}
         {!bodyText && !showParseError && hasProposal(content) ? (
@@ -149,7 +149,7 @@ export function AssistantProposalBody({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-base">
       {bodyText ? <div className="whitespace-pre-wrap">{bodyText}</div> : null}
       {showParseError ? <ProposalParseErrorBanner count={failedBlockCount} /> : null}
       {proposals.map((p) => (

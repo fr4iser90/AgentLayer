@@ -171,10 +171,10 @@ export function MediaPlayerBlockBody(props: {
   };
 
   return (
-    <section className="rounded-sheet border border-line bg-card p-3 md:p-4">
-      <h3 className="mb-3 text-sm font-medium text-ink-primary">{sectionTitle}</h3>
+    <section className="rounded-sheet border border-line bg-card p-soft md:p-wide">
+      <h3 className="mb-soft text-sm font-medium text-ink-primary">{sectionTitle}</h3>
 
-      <div className="mb-4 min-h-[4rem] rounded-card border border-line bg-black/40 p-3">
+      <div className="mb-wide min-h-[4rem] rounded-card border border-line bg-black/40 p-soft">
         {!nowItem ? (
           <p className="text-sm text-ink-muted">{t("dashboard:mediaQueueEmpty")}</p>
         ) : nowEmbed ? (
@@ -183,7 +183,7 @@ export function MediaPlayerBlockBody(props: {
           </div>
         ) : nowMediaId || nowExternalStream ? (
           globalMedia ? (
-            <div className="space-y-2">
+            <div className="space-y-base">
               <p className="text-sm text-ink-primary">{itemLabel(nowItem, t("dashboard:mediaUntitledTrack"))}</p>
               {nowExternalStream ? (
                 <p className="text-xs text-ink-muted">{t("dashboard:mediaMiniPlayerStreamHint")}</p>
@@ -193,7 +193,7 @@ export function MediaPlayerBlockBody(props: {
               ) : null}
               <button
                 type="button"
-                className="rounded-card border border-sky-500/40 bg-sky-950/40 px-3 py-1.5 text-xs text-sky-100 hover:bg-sky-900/40"
+                className="rounded-card border border-sky-500/40 bg-sky-950/40 px-soft py-snug text-xs text-sky-100 hover:bg-sky-900/40"
                 onClick={() => (globalPlayingNow ? globalMedia.togglePause() : startPlayback(nowItem))}
               >
                 {globalPlayingNow && !globalMedia.paused
@@ -212,16 +212,16 @@ export function MediaPlayerBlockBody(props: {
           <p className="text-sm text-amber-200">{t("dashboard:mediaPlaybackUnavailable")}</p>
         )}
         {nowItem && nowEmbed ? (
-          <p className="mt-2 text-xs text-ink-muted">{itemLabel(nowItem, sectionTitle)}</p>
+          <p className="mt-base text-xs text-ink-muted">{itemLabel(nowItem, sectionTitle)}</p>
         ) : null}
       </div>
 
       {!readOnly ? (
-        <div className="dashboard-grid-no-drag mb-4 space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="dashboard-grid-no-drag mb-wide space-y-base">
+          <div className="flex flex-wrap items-center gap-base">
             <button
               type="button"
-              className="rounded-card border border-line bg-black/30 px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5 disabled:opacity-50"
+              className="rounded-card border border-line bg-black/30 px-soft py-snug text-xs text-ink-primary hover:bg-white/5 disabled:opacity-50"
               disabled={uploading || !dashboardId}
               onClick={() => fileRef.current?.click()}
             >
@@ -239,17 +239,17 @@ export function MediaPlayerBlockBody(props: {
               }}
             />
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-base">
             <input
               type="url"
-              className="min-w-[12rem] flex-1 rounded-card border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary"
+              className="min-w-[12rem] flex-1 rounded-card border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary"
               placeholder={t("dashboard:embedUrlPlaceholder")}
               value={embedUrl}
               onChange={(e) => setEmbedUrl(e.target.value)}
             />
             <button
               type="button"
-              className="rounded-card border border-sky-500/40 bg-sky-950/40 px-3 py-2 text-xs text-sky-100 hover:bg-sky-900/40 disabled:opacity-50"
+              className="rounded-card border border-sky-500/40 bg-sky-950/40 px-soft py-base text-xs text-sky-100 hover:bg-sky-900/40 disabled:opacity-50"
               disabled={uploading || !embedUrl.trim()}
               onClick={() => void onAddEmbed()}
             >
@@ -261,14 +261,14 @@ export function MediaPlayerBlockBody(props: {
       ) : null}
 
       {st.items.length > 0 ? (
-        <ol className="space-y-1">
+        <ol className="space-y-tight">
           {st.items.map((it, idx) => {
             const id = itemId(it);
             const active = id != null && id === (st.now_playing_id ?? itemId(st.items[0]));
             return (
               <li
                 key={`${id ?? idx}-${idx}`}
-                className={`flex items-center gap-2 rounded-card px-2 py-1.5 text-sm ${
+                className={`flex items-center gap-base rounded-card px-base py-snug text-sm ${
                   active ? "bg-sky-950/40 text-sky-100" : "text-ink-primary hover:bg-white/5"
                 }`}
               >

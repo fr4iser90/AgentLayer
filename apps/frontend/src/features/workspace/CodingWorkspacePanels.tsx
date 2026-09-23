@@ -80,12 +80,12 @@ function PanelTabs({
 }) {
   const { t } = useTranslation(["dashboard", "errors"]);
   const tabClass = (active: boolean) =>
-    `rounded-tile px-2.5 py-1 text-meta font-medium transition-colors ${
+    `rounded-tile px-firm py-tight text-meta font-medium transition-colors ${
       active ? "bg-white/15 text-ink-primary" : "text-ink-muted hover:bg-white/10 hover:text-neutral-200"
     }`;
 
   return (
-    <div className="flex gap-1">
+    <div className="flex gap-tight">
       <button type="button" className={tabClass(panelTab === "files")} onClick={() => onTab("files")}>
         Files
       </button>
@@ -93,7 +93,7 @@ function PanelTabs({
         <button type="button" className={tabClass(panelTab === "changes")} onClick={() => onTab("changes")}>
           Changes
           {changesBadge ? (
-            <span className="ml-1 rounded-tile bg-amber-600/40 px-1 py-px text-meta text-amber-100">{changesBadge}</span>
+            <span className="ml-tight rounded-tile bg-amber-600/40 px-tight py-px text-meta text-amber-100">{changesBadge}</span>
           ) : null}
         </button>
       ) : null}
@@ -114,7 +114,7 @@ function DiffView({ text, truncated }: { text: string; truncated: boolean }) {
         ))}
       </div>
       {truncated ? (
-        <p className="mt-2 text-meta text-amber-300/80">{t("dashboard:diffTruncated")}</p>
+        <p className="mt-base text-meta text-amber-300/80">{t("dashboard:diffTruncated")}</p>
       ) : null}
     </>
   );
@@ -313,7 +313,7 @@ export function CodingWorkspacePanels({
 
   if (!workspaceId) {
     return (
-      <div className={`${shellClass} items-center justify-center px-3 py-6 text-center text-xs text-ink-muted`}>
+      <div className={`${shellClass} items-center justify-center px-soft py-broad text-center text-xs text-ink-muted`}>
         <p>{t("workspace:selectProjectBrowseFiles")}</p>
       </div>
     );
@@ -322,11 +322,11 @@ export function CodingWorkspacePanels({
   return (
     <div className={shellClass}>
       {variant === "chat" && onMobileClose ? (
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-3 py-2 md:hidden">
+        <div className="flex shrink-0 items-center justify-between gap-base border-b border-line px-soft py-base md:hidden">
           <p className="min-w-0 truncate text-sm font-medium text-ink-primary">{t("workspace:projectFilesTitle")}</p>
           <button
             type="button"
-            className="shrink-0 rounded-tile px-2 py-1 text-xs text-ink-muted hover:bg-white/5 hover:text-neutral-200"
+            className="shrink-0 rounded-tile px-base py-tight text-xs text-ink-muted hover:bg-white/5 hover:text-neutral-200"
             onClick={onMobileClose}
           >
             {t("dashboard:close")}
@@ -334,7 +334,7 @@ export function CodingWorkspacePanels({
         </div>
       ) : null}
       <div className="flex min-h-0 w-full flex-1 flex-col border-line lg:w-52 lg:shrink-0 lg:border-r">
-        <div className="shrink-0 border-b border-line px-2 py-2">
+        <div className="shrink-0 border-b border-line px-base py-base">
           <PanelTabs
             panelTab={panelTab}
             onTab={setPanelTab}
@@ -343,13 +343,13 @@ export function CodingWorkspacePanels({
           />
           {panelTab === "files" ? (
             <>
-              <p className="mt-2 text-meta font-medium uppercase tracking-wide text-ink-muted">
+              <p className="mt-base text-meta font-medium uppercase tracking-wide text-ink-muted">
                 Workspace files
               </p>
-              <div className="mt-1 flex flex-wrap items-center gap-1 text-meta text-ink-muted">
+              <div className="mt-tight flex flex-wrap items-center gap-tight text-meta text-ink-muted">
                 <button
                   type="button"
-                  className="rounded-tile px-1.5 py-0.5 hover:bg-white/10 disabled:opacity-40"
+                  className="rounded-tile px-snug py-hair hover:bg-white/10 disabled:opacity-40"
                   onClick={() => {
                     setBrowsePath("");
                     setSelectedFile(null);
@@ -364,11 +364,11 @@ export function CodingWorkspacePanels({
                 {crumbs.map((seg, i) => {
                   const prefix = crumbs.slice(0, i + 1).join("/");
                   return (
-                    <span key={prefix} className="flex items-center gap-1">
+                    <span key={prefix} className="flex items-center gap-tight">
                       <span className="text-white/20">/</span>
                       <button
                         type="button"
-                        className="max-w-[5rem] truncate rounded-tile px-1.5 py-0.5 hover:bg-white/10"
+                        className="max-w-[5rem] truncate rounded-tile px-snug py-hair hover:bg-white/10"
                         title={prefix}
                         onClick={() => {
                           setBrowsePath(prefix);
@@ -384,10 +384,10 @@ export function CodingWorkspacePanels({
                   );
                 })}
               </div>
-              <div className="mt-1 flex items-center gap-2">
+              <div className="mt-tight flex items-center gap-base">
                 <button
                   type="button"
-                  className="rounded-tile border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
+                  className="rounded-tile border border-line px-base py-hair text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
                   onClick={goUp}
                   disabled={!browsePath}
                 >
@@ -395,7 +395,7 @@ export function CodingWorkspacePanels({
                 </button>
                 <button
                   type="button"
-                  className="rounded-tile border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
+                  className="rounded-tile border border-line px-base py-hair text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
                   onClick={() => void loadList()}
                   disabled={listLoading}
                 >
@@ -405,16 +405,16 @@ export function CodingWorkspacePanels({
             </>
           ) : (
             <>
-              <p className="mt-2 text-meta font-medium uppercase tracking-wide text-ink-muted">
+              <p className="mt-base text-meta font-medium uppercase tracking-wide text-ink-muted">
                 {t("dashboard:gitChanges")}
               </p>
-              <p className="mt-0.5 text-meta text-ink-muted">
+              <p className="mt-hair text-meta text-ink-muted">
                 {changesSummary?.branch ? `branch: ${changesSummary.branch}` : t("dashboard:workingTree")}
               </p>
-              <div className="mt-1">
+              <div className="mt-tight">
                 <button
                   type="button"
-                  className="rounded-tile border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
+                  className="rounded-tile border border-line px-base py-hair text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
                   onClick={() => void loadChangesSummary()}
                   disabled={changesLoading}
                 >
@@ -425,19 +425,19 @@ export function CodingWorkspacePanels({
           )}
         </div>
 
-        <ul className="min-h-0 flex-1 overflow-y-auto px-1 py-1 text-xs">
+        <ul className="min-h-0 flex-1 overflow-y-auto px-tight py-tight text-xs">
           {panelTab === "files" ? (
             <>
               {listError ? (
-                <li className="px-2 py-2 text-red-300/90">{listError}</li>
+                <li className="px-base py-base text-red-300/90">{listError}</li>
               ) : entries.length === 0 && !listLoading ? (
-                <li className="px-2 py-2 text-ink-muted">{t("dashboard:filesEmpty")}</li>
+                <li className="px-base py-base text-ink-muted">{t("dashboard:filesEmpty")}</li>
               ) : (
                 entries.map((e) => (
                   <li key={e.path}>
                     <button
                       type="button"
-                      className={`flex w-full items-center gap-1 rounded-tile px-2 py-1 text-left hover:bg-white/10 ${
+                      className={`flex w-full items-center gap-tight rounded-tile px-base py-tight text-left hover:bg-white/10 ${
                         selectedFile === e.path && !e.is_dir ? "bg-white/10" : ""
                       }`}
                       onClick={() => {
@@ -467,19 +467,19 @@ export function CodingWorkspacePanels({
               )}
             </>
           ) : changesLoading && !changesSummary ? (
-            <li className="px-2 py-2 text-ink-muted">{t("dashboard:loading")}</li>
+            <li className="px-base py-base text-ink-muted">{t("dashboard:loading")}</li>
           ) : changesError ? (
-            <li className="px-2 py-2 text-red-300/90">{changesError}</li>
+            <li className="px-base py-base text-red-300/90">{changesError}</li>
           ) : !changesSummary?.has_changes ? (
-            <li className="px-2 py-2 text-ink-muted">{t("dashboard:noUncommittedChanges")}</li>
+            <li className="px-base py-base text-ink-muted">{t("dashboard:noUncommittedChanges")}</li>
           ) : (changesSummary.files ?? []).length === 0 ? (
-            <li className="px-2 py-2 text-ink-muted">{t("dashboard:changesDetected")}</li>
+            <li className="px-base py-base text-ink-muted">{t("dashboard:changesDetected")}</li>
           ) : (
             (changesSummary.files ?? []).map((f) => (
               <li key={f.path}>
                 <button
                   type="button"
-                  className={`flex w-full flex-col rounded-tile px-2 py-1 text-left hover:bg-white/10 ${
+                  className={`flex w-full flex-col rounded-tile px-base py-tight text-left hover:bg-white/10 ${
                     selectedChangePath === f.path ? "bg-white/10" : ""
                   }`}
                   onClick={() => void loadChangeDiff(f.path)}
@@ -492,25 +492,25 @@ export function CodingWorkspacePanels({
           )}
         </ul>
         {panelTab === "files" && listTruncated ? (
-          <p className="shrink-0 border-t border-line px-2 py-1 text-meta text-amber-300/80">
+          <p className="shrink-0 border-t border-line px-base py-tight text-meta text-amber-300/80">
             {t("dashboard:listTruncated")}
           </p>
         ) : null}
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col border-t border-line lg:border-t-0">
-        <div className="shrink-0 border-b border-line px-3 py-2">
+        <div className="shrink-0 border-b border-line px-soft py-base">
           <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
             {panelTab === "files" ? t("dashboard:preview") : t("dashboard:diff")}
           </p>
           {panelTab === "files" && fileMeta ? (
-            <p className="mt-0.5 truncate font-mono text-meta text-ink-muted">{fileMeta}</p>
+            <p className="mt-hair truncate font-mono text-meta text-ink-muted">{fileMeta}</p>
           ) : null}
           {panelTab === "changes" && selectedChangePath ? (
-            <p className="mt-0.5 truncate font-mono text-meta text-ink-muted">{selectedChangePath}</p>
+            <p className="mt-hair truncate font-mono text-meta text-ink-muted">{selectedChangePath}</p>
           ) : null}
         </div>
-        <div className="min-h-0 flex-1 overflow-auto p-2">
+        <div className="min-h-0 flex-1 overflow-auto p-base">
           {panelTab === "files" ? (
             <>
               {fileLoading ? (
@@ -544,7 +544,7 @@ export function CodingWorkspacePanels({
           {panelTab === "changes" && selectedChangePath ? (
             <button
               type="button"
-              className="mt-3 text-meta text-sky-400/90 hover:underline"
+              className="mt-soft text-meta text-sky-400/90 hover:underline"
               onClick={() => {
                 const parts = selectedChangePath.split("/").filter(Boolean);
                 parts.pop();

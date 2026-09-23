@@ -303,23 +303,23 @@ export function ConnectionsSettings() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className="mx-auto max-w-2xl space-y-deep">
       <div>
         <h1 className="text-lg font-semibold text-ink-primary">{t("settings:connectionsTitle")}</h1>
-        <p className="mt-2 text-sm text-ink-muted">{t("settings:connectionsIntro")}</p>
+        <p className="mt-base text-sm text-ink-muted">{t("settings:connectionsIntro")}</p>
       </div>
 
       {loading ? <p className="text-sm text-ink-muted">{t("settings:agentLoading")}</p> : null}
 
-      <section className="rounded-sheet border border-line bg-card p-5">
+      <section className="rounded-sheet border border-line bg-card p-roomy">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:discord")}</h2>
-        <p className="mt-2 text-xs text-ink-muted">{t("settings:connectionsDiscordIntro")}</p>
-        <label className="mt-4 block text-xs text-ink-muted" htmlFor="discord-user-id">
+        <p className="mt-base text-xs text-ink-muted">{t("settings:connectionsDiscordIntro")}</p>
+        <label className="mt-wide block text-xs text-ink-muted" htmlFor="discord-user-id">
           {t("settings:connectionsDiscordIdLabel")}
         </label>
         <input
           id="discord-user-id"
-          className="mt-1 w-full max-w-md rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+          className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
           value={discordUserId}
           onChange={(e) => setDiscordUserId(e.target.value.replace(/\D/g, ""))}
           autoComplete="off"
@@ -327,11 +327,11 @@ export function ConnectionsSettings() {
           placeholder={t("settings:discordUserIdPlaceholder")}
           spellCheck={false}
         />
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-wide flex flex-wrap gap-base">
           <button
             type="button"
             disabled={discordSaving}
-            className="rounded-tile bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+            className="rounded-tile bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
             onClick={() => void saveDiscordLink()}
           >
             {discordSaving ? t("settings:saving") : t("settings:connectionsSaveDiscord")}
@@ -339,7 +339,7 @@ export function ConnectionsSettings() {
           <button
             type="button"
             disabled={discordSaving || !discordUserId}
-            className="rounded-tile border border-line-strong bg-white/5 px-4 py-2 text-sm text-ink-primary hover:bg-white/10 disabled:opacity-40"
+            className="rounded-tile border border-line-strong bg-white/5 px-wide py-base text-sm text-ink-primary hover:bg-white/10 disabled:opacity-40"
             onClick={() => {
               setDiscordUserId("");
               void (async () => {
@@ -370,15 +370,15 @@ export function ConnectionsSettings() {
         </div>
       </section>
 
-      <section className="rounded-sheet border border-line bg-card p-5">
+      <section className="rounded-sheet border border-line bg-card p-roomy">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:telegram")}</h2>
-        <p className="mt-2 text-xs text-ink-muted">{t("settings:connectionsTelegramIntro")}</p>
-        <label className="mt-4 block text-xs text-ink-muted" htmlFor="telegram-user-id">
+        <p className="mt-base text-xs text-ink-muted">{t("settings:connectionsTelegramIntro")}</p>
+        <label className="mt-wide block text-xs text-ink-muted" htmlFor="telegram-user-id">
           {t("settings:connectionsTelegramIdLabel")}
         </label>
         <input
           id="telegram-user-id"
-          className="mt-1 w-full max-w-md rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+          className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
           value={telegramUserId}
           onChange={(e) => setTelegramUserId(e.target.value.replace(/\D/g, ""))}
           autoComplete="off"
@@ -386,11 +386,11 @@ export function ConnectionsSettings() {
           placeholder={t("settings:telegramUserIdPlaceholder")}
           spellCheck={false}
         />
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-wide flex flex-wrap gap-base">
           <button
             type="button"
             disabled={telegramSaving}
-            className="rounded-tile bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+            className="rounded-tile bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
             onClick={() => void saveTelegramLink()}
           >
             {telegramSaving ? t("settings:saving") : t("settings:connectionsSaveTelegram")}
@@ -398,7 +398,7 @@ export function ConnectionsSettings() {
           <button
             type="button"
             disabled={telegramSaving || !telegramUserId}
-            className="rounded-tile border border-line-strong bg-white/5 px-4 py-2 text-sm text-ink-primary hover:bg-white/10 disabled:opacity-40"
+            className="rounded-tile border border-line-strong bg-white/5 px-wide py-base text-sm text-ink-primary hover:bg-white/10 disabled:opacity-40"
             onClick={() => {
               setTelegramUserId("");
               void (async () => {
@@ -447,13 +447,13 @@ export function ConnectionsSettings() {
       ) : null}
 
       <section className="rounded-sheet border border-line bg-card">
-        <div className="border-b border-line px-4 py-3">
+        <div className="border-b border-line px-wide py-soft">
           <h2 className="text-sm font-medium text-ink-primary">{t("settings:connectionsCatalogTitle")}</h2>
-          <p className="mt-0.5 text-xs text-ink-muted">{t("settings:connectionsCatalogHint")}</p>
+          <p className="mt-hair text-xs text-ink-muted">{t("settings:connectionsCatalogHint")}</p>
         </div>
         <ul className="divide-y divide-line-subtle">
           {keyUsage.length === 0 && !loading ? (
-            <li className="px-4 py-6 text-sm text-ink-muted">{t("settings:connectionsCatalogEmpty")}</li>
+            <li className="px-wide py-broad text-sm text-ink-muted">{t("settings:connectionsCatalogEmpty")}</li>
           ) : (
             keyUsage.map(([key, info]) => {
               const saved = services.includes(key);
@@ -464,18 +464,18 @@ export function ConnectionsSettings() {
                   <button
                     type="button"
                     onClick={() => toggleKey(key)}
-                    className="flex w-full flex-col gap-2 px-4 py-4 text-left transition hover:bg-white/[0.03] sm:flex-row sm:items-center sm:justify-between"
+                    className="flex w-full flex-col gap-base px-wide py-wide text-left transition hover:bg-white/[0.03] sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-base">
                         <span className="font-mono text-sm text-ink-primary">{key}</span>
                         {hasForm ? (
-                          <span className="rounded-tile bg-sky-500/15 px-1.5 py-0.5 text-meta text-sky-200">
+                          <span className="rounded-tile bg-sky-500/15 px-snug py-hair text-meta text-sky-200">
                             {t("settings:connectionsFormInUiBadge")}
                           </span>
                         ) : null}
                       </div>
-                      <div className="mt-1 text-xs text-ink-muted">
+                      <div className="mt-tight text-xs text-ink-muted">
                         {t("settings:connectionsPackages", {
                           labels:
                             info.labels.slice(0, 4).join(", ") +
@@ -483,12 +483,12 @@ export function ConnectionsSettings() {
                         })}
                       </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-base">
                       <span
                         className={
                           saved
-                            ? "rounded-tile bg-emerald-500/15 px-2 py-1 text-xs text-emerald-300"
-                            : "rounded-tile bg-neutral-500/20 px-2 py-1 text-xs text-ink-secondary"
+                            ? "rounded-tile bg-emerald-500/15 px-base py-tight text-xs text-emerald-300"
+                            : "rounded-tile bg-neutral-500/20 px-base py-tight text-xs text-ink-secondary"
                         }
                       >
                         {saved ? t("settings:connectionsSecretSaved") : t("settings:connectionsSecretNotSaved")}
@@ -498,7 +498,7 @@ export function ConnectionsSettings() {
                   </button>
 
                   {open ? (
-                    <div className="space-y-4 border-t border-line-subtle bg-black/20 px-4 py-4">
+                    <div className="space-y-wide border-t border-line-subtle bg-black/20 px-wide py-wide">
                       {saved && !secretsUnavailable ? (
                         <div className="flex justify-end">
                           <Button
@@ -516,16 +516,16 @@ export function ConnectionsSettings() {
                       ) : null}
 
                         {activeForm?.help || activeForm?.title ? (
-                        <div className="rounded-card border border-line bg-white/[0.03] px-3 py-2 text-xs leading-relaxed text-ink-secondary">
+                        <div className="rounded-card border border-line bg-white/[0.03] px-soft py-base text-xs leading-relaxed text-ink-secondary">
                           {activeForm.title ? (
-                            <p className="mb-1 font-medium text-ink-primary">{activeForm.title}</p>
+                            <p className="mb-tight font-medium text-ink-primary">{activeForm.title}</p>
                           ) : null}
                           <p className="text-ink-muted">{activeForm.help}</p>
                         </div>
                       ) : null}
 
                       {activeForm?.fields?.length ? (
-                        <div className="space-y-3">
+                        <div className="space-y-soft">
                           {activeForm.fields.map((f) => {
                             const id = `sec-${key}-${f.name}`;
                             const fieldType = (f.type || "text").toLowerCase();
@@ -539,7 +539,7 @@ export function ConnectionsSettings() {
                                   id={id}
                                   type={inputType}
                                   autoComplete="off"
-                                  className="mt-1 block w-full rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary placeholder:text-neutral-600"
+                                  className="mt-tight block w-full rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary placeholder:text-neutral-600"
                                   value={fieldValues[f.name] ?? ""}
                                   onChange={(e) => setFieldValues((prev) => ({ ...prev, [f.name]: e.target.value }))}
                                   disabled={secretsUnavailable}
@@ -552,7 +552,7 @@ export function ConnectionsSettings() {
                         <label className="block text-xs text-ink-muted">
                           {t("settings:connectionsSecretLabel")}
                           <textarea
-                            className="mt-1 min-h-[7rem] w-full rounded-tile border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary placeholder:text-neutral-600"
+                            className="mt-tight min-h-[7rem] w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary placeholder:text-neutral-600"
                             placeholder={t("settings:connectionsSecretJsonPlaceholder")}
                             value={rawJson}
                             onChange={(e) => setRawJson(e.target.value)}
@@ -565,7 +565,7 @@ export function ConnectionsSettings() {
                       <button
                         type="button"
                         disabled={saving || secretsUnavailable}
-                        className="rounded-tile bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-40"
+                        className="rounded-tile bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-40"
                         onClick={() => void saveSecret()}
                       >
                         {saving ? t("settings:saving") : t("admin:save")}
@@ -580,10 +580,10 @@ export function ConnectionsSettings() {
       </section>
 
       {orphanServices.length > 0 ? (
-        <section className="rounded-sheet border border-line bg-black/20 p-5">
+        <section className="rounded-sheet border border-line bg-black/20 p-roomy">
           <h2 className="text-sm font-medium text-ink-primary">{t("settings:connectionsOrphanTitle")}</h2>
-          <p className="mt-1 text-xs text-ink-muted">{t("settings:connectionsOrphanIntro")}</p>
-          <ul className="mt-3 divide-y divide-line-subtle rounded-card border border-line">
+          <p className="mt-tight text-xs text-ink-muted">{t("settings:connectionsOrphanIntro")}</p>
+          <ul className="mt-soft divide-y divide-line-subtle rounded-card border border-line">
             {orphanServices.map((k) => {
               const open = activeKey === k;
               return (
@@ -591,28 +591,28 @@ export function ConnectionsSettings() {
                   <button
                     type="button"
                     onClick={() => toggleKey(k)}
-                    className="flex w-full items-center justify-between px-3 py-3 text-left text-sm hover:bg-white/[0.03]"
+                    className="flex w-full items-center justify-between px-soft py-soft text-left text-sm hover:bg-white/[0.03]"
                   >
                     <span className="font-mono text-ink-primary">{k}</span>
                     <span className="text-xs text-ink-muted">{open ? "▲" : "▼"}</span>
                   </button>
                   {open ? (
-                    <div className="space-y-3 border-t border-line-subtle px-3 py-3">
+                    <div className="space-y-soft border-t border-line-subtle px-soft py-soft">
                       <label className="block text-xs text-ink-muted">
                         {t("settings:connectionsSecretLabel")}
                         <textarea
-                          className="mt-1 min-h-[6rem] w-full rounded-tile border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary"
+                          className="mt-tight min-h-[6rem] w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary"
                           value={rawJson}
                           onChange={(e) => setRawJson(e.target.value)}
                           disabled={secretsUnavailable}
                           spellCheck={false}
                         />
                       </label>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-base">
                         <button
                           type="button"
                           disabled={saving || secretsUnavailable}
-                          className="rounded-tile bg-sky-600 px-3 py-1.5 text-xs font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-40"
+                          className="rounded-tile bg-sky-600 px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-40"
                           onClick={() => void saveSecret()}
                         >
                           {saving ? t("settings:saving") : t("admin:save")}

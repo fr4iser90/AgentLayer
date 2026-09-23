@@ -38,7 +38,7 @@ export function galleryAspectClass(aspect: GalleryAspect): string {
 
 /** Responsive grid classes from column count (2–5). */
 export function galleryGridClass(columns: number): string {
-  const base = "grid gap-3 sm:gap-4";
+  const base = "grid gap-soft sm:gap-wide";
   switch (columns) {
     case 2:
       return `${base} grid-cols-2`;

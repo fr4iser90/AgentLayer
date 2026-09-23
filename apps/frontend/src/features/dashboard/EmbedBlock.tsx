@@ -77,37 +77,37 @@ export function EmbedBlockBody(props: {
   const title = st.title.trim() || sectionTitle;
 
   return (
-    <section className="rounded-sheet border border-line bg-card p-3 md:p-4">
-      <h3 className="mb-2 text-sm font-medium text-ink-primary">{title}</h3>
+    <section className="rounded-sheet border border-line bg-card p-soft md:p-wide">
+      <h3 className="mb-base text-sm font-medium text-ink-primary">{title}</h3>
       {!readOnly ? (
-        <div className="dashboard-grid-no-drag mb-3 space-y-2">
+        <div className="dashboard-grid-no-drag mb-soft space-y-base">
           <div>
-            <label className="mb-1 block text-meta uppercase text-ink-muted">
+            <label className="mb-tight block text-meta uppercase text-ink-muted">
               {t("dashboard:embedTitleOptionalLabel")}
             </label>
             <input
               type="text"
-              className="w-full rounded-card border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+              className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
               placeholder={sectionTitle}
               value={st.title}
               onChange={(e) => patch({ title: e.target.value })}
             />
           </div>
           <div>
-            <label className="mb-1 block text-meta uppercase text-ink-muted">
+            <label className="mb-tight block text-meta uppercase text-ink-muted">
               {t("dashboard:embedUrlLabel")}
             </label>
             <input
               type="url"
-              className="w-full rounded-card border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary"
+              className="w-full rounded-card border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary"
               placeholder={t("dashboard:embedUrlPlaceholder")}
               value={st.url}
               onChange={(e) => patch({ url: e.target.value })}
             />
           </div>
-          <div className="flex flex-wrap items-end gap-2">
+          <div className="flex flex-wrap items-end gap-base">
             <div>
-              <label className="mb-1 block text-meta uppercase text-ink-muted">
+              <label className="mb-tight block text-meta uppercase text-ink-muted">
                 {t("dashboard:embedHeightLabel")}
               </label>
               <input
@@ -115,14 +115,14 @@ export function EmbedBlockBody(props: {
                 min={120}
                 max={2000}
                 step={20}
-                className="w-28 rounded-card border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                className="w-28 rounded-card border border-line bg-field px-base py-snug text-sm text-ink-primary"
                 value={st.height}
                 onChange={(e) => patch({ height: Number(e.target.value) || 480 })}
               />
             </div>
           </div>
           {st.url && !allowed ? (
-            <p className="rounded-card border border-amber-500/40 bg-amber-950/30 px-2 py-1.5 text-xs text-amber-200">
+            <p className="rounded-card border border-amber-500/40 bg-amber-950/30 px-base py-snug text-xs text-amber-200">
               {t("dashboard:embedUrlNotAllowed")}{" "}
               {EMBED_ALLOWED_HOSTNAMES.slice(0, 4).join(", ")} …
             </p>
@@ -147,11 +147,11 @@ export function EmbedBlockBody(props: {
           />
         </div>
       ) : st.url && readOnly ? (
-        <p className="rounded-card border border-red-500/30 bg-red-950/20 px-3 py-4 text-sm text-red-200">
+        <p className="rounded-card border border-red-500/30 bg-red-950/20 px-soft py-wide text-sm text-red-200">
           {t("dashboard:embedUnavailableReadOnly")}
         </p>
       ) : !st.url ? (
-        <p className="rounded-card border border-dashed border-line-strong py-10 text-center text-sm text-ink-muted">
+        <p className="rounded-card border border-dashed border-line-strong py-page text-center text-sm text-ink-muted">
           {readOnly
             ? t("dashboard:embedEmptyReadOnly")
             : t("dashboard:embedEmptyEditable")}
