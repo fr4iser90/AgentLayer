@@ -38,7 +38,7 @@ export function LegalPage() {
 
   return (
     <div className="h-full min-h-0 overflow-y-auto">
-      <div className="mx-auto max-w-3xl px-broad py-page">
+      <div className="mx-auto max-w-measure px-broad py-page">
         <p className="mb-broad">
           <Link to="/login" className="text-sm text-sky-400 hover:underline">
             {t("legal.back")}

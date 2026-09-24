@@ -303,7 +303,7 @@ export function ConnectionsSettings() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-deep">
+    <div className="mx-auto max-w-page space-y-deep">
       <div>
         <h1 className="text-lg font-semibold text-ink-primary">{t("settings:connectionsTitle")}</h1>
         <p className="mt-base text-sm text-ink-muted">{t("settings:connectionsIntro")}</p>
@@ -319,7 +319,7 @@ export function ConnectionsSettings() {
         </label>
         <input
           id="discord-user-id"
-          className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+          className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
           value={discordUserId}
           onChange={(e) => setDiscordUserId(e.target.value.replace(/\D/g, ""))}
           autoComplete="off"
@@ -378,7 +378,7 @@ export function ConnectionsSettings() {
         </label>
         <input
           id="telegram-user-id"
-          className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+          className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
           value={telegramUserId}
           onChange={(e) => setTelegramUserId(e.target.value.replace(/\D/g, ""))}
           autoComplete="off"

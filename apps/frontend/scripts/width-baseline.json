@@ -1,0 +1,41 @@
+{
+  "src/features/chat/ContextInjectionGroup.tsx": [
+    "full"
+  ],
+  "src/features/chat/ConversationGoalPanels.tsx": [
+    "full"
+  ],
+  "src/features/chat/ModelCatalogSelect.tsx": [
+    "[45%]",
+    "[48%]"
+  ],
+  "src/features/chat/UserMessageBubble.tsx": [
+    "full"
+  ],
+  "src/features/dashboard/DashboardEmbeddedChat.tsx": [
+    "full"
+  ],
+  "src/features/dashboard/DashboardEmbeddedThreadMenu.tsx": [
+    "[58%]",
+    "full"
+  ],
+  "src/features/dashboard/KanbanRichMarkdownBlocks.tsx": [
+    "full"
+  ],
+  "src/features/dashboard/gallery/GalleryLightbox.tsx": [
+    "[min(96vw,1400px)]",
+    "full"
+  ],
+  "src/features/legal/LegalMarkdown.tsx": [
+    "none"
+  ],
+  "src/pages/ChatPage.tsx": [
+    "full"
+  ],
+  "src/pages/DashboardPage.tsx": [
+    "full"
+  ],
+  "src/pages/StudioPage.tsx": [
+    "full"
+  ]
+}

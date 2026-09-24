@@ -370,7 +370,7 @@ export function CodingWorkspacePanels({
                       <Tooltip label={prefix}>
                       <button
                           type="button"
-                          className="max-w-[5rem] truncate rounded-tile px-snug py-hair hover:bg-white/10"
+                          className="max-w-chip truncate rounded-tile px-snug py-hair hover:bg-white/10"
                           onClick={() => {
                             setBrowsePath(prefix);
                             setSelectedFile(null);

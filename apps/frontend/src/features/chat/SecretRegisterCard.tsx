@@ -87,7 +87,7 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
         : null;
 
   return (
-    <div className="w-full max-w-[min(100%,42rem)] rounded-sheet border border-amber-900/45 bg-amber-950/20 px-soft py-soft text-sm shadow-sm">
+    <div className="w-full max-w-measure rounded-sheet border border-amber-900/45 bg-amber-950/20 px-soft py-soft text-sm shadow-sm">
       <div className="flex items-start gap-base">
         <KeyRound aria-hidden className="mt-hair h-4 w-4 shrink-0" />
         <div className="min-w-0 flex-1">

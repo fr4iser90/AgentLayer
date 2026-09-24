@@ -321,7 +321,7 @@ export function Tooltip({ label, placement = "top", children }: TooltipProps) {
                 left: pos ? pos.left : 0,
                 visibility: pos ? "visible" : "hidden",
               }}
-              className="animate-tooltip-in fixed z-[60] max-w-64 rounded-tile border border-line bg-raised px-base py-tight text-label text-ink-primary shadow-raised"
+              className="animate-tooltip-in fixed z-[60] max-w-chipWide rounded-tile border border-line bg-raised px-base py-tight text-label text-ink-primary shadow-raised"
               onPointerEnter={() => {
                 if (hideTimer.current !== null) clearTimeout(hideTimer.current);
                 hideTimer.current = null;

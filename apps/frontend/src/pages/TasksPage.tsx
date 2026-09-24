@@ -172,7 +172,7 @@ export function TasksPage() {
 
   return (
     <div className="h-full min-h-0 overflow-y-auto">
-      <div className="mx-auto max-w-4xl px-broad py-deep">
+      <div className="mx-auto max-w-page px-broad py-deep">
         <div className="flex flex-wrap items-start justify-between gap-wide">
           <div>
             <h1 className="text-2xl font-semibold text-ink-primary">{t_0("tasks:pageTitle")}</h1>
@@ -257,7 +257,7 @@ export function TasksPage() {
           <label className="mt-soft block text-xs text-ink-muted">
             {t_0("tasks:workspaceLabel")}
             <select
-              className="mt-tight block w-full max-w-md rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              className="mt-tight block w-full max-w-controlWide rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
               value={selectedWorkspaceId ?? ""}
               onChange={(e) => onWorkspaceChange(e.target.value)}
             >

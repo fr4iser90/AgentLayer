@@ -211,7 +211,7 @@ export function AdminHarnessConfig() {
         {loading ? (
           <p className="text-sm text-ink-muted">{t("admin:loading")}</p>
         ) : (
-          <div className="mx-auto max-w-5xl space-y-deep">
+          <div className="mx-auto max-w-page space-y-deep">
             <section className="rounded-card border border-line bg-black/20 p-wide">
               <h2 className="text-sm font-medium text-ink-primary">{t("admin:harnessGlobalTitle")}</h2>
               <p className="mt-tight text-xs text-ink-muted">{t("admin:harnessGlobalHint")}</p>

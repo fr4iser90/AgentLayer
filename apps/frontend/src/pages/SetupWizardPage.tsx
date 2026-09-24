@@ -458,7 +458,7 @@ export function SetupWizardPage() {
 
   return (
     <div className="h-full min-h-0 overflow-y-auto">
-      <div className="mx-auto max-w-lg px-broad py-grand">
+      <div className="mx-auto max-w-dialog px-broad py-grand">
         <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
           {t("setup:stepOf", { step: step + 1, total: 4 })}
         </p>

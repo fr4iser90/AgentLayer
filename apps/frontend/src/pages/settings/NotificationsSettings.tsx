@@ -123,7 +123,7 @@ export function NotificationsSettings() {
   }
 
   return (
-    <div className="mx-auto max-w-xl space-y-broad">
+    <div className="mx-auto max-w-page space-y-broad">
       <div>
         <h1 className="text-xl font-semibold text-ink-primary">{t("settings:notificationsTitle")}</h1>
         <p className="mt-tight text-sm text-ink-muted">{t("settings:notificationsIntro")}</p>

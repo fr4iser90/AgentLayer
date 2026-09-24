@@ -393,13 +393,13 @@ function BenchmarkFailuresSummary({
                 <td className="py-tight pr-base font-mono align-top text-meta">
                   {formatBenchmarkProviderModel(row)}
                 </td>
-                <td className="py-tight pr-base align-top text-amber-200/90 max-w-[10rem]">
+                <td className="py-tight pr-base align-top text-amber-200/90 max-w-chip">
                   {row.transport_error || "—"}
                 </td>
-                <td className="py-tight pr-base align-top text-rose-200/90 max-w-[12rem]">
+                <td className="py-tight pr-base align-top text-rose-200/90 max-w-chipWide">
                   {row.rubric_failure || "—"}
                 </td>
-                <td className="py-tight pr-base align-top text-sky-200/80 max-w-[16rem]">
+                <td className="py-tight pr-base align-top text-sky-200/80 max-w-chipWide">
                   {row.insights || "—"}
                 </td>
               </tr>
@@ -720,17 +720,17 @@ function BenchmarkScenarioDetail({
                     <tr key={i} className="border-t border-line-subtle">
                       <td className="px-base py-tight">{row.round ?? "—"}</td>
                       <td className="px-base py-tight">{row.name || "—"}</td>
-                      <td className="max-w-[10rem] truncate px-base py-tight" title={args}>
+                      <td className="max-w-chip truncate px-base py-tight" title={args}>
                         {args}
                       </td>
-                      <td className="max-w-[10rem] truncate px-base py-tight text-amber-100/80" title={wire}>
+                      <td className="max-w-chip truncate px-base py-tight text-amber-100/80" title={wire}>
                         {wire}
                       </td>
-                      <td className="max-w-[10rem] truncate px-base py-tight text-red-200/90" title={missing}>
+                      <td className="max-w-chip truncate px-base py-tight text-red-200/90" title={missing}>
                         {missing}
                       </td>
                       <td className="px-base py-tight">{promoted}</td>
-                      <td className="max-w-[10rem] truncate px-base py-tight text-amber-200/90" title={result}>
+                      <td className="max-w-chip truncate px-base py-tight text-amber-200/90" title={result}>
                         {result}
                       </td>
                     </tr>
@@ -1887,7 +1887,7 @@ export function AdminBenchmarks() {
                 <select
                   value={friendUserId}
                   onChange={(e) => setFriendUserId(e.target.value)}
-                  className="mt-tight w-full max-w-md rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
+                  className="mt-tight w-full max-w-controlWide rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
                 >
                   {friendCandidates.length === 0 ? (
                     <option value="">{t("admin:benchFriendUserEmpty")}</option>
@@ -2523,7 +2523,7 @@ export function AdminBenchmarks() {
             <select
               value={suite}
               onChange={(e) => onSuiteChange(e.target.value)}
-              className="mt-tight w-full max-w-md rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              className="mt-tight w-full max-w-controlWide rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
             >
               {suites.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -3044,7 +3044,7 @@ export function AdminBenchmarks() {
                     {detail.report_json?.in_flight &&
                     formatInFlightPreview(detail.report_json.in_flight) ? (
                       <p
-                        className="font-mono text-meta leading-snug text-sky-200/70 truncate max-w-full"
+                        className="font-mono text-meta leading-snug text-sky-200/70 truncate max-w-chipWide"
                         title={detail.report_json.in_flight.generation_preview}
                       >
                         {t("admin:benchInFlightPreview")}:{" "}
@@ -3306,7 +3306,7 @@ export function AdminBenchmarks() {
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-md rounded-sheet border border-line bg-[#1a1a1a] p-roomy shadow-2xl"
+            className="w-full max-w-dialog rounded-sheet border border-line bg-[#1a1a1a] p-roomy shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-base font-semibold text-ink-primary">{t("admin:benchBulkDeleteTitle")}</h2>

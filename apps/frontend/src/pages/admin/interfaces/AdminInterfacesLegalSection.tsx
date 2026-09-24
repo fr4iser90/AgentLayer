@@ -32,7 +32,7 @@ export function AdminInterfacesLegalSection() {
       </label>
       <select
         id="legal-jurisdiction"
-        className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+        className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
         value={s.legalJurisdiction}
         onChange={(e) => s.setLegalJurisdiction(e.target.value)}
       >
@@ -95,7 +95,7 @@ export function AdminInterfacesLegalSection() {
         {t("admin:ifPlatformLegalEntityPhone")}
         <input
           id="legal-entity-phone"
-          className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+          className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
           value={s.legalEntityPhone}
           onChange={(e) => s.setLegalEntityPhone(e.target.value)}
         />

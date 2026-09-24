@@ -353,7 +353,7 @@ export function MySchedulesPage() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-broad py-page">
+    <div className="mx-auto max-w-pageWide px-broad py-page">
       <div className="flex items-start justify-between gap-wide">
         <div>
           <h1 className="text-2xl font-semibold text-ink-primary">{t("common:schedules")}</h1>
@@ -475,7 +475,7 @@ export function MySchedulesPage() {
 
       {createOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-wide">
-          <div className="w-full max-w-2xl rounded-sheet border border-line bg-card p-wide">
+          <div className="w-full max-w-dialogWide rounded-sheet border border-line bg-card p-wide">
             <div className="mb-soft flex items-start justify-between gap-soft">
               <div>
                 <div className="text-lg font-semibold text-ink-primary">{t("admin:createScheduleTitle")}</div>
@@ -642,7 +642,7 @@ export function MySchedulesPage() {
 
       {editJob ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-wide">
-          <div className="w-full max-w-2xl rounded-sheet border border-line bg-card p-wide">
+          <div className="w-full max-w-dialogWide rounded-sheet border border-line bg-card p-wide">
             <div className="mb-soft flex items-start justify-between gap-soft">
               <div>
                 <div className="text-lg font-semibold text-ink-primary">{t("settings:schedulesEditTitle")}</div>
@@ -709,7 +709,7 @@ export function MySchedulesPage() {
 
       {runsJob ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-wide">
-          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-sheet border border-line bg-card p-wide">
+          <div className="flex max-h-[90vh] w-full max-w-dialogFull flex-col rounded-sheet border border-line bg-card p-wide">
             <div className="mb-soft flex shrink-0 items-start justify-between gap-soft">
               <div>
                 <div className="text-lg font-semibold text-ink-primary">{t("settings:schedulesRunHistoryTitle")}</div>

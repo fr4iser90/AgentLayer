@@ -298,7 +298,7 @@ export function ToolsSettings() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-deep pb-grand">
+    <div className="mx-auto max-w-page space-y-deep pb-grand">
       <div>
         <h1 className="text-lg font-semibold text-ink-primary">{t("settings:toolsTitle")}</h1>
         <p className="mt-base text-sm text-ink-muted">
@@ -339,7 +339,7 @@ export function ToolsSettings() {
 
       {!loading && meta.length > 0 ? (
         <div className="flex flex-col gap-wide sm:flex-row sm:items-center sm:justify-between">
-          <label className="block max-w-md flex-1 text-sm text-ink-muted">
+          <label className="block max-w-controlWide flex-1 text-sm text-ink-muted">
             {t("settings:toolsSearchLabel")}
             <input
               type="search"
@@ -586,7 +586,7 @@ function PackageDrawer({
         aria-label={t("settings:close")}
         onClick={onClose}
       />
-      <div className="relative flex h-full w-full max-w-lg flex-col border-l border-line bg-[#141414] shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-sheet">
+      <div className="relative flex h-full w-full max-w-drawer flex-col border-l border-line bg-[#141414] shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-sheet">
         <div className="flex items-start justify-between gap-soft border-b border-line px-roomy py-wide">
           <div>
             <p className="text-meta uppercase text-ink-muted">{pid}</p>

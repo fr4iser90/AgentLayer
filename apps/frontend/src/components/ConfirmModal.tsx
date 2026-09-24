@@ -55,7 +55,7 @@ export function ConfirmModal({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descId}
-        className="w-full max-w-md rounded-sheet border border-line bg-[#1a1a1a] p-roomy shadow-2xl"
+        className="w-full max-w-dialog rounded-sheet border border-line bg-[#1a1a1a] p-roomy shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id={titleId} className="text-base font-semibold text-ink-primary">

@@ -1,11 +1,11 @@
 {
   "profiles": {
     "fast": ["ddd_layers", "ddd_quality", "agent_governance", "tenant_scope", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder"],
-    "precommit": ["ddd_layers", "ddd_quality", "agent_governance", "tenant_scope", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder", "frontend_ink_color", "frontend_border_token", "frontend_radius", "frontend_spacing", "frontend_icon_label", "frontend_font_license", "node_cve_full", "python_cve"],
+    "precommit": ["ddd_layers", "ddd_quality", "agent_governance", "tenant_scope", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder", "frontend_ink_color", "frontend_border_token", "frontend_radius", "frontend_spacing", "frontend_content_width", "frontend_icon_label", "frontend_font_license", "node_cve_full", "python_cve"],
     "security": ["node_cve_full", "python_cve", "tenant_scope_all"],
     "architecture": ["ddd_layers_report", "ddd_quality", "agent_governance", "tenant_scope_all"],
     "quality": ["agent_governance", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder", "bandit"],
-    "ci": ["ddd_layers_all", "ddd_quality", "agent_governance", "tenant_scope", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder", "frontend_ink_color", "frontend_border_token", "frontend_radius", "frontend_spacing", "frontend_icon_label", "frontend_font_license", "node_cve_full", "python_cve", "bandit"]
+    "ci": ["ddd_layers_all", "ddd_quality", "agent_governance", "tenant_scope", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder", "frontend_ink_color", "frontend_border_token", "frontend_radius", "frontend_spacing", "frontend_content_width", "frontend_icon_label", "frontend_font_license", "node_cve_full", "python_cve", "bandit"]
   },
   "checks": {
     "tenant_scope": {
@@ -539,6 +539,13 @@
       "cwd": "apps/frontend",
       "required_tool": "node",
       "nix_shell_command": "cd apps/frontend && node scripts/check-spacing.mjs"
+    },
+    "frontend_content_width": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-content-width.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-content-width.mjs"
     },
     "frontend_icon_label": {
       "module": "command_check",

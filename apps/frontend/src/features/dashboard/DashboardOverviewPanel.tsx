@@ -65,7 +65,7 @@ export function DashboardOverviewPanel(props: {
 
   if (list.length === 0) {
     return (
-      <div className="mx-auto max-w-3xl space-y-wide py-broad">
+      <div className="mx-auto max-w-pageNarrow space-y-wide py-broad">
         <div>
           <h1 className="text-xl font-semibold text-ink-primary">{t("dashboard:overviewTitle")}</h1>
           <p className="mt-tight text-sm text-ink-muted">{t("dashboard:overviewEmpty")}</p>
@@ -75,7 +75,7 @@ export function DashboardOverviewPanel(props: {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-deep py-broad">
+    <div className="mx-auto max-w-page space-y-deep py-broad">
       <div>
         <h1 className="text-xl font-semibold text-ink-primary">{t("dashboard:overviewTitle")}</h1>
         <p className="mt-tight text-sm text-ink-muted">

@@ -64,7 +64,7 @@ export const ContextInjectionGroup = memo(function ContextInjectionGroup({
           </span>
         ) : null}
         {highlight.length > 0 ? (
-          <span className="max-w-[18rem] truncate text-meta font-normal text-amber-200/65">
+          <span className="max-w-chipWide truncate text-meta font-normal text-amber-200/65">
             {highlight.join(" · ")}
             {more > 0 ? ` · +${more}` : ""}
           </span>

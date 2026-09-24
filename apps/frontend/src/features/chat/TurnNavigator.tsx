@@ -88,7 +88,7 @@ export function TurnNavigatorHorizontal({ userTurns, activeId, onSelect, classNa
               }`}
             >
               <span className="mr-tight tabular-nums text-meta opacity-70">{turn.index}</span>
-              <span className="max-w-[8rem] truncate">{turn.label}</span>
+              <span className="max-w-chip truncate">{turn.label}</span>
             </button>
           </Tooltip>
         );

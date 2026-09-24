@@ -171,7 +171,7 @@ export function AdminInterfacesMemorySection() {
                   </label>
                   <select
                     id="embedding-provider-id"
-                    className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary disabled:opacity-50"
+                    className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary disabled:opacity-50"
                     value={s.ragEmbeddingProviderId || s.ragEmbeddingProviderIdEffective || ""}
                     onChange={(e) => s.setRagEmbeddingProviderId(e.target.value)}
                   >
@@ -255,7 +255,7 @@ export function AdminInterfacesMemorySection() {
             </label>
             <input
               id="embedding-header-name"
-              className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary disabled:opacity-50"
+              className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary disabled:opacity-50"
               value={s.embeddingApiHeaderName}
               onChange={(e) => s.setEmbeddingApiHeaderName(e.target.value)}
               placeholder={t("admin:ifMemoryApiKeyPlaceholder")}
@@ -361,7 +361,7 @@ export function AdminInterfacesMemorySection() {
                 </label>
                 <select
                   id="extractor-provider-id"
-                  className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+                  className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
                   value={s.extractorProviderId || s.extractorProviderIdEffective || ""}
                   onChange={(e) => s.setExtractorProviderId(e.target.value)}
                 >
@@ -511,7 +511,7 @@ export function AdminInterfacesMemorySection() {
           />
           {t("admin:ifMemEnableRag")}
         </label>
-        <div className="mt-wide grid max-w-xl gap-soft sm:grid-cols-2">
+        <div className="mt-wide grid max-w-measure gap-soft sm:grid-cols-2">
           <div>
             <label className="block text-xs text-ink-muted" htmlFor="rag-chunk">
               {t("admin:ifMemChunkSize")}
@@ -620,7 +620,7 @@ export function AdminInterfacesMemorySection() {
           />
           {t("admin:ifMemGraphLog")}
         </label>
-        <div className="mt-wide grid max-w-xl gap-soft sm:grid-cols-2">
+        <div className="mt-wide grid max-w-measure gap-soft sm:grid-cols-2">
           <div>
             <label className="block text-xs text-ink-muted" htmlFor="mg-hops">
               {t("admin:ifMemGraphMaxHops")}

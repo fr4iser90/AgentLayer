@@ -188,7 +188,7 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
 
   return (
     <li className="flex w-full justify-end scroll-mt-4">
-      <div className="max-w-[min(100%,42rem)] rounded-sheet border border-line bg-[#1e1e1e] px-wide py-soft text-sm text-ink-primary shadow-sm">
+      <div className="max-w-measure rounded-sheet border border-line bg-[#1e1e1e] px-wide py-soft text-sm text-ink-primary shadow-sm">
         <span className="mb-tight flex items-center gap-base text-meta font-medium uppercase tracking-wide text-ink-muted">
           <Mascot character="volt" state={mascotState} size={20} ariaLabel={null} />
           {t("chat:roleAssistant")}

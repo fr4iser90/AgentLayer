@@ -19,7 +19,7 @@ export function DashboardSettingsDrawer(props: {
         className="absolute inset-0 bg-black/60"
         onClick={onClose}
       />
-      <aside className="relative flex h-full max-h-[100dvh] w-full max-w-xl flex-col overflow-hidden border-l border-line bg-panel shadow-xl">
+      <aside className="relative flex h-full max-h-[100dvh] w-full max-w-drawerWide flex-col overflow-hidden border-l border-line bg-panel shadow-xl">
         <div className="flex shrink-0 items-center justify-between gap-soft border-b border-line px-wide py-soft">
           <p className="min-w-0 truncate text-sm font-medium text-ink-primary">{title}</p>
           <button

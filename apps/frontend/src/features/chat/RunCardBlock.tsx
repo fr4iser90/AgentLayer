@@ -264,7 +264,7 @@ export function RunCardBlock({
 
   return (
     <div
-      className={`w-full max-w-[min(100%,42rem)] rounded-sheet border ${borderForKind(card.kind)} ${bgForKind(card.kind)} px-soft py-firm text-sm shadow-sm`}
+      className={`w-full max-w-measure rounded-sheet border ${borderForKind(card.kind)} ${bgForKind(card.kind)} px-soft py-firm text-sm shadow-sm`}
     >
       <div className="flex items-start gap-base">
         <span className="mt-hair text-base leading-none" aria-hidden>
@@ -474,7 +474,7 @@ export function RunCardsRow({ cards }: RunCardsRowProps) {
   if (cards.length === 0) return null;
   return (
     <li className="flex w-full justify-center">
-      <div className="flex w-full max-w-[min(100%,42rem)] flex-col gap-base">
+      <div className="flex w-full max-w-measure flex-col gap-base">
         {cards.map((c) => (
           <RunCardBlock key={c.id} card={c} />
         ))}

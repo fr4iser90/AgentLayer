@@ -121,7 +121,7 @@ export function DashboardPublicSharePage() {
 
   if (!token) {
     return (
-      <div className="mx-auto flex max-w-lg flex-1 flex-col justify-center bg-neutral-950 p-deep text-center">
+      <div className="mx-auto flex max-w-dialog flex-1 flex-col justify-center bg-neutral-950 p-deep text-center">
         <h1 className="text-lg font-medium text-ink-primary">{t("dashboard:publicShareTitle")}</h1>
         <p className="mt-soft text-sm text-red-300">{t("dashboard:publicShareMissingToken")}</p>
       </div>
@@ -138,7 +138,7 @@ export function DashboardPublicSharePage() {
 
   if (passwordRequired && !detail) {
     return (
-      <div className="mx-auto flex min-h-dvh max-w-md flex-1 flex-col justify-center bg-neutral-950 p-deep">
+      <div className="mx-auto flex min-h-dvh max-w-dialog flex-1 flex-col justify-center bg-neutral-950 p-deep">
         <h1 className="text-lg font-medium text-ink-primary">
           {shareLabel || t("dashboard:publicShareTitle")}
         </h1>
@@ -166,7 +166,7 @@ export function DashboardPublicSharePage() {
 
   if (error || !detail || !uiLayout) {
     return (
-      <div className="mx-auto flex max-w-lg flex-1 flex-col justify-center bg-neutral-950 p-deep text-center">
+      <div className="mx-auto flex max-w-dialog flex-1 flex-col justify-center bg-neutral-950 p-deep text-center">
         <h1 className="text-lg font-medium text-ink-primary">{t("dashboard:publicShareTitle")}</h1>
         <p className="mt-soft text-sm text-red-300">{error || t("dashboard:publicShareNotFound")}</p>
       </div>

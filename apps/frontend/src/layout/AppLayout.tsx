@@ -278,7 +278,7 @@ export function AppLayout() {
       </div>
       <MediaMiniPlayer />
       <footer className="shrink-0 border-t border-line bg-panel px-wide py-base">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-wide gap-y-tight text-meta text-ink-muted">
+        <div className="mx-auto flex max-w-page flex-wrap items-center justify-center gap-x-wide gap-y-tight text-meta text-ink-muted">
           <LegalFooterLinks />
           {showDocsFooter && !signedIn ? (
             <>
