@@ -3,6 +3,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { Badge, type BadgeTone } from "../../ui/Badge";
 import { ProjectWorkspaceControls } from "./ProjectWorkspaceControls";
 import { getPath, setPath } from "./dashboardDataPaths";
 import type { ColumnDef } from "./types";
@@ -11,18 +12,18 @@ type Row = Record<string, unknown>;
 
 function StatusPill(props: { status: string }) {
   const s = (props.status || "").toLowerCase();
-  const cls =
+  const tone: BadgeTone =
     s === "succeeded"
-      ? "bg-emerald-600/30 text-emerald-200 border-emerald-500/40"
+      ? "success"
       : s === "failed"
-        ? "bg-red-600/30 text-red-200 border-red-500/40"
+        ? "danger"
         : s === "running"
-          ? "bg-violet-600/30 text-violet-200 border-violet-500/40"
-          : "bg-white/10 text-ink-muted border-line";
+          ? "accent"
+          : "neutral";
   return (
-    <span className={`shrink-0 rounded-pill border px-base py-hair text-meta font-medium uppercase ${cls}`}>
+    <Badge tone={tone} className="shrink-0 uppercase">
       {props.status || "—"}
-    </span>
+    </Badge>
   );
 }
 
