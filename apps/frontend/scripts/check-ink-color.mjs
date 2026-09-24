@@ -61,7 +61,15 @@ const TOKEN = new Set([
 // not just whitespace. `(?=\s|$)` alone never matches the LAST class in every
 // class string — a planted `text-slate-300` walked straight through a guard
 // that then reported OK.
-const TEXT_CLASS = /(^|\s|["'`])text-([a-z0-9][a-z0-9-]*)(?=[\s"'`]|$)/g;
+//
+// The value class must also admit `/`, for the opacity modifier. Without it
+// `text-sky-400/90` fails the lookahead at the slash and is invisible: the
+// guard saw 314 raw text colours while 563 were in the tree, and a newly added
+// `text-red-500/50` would have passed. `check-border-token.mjs` already
+// carries `/` in its class for exactly this reason — the lesson was learned
+// there and never propagated here.
+const TEXT_CLASS =
+  /(^|\s|["'`])text-([a-z0-9][a-z0-9/-]*)(?=[\s"'`]|$)/g;
 const GREYSCALE = /^(white|black|neutral-\d+|gray-\d+|zinc-\d+|slate-\d+)$/;
 const FOREIGN =
   /^(red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d+$/;
