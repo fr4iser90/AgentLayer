@@ -89,3 +89,47 @@ describe("matcher must not over-match", () => {
     expect(raw(`"text-label text-meta"`)).toEqual([]);
   });
 });
+
+// The guard used to scope itself to JSX tags. Every test above would have passed
+// under that scoping, which is exactly why the scoping survived: the negative
+// test was planted inside a tag and so proved nothing about the other 5 % of the
+// tree. These pin the widening.
+describe("scan covers the whole file, not only JSX tags", () => {
+  it("sees a colour in a module-level class constant", () => {
+    expect(raw(`const verdict = "text-emerald-300 bg-emerald-950/40";`)).toEqual([
+      "emerald-300",
+    ]);
+  });
+
+  it("sees a colour in a returned ternary with no JSX anywhere", () => {
+    expect(raw(`function f(p) { return p >= 90 ? "text-emerald-300" : "text-rose-300"; }`)).toEqual([
+      "emerald-300",
+      "rose-300",
+    ]);
+  });
+
+  it("sees a prefixed colour in a constant, the shape that used to slip twice", () => {
+    expect(raw(`const idle = "text-ink-muted hover:text-neutral-200";`)).toEqual(["neutral-200"]);
+  });
+});
+
+describe("comments are not code", () => {
+  it("does not flag a colour named in a line comment", () => {
+    expect(raw(`// was text-red-500 before the migration\n`)).toEqual([]);
+  });
+
+  it("does not flag a colour named in a block comment", () => {
+    expect(raw(`/* use text-sky-400 here */\n`)).toEqual([]);
+  });
+
+  it("still flags a real class on the line after a comment", () => {
+    expect(raw(`// note\nconst c = "text-sky-400";`)).toEqual(["sky-400"]);
+  });
+
+  it("does not mistake // inside a string for a comment start", () => {
+    // A URL in an href must not blank the rest of the line and hide a class.
+    expect(raw(`<a href="https://example.com" className="text-sky-400">x</a>`)).toEqual([
+      "sky-400",
+    ]);
+  });
+});

@@ -86,25 +86,59 @@ const FOREIGN =
   /^(red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d+$/;
 
 /**
- * End of a JSX tag, scanning past `>` inside expressions.
- * Copied from check-field-surface.mjs: a plain `<x\b[^>]*?>` stops at the `>`
- * of `onChange={(e) => …}` and never inspects the className that follows.
+ * Blank out comments while preserving every character offset and newline, so
+ * line numbers stay correct after stripping.
+ *
+ * The guard used to scope itself to JSX tags, which meant a class string held
+ * in a module-level constant was invisible to it — 33 lines / 39 raw colours,
+ * including all four `ModelCatalogSelect` capability tones and the identical
+ * `hover:text-neutral-200` nav recipe duplicated across five layout files.
+ * Widening to the whole file is a strict superset of the tag scan, and comments
+ * are the one place a widened colour scan reliably picks up things that are not
+ * code: this very file documents `text-slate-300` and `text-red-500/50` as
+ * examples. Zero comment hits exist today; the filter is what keeps it that way.
+ *
+ * String contents are left alone, so a `//` inside a URL in an `href` is not
+ * mistaken for a comment start.
  */
-function tagEnd(src, open) {
-  let depth = 0;
+function stripComments(src) {
+  let out = "";
   let quote = null;
-  for (let i = open + 1; i < src.length; i += 1) {
+  let i = 0;
+  while (i < src.length) {
     const c = src[i];
     if (quote) {
+      out += c;
       if (c === quote) quote = null;
+      i += 1;
       continue;
     }
-    if (c === '"' || c === "'" || c === "`") quote = c;
-    else if (c === "{") depth += 1;
-    else if (c === "}") depth -= 1;
-    else if (c === ">" && depth === 0) return i + 1;
+    if (c === '"' || c === "'" || c === "`") {
+      quote = c;
+      out += c;
+      i += 1;
+      continue;
+    }
+    if (c === "/" && src[i + 1] === "/") {
+      while (i < src.length && src[i] !== "\n") {
+        out += " ";
+        i += 1;
+      }
+      continue;
+    }
+    if (c === "/" && src[i + 1] === "*") {
+      while (i < src.length && !(src[i] === "*" && src[i + 1] === "/")) {
+        out += src[i] === "\n" ? "\n" : " ";
+        i += 1;
+      }
+      out += "  ";
+      i += 2;
+      continue;
+    }
+    out += c;
+    i += 1;
   }
-  return -1;
+  return out;
 }
 
 function classify(token) {
@@ -119,14 +153,16 @@ function classify(token) {
  * Pure scan of one source string. Exported so the matcher itself is testable:
  * every blind spot here is a silent undercount, and the only way to catch "the
  * guard stopped seeing the thing it guards" is to assert the population, not
- * just the verdict. Until now this file exported only `checkInkColor()`, which
- * needs a filesystem — so none of the three defects above could be pinned.
+ * just the verdict. Until recently this file exported only `checkInkColor()`,
+ * which needs a filesystem — so none of the three matcher defects above could
+ * be pinned.
  */
 export function scanTextTokens(src) {
   const tokens = [];
+  const code = stripComments(src);
   TEXT_CLASS.lastIndex = 0;
   let m;
-  while ((m = TEXT_CLASS.exec(src)) !== null) tokens.push(m[3]);
+  while ((m = TEXT_CLASS.exec(code)) !== null) tokens.push(m[3]);
   return tokens;
 }
 
@@ -146,30 +182,32 @@ export async function checkInkColor() {
   for await (const file of walk(SRC)) {
     const rel = relative(ROOT, file);
     const text = await readFile(file, "utf8");
+    const allowed = new Set(baseline[rel] || []);
     const here = new Set();
+    const reported = new Set();
     const fresh = [];
-    const TAG_START = /<[a-zA-Z][a-zA-Z0-9.]*/g;
-    let m;
-    while ((m = TAG_START.exec(text)) !== null) {
-      const end = tagEnd(text, m.index);
-      if (end === -1) continue;
-      const tag = text.slice(m.index, end);
-      const line = text.slice(0, m.index).split("\n").length;
-      TEXT_CLASS.lastIndex = 0;
-      let t;
-      while ((t = TEXT_CLASS.exec(tag)) !== null) {
-        const token = t[3];
-        const kind = classify(token);
-        if (!kind) continue;
-        const key = `text-${token}`;
-        here.add(key);
-        const allowed = new Set(baseline[rel] || []);
-        if (!allowed.has(key)) {
-          fresh.push({ line, cls: key, kind });
+    // Whole file, line by line, comments blanked. Line-by-line gives the exact
+    // line for each finding; a colour class never spans a newline, so nothing
+    // is lost to the split.
+    stripComments(text)
+      .split("\n")
+      .forEach((line, i) => {
+        TEXT_CLASS.lastIndex = 0;
+        let t;
+        while ((t = TEXT_CLASS.exec(line)) !== null) {
+          const kind = classify(t[3]);
+          if (!kind) continue;
+          const key = `text-${t[3]}`;
+          here.add(key);
+          // One finding per colour per file, matching the baseline's model. The
+          // tag-scoped version reported the same class once per occurrence, so a
+          // file with three `text-sky-300` looked like three new violations.
+          if (!allowed.has(key) && !reported.has(key)) {
+            reported.add(key);
+            fresh.push({ line: i + 1, cls: key, kind });
+          }
         }
-      }
-      TAG_START.lastIndex = end;
-    }
+      });
     if (here.size) current[rel] = [...here].sort();
     if (fresh.length) findings.push({ file: rel, issues: fresh });
   }
