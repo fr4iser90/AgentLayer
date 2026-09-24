@@ -52,7 +52,7 @@ export function CollapsibleSidebarShell({
       </aside>
 
       {mobileOpen ? (
-        <div className="fixed inset-0 z-40 flex md:hidden" role="presentation">
+        <div className="fixed inset-0 z-chrome flex md:hidden" role="presentation">
           <button
             type="button"
             className="absolute inset-0 bg-overlay"

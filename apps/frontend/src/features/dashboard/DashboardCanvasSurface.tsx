@@ -681,7 +681,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
                   <button
                     type="button"
                     aria-label={t("dashboard:canvasResize")}
-                    className="absolute bottom-0 right-0 z-20 h-3.5 w-3.5 cursor-se-resize select-none rounded-tl-tile bg-sky-500/80"
+                    className="absolute bottom-0 right-0 z-canvas h-3.5 w-3.5 cursor-se-resize select-none rounded-tl-tile bg-sky-500/80"
                     onPointerDown={(e) => {
                       if (e.button !== 0) return;
                       beginBlockDrag(e, "resize", b.id, rect);

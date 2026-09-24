@@ -81,7 +81,7 @@ function MoreNavMenu({
       {open ? (
         <div
           role="menu"
-          className="absolute left-0 z-50 mt-tight min-w-[11rem] rounded-card border border-line bg-raised py-tight shadow-xl"
+          className="absolute left-0 z-menu mt-tight min-w-[11rem] rounded-card border border-line bg-raised py-tight shadow-xl"
         >
           {hasMobileExtras ? (
             <div className="md:hidden">

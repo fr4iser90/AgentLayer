@@ -570,7 +570,7 @@ function PackageDrawer({
   const example = t("settings:toolsTryExample", { tool: first });
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 p-0 sm:p-wide" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-overlay flex justify-end bg-black/60 p-0 sm:p-wide" role="dialog" aria-modal="true">
       <button
         type="button"
         className="absolute inset-0 h-full w-full cursor-default"

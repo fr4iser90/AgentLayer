@@ -12,7 +12,7 @@ export function DashboardSettingsDrawer(props: {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-overlay flex justify-end">
       <button
         type="button"
         aria-label={t("dashboard:closeSettings")}

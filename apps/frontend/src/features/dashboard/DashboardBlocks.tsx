@@ -508,7 +508,7 @@ function TimelineBlockBody(props: {
           <ul className="space-y-0">
           {sorted.map((row, si) => (
             <li key={String(row.id ?? si)} className="relative flex gap-soft pb-broad last:pb-0">
-              <div className="relative z-[1] mt-snug h-2.5 w-2.5 shrink-0 rounded-pill border-2 border-sky-500/80 bg-black shadow-[0_0_12px_rgba(56,189,248,0.35)]" />
+              <div className="relative z-lift mt-snug h-2.5 w-2.5 shrink-0 rounded-pill border-2 border-sky-500/80 bg-black shadow-[0_0_12px_rgba(56,189,248,0.35)]" />
               <div className="min-w-0 flex-1 rounded-card border border-line-subtle bg-black/20 px-soft py-base">
                 <p className="text-meta font-medium uppercase tracking-wide text-sky-400/90">
                   {formatEventDate(String(row.date ?? ""))}

@@ -1197,7 +1197,7 @@ export function DashboardPage() {
         </div>
 
         {installModalRow ? (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-wide" role="presentation">
+          <div className="fixed inset-0 z-modal flex items-center justify-center p-wide" role="presentation">
             <div
               className="absolute inset-0 bg-black/70"
               role="button"
@@ -1819,7 +1819,7 @@ export function DashboardPage() {
           ) : dashboardReady && chatDock === "hidden" && isCanvasBoard ? (
             <button
               type="button"
-              className="fixed bottom-6 right-6 z-20 rounded-card border border-sky-500/40 bg-sky-950/90 px-soft py-base text-xs font-medium text-sky-100 shadow-lg hover:bg-sky-900/90 lg:bottom-8 lg:right-8"
+              className="fixed bottom-6 right-6 z-canvas rounded-card border border-sky-500/40 bg-sky-950/90 px-soft py-base text-xs font-medium text-sky-100 shadow-lg hover:bg-sky-900/90 lg:bottom-8 lg:right-8"
               onClick={() => setChatDock("mini")}
             >
               {t("dashboard:chatDockShow")}
@@ -2442,7 +2442,7 @@ export function DashboardPage() {
       ) : null}
 
       {newWsModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-wide" role="presentation">
+        <div className="fixed inset-0 z-modal flex items-center justify-center p-wide" role="presentation">
           <div
             className="absolute inset-0 bg-black/70"
             role="button"
@@ -2498,7 +2498,7 @@ export function DashboardPage() {
       ) : null}
 
       {installModalRow && schemaInstalled ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-wide" role="presentation">
+        <div className="fixed inset-0 z-modal flex items-center justify-center p-wide" role="presentation">
           <div
             className="absolute inset-0 bg-black/70"
             role="button"
@@ -2550,7 +2550,7 @@ export function DashboardPage() {
       ) : null}
 
       {pinModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-wide">
+        <div className="fixed inset-0 z-modal flex items-center justify-center bg-black/60 p-wide">
           <div
             role="dialog"
             aria-modal="true"

@@ -44,7 +44,7 @@ export function ConfirmModal({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-wide"
+      className="fixed inset-0 z-modal flex items-center justify-center bg-black/60 p-wide"
       role="presentation"
       onClick={() => {
         if (!busy) onCancel();
