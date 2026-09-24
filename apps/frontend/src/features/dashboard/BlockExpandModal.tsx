@@ -33,7 +33,7 @@ export function BlockExpandModal(props: {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex flex-col bg-neutral-950/98"
+      className="fixed inset-0 z-modal flex flex-col bg-neutral-950/98"
       role="dialog"
       aria-modal="true"
       aria-label={t("dashboard:blockExpandDialogLabel", { title })}

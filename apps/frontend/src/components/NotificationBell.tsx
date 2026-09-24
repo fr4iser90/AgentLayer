@@ -77,7 +77,7 @@ export function NotificationBell() {
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-tight flex w-[min(22rem,calc(100vw-2rem))] flex-col rounded-card border border-line bg-raised shadow-xl"
+          className="absolute right-0 z-menu mt-tight flex w-[min(22rem,calc(100vw-2rem))] flex-col rounded-card border border-line bg-raised shadow-xl"
         >
           <div className="flex items-center justify-between gap-base border-b border-line px-soft py-base">
             <p className="text-sm font-medium text-ink-primary">{t("notifications:inboxTitle")}</p>

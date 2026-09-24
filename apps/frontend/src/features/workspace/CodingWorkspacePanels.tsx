@@ -58,7 +58,7 @@ const SHELL_CLASS_BUILD =
   "flex max-h-[40vh] min-h-0 shrink-0 flex-col border-b border-line bg-[#0a0a0a] lg:h-full lg:max-h-none lg:w-[min(100%,480px)] lg:shrink-0 lg:flex-row lg:border-b-0 lg:border-r";
 
 const SHELL_CLASS_CHAT =
-  "fixed inset-0 z-30 flex min-h-0 flex-col bg-[#0a0a0a] md:static md:z-auto md:h-full md:w-[min(100%,300px)] md:shrink-0 md:border-r md:border-line";
+  "fixed inset-0 z-docked flex min-h-0 flex-col bg-[#0a0a0a] md:static md:z-auto md:h-full md:w-[min(100%,300px)] md:shrink-0 md:border-r md:border-line";
 
 function diffLineClass(line: string): string {
   if (line.startsWith("+++") || line.startsWith("---")) return "text-ink-muted";

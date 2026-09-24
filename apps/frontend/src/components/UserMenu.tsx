@@ -45,7 +45,7 @@ export function UserMenu() {
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-tight min-w-[12rem] rounded-card border border-line bg-[#1a1a1a] py-tight shadow-xl"
+          className="absolute right-0 z-menu mt-tight min-w-[12rem] rounded-card border border-line bg-[#1a1a1a] py-tight shadow-xl"
         >
           {email ? (
             <p className="truncate border-b border-line px-soft py-base text-xs text-ink-muted" title={email}>

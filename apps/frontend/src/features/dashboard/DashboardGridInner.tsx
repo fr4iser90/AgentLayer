@@ -340,7 +340,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                 {hasUnread ? <AgentUpdateBadge title={badgeTitle} pulse={isHighlighted} /> : null}
                 <div className={blockShellClassForBlock(b)}>
                   {showBlockToolbar || editMode ? (
-                    <div className="dashboard-grid-drag-handle sticky top-0 z-10 flex cursor-grab items-center gap-base border-b border-line-subtle bg-card px-base py-tight active:cursor-grabbing">
+                    <div className="dashboard-grid-drag-handle sticky top-0 z-lift flex cursor-grab items-center gap-base border-b border-line-subtle bg-card px-base py-tight active:cursor-grabbing">
                       <span className="min-w-0 flex-1 truncate text-meta font-medium uppercase tracking-wide text-ink-muted">
                         {blockTitle(b)}
                       </span>

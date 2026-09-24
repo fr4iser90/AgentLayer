@@ -1154,7 +1154,7 @@ export function DashboardEmbeddedChat({
                         </button>
                       </Tooltip>
                       {boardLibraryOpen ? (
-                        <div className="absolute bottom-full left-0 z-20 mb-tight max-h-48 w-64 overflow-y-auto rounded-tile border border-line bg-raised p-tight shadow-lg">
+                        <div className="absolute bottom-full left-0 z-docked mb-tight max-h-48 w-64 overflow-y-auto rounded-tile border border-line bg-raised p-tight shadow-lg">
                           {boardFilesBusy ? (
                             <p className="px-base py-tight text-meta text-ink-muted">{t("dashboard:loading")}</p>
                           ) : boardFiles.length === 0 ? (

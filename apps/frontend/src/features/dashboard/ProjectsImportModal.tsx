@@ -215,7 +215,7 @@ export function ProjectsImportModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-wide" role="presentation">
+    <div className="fixed inset-0 z-modal flex items-center justify-center p-wide" role="presentation">
       <div
         className="absolute inset-0 bg-black/70"
         role="button"

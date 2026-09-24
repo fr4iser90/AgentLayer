@@ -2764,7 +2764,7 @@ export function AdminBenchmarks() {
           </>
           ) : null}
 
-          <section className="sticky bottom-0 z-10 rounded-sheet border border-line bg-[#101010]/95 p-wide shadow-2xl shadow-black/40 backdrop-blur">
+          <section className="sticky bottom-0 z-lift rounded-sheet border border-line bg-[#101010]/95 p-wide shadow-2xl shadow-black/40 backdrop-blur">
             <div className="flex flex-wrap items-center justify-between gap-soft">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-base text-xs">
@@ -3290,7 +3290,7 @@ export function AdminBenchmarks() {
 
       {bulkDeleteOpen ? (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-wide"
+          className="fixed inset-0 z-modal flex items-center justify-center bg-black/60 p-wide"
           role="presentation"
           onClick={() => {
             if (!bulkDeleting) setBulkDeleteOpen(false);

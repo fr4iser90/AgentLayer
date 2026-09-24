@@ -3955,7 +3955,7 @@ export function ChatPage() {
               <button
                 type="button"
                 onClick={() => scrollToBottom("smooth")}
-                className="absolute -top-12 right-0 z-10 rounded-pill border border-line bg-[#1a1a1a] px-soft py-snug text-xs text-ink-primary shadow-lg hover:bg-[#252525]"
+                className="absolute -top-12 right-0 z-lift rounded-pill border border-line bg-[#1a1a1a] px-soft py-snug text-xs text-ink-primary shadow-lg hover:bg-[#252525]"
                 aria-label={t("chat:scrollToBottomAria")}
               >
                 {t("chat:newMessages")}
@@ -4097,7 +4097,7 @@ export function ChatPage() {
             >
               {composerDragActive ? (
                 <div
-                  className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-sheet bg-sky-950/50 backdrop-blur-[1px]"
+                  className="pointer-events-none absolute inset-0 z-lift flex items-center justify-center rounded-sheet bg-sky-950/50 backdrop-blur-[1px]"
                   aria-hidden
                 >
                   <p className="rounded-card border border-sky-500/40 bg-black/50 px-wide py-base text-sm font-medium text-sky-100">
@@ -4107,7 +4107,7 @@ export function ChatPage() {
               ) : null}
               {voiceTranscribing ? (
                 <div
-                  className="absolute inset-0 z-20 flex items-center justify-center rounded-sheet bg-black/60 backdrop-blur-[2px]"
+                  className="absolute inset-0 z-lift flex items-center justify-center rounded-sheet bg-black/60 backdrop-blur-[2px]"
                   role="status"
                   aria-live="polite"
                   aria-busy="true"

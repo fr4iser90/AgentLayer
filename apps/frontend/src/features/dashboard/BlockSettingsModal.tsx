@@ -255,7 +255,7 @@ export function BlockSettingsModal({
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex justify-end bg-black/50"
+      className="fixed inset-0 z-overlay flex justify-end bg-black/50"
       role="dialog"
       aria-modal="true"
       aria-labelledby="block-settings-title"

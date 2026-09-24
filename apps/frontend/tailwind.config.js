@@ -52,6 +52,67 @@ const FIELD_PLACEHOLDER = "#7B8390";
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
+    // Stacking levels, named by what floats rather than by a number.
+    //
+    // Deliberately NOT inside `extend`. A top-level theme key replaces
+    // Tailwind's default scale instead of adding to it, so `z-50` and `z-[100]`
+    // stop generating any CSS at all. A guard can only report a raw level after
+    // it has been typed and shipped; removing the scale makes it unrenderable.
+    // Arbitrary values (`z-[7]`) cannot be removed this way — that is what
+    // scripts/check-z-index.mjs is for.
+    //
+    // Measured from 45 call sites spread over nine values where the numbers had
+    // stopped meaning anything: `z-50` carried both dropdown menus and
+    // full-screen modal scrims, so a page-level menu could float over a dialog
+    // that had just blocked the page; and one role — modal — used three
+    // different numbers (`z-50`, `z-[80]`, `z-[100]`), leaving dialog-over-
+    // dialog undefined.
+    //
+    // `tooltip` sits above `modal` on purpose. The tooltip is the only portaled
+    // layer in the app (document.body); dialogs render in place and therefore
+    // contain their own descendants' stacking. A dialog at 100 paints over a
+    // tooltip at 60, so a tooltip anchored to a control inside a dialog would
+    // be invisible — latent today, because no dialog contains one yet.
+    //
+    // `sheet` and `drawer` are deliberately NOT used here: `rounded-sheet` and
+    // `max-w-drawer` already own those words at a different scale, and a word
+    // that names a radius in one place must not name an elevation in another.
+    // `overlay` IS reused from `bg-overlay`/`shadow-overlay` because all three
+    // name the same thing — the floating scrim layer.
+    zIndex: {
+      auto: "auto", // rejoin normal flow, e.g. md:z-auto on a mobile-only layer
+
+      // Above the content of its own container, never into the app's order:
+      // a mic badge over its button, a sticky save bar, a veil over the composer.
+      lift: "10",
+
+      // The dashboard canvas's own chrome, floating over blocks but under every
+      // menu: resize handles, a block's update badge, a canvas-level note.
+      canvas: "20",
+
+      // A popover anchored inside a panel and bounded by it: the thread menu in
+      // the embedded dashboard chat, the model picker above the chat input.
+      docked: "30",
+
+      // App chrome that covers the page and stays under anything floating:
+      // the collapsible sidebar's mobile scrim.
+      chrome: "40",
+
+      // Anchored popovers over the page: user menu, notification bell, nav
+      // dropdown, model catalog select.
+      menu: "50",
+
+      // A sheet with its own scrim — the settings and detail drawers, anchored
+      // right or bottom rather than centred.
+      overlay: "80",
+
+      // Dialog and lightbox: top of the app, containing everything inside it.
+      modal: "100",
+
+      // Top of the order. See the note above: a tooltip describes the control
+      // under the cursor, including one inside an open dialog.
+      tooltip: "120",
+    },
     extend: {
       colors: {
         canvas: CANVAS,

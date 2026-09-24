@@ -508,7 +508,7 @@ export function AdminSchedules() {
       </div>
 
       {createOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-wide">
+        <div className="fixed inset-0 z-modal flex items-center justify-center bg-black/60 p-wide">
           <div className="w-full max-w-dialogWide rounded-sheet border border-line bg-card p-wide">
             <div className="mb-soft flex items-start justify-between gap-soft">
               <div>
@@ -672,7 +672,7 @@ export function AdminSchedules() {
       ) : null}
 
       {editJob ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-wide">
+        <div className="fixed inset-0 z-modal flex items-center justify-center bg-black/60 p-wide">
           <div className="w-full max-w-dialogWide rounded-sheet border border-line bg-card p-wide">
             <div className="mb-soft flex items-start justify-between gap-soft">
               <div>

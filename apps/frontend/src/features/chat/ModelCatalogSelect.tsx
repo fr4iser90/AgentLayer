@@ -117,7 +117,7 @@ export function ModelCatalogSelect({
         <span className="shrink-0 text-ink-muted">v</span>
       </button>
       {open && !isDisabled ? (
-        <div className="absolute z-50 mt-tight max-h-72 w-full overflow-auto rounded-sheet border border-line bg-[#111] p-tight shadow-2xl shadow-black/50">
+        <div className="absolute z-menu mt-tight max-h-72 w-full overflow-auto rounded-sheet border border-line bg-[#111] p-tight shadow-2xl shadow-black/50">
           <div role="listbox" aria-label={ariaLabel} className="space-y-tight">
             {rows.map((row) => {
               const rowValue = modelCatalogSelectValue(row);

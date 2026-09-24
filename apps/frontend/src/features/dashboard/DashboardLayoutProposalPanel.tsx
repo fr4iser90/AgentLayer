@@ -73,7 +73,7 @@ export function DashboardLayoutProposalPanel({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-wide"
+      className="fixed inset-0 z-overlay flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-wide"
       role="dialog"
       aria-modal="true"
       aria-label={t("dashboard:layoutProposalsTitle")}

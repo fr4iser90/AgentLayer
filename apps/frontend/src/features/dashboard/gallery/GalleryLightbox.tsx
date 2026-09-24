@@ -42,14 +42,14 @@ export function GalleryLightbox(props: {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex flex-col bg-black/95"
+      className="fixed inset-0 z-modal flex flex-col bg-black/95"
       role="dialog"
       aria-modal="true"
       aria-label={t("dashboard:galleryLightboxLabel")}
     >
       <button
         type="button"
-        className="absolute right-3 top-3 z-10 rounded-card bg-white/10 px-soft py-snug text-sm text-ink-primary hover:bg-white/20 sm:right-4 sm:top-4"
+        className="absolute right-3 top-3 z-lift rounded-card bg-white/10 px-soft py-snug text-sm text-ink-primary hover:bg-white/20 sm:right-4 sm:top-4"
         onClick={onClose}
       >
         {t("dashboard:galleryLightboxClose")}
@@ -74,7 +74,7 @@ export function GalleryLightbox(props: {
       {hasPrev ? (
         <button
           type="button"
-          className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-pill bg-white/10 p-base text-ink-primary hover:bg-white/20 sm:left-4"
+          className="absolute left-2 top-1/2 z-lift -translate-y-1/2 rounded-pill bg-white/10 p-base text-ink-primary hover:bg-white/20 sm:left-4"
           onClick={(e) => {
             e.stopPropagation();
             goPrev();
@@ -88,7 +88,7 @@ export function GalleryLightbox(props: {
       {hasNext ? (
         <button
           type="button"
-          className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-pill bg-white/10 p-base text-ink-primary hover:bg-white/20 sm:right-4"
+          className="absolute right-2 top-1/2 z-lift -translate-y-1/2 rounded-pill bg-white/10 p-base text-ink-primary hover:bg-white/20 sm:right-4"
           onClick={(e) => {
             e.stopPropagation();
             goNext();
