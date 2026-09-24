@@ -1,4 +1,8 @@
 {
+  "src/components/ConfirmModal.tsx": [
+    "text-red-100",
+    "text-sky-100"
+  ],
   "src/components/LegalFooterLinks.tsx": [
     "text-neutral-300",
     "text-white/15"
@@ -17,11 +21,16 @@
     "text-neutral-200"
   ],
   "src/features/admin/agentConfig/ExperimentDetailPanel.tsx": [
+    "text-amber-200",
+    "text-emerald-300",
     "text-indigo-300",
     "text-red-200",
-    "text-red-300"
+    "text-red-300",
+    "text-rose-300"
   ],
   "src/features/admin/benchmarks/BenchmarkInsightsPanel.tsx": [
+    "text-amber-200",
+    "text-emerald-300",
     "text-red-400",
     "text-rose-300",
     "text-white/90"
@@ -38,8 +47,11 @@
     "text-white/90"
   ],
   "src/features/admin/benchmarks/BenchmarkStatsPanel.tsx": [
+    "text-amber-200",
+    "text-emerald-300",
     "text-emerald-300/90",
     "text-red-400",
+    "text-rose-300",
     "text-sky-300/90"
   ],
   "src/features/admin/benchmarks/CopyScenarioDetailsButton.tsx": [
@@ -103,11 +115,20 @@
     "text-violet-200/80",
     "text-violet-200/85"
   ],
+  "src/features/chat/ModelCatalogSelect.tsx": [
+    "text-amber-100",
+    "text-emerald-100",
+    "text-sky-100",
+    "text-violet-100"
+  ],
   "src/features/chat/PermissionAskCard.tsx": [
     "text-black"
   ],
   "src/features/chat/ProposalMessageBody.tsx": [
     "text-amber-100/90",
+    "text-amber-300",
+    "text-emerald-300",
+    "text-red-300",
     "text-sky-100",
     "text-sky-400"
   ],
@@ -244,7 +265,9 @@
     "text-red-300"
   ],
   "src/features/dashboard/KanbanRichMarkdownBlocks.tsx": [
-    "text-sky-300"
+    "text-sky-200",
+    "text-sky-300",
+    "text-sky-400"
   ],
   "src/features/dashboard/MediaPlayerBlock.tsx": [
     "text-amber-200",
@@ -278,6 +301,10 @@
     "text-red-400",
     "text-sky-100"
   ],
+  "src/features/legal/LegalMarkdown.tsx": [
+    "text-sky-300",
+    "text-sky-400"
+  ],
   "src/features/media/MediaMiniPlayer.tsx": [
     "text-neutral-200",
     "text-sky-100",
@@ -309,8 +336,10 @@
     "text-amber-100",
     "text-amber-300/80",
     "text-amber-400/80",
+    "text-emerald-300/95",
     "text-neutral-200",
     "text-red-300/90",
+    "text-red-300/95",
     "text-sky-400/90",
     "text-white/20"
   ],
@@ -325,12 +354,14 @@
     "text-amber-200/95",
     "text-amber-300/90",
     "text-amber-300/95",
+    "text-emerald-200/95",
     "text-red-400/90",
     "text-sky-200/95",
     "text-violet-200/90",
     "text-violet-200/95"
   ],
   "src/layout/AdminLayout.tsx": [
+    "text-neutral-200",
     "text-sky-300",
     "text-sky-400/90"
   ],
@@ -340,9 +371,16 @@
     "text-white/15",
     "text-white/25"
   ],
+  "src/layout/InterfacesLayout.tsx": [
+    "text-neutral-200"
+  ],
   "src/layout/OrgAdminLayout.tsx": [
+    "text-neutral-200",
     "text-sky-300",
     "text-sky-400/90"
+  ],
+  "src/layout/SettingsLayout.tsx": [
+    "text-neutral-200"
   ],
   "src/pages/ChatPage.tsx": [
     "text-amber-100",
@@ -408,6 +446,7 @@
     "text-sky-400"
   ],
   "src/pages/MySchedulesPage.tsx": [
+    "text-emerald-200",
     "text-emerald-200/90",
     "text-red-100",
     "text-red-200/90"
@@ -502,10 +541,12 @@
     "text-sky-300/95",
     "text-sky-400",
     "text-sky-400/90",
+    "text-sky-500",
     "text-violet-100",
     "text-violet-100/90",
     "text-violet-200",
     "text-violet-200/70",
+    "text-violet-500",
     "text-white",
     "text-white/70",
     "text-white/75",
@@ -615,6 +656,7 @@
     "text-amber-400",
     "text-emerald-400",
     "text-indigo-300",
+    "text-neutral-600",
     "text-sky-300",
     "text-sky-400"
   ],
