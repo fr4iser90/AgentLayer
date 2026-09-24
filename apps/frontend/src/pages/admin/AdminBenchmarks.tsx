@@ -77,6 +77,7 @@ import {
 import { formatBenchmarkProviderModel } from "../../features/admin/benchmarks/benchDisplayUtils";
 import { Button } from "../../ui/Button";
 import { Tooltip } from "../../ui/Tooltip";
+import { Badge } from "../../ui/Badge";
 
 const benchCheckboxClass =
   "h-4 w-4 shrink-0 rounded-tile border-2 border-sky-400/70 bg-black/60 text-sky-500 accent-sky-500 focus:ring-2 focus:ring-sky-400/70 focus:ring-offset-0";
@@ -2068,17 +2069,15 @@ export function AdminBenchmarks() {
                             </span>
                             <span className="font-mono text-ink-muted">{p.catalog_owned_by}</span>
                             {p.source === "env" ? (
-                              <span className="rounded-tile bg-emerald-950/40 px-snug py-hair text-meta text-emerald-200">
-                                .env
-                              </span>
+                              <Badge tone="success">.env</Badge>
                             ) : null}
                             {p.endpoint_id != null ? (
                               <span className="font-mono text-ink-muted">db id={p.endpoint_id}</span>
                             ) : null}
                             {checked && selectedModels.length ? (
-                              <span className="rounded-tile bg-sky-950/50 px-snug py-hair text-meta text-sky-200">
+                              <Badge tone="accent">
                                 {t("admin:benchModelsSelected", { count: selectedModels.length })}
-                              </span>
+                              </Badge>
                             ) : null}
                           </div>
                           <p className="mt-tight text-ink-muted">{p.base_url}</p>
@@ -2356,17 +2355,11 @@ export function AdminBenchmarks() {
                             <span className="text-ink-muted">
                               {t("admin:benchTuneScore", { score: bestScore })}
                             </span>
-                            <span
-                              className={`rounded-tile px-snug py-hair ${
-                                autoPromoted
-                                  ? "bg-emerald-500/15 text-emerald-100"
-                                  : "bg-white/10 text-ink-muted"
-                              }`}
-                            >
+                            <Badge tone={autoPromoted ? "success" : "neutral"}>
                               {autoPromoted
                                 ? t("admin:benchTuneHarnessChanged")
                                 : t("admin:benchTuneHarnessUnchanged")}
-                            </span>
+                            </Badge>
                           </div>
                           {bestAttempt ? (
                             <p className="mt-tight text-meta text-ink-muted">
@@ -2578,12 +2571,12 @@ export function AdminBenchmarks() {
                         <div className="flex flex-wrap items-center gap-base">
                           <span className="font-mono text-xs text-sky-300/90">{sc.id}</span>
                           <span className="text-sm text-ink-primary">{sc.title}</span>
-                          <span className="rounded-tile bg-white/10 px-snug py-hair text-meta text-ink-muted">
+                          <Badge tone="neutral">
                             {t("admin:benchTier", { n: sc.tier })}
-                          </span>
-                          <span className="rounded-tile bg-white/10 px-snug py-hair text-meta text-ink-muted">
+                          </Badge>
+                          <Badge tone="neutral">
                             {sc.agent_id}
-                          </span>
+                          </Badge>
                           {sc.execution && sc.execution !== "chat" ? (
                             <span className="rounded-tile bg-violet-950/50 px-snug py-hair text-meta text-violet-200">
                               {sc.execution}
@@ -2775,11 +2768,11 @@ export function AdminBenchmarks() {
             <div className="flex flex-wrap items-center justify-between gap-soft">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-base text-xs">
-                  <span className="rounded-tile bg-white/10 px-base py-tight font-medium text-ink-primary">
+                  <Badge tone="neutral">
                     {runMode === "autotune"
                       ? t("admin:benchRunModeAutotune")
                       : t("admin:benchRunModeManual")}
-                  </span>
+                  </Badge>
                   <span className="text-ink-muted">
                     {t("admin:benchSummaryProfiles", { count: selectedProfileCount })}
                   </span>

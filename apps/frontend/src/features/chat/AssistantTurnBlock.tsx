@@ -16,6 +16,7 @@ import type { AgentTimelineEntry } from "./chatThreadStorage";
 import type { Proposal, ProposalOption } from "../../lib/proposalParser";
 import { TurnElapsedRuntime } from "./TurnElapsedRuntime";
 import { Mascot, agentTurnState } from "../../ui/Mascot";
+import { Badge } from "../../ui/Badge";
 
 const ReasoningPanel = memo(function ReasoningPanel({
   text,
@@ -220,9 +221,9 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
         ) : null}
         {turnCancelled && !running ? (
           <div className="mt-soft flex justify-start">
-            <span className="inline-flex items-center rounded-tile border border-amber-500/40 bg-amber-500/10 px-base py-hair text-meta font-medium uppercase tracking-wide text-amber-100/95">
+            <Badge tone="warning" className="uppercase tracking-wide">
               {t("chat:turnCancelledBadge")}
-            </span>
+            </Badge>
           </div>
         ) : null}
         {!running && messagePosition != null ? (

@@ -5,6 +5,7 @@ import type {
   TokenUsageTotals,
 } from "../../lib/api";
 import { useTranslation } from "react-i18next";
+import { Badge } from "../../ui/Badge";
 
 type Props = {
   runtime: ChatRuntimePayload | null;
@@ -186,12 +187,13 @@ export function ChatRuntimeBar({
       <div className="flex flex-wrap items-center gap-x-soft gap-y-tight">
         <span className="font-semibold uppercase tracking-wide text-ink-muted">{t("workspace:mcp")}</span>
         {scope === "workspace" ? (
-          <span
-            className="rounded-tile border border-sky-500/35 bg-sky-950/40 px-tight py-hair text-meta font-medium uppercase tracking-wide text-sky-200/90"
+          <Badge
+            tone="accent"
+            className="uppercase tracking-wide"
             title={t("workspace:mcpWorkspaceScopeTitle")}
           >
             {t("workspace:scopeWorkspace")}
-          </span>
+          </Badge>
         ) : null}
         {mcpAddon ? <span className="flex items-center">{mcpAddon}</span> : null}
         {!mcp ? (

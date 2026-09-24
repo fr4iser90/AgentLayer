@@ -11,6 +11,7 @@ import {
   normalizeExecutionTargetInput,
 } from "../../lib/schedulerExecutionTarget";
 import { Button } from "../../ui/Button";
+import { Badge, type BadgeTone } from "../../ui/Badge";
 
 type SchedulerJobRow = {
   id: string;
@@ -46,10 +47,8 @@ type SchedulerJobPreset = {
   };
 };
 
-function pill(enabled: boolean) {
-  return enabled
-    ? "bg-emerald-600/25 text-emerald-200 border-emerald-500/40"
-    : "bg-white/10 text-ink-muted border-line";
+function pill(enabled: boolean): BadgeTone {
+  return enabled ? "success" : "neutral";
 }
 
 export function AdminSchedules() {
@@ -449,13 +448,13 @@ export function AdminSchedules() {
               jobs.map((j) => (
                 <tr key={j.id} className="border-b border-line-subtle">
                   <td className="px-soft py-base">
-                    <span className={`rounded-tile border px-base py-hair text-xs ${pill(j.enabled)}`}>
+                    <Badge tone={pill(j.enabled)}>
                       {j.enabled ? t("admin:schedulesEnabledLabel") : t("admin:schedulesDisabledLabel")}
-                    </span>
+                    </Badge>
                     {j.deleted_at ? (
-                      <span className="ml-base rounded-tile border border-line bg-white/5 px-base py-hair text-xs text-ink-muted">
+                      <Badge tone="neutral" className="ml-base">
                         {t("admin:schedulesArchivedLabel")}
-                      </span>
+                      </Badge>
                     ) : null}
                   </td>
                   <td className="px-soft py-base text-xs text-ink-primary">

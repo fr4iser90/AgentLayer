@@ -5,6 +5,7 @@ import { useAuth } from "../auth/AuthContext";
 import { hasOrgSurface } from "../auth/deploymentMode";
 import { apiFetch, type WorkspaceApiRecord, type WorkspaceListScope } from "../lib/api";
 import { deleteWorkspaceApi, fetchWorkspacesApi, isAgentlayerSelfWorkspace } from "../lib/workspacesApi";
+import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 
 type FsEntry = {
@@ -242,9 +243,9 @@ export function ProjectsPage() {
                         <span className="flex items-center gap-snug">
                           <span className="min-w-0 flex-1 truncate text-sm text-ink-primary">{w.name}</span>
                           {scope === "mine" && w.visibility === "tenant" ? (
-                            <span className="shrink-0 rounded-tile bg-sky-950/60 px-tight py-hair text-meta uppercase tracking-wide text-sky-300">
+                            <Badge tone="accent" className="shrink-0 uppercase tracking-wide">
                               {t("workspace:visibilityCompanyTag")}
-                            </span>
+                            </Badge>
                           ) : null}
                         </span>
                         <span className="mt-hair block truncate text-meta text-ink-muted">

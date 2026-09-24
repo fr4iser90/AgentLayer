@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { getAgentChatSession } from "./agentChatSession";
 import { useAgentWaitHint } from "./useAgentLiveTurn";
+import { badgeClasses } from "../../ui/Badge";
 
 function useActiveAgentTurn() {
   const session = getAgentChatSession();
@@ -51,18 +52,18 @@ export function AgentRunningBadge() {
   return (
     <Link
       to={href}
-      className="ml-tight inline-flex max-w-chipWide items-center gap-snug rounded-tile border border-amber-500/40 bg-amber-500/10 px-base py-tight text-meta font-medium text-amber-100/95 hover:bg-amber-500/20"
+      className={badgeClasses("accent", "ml-tight max-w-chipWide hover:bg-accent/25")}
       title={label}
     >
       <span
         className="relative flex h-1.5 w-1.5 shrink-0"
         aria-hidden
       >
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-pill bg-amber-400/70 opacity-75" />
-        <span className="relative inline-flex h-1.5 w-1.5 rounded-pill bg-amber-300" />
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-pill bg-accent/70 opacity-75" />
+        <span className="relative inline-flex h-1.5 w-1.5 rounded-pill bg-badge-accent" />
       </span>
       <span className="min-w-0 truncate">{label}</span>
-      <span className="shrink-0 tabular-nums text-amber-200/70">{timeLabel}</span>
+      <span className="shrink-0 tabular-nums text-ink-muted">{timeLabel}</span>
     </Link>
   );
 }

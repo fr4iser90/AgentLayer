@@ -19,6 +19,22 @@ const TONES: Record<BadgeTone, string> = {
   danger: "bg-danger-subtle text-badge-danger",
 };
 
+/**
+ * The chip recipe without the element.
+ *
+ * A badge is a colour decision, not a `<span>`. A large share of the chips in
+ * this app are interactive — `<summary>` disclosures, `<Link>` status pills,
+ * `<button>` filters — and a span-only primitive leaves those hand-rolling the
+ * same fill+text pair forever, which is the drift this primitive exists to stop.
+ * Callers that must own their tag take the classes and keep the element.
+ */
+export function badgeClasses(
+  tone: BadgeTone,
+  ...extra: Array<string | false | null | undefined>
+): string {
+  return [BASE, TONES[tone], ...extra].filter(Boolean).join(" ");
+}
+
 export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   tone?: BadgeTone;
   children?: ReactNode;
@@ -26,10 +42,7 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 
 export function Badge({ tone = "neutral", className, children, ...rest }: BadgeProps) {
   return (
-    <span
-      className={[BASE, TONES[tone], className].filter(Boolean).join(" ")}
-      {...rest}
-    >
+    <span className={badgeClasses(tone, className)} {...rest}>
       {children}
     </span>
   );

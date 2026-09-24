@@ -11,6 +11,7 @@ import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n/config";
 import { Button } from "../ui/Button";
+import { Badge } from "../ui/Badge";
 import { useAuth } from "../auth/AuthContext";
 import { apiFetch } from "../lib/api";
 import { DashboardEmbeddedChat } from "../features/dashboard/DashboardEmbeddedChat";
@@ -1443,9 +1444,9 @@ export function DashboardPage() {
                 ) : null}
                 <div className="mt-wide flex flex-wrap gap-base">
                   {isInstalled ? (
-                    <span className="rounded-tile border border-line px-base py-tight text-xs text-ink-muted">
+                    <Badge tone="neutral">
                       {t("dashboard:catalogInstalledBadge")}
-                    </span>
+                    </Badge>
                   ) : (
                     <button
                       type="button"
@@ -1978,15 +1979,12 @@ export function DashboardPage() {
               ) : null}
               <div className="mt-soft flex flex-wrap gap-base">
                 {dashboardToolAllowlist.length === 0 ? (
-                  <span className="rounded-pill border border-line bg-white/[0.04] px-soft py-tight text-xs text-ink-muted">
+                  <Badge tone="neutral">
                     {t("dashboard:dashboardToolDefaultAll")}
-                  </span>
+                  </Badge>
                 ) : (
                   dashboardToolAllowlist.map((name) => (
-                    <span
-                      key={name}
-                      className="inline-flex max-w-full items-center gap-tight rounded-pill border border-sky-500/35 bg-sky-950/50 px-firm py-tight text-xs text-sky-100"
-                    >
+                    <Badge key={name} tone="accent" className="max-w-full">
                       <span className="truncate font-mono">{name}</span>
                       {canEditContent ? (
                         <button
@@ -1998,7 +1996,7 @@ export function DashboardPage() {
                           ×
                         </button>
                       ) : null}
-                    </span>
+                    </Badge>
                   ))
                 )}
               </div>

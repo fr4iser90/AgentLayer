@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { hasOrgSurface } from "../../auth/deploymentMode";
+import { Badge } from "../../ui/Badge";
 import { fetchWorkspacesApi } from "../../lib/workspacesApi";
 import {
   fetchEntityGrantsApi,
@@ -187,9 +188,9 @@ export function OrgGrantsPage() {
                 <td className="py-soft pr-wide">
                   <span className="font-medium text-ink-primary">{row.name}</span>
                   {row.visibility !== "tenant" ? (
-                    <span className="ml-base rounded-tile bg-amber-950/50 px-snug py-hair text-meta text-amber-300">
+                    <Badge tone="warning" className="ml-base">
                       {t("org:grantsPrivateTag")}
-                    </span>
+                    </Badge>
                   ) : null}
                 </td>
                 <td className="py-soft pr-wide">
