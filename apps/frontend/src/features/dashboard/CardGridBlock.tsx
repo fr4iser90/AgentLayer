@@ -3,6 +3,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 import { Star } from "lucide-react";
 import { getPath } from "./dashboardDataPaths";
+import { Badge, type BadgeTone } from "../../ui/Badge";
 import { ProjectRowDetailDrawer } from "./ProjectRowDetailDrawer";
 import type { ColumnDef, UiBlock } from "./types";
 
@@ -12,18 +13,18 @@ function normText(v: unknown): string {
   return String(v ?? "").trim().toLowerCase();
 }
 
-function badgeClass(status: string): string {
+function badgeTone(status: string): BadgeTone {
   const s = normText(status);
   if (s === "ok" || s === "secure" || s === "pass") {
-    return "bg-emerald-600/25 text-emerald-200 border-emerald-500/30";
+    return "success";
   }
   if (s === "warn" || s === "warning" || s === "outdated") {
-    return "bg-amber-600/25 text-amber-200 border-amber-500/30";
+    return "warning";
   }
   if (s === "fail" || s === "critical" || s === "vulnerable") {
-    return "bg-red-600/25 text-red-200 border-red-500/30";
+    return "danger";
   }
-  return "bg-white/10 text-ink-muted border-line";
+  return "neutral";
 }
 
 function gridColsClass(n: number): string {
@@ -182,18 +183,14 @@ export function CardGridBlockBody(props: {
                 ) : null}
                 <div className="mt-auto flex flex-wrap gap-snug pt-base">
                   {cardFields.includes("status") && status ? (
-                    <span
-                      className={`rounded-pill border px-base py-hair text-meta font-medium uppercase ${badgeClass(status)}`}
-                    >
+                    <Badge tone={badgeTone(status)} className="uppercase">
                       {status}
-                    </span>
+                    </Badge>
                   ) : null}
                   {cardFields.includes("security") && security ? (
-                    <span
-                      className={`rounded-pill border px-base py-hair text-meta font-medium uppercase ${badgeClass(security)}`}
-                    >
+                    <Badge tone={badgeTone(security)} className="uppercase">
                       {security}
-                    </span>
+                    </Badge>
                   ) : null}
                   {enableRunNow && String((row as any)?.workspace_id ?? "").trim() ? (
                     <span className="rounded-pill border border-violet-500/30 bg-violet-600/20 px-base py-hair text-meta text-violet-200">

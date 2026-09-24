@@ -11,6 +11,7 @@ import {
   normalizeExecutionTargetInput,
 } from "../lib/schedulerExecutionTarget";
 import { Button } from "../ui/Button";
+import { Badge, type BadgeTone } from "../ui/Badge";
 
 type SchedulerJobRow = {
   id: string;
@@ -44,16 +45,16 @@ type SchedulerJobRun = {
   finished_at: string | null;
 };
 
-function runStatusPill(status: SchedulerJobRun["status"]) {
+function runStatusPill(status: SchedulerJobRun["status"]): BadgeTone {
   switch (status) {
     case "succeeded":
-      return "bg-emerald-600/25 text-emerald-200 border-emerald-500/40";
+      return "success";
     case "partial":
-      return "bg-amber-600/25 text-amber-200 border-amber-500/40";
+      return "warning";
     case "failed":
-      return "bg-red-600/25 text-red-200 border-red-500/40";
+      return "danger";
     default:
-      return "bg-sky-600/25 text-sky-200 border-sky-500/40";
+      return "accent";
   }
 }
 
@@ -763,11 +764,7 @@ export function MySchedulesPage() {
                           onClick={() => setSelectedRun(r)}
                         >
                           <td className="px-base py-base">
-                            <span
-                              className={`inline-flex rounded-pill border px-base py-hair ${runStatusPill(r.status)}`}
-                            >
-                              {r.status}
-                            </span>
+                            <Badge tone={runStatusPill(r.status)}>{r.status}</Badge>
                           </td>
                           <td className="px-base py-base text-meta text-ink-muted">
                             {formatDateTimeLocal(r.started_at)}
@@ -788,9 +785,9 @@ export function MySchedulesPage() {
                 ) : (
                   <div className="space-y-soft">
                     <div>
-                      <span className={`inline-flex rounded-pill border px-base py-hair ${runStatusPill(selectedRun.status)}`}>
+                      <Badge tone={runStatusPill(selectedRun.status)}>
                         {selectedRun.status}
-                      </span>
+                      </Badge>
                       {selectedRun.summary_json?.outcome ? (
                         <span className="ml-base text-ink-muted">({selectedRun.summary_json.outcome})</span>
                       ) : null}
