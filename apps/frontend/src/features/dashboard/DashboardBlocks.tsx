@@ -28,6 +28,7 @@ import {
   type ExecutionTargetCatalogRow,
 } from "../../lib/schedulerExecutionTarget";
 import { Tooltip } from "../../ui/Tooltip";
+import { Badge, type BadgeTone } from "../../ui/Badge";
 
 type Row = Record<string, unknown>;
 
@@ -35,10 +36,8 @@ function newRowId(): string {
   return `r_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
-function scheduleEnabledPill(enabled: boolean): string {
-  return enabled
-    ? "bg-emerald-600/25 text-emerald-200 border-emerald-500/40"
-    : "bg-white/10 text-ink-muted border-line";
+function scheduleEnabledPill(enabled: boolean): BadgeTone {
+  return enabled ? "success" : "neutral";
 }
 
 export function DashboardBlocks(props: {
@@ -1193,9 +1192,9 @@ function BlockView(props: {
                 {jobs.map((j) => (
                   <tr key={j.id} className="border-b border-line-subtle">
                     <td className="px-base py-base">
-                      <span className={`rounded-tile border px-base py-hair text-xs ${scheduleEnabledPill(j.enabled)}`}>
+                      <Badge tone={scheduleEnabledPill(j.enabled)}>
                         {j.enabled ? t("admin:schedulesEnabledLabel") : t("admin:schedulesDisabledLabel")}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="px-base py-base text-xs text-ink-primary">
                       <div>{labelForExecutionTarget(j.execution_target, targetCatalog)}</div>

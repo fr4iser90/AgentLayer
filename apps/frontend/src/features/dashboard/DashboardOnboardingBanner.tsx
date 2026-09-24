@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Badge } from "../../ui/Badge";
 import type { DashboardOnboarding } from "./types";
 
 const DISMISS_PREFIX = "dashboard-onboarding-dismiss:";
@@ -63,11 +64,8 @@ export function DashboardOnboardingBanner({
       {steps.length > 0 ? (
         <ul className="mt-soft flex flex-wrap gap-base">
           {steps.map((step) => (
-            <li
-              key={step.id}
-              className="rounded-pill border border-emerald-500/25 bg-black/20 px-firm py-tight text-meta text-emerald-100/90"
-            >
-              {step.label}
+            <li key={step.id} className="flex items-center">
+              <Badge tone="success">{step.label}</Badge>
             </li>
           ))}
         </ul>

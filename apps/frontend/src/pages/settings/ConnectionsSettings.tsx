@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { Button } from "../../ui/Button";
+import { Badge } from "../../ui/Badge";
 
 type SecretField = {
   name: string;
@@ -470,9 +471,9 @@ export function ConnectionsSettings() {
                       <div className="flex flex-wrap items-center gap-base">
                         <span className="font-mono text-sm text-ink-primary">{key}</span>
                         {hasForm ? (
-                          <span className="rounded-tile bg-sky-500/15 px-snug py-hair text-meta text-sky-200">
+                          <Badge tone="accent">
                             {t("settings:connectionsFormInUiBadge")}
-                          </span>
+                          </Badge>
                         ) : null}
                       </div>
                       <div className="mt-tight text-xs text-ink-muted">
@@ -484,15 +485,9 @@ export function ConnectionsSettings() {
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-base">
-                      <span
-                        className={
-                          saved
-                            ? "rounded-tile bg-emerald-500/15 px-base py-tight text-xs text-emerald-300"
-                            : "rounded-tile bg-neutral-500/20 px-base py-tight text-xs text-ink-secondary"
-                        }
-                      >
+                      <Badge tone={saved ? "success" : "neutral"}>
                         {saved ? t("settings:connectionsSecretSaved") : t("settings:connectionsSecretNotSaved")}
-                      </span>
+                      </Badge>
                       <span className="text-xs text-ink-muted">{open ? "▲" : "▼"}</span>
                     </div>
                   </button>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { Badge, type BadgeTone } from "../../ui/Badge";
 
 type ToolMeta = {
   id?: string;
@@ -148,18 +149,27 @@ function sectionsByDomain(pkgs: ToolMeta[]): { key: string; domain: string; item
     }));
 }
 
-function riskBadgeClass(rl: string | undefined): string {
+/**
+ * Risk tier -> ``Badge`` tone.
+ *
+ * `l3` was previously `rose`, which the app also uses for live-mic and
+ * trend-down. A risk escalation's top tier means "harmful", and that is what
+ * `danger` already says — so `l3` lands there and rose is freed to mean
+ * recording only. Keeping a bespoke chip to avoid a hue collision preserves the
+ * collision instead of resolving it.
+ */
+function riskBadgeTone(rl: string | undefined): BadgeTone {
   switch (rl) {
     case "l3":
-      return "bg-rose-900/80 text-rose-100";
+      return "danger";
     case "l2":
-      return "bg-amber-900/70 text-amber-100";
+      return "warning";
     case "l1":
-      return "bg-sky-900/60 text-sky-100";
+      return "accent";
     case "l0":
-      return "bg-white/10 text-ink-primary";
+      return "neutral";
     default:
-      return "bg-white/5 text-ink-muted";
+      return "neutral";
   }
 }
 
@@ -392,6 +402,10 @@ export function AdminTools() {
       (firstTool && p.tool_effective?.[firstTool]?.execution_context) || manCtx;
     const effMr = firstTool && p.tool_effective?.[firstTool]?.min_role;
     const effTenants = firstTool ? p.tool_effective?.[firstTool]?.allowed_tenant_ids : null;
+    const riskLevel = p.risk_level;
+    const riskLabel = riskLevel ? t("admin:toolsBadgeRisk", { level: riskLevel }) : null;
+    // `null` tone means the tier is reserved (rose) and keeps its bespoke chip.
+    const riskTone = riskLevel ? riskBadgeTone(riskLevel) : null;
 
     return (
       <li
@@ -404,14 +418,14 @@ export function AdminTools() {
               <span className="font-mono text-sm font-semibold text-ink-primary">{pid}</span>
               {p.version ? <span className="text-meta text-ink-muted">v{p.version}</span> : null}
               {p.admin_bucket ? (
-                <span className="rounded-tile bg-emerald-950/60 px-snug py-hair text-meta text-emerald-200/90">
+                <Badge tone="success">
                   {t("admin:toolsBadgeBucket", { name: p.admin_bucket })}
-                </span>
+                </Badge>
               ) : null}
               {p.domain ? (
-                <span className="rounded-tile bg-white/10 px-snug py-hair text-meta text-ink-secondary">
+                <Badge tone="neutral">
                   {t("admin:toolsBadgeDomain", { name: p.domain })}
-                </span>
+                </Badge>
               ) : null}
               <span
                 className="rounded-tile bg-violet-900/50 px-snug py-hair text-meta text-violet-100"
@@ -425,30 +439,21 @@ export function AdminTools() {
                 ) : null}
               </span>
               {effMr ? (
-                <span
-                  className="rounded-tile bg-amber-950/50 px-snug py-hair text-meta text-amber-100"
-                  title={t("admin:effectiveMinRoleTitle")}
-                >
+                <Badge tone="warning" title={t("admin:effectiveMinRoleTitle")}>
                   {t("admin:toolsBadgeAccess", { role: effMr })}
-                </span>
+                </Badge>
               ) : null}
               {effTenants?.length ? (
-                <span className="rounded-tile bg-slate-800 px-snug py-hair text-meta text-slate-200">
+                <Badge tone="neutral">
                   {t("admin:toolsBadgeTenants", { ids: effTenants.join(",") })}
-                </span>
+                </Badge>
               ) : null}
               {p.os_support?.length ? (
-                <span className="rounded-tile bg-white/10 px-snug py-hair text-meta text-ink-secondary">
+                <Badge tone="neutral">
                   {t("admin:toolsBadgeOs", { list: p.os_support.join(",") })}
-                </span>
+                </Badge>
               ) : null}
-              {p.risk_level ? (
-                <span
-                  className={`rounded-tile px-snug py-hair text-meta font-medium ${riskBadgeClass(p.risk_level)}`}
-                >
-                  {t("admin:toolsBadgeRisk", { level: p.risk_level })}
-                </span>
-              ) : null}
+              {riskLevel ? <Badge tone={riskTone}>{riskLabel}</Badge> : null}
             </div>
             <p className="truncate font-mono text-meta text-ink-muted" title={p.source}>
               {p.source}
@@ -640,14 +645,14 @@ export function AdminTools() {
                 <article key={`${c.kind}:${c.name}`} className="rounded-card border border-line bg-black/20 p-soft text-xs text-ink-primary">
                   <div className="flex flex-wrap items-center gap-base">
                     <span className="font-mono text-sm font-semibold text-ink-primary">{c.name}</span>
-                    <span className="rounded-tile bg-sky-900/60 px-snug py-hair text-meta text-sky-100">{c.kind}</span>
-                    <span className="rounded-tile bg-amber-900/60 px-snug py-hair text-meta text-amber-100">
+                    <Badge tone="accent">{c.kind}</Badge>
+                    <Badge tone="warning">
                       {t("admin:toolsImportRisk", { risk: c.risk ?? t("admin:toolsImportUnknown") })}
-                    </span>
+                    </Badge>
                     {typeof c.confidence === "number" ? (
-                      <span className="rounded-tile bg-white/10 px-snug py-hair text-meta">
+                      <Badge tone="neutral">
                         {Math.round(c.confidence * 100)}%
-                      </span>
+                      </Badge>
                     ) : null}
                   </div>
                   <p className="mt-base text-ink-secondary">{c.title}</p>

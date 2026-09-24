@@ -87,21 +87,23 @@ function DashboardChatVisibilityBadge({ thread }: { thread: Pick<ChatThread, "da
   const shared = thread.shared === true;
   if (shared) {
     return (
-      <span
-        className="inline-flex shrink-0 items-center rounded-pill border border-amber-400/40 bg-amber-950/60 px-base py-hair text-meta font-semibold uppercase tracking-wide text-amber-100/95"
+      <Badge
+        tone="warning"
+        className="shrink-0 uppercase tracking-wide"
         title={t("chat:visibilitySharedTitle")}
       >
         {t("chat:visibilitySharedLabel")}
-      </span>
+      </Badge>
     );
   }
   return (
-    <span
-      className="inline-flex shrink-0 items-center rounded-pill border border-emerald-500/35 bg-emerald-950/45 px-base py-hair text-meta font-semibold uppercase tracking-wide text-emerald-100/90"
+    <Badge
+      tone="success"
+      className="shrink-0 uppercase tracking-wide"
       title={t("chat:visibilityPersonalTitle")}
     >
       {t("chat:visibilityPersonalLabel")}
-    </span>
+    </Badge>
   );
 }
 import {
@@ -176,6 +178,7 @@ import { streamOpenAiChatChunks } from "../features/chat/openaiSseStream";
 import { formatMessageTime, inferMissingMessageTimestamps } from "../features/chat/messageTimestamps";
 import { Button } from "../ui/Button";
 import { Tooltip } from "../ui/Tooltip";
+import { Badge } from "../ui/Badge";
 /** `?dashboard=<uuid>` — validated; server re-checks access. */
 function parseDashboardQueryParam(raw: string | null): string | null {
   if (!raw || !raw.trim()) return null;

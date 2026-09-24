@@ -4,6 +4,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { formatDateTimeLocal } from "../../lib/formatDateTime";
 import { ConfirmModal } from "../../components/ConfirmModal";
+import { Badge, type BadgeTone } from "../../ui/Badge";
 
 type SubmissionStatus = "pending" | "approved" | "rejected";
 type StatusFilter = SubmissionStatus | "all";
@@ -34,16 +35,18 @@ type SubmissionPreview = SubmissionRow & {
 
 const RISK_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
-function riskClassName(risk: string): string {
-  if (risk === "high") return "bg-red-900/60 text-red-100";
-  if (risk === "medium") return "bg-amber-900/60 text-amber-100";
-  return "bg-emerald-900/60 text-emerald-100";
+function riskTone(risk: string): BadgeTone {
+  if (risk === "high") return "danger";
+  if (risk === "medium") return "warning";
+  if (risk === "low") return "success";
+  return "neutral";
 }
 
-function statusClassName(status: string): string {
-  if (status === "approved") return "bg-emerald-900/60 text-emerald-100";
-  if (status === "rejected") return "bg-red-900/60 text-red-100";
-  return "bg-sky-900/60 text-sky-100";
+function statusTone(status: string): BadgeTone {
+  if (status === "approved") return "success";
+  if (status === "rejected") return "danger";
+  // `pending` is the third state of the union and reads as informational.
+  return "accent";
 }
 
 function Author({ id }: { id: string }) {
@@ -217,12 +220,12 @@ export function AdminAgentSubmissions() {
                 >
                   <div className="flex items-center gap-base">
                     <span className="font-medium text-ink-primary">{s.title || s.agent_id}</span>
-                    <span className={`rounded-tile px-snug py-hair text-meta ${riskClassName(s.risk_level)}`}>
+                    <Badge tone={riskTone(s.risk_level)}>
                       {t(`admin:agentSubmissionsRisk${s.risk_level.charAt(0).toUpperCase()}${s.risk_level.slice(1)}`)}
-                    </span>
-                    <span className={`rounded-tile px-snug py-hair text-meta ${statusClassName(s.status)}`}>
+                    </Badge>
+                    <Badge tone={statusTone(s.status)}>
                       {t(`admin:agentSubmissionsStatus${s.status.charAt(0).toUpperCase()}${s.status.slice(1)}`)}
-                    </span>
+                    </Badge>
                   </div>
                   <p className="mt-tight font-mono text-meta text-ink-muted">({s.agent_id})</p>
                   <div className="mt-tight flex items-center gap-base text-meta text-ink-muted">
@@ -246,18 +249,18 @@ export function AdminAgentSubmissions() {
                   </h2>
                   <p className="mt-tight text-xs text-ink-muted">{selected.description || "—"}</p>
                 </div>
-                <span className={`rounded-tile px-base py-tight text-xs ${statusClassName(selected.status)}`}>
+                <Badge tone={statusTone(selected.status)}>
                   {t(`admin:agentSubmissionsStatus${selected.status.charAt(0).toUpperCase()}${selected.status.slice(1)}`)}
-                </span>
+                </Badge>
               </div>
 
               <dl className="mt-wide grid gap-base text-xs sm:grid-cols-2">
                 <div>
                   <dt className="text-ink-muted">{t("admin:agentSubmissionsRisk")}</dt>
                   <dd className="mt-tight">
-                    <span className={`rounded-tile px-base py-hair text-xs ${riskClassName(selected.risk_level)}`}>
+                    <Badge tone={riskTone(selected.risk_level)}>
                       {t(`admin:agentSubmissionsRisk${selected.risk_level.charAt(0).toUpperCase()}${selected.risk_level.slice(1)}`)}
-                    </span>
+                    </Badge>
                   </dd>
                 </div>
                 <div>

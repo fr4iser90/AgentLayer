@@ -9,6 +9,7 @@ import {
   isTargetEditable as canEditTargetRow,
   visibleColSpan as computeVisibleColSpan,
 } from "./accessGating";
+import { Badge } from "../../ui/Badge";
 
 type TenantTemplateRow = {
   id: string;
@@ -688,15 +689,9 @@ export function AdminUsers() {
                         </td>
                       )}
                       <td className="px-wide py-soft">
-                        <span
-                          className={
-                            r.role?.toLowerCase() === "admin"
-                              ? "rounded-tile bg-emerald-500/20 px-base py-hair text-xs text-emerald-300"
-                              : "rounded-tile bg-sky-500/20 px-base py-hair text-xs text-sky-300"
-                          }
-                        >
+                        <Badge tone={r.role?.toLowerCase() === "admin" ? "success" : "accent"}>
                           {r.role}
-                        </span>
+                        </Badge>
                         {!targetEditable ? (
                           <span
                             className="mt-hair block text-xs font-normal text-amber-400"

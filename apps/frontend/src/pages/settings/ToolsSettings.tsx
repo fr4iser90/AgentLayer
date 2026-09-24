@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { isPackageEnabledForChat, setPackageEnabledForChat } from "../../features/settings/toolPrefs";
+import { Badge } from "../../ui/Badge";
 
 type ToolPackageUi = {
   category: string;
@@ -432,35 +433,25 @@ export function ToolsSettings() {
                             </div>
                             <div className="flex flex-wrap justify-end gap-tight">
                               {enabled ? (
-                                <span className="rounded-tile bg-emerald-500/15 px-snug py-hair text-meta text-emerald-200">
-                                  {t("settings:toolsBadgeOn")}
-                                </span>
+                                <Badge tone="success">{t("settings:toolsBadgeOn")}</Badge>
                               ) : (
-                                <span className="rounded-tile bg-neutral-500/20 px-snug py-hair text-meta text-ink-muted">
-                                  {t("settings:toolsBadgeOff")}
-                                </span>
+                                <Badge tone="neutral">{t("settings:toolsBadgeOff")}</Badge>
                               )}
                               {missing.length ? (
-                                <span className="rounded-tile bg-amber-500/20 px-snug py-hair text-meta text-amber-200">
-                                  {t("settings:toolsBadgeNeedsSecret")}
-                                </span>
+                                <Badge tone="warning">{t("settings:toolsBadgeNeedsSecret")}</Badge>
                               ) : reqs.length ? (
-                                <span className="rounded-tile bg-emerald-500/10 px-snug py-hair text-meta text-emerald-200/90">
-                                  {t("settings:toolsBadgeReady")}
-                                </span>
+                                <Badge tone="success">{t("settings:toolsBadgeReady")}</Badge>
                               ) : (
-                                <span className="rounded-tile bg-white/5 px-snug py-hair text-meta text-ink-muted">
-                                  {t("settings:toolsBadgeNoSecrets")}
-                                </span>
+                                <Badge tone="neutral">{t("settings:toolsBadgeNoSecrets")}</Badge>
                               )}
                               {high ? (
+                                // Left hand-rolled: orange is reserved for `unread` semantics and
+                                // needs its own token before high-risk can be mapped onto a tone.
                                 <span className="rounded-tile bg-orange-500/20 px-snug py-hair text-meta text-orange-200">
                                   {t("settings:toolsRiskHigh", { level: risk || "high" })}
                                 </span>
                               ) : risk ? (
-                                <span className="rounded-tile bg-white/10 px-snug py-hair text-meta text-ink-muted">
-                                  {t("settings:toolsRiskLevel", { level: risk })}
-                                </span>
+                                <Badge tone="neutral">{t("settings:toolsRiskLevel", { level: risk })}</Badge>
                               ) : null}
                             </div>
                           </div>

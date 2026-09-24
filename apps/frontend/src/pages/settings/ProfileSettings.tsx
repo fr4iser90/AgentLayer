@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { Badge } from "../../ui/Badge";
 
 type MeResponse = {
   id?: string;
@@ -106,15 +107,11 @@ export function ProfileSettings() {
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-ink-muted">{t("settings:profileRole")}</dt>
               <dd className="mt-tight">
-                <span
-                  className={
-                    String(roleRaw).toLowerCase() === "admin"
-                      ? "rounded-tile bg-emerald-500/20 px-base py-hair text-xs text-emerald-300"
-                      : "rounded-tile bg-sky-500/20 px-base py-hair text-xs text-sky-300"
-                  }
+                <Badge
+                  tone={String(roleRaw).toLowerCase() === "admin" ? "success" : "accent"}
                 >
                   {roleLabel}
-                </span>
+                </Badge>
               </dd>
             </div>
             {created ? (
