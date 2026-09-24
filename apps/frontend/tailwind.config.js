@@ -50,7 +50,16 @@ const FIELD = "#0F1218";
 const FIELD_PLACEHOLDER = "#7B8390";
 
 export default {
-  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  // The guard tests plant violations on purpose (`z-[999]`, `bg-red-500`,
+  // `max-w-6xl`) and must plant them in the exact form the guard reads. They
+  // are not app code, though: with test files in this glob every one of those
+  // classes is emitted into the shipped stylesheet, so a level the token scale
+  // exists to make untypeable stays perfectly renderable.
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+    "!./src/**/*.test.{js,ts,jsx,tsx}",
+  ],
   theme: {
     // Stacking levels, named by what floats rather than by a number.
     //
