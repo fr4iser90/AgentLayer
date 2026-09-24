@@ -76,7 +76,7 @@ export function OrgTeamPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-broad py-page">
+    <div className="mx-auto max-w-page px-broad py-page">
       <h1 className="text-xl font-semibold text-ink-primary">{t("org:teamPageTitle")}</h1>
       <p className="mt-base text-sm text-ink-muted">{t("org:teamPageIntro")}</p>
 

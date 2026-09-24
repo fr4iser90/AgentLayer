@@ -49,7 +49,7 @@ export function BlockExpandModal(props: {
         </button>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-wide sm:p-broad">
-        <div className="mx-auto max-w-6xl rounded-sheet border border-line bg-card p-soft sm:p-wide">
+        <div className="mx-auto max-w-pageWide rounded-sheet border border-line bg-card p-soft sm:p-wide">
           <DashboardBlockTile
             block={block}
             data={data}

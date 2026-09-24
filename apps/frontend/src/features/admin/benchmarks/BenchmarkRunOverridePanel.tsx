@@ -153,7 +153,7 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
               </span>
             ) : null}
           </h3>
-          <p className="mt-tight max-w-prose text-meta text-ink-muted">
+          <p className="mt-tight max-w-measure text-meta text-ink-muted">
             {t("admin:benchRunOverridesHint")}
           </p>
         </div>

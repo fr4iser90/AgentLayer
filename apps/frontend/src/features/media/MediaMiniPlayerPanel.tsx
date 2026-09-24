@@ -110,7 +110,7 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
 
   return (
     <div className="max-h-[min(42vh,320px)] overflow-y-auto border-b border-sky-500/20 bg-sky-950/80 px-soft py-base">
-      <div className="mx-auto max-w-5xl space-y-base">
+      <div className="mx-auto max-w-page space-y-base">
         <div className="flex flex-wrap items-center gap-base">
           <div className="flex rounded-tile border border-line p-hair text-meta">
             <button

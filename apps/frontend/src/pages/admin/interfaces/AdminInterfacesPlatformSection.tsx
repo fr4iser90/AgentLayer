@@ -110,7 +110,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             </label>
             <select
               id="agent-mode"
-              className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
               value={s.agentMode}
               onChange={(e) => s.setAgentMode(e.target.value as "env" | "sandbox" | "host")}
             >
@@ -138,7 +138,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               type="number"
               min={1}
               max={512}
-              className="mt-tight w-full max-w-xs rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
               value={s.uploadMaxMb}
               onChange={(e) => s.setUploadMaxMb(e.target.value)}
               placeholder={t("admin:ifPlatformUploadMbPlaceholder")}
@@ -202,7 +202,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               type="number"
               min={1}
               max={50000}
-              className="mt-tight w-full max-w-xs rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
               value={s.mediaDefaultQuotaMb}
               onChange={(e) => s.setMediaDefaultQuotaMb(e.target.value)}
               placeholder={t("admin:ifPlatformMediaQuotaPlaceholder")}
@@ -215,7 +215,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               type="number"
               min={1}
               max={512}
-              className="mt-tight w-full max-w-xs rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
               value={s.mediaUploadMaxMb}
               onChange={(e) => s.setMediaUploadMaxMb(e.target.value)}
               placeholder={t("admin:ifPlatformUploadMbPlaceholder")}
@@ -253,7 +253,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               type="number"
               min={1}
               max={50000}
-              className="mt-tight w-full max-w-xs rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
               value={s.chatMaxConversationMb}
               onChange={(e) => s.setChatMaxConversationMb(e.target.value)}
             />
@@ -265,7 +265,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               type="number"
               min={1}
               max={10000}
-              className="mt-tight w-full max-w-xs rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
               value={s.chatMaxPersonalSessions}
               onChange={(e) => s.setChatMaxPersonalSessions(e.target.value)}
             />
@@ -277,7 +277,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               type="number"
               min={1}
               max={10000}
-              className="mt-tight w-full max-w-xs rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
               value={s.chatMaxDashboardSessions}
               onChange={(e) => s.setChatMaxDashboardSessions(e.target.value)}
             />
@@ -453,7 +453,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               <input
                 id="voice-api-key"
                 type="password"
-                className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary disabled:opacity-50"
+                className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary disabled:opacity-50"
                 value={s.voiceApiKey}
                 onChange={(e) => s.setVoiceApiKey(e.target.value)}
                 placeholder={t("admin:ifPlatformVoiceApiKeyPlaceholder")}
@@ -490,7 +490,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-wide block text-xs text-ink-muted">
               {t("admin:ifPlatformVoiceTtsVoice")}
               <input
-                className="mt-tight w-full max-w-xs rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+                className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
                 value={s.voiceTtsVoice}
                 onChange={(e) => s.setVoiceTtsVoice(e.target.value)}
               />
@@ -543,7 +543,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             </label>
             <select
               id="surface-preset"
-              className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
               value={s.surfacePreset}
               onChange={(e) => {
                 const preset = e.target.value as "WEB_ONLY" | "WEB_AND_TUI" | "TUI_ONLY";
@@ -599,7 +599,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             </label>
             <select
               id="api-key-ws-modes"
-              className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
               value={s.apiKeyWorkspaceModes}
               onChange={(e) =>
                 s.setApiKeyWorkspaceModes(e.target.value as "server" | "client" | "both")
@@ -628,7 +628,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             </label>
             <select
               id="ws-index-consent-max"
-              className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
               value={s.workspaceIndexConsentMax}
               onChange={(e) => s.setWorkspaceIndexConsentMax(e.target.value)}
             >
@@ -659,7 +659,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             </label>
             <select
               id="ws-index-on-write-default"
-              className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
               value={s.workspaceIndexOnWriteDefault}
               onChange={(e) => s.setWorkspaceIndexOnWriteDefault(e.target.value)}
             >

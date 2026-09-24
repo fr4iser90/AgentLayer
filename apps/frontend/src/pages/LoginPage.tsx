@@ -46,7 +46,7 @@ export function LoginPage() {
 
   return (
     <div className="h-full min-h-0 overflow-y-auto">
-      <div className="mx-auto max-w-sm px-broad py-grand">
+      <div className="mx-auto max-w-dialog px-broad py-grand">
         <h1 className="text-2xl font-semibold text-ink-primary">{t("auth:loginTitle")}</h1>
         <p className="mt-base text-sm text-ink-muted">
           {t("auth:loginSubtitle")}

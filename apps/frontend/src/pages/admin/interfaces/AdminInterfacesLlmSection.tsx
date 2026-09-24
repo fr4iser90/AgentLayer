@@ -991,7 +991,7 @@ export function AdminInterfacesLlmSection({
                             min={1}
                             max={64}
                             step={1}
-                            className="mt-tight w-full max-w-xs rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+                            className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
                             value={endpoint.maxParallel}
                             onChange={(e) =>
                               updateOperatorEndpoint(group.kind, endpointIdx, {
@@ -1275,7 +1275,7 @@ export function AdminInterfacesLlmSection({
                                   }))
                                 }
                               />
-                              <span className="flex max-w-[48%] shrink-0 flex-wrap justify-end gap-tight pt-hair">
+ <span className="flex shrink-0 flex-wrap justify-end gap-tight pt-hair">
                                 {profileBadges.map((badge) => (
                                   <span
                                     key={badge}
@@ -1334,7 +1334,7 @@ export function AdminInterfacesLlmSection({
             </label>
             <select
               id="llm-router-model"
-              className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary disabled:opacity-50"
+              className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary disabled:opacity-50"
               value={
                 s.llmRouterModelProvider && s.llmRouterModel
                   ? `${s.llmRouterModelProvider}:${s.llmRouterModel}`
@@ -1359,7 +1359,7 @@ export function AdminInterfacesLlmSection({
                 );
               })}
             </select>
-            <div className="mt-wide grid max-w-xl gap-soft sm:grid-cols-2">
+            <div className="mt-wide grid max-w-measure gap-soft sm:grid-cols-2">
               <div>
                 <label className="block text-xs text-ink-muted" htmlFor="llm-router-conf">
                   {t("admin:ifLlmRouterConfMin")}
@@ -1482,7 +1482,7 @@ export function AdminInterfacesLlmSection({
                   type="number"
                   min={0}
                   max={1000}
-                  className="mt-tight w-full max-w-xs rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+                  className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
                   value={s.llmQueueUserPriority}
                   onChange={(e) => s.setLlmQueueUserPriority(e.target.value)}
                 />
@@ -1496,7 +1496,7 @@ export function AdminInterfacesLlmSection({
                   type="number"
                   min={0}
                   max={1000}
-                  className="mt-tight w-full max-w-xs rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+                  className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
                   value={s.llmQueueBenchmarkPriority}
                   onChange={(e) => s.setLlmQueueBenchmarkPriority(e.target.value)}
                 />
@@ -1511,7 +1511,7 @@ export function AdminInterfacesLlmSection({
                   type="number"
                   min={0}
                   max={1000}
-                  className="mt-tight w-full max-w-xs rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+                  className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
                   value={s.llmQueueSchedulerPriority}
                   onChange={(e) => s.setLlmQueueSchedulerPriority(e.target.value)}
                 />

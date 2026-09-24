@@ -105,7 +105,7 @@ export function AdminInterfacesBridgesSection() {
         </label>
         <input
           id="prefix"
-          className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+          className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
           value={s.triggerPrefix}
           onChange={(e) => s.setTriggerPrefix(e.target.value)}
           placeholder={t("admin:messagePrefixPlaceholder")}
@@ -113,7 +113,7 @@ export function AdminInterfacesBridgesSection() {
         <label className="mt-soft block text-xs text-ink-muted" htmlFor="model">
           {t("admin:catalogModelIdLabel")}
         </label>
-        <div id="model" className="mt-tight w-full max-w-md">
+        <div id="model" className="mt-tight w-full max-w-controlWide">
           <ModelCatalogSelect
             rows={modelOptions}
             agentlayer={modelCatalogAgentlayer}
@@ -188,7 +188,7 @@ export function AdminInterfacesBridgesSection() {
         </label>
         <input
           id="tg-prefix"
-          className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+          className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
           value={s.tgTriggerPrefix}
           onChange={(e) => s.setTgTriggerPrefix(e.target.value)}
           placeholder={t("admin:messagePrefixPlaceholder")}
@@ -196,7 +196,7 @@ export function AdminInterfacesBridgesSection() {
         <label className="mt-soft block text-xs text-ink-muted" htmlFor="tg-model">
           {t("admin:catalogModelIdLabel")}
         </label>
-        <div id="tg-model" className="mt-tight w-full max-w-md">
+        <div id="tg-model" className="mt-tight w-full max-w-controlWide">
           <ModelCatalogSelect
             rows={modelOptions}
             agentlayer={modelCatalogAgentlayer}
@@ -226,7 +226,7 @@ export function AdminInterfacesBridgesSection() {
         </label>
         <select
           id="http-client-log-level"
-          className="mt-tight w-full max-w-xs rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+          className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
           value={s.httpClientLogLevel}
           onChange={(e) => s.setHttpClientLogLevel(e.target.value)}
         >

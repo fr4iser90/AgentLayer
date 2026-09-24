@@ -153,10 +153,10 @@ export function ProjectsPage() {
   };
 
   return (
-    <div className="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col gap-wide overflow-hidden p-wide md:p-broad">
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-pageWide flex-col gap-wide overflow-hidden p-wide md:p-broad">
       <header className="shrink-0">
         <h1 className="text-lg font-semibold text-ink-primary">{t("workspace:projectsTitle")}</h1>
-        <p className="mt-tight max-w-2xl text-sm text-ink-muted">{t("workspace:projectsIntro")}</p>
+        <p className="mt-tight max-w-measure text-sm text-ink-muted">{t("workspace:projectsIntro")}</p>
         <p className="mt-tight text-xs text-ink-muted">
           {scope === "company"
             ? t("workspace:projectsCompanyScopeNote")

@@ -53,13 +53,13 @@ export function PublicGalleryShareView(props: {
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{title}</h1>
         {subtitle ? <p className="mt-tight text-sm text-ink-muted">{subtitle}</p> : null}
         {introTexts.length > 0 ? (
-          <div className="mt-soft max-w-2xl whitespace-pre-wrap text-sm leading-relaxed text-ink-secondary">
+          <div className="mt-soft max-w-measure whitespace-pre-wrap text-sm leading-relaxed text-ink-secondary">
             {introTexts.join("\n\n")}
           </div>
         ) : null}
       </header>
 
-      <main className="mx-auto w-full max-w-[1600px] px-soft py-wide sm:px-broad sm:py-deep">
+      <main className="mx-auto w-full max-w-pageWide px-soft py-wide sm:px-broad sm:py-deep">
         {heroBlocks.map((block) => {
           const dp = block.props.dataPath || "hero";
           const hero = readHero(getPath(data, dp));

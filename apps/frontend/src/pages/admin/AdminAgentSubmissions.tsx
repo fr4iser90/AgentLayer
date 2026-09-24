@@ -164,9 +164,9 @@ export function AdminAgentSubmissions() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-wide py-deep sm:px-broad">
+    <div className="mx-auto max-w-pageWide px-wide py-deep sm:px-broad">
       <h1 className="text-2xl font-semibold text-ink-primary">{t("admin:agentSubmissionsTitle")}</h1>
-      <p className="mt-base max-w-3xl text-sm text-ink-muted">{t("admin:agentSubmissionsIntro")}</p>
+      <p className="mt-base max-w-measure text-sm text-ink-muted">{t("admin:agentSubmissionsIntro")}</p>
 
       <div className="mt-broad flex flex-wrap items-center gap-soft">
         <label className="flex items-center gap-base text-xs text-ink-muted">

@@ -142,7 +142,7 @@ function LevelSelect({
       <span className="text-ink-muted">{label}</span>
       <select
         id={id}
-        className="mt-tight w-full max-w-xs rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+        className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
         value={value}
         onChange={(e) => onChange(e.target.value as Level)}
       >
@@ -266,7 +266,7 @@ function ConfigEditor({
         </label>
         <select
           id={`${idPrefix}-primary-goal`}
-          className="mt-tight w-full max-w-xs rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+          className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
           value={config.engineering.primary_goal}
           onChange={(e) =>
             onChange({
@@ -286,7 +286,7 @@ function ConfigEditor({
         </select>
         <p className="mt-soft text-xs text-ink-muted">{t("settings:delegatePrioritiesHelp")}</p>
         <textarea
-          className="mt-tight min-h-[72px] w-full max-w-md rounded-tile border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary"
+          className="mt-tight min-h-[72px] w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary"
           value={prioritiesText}
           onChange={(e) => {
             const priorities = e.target.value
@@ -363,7 +363,7 @@ function ConfigEditor({
         <h3 className="text-sm font-medium text-ink-primary">{t("settings:delegateSectionGoals")}</h3>
         <p className="mt-tight text-xs text-ink-muted">{t("settings:delegateGoalsHelp")}</p>
         <textarea
-          className="mt-base min-h-[100px] w-full max-w-2xl rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+          className="mt-base min-h-[100px] w-full max-w-measure rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
           value={goalsText}
           onChange={(e) =>
             onChange({
@@ -501,7 +501,7 @@ export function DelegateSettings() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-pageNarrow">
       <h1 className="text-xl font-semibold text-ink-primary">{t("settings:delegateTitle")}</h1>
       <p className="mt-base text-sm text-ink-muted">{t("settings:delegateSubtitle")}</p>
       <p className="mt-base text-xs text-ink-muted">
@@ -525,7 +525,7 @@ export function DelegateSettings() {
         </label>
         <textarea
           id="delegate-notes"
-          className="mt-tight min-h-[72px] w-full max-w-2xl rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+          className="mt-tight min-h-[72px] w-full max-w-measure rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder={t("settings:delegateNotesPlaceholder")}
@@ -552,7 +552,7 @@ export function DelegateSettings() {
             </label>
             <select
               id="delegate-ws"
-              className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
               value={workspaceId}
               onChange={(e) => setWorkspaceId(e.target.value)}
             >

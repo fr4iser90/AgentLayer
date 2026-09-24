@@ -167,7 +167,7 @@ export function AgentSettings() {
   const label = "block text-xs text-ink-muted";
 
   return (
-    <div className="mx-auto max-w-2xl space-y-deep">
+    <div className="mx-auto max-w-page space-y-deep">
       <div>
         <h1 className="text-lg font-semibold text-ink-primary">{t("settings:agentTitle")}</h1>
         <p className="mt-base text-sm text-ink-muted">

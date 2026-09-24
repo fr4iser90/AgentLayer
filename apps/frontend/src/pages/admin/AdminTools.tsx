@@ -551,9 +551,9 @@ export function AdminTools() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-wide py-deep sm:px-broad">
+    <div className="mx-auto max-w-pageWide px-wide py-deep sm:px-broad">
       <h1 className="text-2xl font-semibold text-ink-primary">{t("admin:toolsRegistryTitle")}</h1>
-      <p className="mt-base max-w-2xl text-sm text-ink-muted">
+      <p className="mt-base max-w-measure text-sm text-ink-muted">
         {t("admin:toolsRegistryIntro")}{" "}
         <span className="text-ink-muted">{t("admin:toolsRegistryAssignUsers")}</span>
       </p>
@@ -562,7 +562,7 @@ export function AdminTools() {
         <div className="flex flex-col gap-base sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold text-ink-primary">{t("admin:toolsImportTitle")}</h2>
-            <p className="mt-tight max-w-2xl text-xs text-ink-muted">
+            <p className="mt-tight max-w-measure text-xs text-ink-muted">
               {t("admin:toolsImportIntro")}
             </p>
           </div>

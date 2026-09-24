@@ -38,7 +38,7 @@ export function HomePage() {
 
   return (
     <div className="h-full min-h-0 overflow-y-auto">
-      <div className="mx-auto max-w-2xl px-broad py-grand">
+      <div className="mx-auto max-w-page px-broad py-grand">
         <h1 className="text-2xl font-semibold text-ink-primary">{t("common:home.hubTitle")}</h1>
         <p className="mt-base text-sm text-ink-muted">{t("common:home.hubIntro")}</p>
         <ul className="mt-deep flex flex-col gap-soft">

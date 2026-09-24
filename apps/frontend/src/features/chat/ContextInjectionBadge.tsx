@@ -32,7 +32,7 @@ export const ContextInjectionBadge = memo(function ContextInjectionBadge({
           <span className="absolute inline-flex h-full w-full rounded-pill bg-amber-400/80 opacity-75" />
           <span className="relative inline-flex h-1.5 w-1.5 rounded-pill bg-amber-300" />
         </span>
-        <span className="max-w-[16rem] truncate">{title}</span>
+        <span className="max-w-chipWide truncate">{title}</span>
         {count > 0 ? (
           <span
             className="text-meta font-normal text-amber-200/55"

@@ -209,7 +209,7 @@ export function StudioPage() {
           </button>
           <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-semibold text-ink-primary">{t("common:studio.title")}</h1>
-            <p className="mt-tight max-w-2xl text-sm text-ink-muted">{t("common:studio.subtitle")}</p>
+            <p className="mt-tight max-w-measure text-sm text-ink-muted">{t("common:studio.subtitle")}</p>
           </div>
         </div>
 
@@ -239,7 +239,7 @@ export function StudioPage() {
         ) : null}
 
         {preset ? (
-          <div className="mt-deep max-w-xl">
+          <div className="mt-deep max-w-measure">
             <h2 className="text-lg font-medium text-ink-primary">{preset.title}</h2>
             <p className="mt-base whitespace-pre-wrap text-sm text-ink-muted">
               {preset.description}

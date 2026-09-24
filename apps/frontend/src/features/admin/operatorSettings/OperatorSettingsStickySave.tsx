@@ -6,7 +6,7 @@ export function OperatorSettingsStickySave() {
   const { save, saveMsg } = useOperatorSettings();
   return (
     <div className="sticky bottom-0 z-10 -mx-broad border-t border-line bg-[#0d0d0d]/95 px-broad py-soft backdrop-blur-sm">
-      <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-soft">
+      <div className="mx-auto flex max-w-page flex-wrap items-center justify-between gap-soft">
         <div className="min-w-0 flex-1 text-xs text-ink-muted">
           {saveMsg ? (
             <span className={saveMsg.ok ? "text-emerald-400" : "text-red-400"}>{saveMsg.text}</span>

@@ -78,7 +78,7 @@ export function DashboardLayoutProposalPanel({
       aria-modal="true"
       aria-label={t("dashboard:layoutProposalsTitle")}
     >
-      <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-t-sheet border border-line bg-[#111] shadow-2xl sm:rounded-sheet">
+      <div className="flex max-h-[92vh] w-full max-w-dialogFull flex-col overflow-hidden rounded-t-sheet border border-line bg-[#111] shadow-2xl sm:rounded-sheet">
         <header className="flex shrink-0 items-center justify-between gap-soft border-b border-line px-wide py-soft">
           <div>
             <h2 className="text-sm font-semibold text-ink-primary">{t("dashboard:layoutProposalsTitle")}</h2>
@@ -118,7 +118,7 @@ export function DashboardLayoutProposalPanel({
                 >
                   <div className="font-medium">{p.title}</div>
                   {p.summary ? (
-                    <div className="mt-hair max-w-[14rem] truncate text-ink-muted">{p.summary}</div>
+                    <div className="mt-hair max-w-chipWide truncate text-ink-muted">{p.summary}</div>
                   ) : null}
                 </button>
               ))}

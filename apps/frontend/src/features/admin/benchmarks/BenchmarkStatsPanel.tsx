@@ -343,7 +343,7 @@ export function BenchmarkStatsPanel({
               <select
                 value={fastestMinPassRate}
                 onChange={(e) => setFastestMinPassRate(e.target.value)}
-                className="mt-tight block max-w-[11rem] rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                className="mt-tight block max-w-control rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
               >
                 {FASTEST_PASS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>

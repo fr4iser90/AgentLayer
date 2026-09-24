@@ -76,7 +76,7 @@ export function MediaMiniPlayer() {
           }
           aria-hidden={!embedExpanded}
         >
-          <div className="mx-auto aspect-video max-h-36 max-w-md overflow-hidden rounded-tile">
+          <div className="mx-auto aspect-video max-h-36 max-w-controlWide overflow-hidden rounded-tile">
             <iframe
               title={label}
               src={media.embedUrl}
@@ -88,7 +88,7 @@ export function MediaMiniPlayer() {
         </div>
       ) : null}
       <div className="px-soft py-base">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-soft">
+        <div className="mx-auto flex max-w-page flex-wrap items-center gap-soft">
           <button
             type="button"
             className={`shrink-0 rounded-tile px-base py-snug text-xs font-medium ${

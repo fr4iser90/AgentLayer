@@ -55,7 +55,7 @@ export function AdminDashboard() {
   }, [auth]);
 
   return (
-    <div className="mx-auto max-w-3xl px-broad py-page">
+    <div className="mx-auto max-w-pageNarrow px-broad py-page">
       <h1 className="text-xl font-semibold text-ink-primary">{t("admin:overview")}</h1>
       <p className="mt-base text-sm text-ink-muted">
         {t("admin:adminDashboardIntro")}

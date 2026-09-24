@@ -178,7 +178,7 @@ export function WorkspaceMcpModal({
       role="dialog"
       aria-modal="true"
     >
-      <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-sheet border border-line-strong bg-[#141414] shadow-xl">
+      <div className="flex max-h-[92vh] w-full max-w-dialogWide flex-col overflow-hidden rounded-sheet border border-line-strong bg-[#141414] shadow-xl">
         <div className="shrink-0 border-b border-line px-wide py-soft">
           <h2 className="text-sm font-semibold text-ink-primary">{t("workspace:mcpModalTitle")}</h2>
           <p className="mt-tight text-meta leading-snug text-ink-muted">

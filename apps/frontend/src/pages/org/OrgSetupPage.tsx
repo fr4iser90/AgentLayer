@@ -107,7 +107,7 @@ export function OrgSetupPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-broad py-page">
+    <div className="mx-auto max-w-pageNarrow px-broad py-page">
       <h1 className="text-xl font-semibold text-ink-primary">{t("org:setupPageTitle")}</h1>
       <p className="mt-base text-sm text-ink-muted">{t("org:setupPageIntro")}</p>
 

@@ -204,6 +204,51 @@ export default {
         pill: "999px",
       },
 
+      // Content widths, named by what is being contained rather than how wide it
+      // is. Measured from 183 call sites that previously spread over 33 distinct
+      // values; nine settings pages at one nav level used four different page
+      // widths, which is drift rather than design.
+      //
+      // Some values repeat under different names on purpose. `dialog` and
+      // `controlWide` are both 448px today, but a modal and a text input are
+      // different decisions and must be able to move apart without dragging
+      // each other. Sharing the number would make the name meaningless.
+      //
+      // `sheet` is deliberately NOT used here — `rounded-sheet` already owns
+      // that word at a different scale.
+      maxWidth: {
+        // A single control inside a settings row.
+        control: "20rem", // 320px — numbers, short selects
+        controlWide: "28rem", // 448px — text, IDs, model keys
+
+        // Floating panels.
+        dialog: "28rem", // 448px — confirm, gate, single-question modal
+        dialogWide: "42rem", // 672px — multi-field modal
+        dialogFull: "64rem", // 1024px — modal carrying a grid or preview surface
+        drawer: "32rem", // 512px — right-anchored sheet
+        drawerWide: "36rem", // 576px — wide drawer, grid column
+
+        // Reading columns.
+        measure: "42rem", // 672px — prose, chat turn, wide textarea
+        thread: "48rem", // 768px — chat thread column and composer
+
+        // Page containers. Three steps, decided 24.09.2026: the nine values
+        // this replaced were not a scale, just nine separate decisions.
+        pageNarrow: "48rem", // 768px
+        page: "56rem", // 896px — the default page
+        pageWide: "72rem", // 1152px — agents, projects, submissions
+
+        // Truncation caps for dense data. Not layout: these bound how much of
+        // one value is shown before it ellipsises.
+        chip: "10rem", // 160px
+        chipWide: "16rem", // 256px
+
+        // Persistent side surfaces. Not drawers: a drawer opens and closes, a
+        // rail is always there. The chat dock has exactly these two states.
+        railNarrow: "14rem", // 224px — collapsed dock
+        rail: "25rem", // 400px — expanded dock
+      },
+
       // On dark surfaces the surface step does the lifting; the shadow only keeps
       // floating layers from looking pasted on.
       boxShadow: {

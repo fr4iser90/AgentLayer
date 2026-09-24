@@ -362,15 +362,15 @@ export function AdminAgents() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-wide py-deep sm:px-broad">
+    <div className="mx-auto max-w-pageWide px-wide py-deep sm:px-broad">
       <h1 className="text-2xl font-semibold text-ink-primary">{t("admin:agentsTitle")}</h1>
-      <p className="mt-base max-w-3xl text-sm text-ink-muted">{t("admin:agentsIntro")}</p>
+      <p className="mt-base max-w-measure text-sm text-ink-muted">{t("admin:agentsIntro")}</p>
 
       <section className="mt-broad rounded-sheet border border-line bg-card p-wide">
         <div className="flex flex-col gap-base sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold text-ink-primary">{t("admin:agentsImportTitle")}</h2>
-            <p className="mt-tight max-w-3xl text-xs text-ink-muted">{t("admin:agentsImportIntro")}</p>
+            <p className="mt-tight max-w-measure text-xs text-ink-muted">{t("admin:agentsImportIntro")}</p>
           </div>
           <label className="sr-only" htmlFor="agents-import-source-type">
             {t("admin:agentsImportSourceType")}

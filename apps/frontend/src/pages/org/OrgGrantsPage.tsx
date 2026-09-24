@@ -135,16 +135,16 @@ export function OrgGrantsPage() {
 
   if (!hasOrgSurface(auth.user)) {
     return (
-      <div className="mx-auto max-w-3xl px-wide py-page text-sm text-ink-muted">
+      <div className="mx-auto max-w-pageNarrow px-wide py-page text-sm text-ink-muted">
         {t("org:grantsNoOrg")}
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-wide py-deep sm:px-broad">
+    <div className="mx-auto max-w-pageWide px-wide py-deep sm:px-broad">
       <h1 className="text-2xl font-semibold text-ink-primary">{t("org:grantsTitle")}</h1>
-      <p className="mt-base max-w-3xl text-sm text-ink-muted">{t("org:grantsIntro")}</p>
+      <p className="mt-base max-w-measure text-sm text-ink-muted">{t("org:grantsIntro")}</p>
 
       <div className="mt-wide rounded-card border border-line bg-card px-wide py-soft text-xs text-ink-muted">
         {t("org:grantsImplicitAdmins")}

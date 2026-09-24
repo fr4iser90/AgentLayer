@@ -74,11 +74,11 @@ function loadingRows(cols: number, loadingLabel: string) {
     >
       <td className="px-wide py-soft align-middle">
         {i === 0 ? <span className="sr-only">{loadingLabel}</span> : null}
-        <div className="h-[14px] w-full max-w-[9rem] animate-pulse rounded-tile bg-white/[0.07]" />
+        <div className="h-[14px] w-full max-w-chip animate-pulse rounded-tile bg-white/[0.07]" />
       </td>
       {Array.from({ length: Math.max(cols - 1, 0) }, (_, j) => (
         <td key={j} className="px-wide py-soft align-middle">
-          <div className="h-[14px] w-full max-w-[5rem] animate-pulse rounded-tile bg-white/[0.05]" />
+          <div className="h-[14px] w-full max-w-chip animate-pulse rounded-tile bg-white/[0.05]" />
         </td>
       ))}
     </tr>
@@ -584,7 +584,7 @@ export function AdminUsers() {
       : [{ id: 1, name: "default" }];
 
   return (
-    <div className="mx-auto max-w-4xl px-broad py-page">
+    <div className="mx-auto max-w-page px-broad py-page">
       <h1 className="text-2xl font-semibold text-ink-primary">{t("admin:usersPageTitle")}</h1>
       <p className="mt-base text-sm text-ink-muted">
         {t("admin:usersPageIntro")}{" "}
@@ -665,7 +665,7 @@ export function AdminUsers() {
                       {showTenantUi && (
                         <td className="px-wide py-soft">
                           <select
-                            className="max-w-[14rem] rounded-tile border border-line bg-field px-base py-snug text-xs text-ink-primary"
+                            className="max-w-control rounded-tile border border-line bg-field px-base py-snug text-xs text-ink-primary"
                             value={tid}
                             disabled={saving || !targetEditable}
                             onChange={(e) => {

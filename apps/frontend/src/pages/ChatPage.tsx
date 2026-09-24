@@ -3366,7 +3366,7 @@ export function ChatPage() {
               </button>
             </div>
             <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-wide px-wide py-grand text-center sm:px-broad">
-            <div className="max-w-md">
+            <div className="max-w-measure">
               <p className="text-sm font-medium text-ink-primary">{t("chat:noConversationOpenTitle")}</p>
               <p className="mt-tight text-sm text-ink-muted">{t("chat:noConversationOpenBody")}</p>
             </div>
@@ -3460,7 +3460,7 @@ export function ChatPage() {
           >
             <div className="min-w-0 space-y-base">
               <div className="flex flex-col gap-base sm:flex-row sm:flex-wrap sm:items-end">
-                <div className="min-w-0 flex-1 sm:min-w-[10rem] sm:max-w-[20rem]">
+                <div className="min-w-0 flex-1 sm:min-w-[10rem] sm:max-w-control">
                   <label className="block text-meta font-medium uppercase tracking-wide text-ink-muted">
                     {t("chat:assistantLabel")}
                   </label>
@@ -3472,7 +3472,7 @@ export function ChatPage() {
                   </p>
                 </div>
                 {workspaces.length > 0 ? (
-                  <div className="min-w-0 flex-1 sm:min-w-[10rem] sm:max-w-[24rem]">
+                  <div className="min-w-0 flex-1 sm:min-w-[10rem] sm:max-w-controlWide">
                     <label className="block text-meta font-medium uppercase tracking-wide text-ink-muted">
                       {t("chat:projectLabel")}
                     </label>
@@ -3811,8 +3811,8 @@ export function ChatPage() {
                 <h1 className="mt-wide text-2xl font-semibold tracking-tight text-ink-primary">
                   {t("chat:emptyHello", { name: displayName })}
                 </h1>
-                <p className="mt-base max-w-md text-sm text-ink-muted">{t("chat:emptyIntro")}</p>
-                <ul className="mt-broad max-w-md space-y-base text-left text-sm text-ink-muted">
+                <p className="mt-base max-w-measure text-sm text-ink-muted">{t("chat:emptyIntro")}</p>
+                <ul className="mt-broad max-w-measure space-y-base text-left text-sm text-ink-muted">
                   <li className="rounded-tile border border-line/80 bg-black/20 px-soft py-base">
                     {t("chat:emptyStarterBind")}
                   </li>
@@ -3825,7 +3825,7 @@ export function ChatPage() {
                 </ul>
               </div>
             ) : (
-              <ul className="mx-auto flex w-full max-w-3xl flex-col gap-soft">
+              <ul className="mx-auto flex w-full max-w-thread flex-col gap-soft">
                 {displayMessages.map((m, i) => {
                   if (m.role === "user") {
                     if (!chatMessageHasVisibleContent(m)) return null;
@@ -3930,7 +3930,7 @@ export function ChatPage() {
                   chatMessageHasVisibleContent(displayMessages[displayMessages.length - 1]!)
                 ) ? (
                   <li className="flex w-full justify-end">
-                    <div className="max-w-[min(100%,42rem)] rounded-sheet border border-sky-900/50 bg-sky-950/25 px-wide py-soft text-sm text-sky-100/90 shadow-sm">
+                    <div className="max-w-measure rounded-sheet border border-sky-900/50 bg-sky-950/25 px-wide py-soft text-sm text-sky-100/90 shadow-sm">
                       <span className="mb-tight flex items-center gap-base text-meta font-medium uppercase tracking-wide text-sky-300/80">
                         <span className="inline-flex h-2 w-2 animate-pulse rounded-pill bg-sky-400" />
                         {t("chat:roleAssistant")}
@@ -3947,7 +3947,7 @@ export function ChatPage() {
         </div>
 
         <div className="shrink-0 border-t border-line bg-[#0c0c0c] px-wide py-wide sm:px-broad">
-          <div className="relative mx-auto max-w-3xl">
+          <div className="relative mx-auto max-w-thread">
             {showScrollFab ? (
               <button
                 type="button"

@@ -233,7 +233,7 @@ export function FriendsSettings() {
   }, [load]);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-deep">
+    <div className="mx-auto max-w-page space-y-deep">
       <div>
         <h1 className="text-lg font-semibold text-ink-primary">{t("settings:friendsSystemTitle")}</h1>
         <p className="mt-base text-sm text-ink-muted">{t("settings:friendsSystemSubtitle")}</p>

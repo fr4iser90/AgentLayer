@@ -1160,7 +1160,7 @@ export function DashboardPage() {
   if (!loading && schemaInstalled === false) {
     return (
       <div className="h-full min-h-0 overflow-y-auto">
-        <div className="mx-auto max-w-4xl px-broad py-page">
+        <div className="mx-auto max-w-page px-broad py-page">
           <h1 className="text-xl font-semibold text-ink-primary">{t("dashboard:catalogTitle")}</h1>
           <p className="mt-tight text-sm text-ink-muted">
             {t("dashboard:catalogIntro")}
@@ -1216,7 +1216,7 @@ export function DashboardPage() {
               role="dialog"
               aria-modal="true"
               aria-labelledby="ws-install-title"
-              className="relative w-full max-w-md rounded-sheet border border-line bg-card p-broad shadow-xl"
+              className="relative w-full max-w-dialog rounded-sheet border border-line bg-card p-broad shadow-xl"
             >
               <h2 id="ws-install-title" className="text-lg font-semibold text-ink-primary">
                 {t("dashboard:installPackConfirmTitle", { label: installModalRow.label })}
@@ -1345,7 +1345,7 @@ export function DashboardPage() {
   );
 
   const hubHomeMain = (
-    <div className="mx-auto max-w-3xl space-y-deep py-broad">
+    <div className="mx-auto max-w-pageNarrow space-y-deep py-broad">
       <div>
         <h1 className="text-xl font-semibold text-ink-primary">{t("dashboard:hubHomeTitle")}</h1>
         <p className="mt-tight text-sm text-ink-muted">{t("dashboard:hubHomeSubtitle")}</p>
@@ -1779,8 +1779,8 @@ export function DashboardPage() {
               className={[
                 "flex w-full shrink-0 flex-col border-t border-line bg-panel lg:min-h-0 lg:border-t-0 lg:border-l lg:border-line",
                 chatDock === "mini"
-                  ? "lg:w-[min(220px,28vw)] lg:max-w-[220px]"
-                  : "lg:w-[min(400px,36vw)] lg:max-w-md",
+                  ? "lg:w-[min(220px,28vw)] lg:max-w-railNarrow"
+                  : "lg:w-[min(400px,36vw)] lg:max-w-rail",
               ].join(" ")}
             >
               <div
@@ -2462,7 +2462,7 @@ export function DashboardPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="ws-new-title"
-            className="relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-sheet border border-line bg-card p-broad shadow-xl"
+            className="relative max-h-[85vh] w-full max-w-dialog overflow-y-auto rounded-sheet border border-line bg-card p-broad shadow-xl"
           >
             <h2 id="ws-new-title" className="text-lg font-semibold text-ink-primary">
               {t("dashboard:newDashboardModalTitle")}
@@ -2520,7 +2520,7 @@ export function DashboardPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="ws-tpl-install-title"
-            className="relative w-full max-w-md rounded-sheet border border-line bg-card p-broad shadow-xl"
+            className="relative w-full max-w-dialog rounded-sheet border border-line bg-card p-broad shadow-xl"
           >
             <h2 id="ws-tpl-install-title" className="text-lg font-semibold text-ink-primary">
               {t("dashboard:installPackConfirmTitle", { label: installModalRow.label })}
@@ -2556,7 +2556,7 @@ export function DashboardPage() {
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-md rounded-sheet border border-line bg-card p-broad shadow-xl"
+            className="w-full max-w-dialog rounded-sheet border border-line bg-card p-broad shadow-xl"
           >
             <h2 className="text-lg font-semibold text-ink-primary">{t("dashboard:pinBlockTitle")}</h2>
             <label className="mt-wide block text-sm text-ink-muted">

@@ -14,7 +14,7 @@ export function DocsPage() {
 
   return (
     <div className="h-full min-h-0 overflow-y-auto px-broad py-deep">
-      <div className="mx-auto max-w-xl">
+      <div className="mx-auto max-w-measure">
         <h1 className="text-lg font-semibold text-ink-primary">{t("common:docs.title")}</h1>
         <p className="mt-base text-sm text-ink-muted">
           {t("common:docs.intro")}{" "}

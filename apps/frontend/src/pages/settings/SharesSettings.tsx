@@ -437,7 +437,7 @@ export default function SharesSettings() {
     !!newResourceType && (!needsIdentifier || !!newResourceIdentifier.trim());
 
   return (
-    <div className="mx-auto max-w-4xl space-y-deep">
+    <div className="mx-auto max-w-page space-y-deep">
       <div>
         <h1 className="flex items-center gap-base text-lg font-semibold text-ink-primary">
           <LinkIcon aria-hidden className="h-5 w-5" />
