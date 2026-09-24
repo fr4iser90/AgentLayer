@@ -1,14 +1,20 @@
 {
   "src/components/LegalFooterLinks.tsx": [
+    "text-neutral-300",
     "text-white/15"
   ],
   "src/components/NotificationBell.tsx": [
     "text-black",
+    "text-neutral-300",
+    "text-sky-300",
     "text-sky-400",
     "text-white/30"
   ],
   "src/components/SchemaForm.tsx": [
     "text-red-400"
+  ],
+  "src/components/UserMenu.tsx": [
+    "text-neutral-200"
   ],
   "src/features/admin/agentConfig/ExperimentDetailPanel.tsx": [
     "text-indigo-300",
@@ -36,6 +42,9 @@
     "text-red-400",
     "text-sky-300/90"
   ],
+  "src/features/admin/benchmarks/CopyScenarioDetailsButton.tsx": [
+    "text-sky-300"
+  ],
   "src/features/admin/benchmarks/HarnessRunContextBar.tsx": [
     "text-sky-200",
     "text-white/70"
@@ -49,16 +58,14 @@
     "text-indigo-500",
     "text-violet-200/80"
   ],
-  "src/features/chat/AgentRunningBadge.tsx": [
-    "text-amber-100/95",
-    "text-amber-200/70"
-  ],
   "src/features/chat/AssistantTurnBlock.tsx": [
-    "text-amber-100/95",
     "text-neutral-300/90",
     "text-sky-100/90",
     "text-sky-200/60",
     "text-violet-200"
+  ],
+  "src/features/chat/ChatComposerTextarea.tsx": [
+    "text-neutral-500"
   ],
   "src/features/chat/ChatRuntimeBar.tsx": [
     "text-amber-300/85",
@@ -66,7 +73,6 @@
     "text-emerald-400/95",
     "text-red-300/95",
     "text-red-400/90",
-    "text-sky-200/90",
     "text-violet-300/85"
   ],
   "src/features/chat/ContextInjectionBadge.tsx": [
@@ -90,6 +96,7 @@
   ],
   "src/features/chat/MessageFeedbackButtons.tsx": [
     "text-emerald-300",
+    "text-neutral-300",
     "text-red-300"
   ],
   "src/features/chat/MessageTurnActivity.tsx": [
@@ -115,6 +122,7 @@
     "text-rose-400/90",
     "text-sky-200/50",
     "text-sky-200/80",
+    "text-sky-300",
     "text-sky-300/90",
     "text-sky-400/70",
     "text-sky-400/90"
@@ -123,13 +131,17 @@
     "text-amber-100/95",
     "text-amber-200/70",
     "text-emerald-400/90",
+    "text-neutral-300",
     "text-red-400/90"
   ],
   "src/features/chat/TurnNavigator.tsx": [
+    "text-neutral-200",
     "text-sky-100"
   ],
   "src/features/chat/UserMessageBubble.tsx": [
+    "text-sky-100",
     "text-sky-200/80",
+    "text-violet-100",
     "text-violet-200/80"
   ],
   "src/features/dashboard/AgentUpdateBadge.tsx": [
@@ -139,6 +151,7 @@
     "text-amber-200/90",
     "text-sky-100/90",
     "text-sky-300/80",
+    "text-white",
     "text-white/70"
   ],
   "src/features/dashboard/CardGridBlock.tsx": [
@@ -153,7 +166,8 @@
     "text-red-400",
     "text-rose-400",
     "text-sky-200",
-    "text-sky-400/90"
+    "text-sky-400/90",
+    "text-white/25"
   ],
   "src/features/dashboard/DashboardBoardFilesPanel.tsx": [
     "text-rose-300"
@@ -172,10 +186,12 @@
     "text-emerald-200/70",
     "text-emerald-400/90",
     "text-red-200",
+    "text-white",
     "text-white/25"
   ],
   "src/features/dashboard/DashboardEmbeddedThreadMenu.tsx": [
-    "text-sky-100"
+    "text-sky-100",
+    "text-white"
   ],
   "src/features/dashboard/DashboardGridInner.tsx": [
     "text-amber-200",
@@ -193,7 +209,6 @@
     "text-red-200"
   ],
   "src/features/dashboard/DashboardOnboardingBanner.tsx": [
-    "text-emerald-100/90",
     "text-emerald-200/90",
     "text-emerald-50",
     "text-emerald-50/95"
@@ -206,6 +221,9 @@
     "text-amber-300",
     "text-sky-400"
   ],
+  "src/features/dashboard/DashboardSettingsDrawer.tsx": [
+    "text-neutral-200"
+  ],
   "src/features/dashboard/DashboardSidebarNav.tsx": [
     "text-amber-300/90",
     "text-black",
@@ -214,7 +232,8 @@
     "text-white/30",
     "text-white/35",
     "text-white/40",
-    "text-white/45"
+    "text-white/45",
+    "text-white/70"
   ],
   "src/features/dashboard/EmbedBlock.tsx": [
     "text-amber-200",
@@ -223,6 +242,9 @@
   "src/features/dashboard/FormulaCalcBlock.tsx": [
     "text-amber-100",
     "text-red-300"
+  ],
+  "src/features/dashboard/KanbanRichMarkdownBlocks.tsx": [
+    "text-sky-300"
   ],
   "src/features/dashboard/MediaPlayerBlock.tsx": [
     "text-amber-200",
@@ -249,23 +271,27 @@
   ],
   "src/features/dashboard/gallery/GalleryBlockBody.tsx": [
     "text-amber-200/90",
-    "text-red-400"
+    "text-red-400",
+    "text-white/25"
   ],
   "src/features/dashboard/media/MediaSharePanel.tsx": [
     "text-red-400",
     "text-sky-100"
   ],
   "src/features/media/MediaMiniPlayer.tsx": [
+    "text-neutral-200",
     "text-sky-100",
     "text-white/40"
   ],
   "src/features/media/MediaMiniPlayerPanel.tsx": [
+    "text-neutral-200",
     "text-red-300",
     "text-sky-50",
     "text-white"
   ],
   "src/features/voice/ChatComposerVoiceControls.tsx": [
     "text-amber-100/90",
+    "text-sky-300",
     "text-sky-400/80",
     "text-sky-400/90",
     "text-sky-500"
@@ -276,12 +302,14 @@
     "text-violet-100/90"
   ],
   "src/features/voice/VoiceMicButton.tsx": [
+    "text-neutral-200",
     "text-rose-100"
   ],
   "src/features/workspace/CodingWorkspacePanels.tsx": [
     "text-amber-100",
     "text-amber-300/80",
     "text-amber-400/80",
+    "text-neutral-200",
     "text-red-300/90",
     "text-sky-400/90",
     "text-white/20"
@@ -303,13 +331,17 @@
     "text-violet-200/95"
   ],
   "src/layout/AdminLayout.tsx": [
+    "text-sky-300",
     "text-sky-400/90"
   ],
   "src/layout/AppLayout.tsx": [
+    "text-neutral-200",
+    "text-neutral-300",
     "text-white/15",
     "text-white/25"
   ],
   "src/layout/OrgAdminLayout.tsx": [
+    "text-sky-300",
     "text-sky-400/90"
   ],
   "src/pages/ChatPage.tsx": [
@@ -322,10 +354,12 @@
     "text-black",
     "text-emerald-100/90",
     "text-emerald-200",
+    "text-neutral-200",
     "text-red-300",
     "text-sky-100",
     "text-sky-100/90",
     "text-sky-200",
+    "text-sky-300",
     "text-sky-300/80",
     "text-sky-300/90",
     "text-sky-300/95",
@@ -335,6 +369,7 @@
     "text-violet-100",
     "text-violet-200/80",
     "text-violet-300/70",
+    "text-white",
     "text-white/65"
   ],
   "src/pages/DashboardPage.tsx": [
@@ -350,6 +385,8 @@
     "text-sky-400",
     "text-violet-100",
     "text-violet-200/90",
+    "text-white",
+    "text-white/25",
     "text-white/30",
     "text-white/50",
     "text-white/80",
@@ -360,6 +397,7 @@
     "text-sky-300/90"
   ],
   "src/pages/DocsPage.tsx": [
+    "text-sky-300",
     "text-sky-400"
   ],
   "src/pages/LegalPage.tsx": [
@@ -376,6 +414,7 @@
   ],
   "src/pages/ProjectsPage.tsx": [
     "text-amber-300/90",
+    "text-neutral-200",
     "text-rose-200",
     "text-rose-300",
     "text-sky-200",
@@ -387,18 +426,21 @@
     "text-emerald-400",
     "text-red-400",
     "text-sky-200",
-    "text-sky-400"
+    "text-sky-400",
+    "text-white"
   ],
   "src/pages/StudioPage.tsx": [
     "text-black",
     "text-emerald-300",
     "text-red-200",
+    "text-sky-300",
     "text-sky-400"
   ],
   "src/pages/TasksPage.tsx": [
     "text-emerald-300/90",
     "text-indigo-100/90",
     "text-indigo-200",
+    "text-neutral-300",
     "text-red-400",
     "text-sky-200",
     "text-sky-400/90"
@@ -414,6 +456,7 @@
   "src/pages/admin/AdminAgentSubmissions.tsx": [
     "text-amber-200",
     "text-amber-300",
+    "text-neutral-500",
     "text-red-200",
     "text-red-300/80"
   ],
@@ -429,7 +472,9 @@
     "text-amber-300",
     "text-emerald-300",
     "text-emerald-300/90",
-    "text-rose-300"
+    "text-neutral-500",
+    "text-rose-300",
+    "text-white"
   ],
   "src/pages/admin/AdminBenchmarks.tsx": [
     "text-amber-100/80",
@@ -438,7 +483,6 @@
     "text-amber-300",
     "text-amber-400/80",
     "text-amber-400/90",
-    "text-emerald-100",
     "text-emerald-200",
     "text-emerald-300",
     "text-emerald-300/90",
@@ -451,7 +495,6 @@
     "text-rose-300",
     "text-rose-400/90",
     "text-sky-100/90",
-    "text-sky-200",
     "text-sky-200/70",
     "text-sky-200/80",
     "text-sky-300",
@@ -485,18 +528,15 @@
     "text-red-100"
   ],
   "src/pages/admin/AdminTools.tsx": [
-    "text-amber-100",
     "text-amber-200/90",
-    "text-emerald-200/90",
-    "text-sky-100",
+    "text-neutral-500",
     "text-sky-200/90",
-    "text-slate-200",
     "text-violet-100",
-    "text-violet-200/80"
+    "text-violet-200/80",
+    "text-white"
   ],
   "src/pages/admin/AdminUsers.tsx": [
     "text-amber-400",
-    "text-emerald-300",
     "text-emerald-400",
     "text-red-400",
     "text-sky-300",
@@ -575,14 +615,15 @@
     "text-amber-400",
     "text-emerald-400",
     "text-indigo-300",
+    "text-sky-300",
     "text-sky-400"
   ],
   "src/pages/settings/ConnectionsSettings.tsx": [
     "text-amber-400",
     "text-amber-400/80",
-    "text-emerald-300",
     "text-emerald-400",
-    "text-sky-200",
+    "text-neutral-600",
+    "text-sky-300",
     "text-sky-400"
   ],
   "src/pages/settings/DelegateSettings.tsx": [
@@ -594,35 +635,39 @@
     "text-amber-400",
     "text-emerald-300",
     "text-sky-300",
-    "text-sky-400"
+    "text-sky-400",
+    "text-white"
   ],
   "src/pages/settings/NotificationsSettings.tsx": [
     "text-emerald-200",
     "text-red-200",
+    "text-sky-300",
     "text-sky-400"
   ],
   "src/pages/settings/ProfileSettings.tsx": [
     "text-amber-400",
-    "text-emerald-300",
     "text-sky-300",
     "text-sky-400"
   ],
   "src/pages/settings/SharesSettings.tsx": [
     "text-amber-400",
     "text-emerald-400",
-    "text-sky-400"
+    "text-sky-300",
+    "text-sky-400",
+    "text-white"
   ],
   "src/pages/settings/ToolsSettings.tsx": [
-    "text-amber-200",
     "text-amber-200/90",
     "text-amber-400",
-    "text-emerald-200",
-    "text-emerald-200/90",
+    "text-neutral-200",
+    "text-neutral-600",
     "text-orange-200",
     "text-sky-200",
     "text-sky-200/80",
     "text-sky-200/90",
-    "text-sky-400"
+    "text-sky-300",
+    "text-sky-400",
+    "text-white"
   ],
   "src/pages/settings/VoiceSettings.tsx": [
     "text-amber-100"

@@ -68,8 +68,19 @@ const TOKEN = new Set([
 // `text-red-500/50` would have passed. `check-border-token.mjs` already
 // carries `/` in its class for exactly this reason — the lesson was learned
 // there and never propagated here.
+//
+// The variant-prefix chain must be admitted too. Anchoring on whitespace alone
+// left `hover:text-sky-300`, `focus:text-amber-300/90` and `sm:hover:text-red-200`
+// unseen — 80 prefixed raw text colours in the tree, and a newly added
+// `hover:text-red-500` would have passed. This is the third shape of the same
+// defect in this file's lifetime: value class, then opacity, then prefix.
+//
+// The prefix is captured but NOT part of the reported key. `hover:text-sky-300`
+// and `text-sky-300` are the same colour decision in the same file, and this
+// guard tracks which raw colours appear where — keying by variant would count
+// one decision twice without adding information.
 const TEXT_CLASS =
-  /(^|\s|["'`])text-([a-z0-9][a-z0-9/-]*)(?=[\s"'`]|$)/g;
+  /(^|\s|["'`])((?:[a-zA-Z0-9-]+:)*text-)([a-z0-9][a-z0-9/-]*)(?=[\s"'`]|$)/g;
 const GREYSCALE = /^(white|black|neutral-\d+|gray-\d+|zinc-\d+|slate-\d+)$/;
 const FOREIGN =
   /^(red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d+$/;
@@ -104,6 +115,23 @@ function classify(token) {
   return null;
 }
 
+/**
+ * Pure scan of one source string. Exported so the matcher itself is testable:
+ * every blind spot here is a silent undercount, and the only way to catch "the
+ * guard stopped seeing the thing it guards" is to assert the population, not
+ * just the verdict. Until now this file exported only `checkInkColor()`, which
+ * needs a filesystem — so none of the three defects above could be pinned.
+ */
+export function scanTextTokens(src) {
+  const tokens = [];
+  TEXT_CLASS.lastIndex = 0;
+  let m;
+  while ((m = TEXT_CLASS.exec(src)) !== null) tokens.push(m[3]);
+  return tokens;
+}
+
+export { classify };
+
 export async function checkInkColor() {
   let baseline = {};
   try {
@@ -130,7 +158,7 @@ export async function checkInkColor() {
       TEXT_CLASS.lastIndex = 0;
       let t;
       while ((t = TEXT_CLASS.exec(tag)) !== null) {
-        const token = t[2];
+        const token = t[3];
         const kind = classify(token);
         if (!kind) continue;
         const key = `text-${token}`;
