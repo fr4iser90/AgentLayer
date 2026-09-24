@@ -54,6 +54,37 @@ function tenantLabel(row: TenantRow, tr: (key: string, opts?: { id: number }) =>
   return n ? `${n} (${row.id})` : tr("admin:usersTenantDefault", { id: row.id });
 }
 
+// Measured on the loaded table at 1440px: every body row is 137px tall (the
+// cells hold a select plus a second line of text). The loading state used to be
+// one 69px row, so when the users arrived the table grew by ~1300px and shoved
+// the two tenant sections out of the clipped `overflow-hidden` viewport — that
+// is the 0.238 layout shift on this route. Reserving the same per-row height
+// keeps those sections below the fold through the swap, and Chrome only scores
+// movement that is visible, so the shift stops counting.
+const SKELETON_ROW_H = 137;
+const SKELETON_ROWS = 8;
+
+function loadingRows(cols: number, loadingLabel: string) {
+  return Array.from({ length: SKELETON_ROWS }, (_, i) => (
+    <tr
+      key={i}
+      className="border-b border-line/80"
+      style={{ height: `${SKELETON_ROW_H}px` }}
+      aria-hidden={i === 0 ? undefined : true}
+    >
+      <td className="px-wide py-soft align-middle">
+        {i === 0 ? <span className="sr-only">{loadingLabel}</span> : null}
+        <div className="h-[14px] w-full max-w-[9rem] animate-pulse rounded-tile bg-white/[0.07]" />
+      </td>
+      {Array.from({ length: Math.max(cols - 1, 0) }, (_, j) => (
+        <td key={j} className="px-wide py-soft align-middle">
+          <div className="h-[14px] w-full max-w-[5rem] animate-pulse rounded-tile bg-white/[0.05]" />
+        </td>
+      ))}
+    </tr>
+  ));
+}
+
 export function AdminUsers() {
   const { t } = useTranslation(["admin", "settings"]);
   const auth = useAuth();
@@ -598,11 +629,7 @@ export function AdminUsers() {
             </thead>
             <tbody>
               {listLoading ? (
-                <tr>
-                  <td colSpan={visibleColSpan} className="px-wide py-broad text-center text-ink-muted">
-                    {t("admin:loading")}
-                  </td>
-                </tr>
+                loadingRows(visibleColSpan, t("admin:loading"))
               ) : listErr ? (
                 <tr>
                   <td colSpan={visibleColSpan} className="px-wide py-broad text-center text-red-400">
