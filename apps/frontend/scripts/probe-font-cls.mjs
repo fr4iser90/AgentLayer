@@ -208,7 +208,7 @@ async function main() {
   console.log("=== Font-Status ===");
   console.log("body font-family:", fontState.bodyFamily);
   console.log("document.fonts.check('IBM Plex Sans'):", fontState.check);
-  console.log("document.fonts.check('IBM Plex Mono'):", fontState.checkMono);
+  console.log("document.fonts.check('IBM Plex Mono') [nur Post-Login-Seite, pro Route siehe unten]:", fontState.checkMono);
   console.log("geladene Faces:");
   for (const f of fontState.loaded) console.log(`  ${f.family} w${f.weight} → ${f.status}`);
 
@@ -232,13 +232,38 @@ async function main() {
   for (const route of ROUTES) {
     await page.goto(base + route, { waitUntil: "domcontentloaded", timeout: 45000 });
     await page.waitForTimeout(2500);
-    const { cls, shifts } = await page.evaluate(() => ({
-      cls: window.__cls,
-      shifts: window.__shifts,
-    }));
+    const { cls, shifts, mono } = await page.evaluate(() => {
+      // Mono has to be read here, per route. Reading it once after the login
+      // redirect produced "unloaded on all four routes" without ever visiting
+      // a route that renders mono — and a declared face no element needed stays
+      // `unloaded` by design, so that number could not tell "broken" apart from
+      // "not used here". Counting leaf elements that actually compute to
+      // IBM Plex Mono makes the two cases distinguishable.
+      const leaves = [...document.querySelectorAll("*")].filter((el) => {
+        if (el.children.length > 0) return false;
+        const ff = getComputedStyle(el).fontFamily || "";
+        return /IBM Plex Mono/.test(ff) && (el.textContent || "").trim() !== "";
+      });
+      const monoFaces = [...document.fonts].filter((f) => f.family === "IBM Plex Mono");
+      return {
+        cls: window.__cls,
+        shifts: window.__shifts,
+        mono: {
+          painted: leaves.length,
+          status: monoFaces.map((f) => f.status).join(",") || "kein Face",
+          check: document.fonts.check('14px "IBM Plex Mono"'),
+        },
+      };
+    });
     worst = Math.max(worst, cls);
     const flag = cls <= 0.1 ? "GOOD" : cls <= 0.25 ? "NEEDS-IMPROVEMENT" : "POOR";
     console.log(`  ${route.padEnd(22)} CLS=${cls.toFixed(5)}  ${flag}  (${shifts.length} shift(s))`);
+    console.log(
+      `  ${"".padEnd(22)} mono: ${mono.painted} gerenderte Elemente · status=${mono.status} · check=${mono.check}`,
+    );
+    if (mono.painted === 0) {
+      console.log(`  ${"".padEnd(22)} -> Route nutzt kein Mono; ein hier gemessenes 'unloaded' ist kein Defekt.`);
+    }
     for (const s of shifts.slice(0, 4)) console.log(`      shift ${s.value} @ ${s.at}ms`);
   }
   console.log(`\n  worst CLS across routes: ${worst.toFixed(5)}  (Budget: <= 0.02)`);
