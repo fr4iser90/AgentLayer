@@ -86,10 +86,45 @@ async function* walk(dir) {
 }
 
 // Strips variant prefixes and the /opacity suffix down to the colour stem.
-function colourStem(cls) {
+export function colourStem(cls) {
   const noVariant = cls.slice(cls.lastIndexOf(":") + 1);
   const bare = noVariant.replace(/^border-/, "");
-  return bare.split("/")[0];
+  const stem = bare.split("/")[0];
+  // A direction segment is not part of the colour. `border-y-0` sets a width
+  // on both horizontal edges; reading its stem as `y-0` missed GEOMETRY (which
+  // holds `0`), so the guard called a width utility an unknown border COLOUR
+  // and failed a build over `md:border-y-0`. Same family as the missing hyphen
+  // and the missing `/`: the matcher classifies a shape it never intended to
+  // match. Only a single direction letter counts, so `line-strong` — which
+  // starts with `l` but continues with `i` — is left alone.
+  const directional = /^([trblsexy])-(.+)$/.exec(stem);
+  return directional ? directional[2] : stem;
+}
+
+/**
+ * Pure matcher over one source string.
+ *
+ * Exported because the matcher is the layer that fails silently: every defect
+ * found in this family so far (missing hyphen, missing `/`, missing variant
+ * chain, and now the direction segment) produced a GREEN run that saw less
+ * than the tree held. A guard whose classifier is only reachable through file
+ * I/O cannot be pinned by a test, so the classification lives here.
+ */
+export function scanBorders(src) {
+  const findings = [];
+  for (const m of src.matchAll(BORDER_CLASS)) {
+    const cls = m[2];
+    const stem = colourStem(cls);
+    if (GEOMETRY.has(stem)) continue;
+    if (TOKEN.has(stem)) continue;
+    const kind = GREYSCALE.test(stem)
+      ? "grey/white hairline"
+      : FOREIGN.test(stem)
+        ? "foreign semantic"
+        : "unknown border colour";
+    findings.push({ cls, stem, kind });
+  }
+  return findings;
 }
 
 export async function checkBorderToken() {
@@ -101,20 +136,15 @@ export async function checkBorderToken() {
   for await (const file of walk(SRC)) {
     const src = await readFile(file, "utf8");
     const rel = relative(ROOT, file);
-    for (const m of src.matchAll(BORDER_CLASS)) {
-      const cls = m[2];
-      const stem = colourStem(cls);
-      if (GEOMETRY.has(stem)) continue;
-      checked += 1;
-      if (TOKEN.has(stem)) continue;
-      const key = `${rel}::${cls}`;
+    const seen = new Set();
+    for (const finding of scanBorders(src)) {
+      if (!seen.has(finding.cls)) {
+        seen.add(finding.cls);
+        checked += 1;
+      }
+      const key = `${rel}::${finding.cls}`;
       if (tolerated.has(key)) continue;
-      const kind = GREYSCALE.test(stem)
-        ? "grey/white hairline"
-        : FOREIGN.test(stem)
-          ? "foreign semantic"
-          : "unknown border colour";
-      violations.push({ file: rel, cls, kind });
+      violations.push({ file: rel, ...finding });
     }
   }
   return { violations, checked, tolerated: tolerated.size };
@@ -127,8 +157,7 @@ async function update() {
     const rel = relative(ROOT, file);
     for (const m of src.matchAll(BORDER_CLASS)) {
       const cls = m[2];
-      const stem = colourStem(cls);
-      if (GEOMETRY.has(stem) || TOKEN.has(stem)) continue;
+      if (GEOMETRY.has(colourStem(cls)) || TOKEN.has(colourStem(cls))) continue;
       classes[`${rel}::${cls}`] = true;
     }
   }

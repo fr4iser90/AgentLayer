@@ -23,6 +23,8 @@
  *    makes the interpolation an easy bypass for any off-ramp value.
  */
 
+import { stripComments } from "./strip-comments.mjs";
+
 // Longest-first so `px` is never shadowed by `p`.
 export const UTIL =
   "(?:space-x|space-y|gap-x|gap-y|px|py|pt|pr|pb|pl|mx|my|mt|mr|mb|ml|p|m|gap)";
@@ -87,10 +89,17 @@ function* tokensIn(body, depth = 0) {
 /**
  * Yield [token, value] for every spacing utility found in a source file.
  * `value` is the Tailwind step: a number, "px", "auto", or a ramp name.
+ *
+ * Comments are blanked first. This scanner finds class lists by reading every
+ * quoted and backticked string in the file, and a JSDoc comment that writes
+ * `py-6` to explain what the ramp replaced is byte-for-byte indistinguishable
+ * from a template literal — so documenting an old value failed the build.
+ * Offsets and newlines survive the blanking, so reported line numbers stay
+ * correct.
  */
 export function* spacingTokens(src) {
   const CLASS_STRINGS = /"([^"\n]*)"|`([\s\S]*?)`|'([^'\n]*)'/g;
-  for (const m of src.matchAll(CLASS_STRINGS)) {
+  for (const m of stripComments(src).matchAll(CLASS_STRINGS)) {
     const body = m[1] ?? m[2] ?? m[3] ?? "";
     if (body === "") continue;
     for (const tok of tokensIn(body)) {

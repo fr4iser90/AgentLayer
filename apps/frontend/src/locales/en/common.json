@@ -75,5 +75,16 @@
     "result": "Result",
     "generatedImageAlt": "Generated image",
     "noPresetSelected": "No preset selected."
+  },
+  "toast": {
+    "region": "Notifications",
+    "bannerRegion": "Important notices",
+    "dismiss": "Dismiss notification"
+  },
+  "modal": {
+    "close": "Close dialog"
+  },
+  "drawer": {
+    "close": "Close panel"
   }
 }

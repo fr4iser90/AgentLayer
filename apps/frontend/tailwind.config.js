@@ -118,6 +118,14 @@ export default {
       // Dialog and lightbox: top of the app, containing everything inside it.
       modal: "100",
 
+      // A toast fired while a dialog is open: a failed save from inside a
+      // settings modal has to be readable, so it cannot sit under the dialog
+      // that caused it. Below `tooltip` rather than above it — a tooltip
+      // describes the control the cursor is on right now, a toast reports on
+      // something that already happened, and they only overlap at a screen
+      // edge where a tooltip has no business being anchored.
+      toast: "110",
+
       // Top of the order. See the note above: a tooltip describes the control
       // under the cursor, including one inside an open dialog.
       tooltip: "120",
@@ -348,9 +356,29 @@ export default {
           from: { opacity: "0", transform: "translateY(2px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+
+        // A toast mounts on open like the tooltip, but arrives from the edge it
+        // is docked to so it reads as coming from the stack rather than from
+        // the middle of the page.
+        "toast-in": {
+          from: { opacity: "0", transform: "translateY(8px) scale(0.98)" },
+          to: { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+
+        // Skeleton shimmer. The highlight travels from fully left to fully
+        // right and rests OUTSIDE the clipped box, which is what makes the
+        // global prefers-reduced-motion override (duration 0.01ms, one
+        // iteration) land on a plain static block instead of freezing a
+        // half-swept highlight across the middle of a row.
+        shimmer: {
+          from: { transform: "translateX(-100%)" },
+          to: { transform: "translateX(100%)" },
+        },
       },
       animation: {
         "tooltip-in": "tooltip-in 110ms cubic-bezier(0.2, 0.7, 0.3, 1)",
+        "toast-in": "toast-in 170ms cubic-bezier(0.2, 0.7, 0.3, 1)",
+        shimmer: "shimmer 1100ms cubic-bezier(0.4, 0, 0.6, 1) infinite",
       },
     },
   },
