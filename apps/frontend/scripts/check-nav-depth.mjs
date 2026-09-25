@@ -9,7 +9,7 @@
  * `/admin/interfaces/voice` sat three containers deep, and nothing could say so
  * because the answer was spread over four files.
  *
- * Six rules, all static, all cheap:
+ * Seven rules, all static, all cheap:
  *
  * 1. **One nav container.** Among `src/layout/*.tsx` only `AppShell.tsx` may
  *    carry an area nav (`<nav>` or `NavLink`). A layout that grows its own
@@ -47,6 +47,13 @@
  *    area's list was spliced in beside the door that opened it. A fold failing
  *    here hides an unrelated area behind an unrelated door, which is worse than
  *    the duplicate it replaces.
+ * 7. **A label the rail asks for must be asked for.** Every leaf key of `nav`
+ *    and `footer` in `src/locales/en/common.json` has to appear as a whole key
+ *    in a source file. `nav.more` and `nav.connections` outlived the `More`
+ *    dropdown by a wave of the redesign and `footer.github` outlived the link in
+ *    the footer; nothing on screen and no check said so. A catalogue entry is
+ *    invisible in exactly the way a rail leaf pointing at a deleted route is,
+ *    which this guard already refuses — rule 2, one layer earlier in the chain.
  *
  * Run with --update to re-record the unnaviated allowlist after adding a route
  * that is deliberately not in the rail. Recorded `reachedVia` values are carried
@@ -56,6 +63,7 @@
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { stripComments } from "./strip-comments.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -64,6 +72,11 @@ const LAYOUT = join(SRC, "layout");
 const APP = join(SRC, "App.tsx");
 const MODEL = join(LAYOUT, "navModel.ts");
 const BASELINE = join(__dirname, "nav-depth-baseline.json");
+
+/** The catalogue rule 7 reads, and the namespace its keys are qualified with. */
+const LOCALES = join(SRC, "locales");
+const CATALOGUE = join(LOCALES, "en", "common.json");
+const CATALOGUE_NS = "common";
 
 /** The one file allowed to carry an area nav. */
 const SHELL = "AppShell.tsx";
@@ -85,6 +98,22 @@ const SURFACE_PREFIXES = ["/settings", "/admin", "/org"];
  * return value of `appNav` instead would need a user, and a guard has none.
  */
 const APP_RAIL_BLOCKS = ["APP_SECTIONS", "SURFACE_DOORS"];
+
+/**
+ * Catalogue namespaces whose every leaf key must have a consumer — rule 7.
+ *
+ * Two, deliberately. A substring scan over all of `common.json` called 341 of
+ * 3099 keys unreferenced, and the top hits were the scan being wrong rather
+ * than the keys being dead: `notifications.daysAgo_one` is looked up by i18next
+ * from the base name, `chat:err.${code}` is assembled at runtime. A rule over
+ * the whole catalogue would need an exception list nobody can audit, which is a
+ * different job from deleting the three keys this step deletes.
+ *
+ * `nav` and `footer` are the two the rail and the app frame read by literal
+ * key, so inside them a key with no consumer means one thing only: whatever
+ * asked for it is gone.
+ */
+const LABELED_NAMESPACES = ["nav", "footer"];
 
 /**
  * The source text of one array declaration's value, brackets matched.
@@ -472,6 +501,130 @@ async function* walkLayout() {
   }
 }
 
+/**
+ * Every leaf key under `namespace` in the catalogue, dotted and unqualified.
+ *
+ * `nav.loading` in `common.json` is asked for as `nav.loading`, not
+ * `common:nav.loading` — the default namespace is implicit in `t()` — so the
+ * key and the reference are the same shape once the namespace is the prefix.
+ */
+export function leafLabelKeys(catalogue, namespace) {
+  const out = [];
+  const walk = (node, prefix) => {
+    for (const [name, value] of Object.entries(node ?? {})) {
+      const key = prefix ? `${prefix}.${name}` : name;
+      if (value && typeof value === "object") walk(value, key);
+      else out.push(key);
+    }
+  };
+  walk(catalogue?.[namespace], namespace);
+  return out;
+}
+
+/**
+ * Keys nothing quotes, and the namespaces this rule cannot read.
+ *
+ * A reference is the key inside quotes, with or without the catalogue's own
+ * namespace in front: `t("nav.home")`, `labelKey: "nav.admin"`, and
+ * `t("common:nav.dashboard")` where a component names the namespace explicitly.
+ * Plain substring matching is the trap here, and was wrong twice while writing
+ * this — once by counting `"connections"` (a route path) as a consumer of
+ * `nav.connections`, once by matching only `"nav.x"` and calling the ten
+ * `common:`-qualified lookups dead. So the quote is required on both sides and
+ * the key must start at it, which is what makes `"connections"` not count.
+ *
+ * Comments are stripped first, for the reason `check-ink-color.mjs` gives: this
+ * file's own header now names `nav.more` and `nav.connections`, and a rule that
+ * read its own documentation as a consumer would certify the keys it exists to
+ * delete.
+ *
+ * `dynamic` is the finding that keeps the rule honest. A key assembled at
+ * runtime — `` t(`nav.${suffix}`) `` — is invisible to any scan, and an
+ * invisible key is a pass nobody earned. So a namespace where it happens stops
+ * being judged and says so, the same way an unreadable declaration block does
+ * for rule 5.
+ */
+export function findDeadLabels({ catalogue, sources, namespaces = LABELED_NAMESPACES }) {
+  const unreadable = [];
+  const dead = [];
+  const stripped = new Map([...sources].map(([file, text]) => [file, stripComments(text)]));
+
+  // Every string literal in the sources, as the exact text between its quotes.
+  const refs = new Set();
+  for (const text of stripped.values()) {
+    for (const re of [/"([^"\n]*)"/g, /'([^'\n]*)'/g, /`([^`]*)`/g]) {
+      for (const m of text.matchAll(re)) refs.add(m[1]);
+    }
+  }
+  const asked = (key) => refs.has(key) || refs.has(`${CATALOGUE_NS}:${key}`);
+
+  for (const ns of namespaces) {
+    if (!catalogue?.[ns]) {
+      unreadable.push({ ns, kind: "absent", detail: `${CATALOGUE_NS}.json hat kein ${ns}` });
+      continue;
+    }
+    const dynamic = dynamicLabel(ns);
+    const where = [...stripped].flatMap(([file, text]) =>
+      [...text.matchAll(dynamic)].map(() => file)
+    );
+    if (where.length) {
+      unreadable.push({
+        ns,
+        kind: "dynamic",
+        detail: `${[...new Set(where)].join(", ")} setzt ${ns}-Keys zur Laufzeit zusammen`
+      });
+      continue;
+    }
+    for (const key of leafLabelKeys(catalogue, ns)) {
+      if (!asked(key)) dead.push(key);
+    }
+  }
+  return { dead, unreadable };
+}
+
+/**
+ * A label key put together at runtime, in either shape that does it: a template
+ * (`` t(`nav.${suffix}`) ``) or a concatenation (`t("nav." + suffix)`).
+ *
+ * Compiled per namespace rather than memoised over `LABELED_NAMESPACES`, so a
+ * caller that judges a namespace outside that list is judged and not crashed on.
+ */
+function dynamicLabel(namespace) {
+  const ns = namespace.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`\`[^\`]*?${ns}\\.\\$\\{|"${ns}\\."\\s*\\+`, "g");
+}
+
+/**
+ * Source files rule 7 reads as consumers, by path relative to `src/`.
+ *
+ * Test files are not among them. A key quoted only inside `*.test.ts` is a key
+ * a test asserts about and no user is ever shown — which is the state the three
+ * keys this rule was written for were in, dead and wearing a green test. The
+ * catalogues are out for the same reason in reverse: they define the keys, so
+ * reading one as its own consumer would make every key self-certifying.
+ */
+export function isLabelSource(relativeToSrc) {
+  const path = relativeToSrc.split("\\").join("/");
+  if (!/\.tsx?$/.test(path)) return false;
+  if (path === "locales" || path.startsWith("locales/")) return false;
+  if (/\.(test|stories)\.tsx?$/.test(path)) return false;
+  return true;
+}
+
+const LABEL_SOURCE_SKIP = ["locales"];
+
+async function* walkLabelSources(dir = SRC) {
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const file = join(dir, entry.name);
+    const rel = relative(SRC, file).split("\\").join("/");
+    if (entry.isDirectory()) {
+      if (!LABEL_SOURCE_SKIP.includes(rel)) yield* walkLabelSources(file);
+    } else if (isLabelSource(rel)) {
+      yield file;
+    }
+  }
+}
+
 export async function checkNavDepth() {
   const [appSrc, modelSrc, baseline] = await Promise.all([
     readFile(APP, "utf8"),
@@ -511,6 +664,17 @@ export async function checkNavDepth() {
   const folds = findBrokenFolds(targets);
   const folded = targets.filter((t) => t.depth === 2);
 
+  // Rule 7 reads the catalogue the rail's labels come from and every source file
+  // that could ask for one of them. The catalogue is `en` because that is the
+  // locale the keys are authored in; whether `de` carries the same set is
+  // `validate-i18n.mjs`, which `npm run test` runs as its first step.
+  const catalogue = JSON.parse(await readFile(CATALOGUE, "utf8"));
+  const labelSources = new Map();
+  for await (const file of walkLabelSources()) {
+    labelSources.set(relative(ROOT, file), await readFile(file, "utf8"));
+  }
+  const labels = findDeadLabels({ catalogue, sources: labelSources });
+
   return {
     nested,
     dead,
@@ -519,11 +683,15 @@ export async function checkNavDepth() {
     missingDoors,
     unreadable,
     folds,
+    deadLabels: labels.dead,
+    unreadableLabels: labels.unreadable,
     routes: routes.length,
     leaves: targets.length,
     groups: new Set(folded.map((t) => t.parent)).size,
     folded: folded.length,
-    recorded: entries.length
+    recorded: entries.length,
+    labelKeys: LABELED_NAMESPACES.flatMap((ns) => leafLabelKeys(catalogue, ns)).length,
+    labelFiles: labelSources.size
   };
 }
 
@@ -666,9 +834,35 @@ if (isMain) {
             "[nav-depth] Eine Gruppe hängt unter ihrer Tür: Pfad der Tür vorangestellt, die Tür selbst nicht in der Gruppe, keine Gruppe unter einer Gruppe."
           );
         }
+        // A label nothing quotes is the same defect as a leaf pointing at a
+        // deleted route, one layer earlier: the string stays, the thing that
+        // would have shown it does not.
+        if (r.deadLabels.length) {
+          failed = true;
+          console.error(
+            `[nav-depth] FAILED - ${r.deadLabels.length} Label(s) im Rail-Framing fragt nichts:`
+          );
+          for (const k of r.deadLabels) console.error(`  ${k}`);
+          console.error(
+            "[nav-depth] Key löschen, oder das Blatt wieder hinkleben, das ihn brauchte — einen Label, den kein t() und kein labelKey nennt, sieht niemand."
+          );
+        }
+        // The finding that means the rule did not look: a key assembled at
+        // runtime matches no scan, so its namespace is declared unreadable
+        // instead of being passed.
+        if (r.unreadableLabels.length) {
+          failed = true;
+          console.error(
+            `[nav-depth] FAILED - ${r.unreadableLabels.length} Label-Namespace(s) kann die Regel nicht lesen:`
+          );
+          for (const u of r.unreadableLabels) console.error(`  ${u.ns} — ${u.detail}`);
+          console.error(
+            "[nav-depth] Ein zur Laufzeit gebauter Key ist für jeden Scan tot: entweder das Wortliteral in den Quelltext, oder der Namespace raus aus LABELED_NAMESPACES — mit Grund, nicht schweigend."
+          );
+        }
         if (failed) process.exit(1);
         console.log(
-          `[nav-depth] OK - ${r.routes} routes, ${r.leaves} rail leaves (${r.folded} in ${r.groups} Gruppe(n) gefaltet), ${SURFACE_PREFIXES.length} Flächen mit Tür, eine Nav-Liste, ${r.recorded} Ausnahme(n) mit Weg`
+          `[nav-depth] OK - ${r.routes} routes, ${r.leaves} rail leaves (${r.folded} in ${r.groups} Gruppe(n) gefaltet), ${SURFACE_PREFIXES.length} Flächen mit Tür, eine Nav-Liste, ${r.recorded} Ausnahme(n) mit Weg, ${r.labelKeys} Rail-Labels in ${r.labelFiles} Quellen genannt`
         );
       })
       .catch((e) => {
