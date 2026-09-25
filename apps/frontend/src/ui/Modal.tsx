@@ -44,6 +44,14 @@ export interface ModalProps {
    * read as an answer.
    */
   dismissOnScrim?: boolean;
+  /**
+   * `alertdialog` for a dialog that interrupts and demands an answer — a
+   * destructive confirmation. Screen readers announce the two differently, and
+   * a confirm that only says "dialog" is read as optional.
+   */
+  role?: "dialog" | "alertdialog";
+  /** id of an element inside `children` that carries the description. */
+  describedBy?: string;
   className?: string;
 }
 
@@ -55,6 +63,8 @@ export function Modal({
   footer,
   children,
   dismissOnScrim = true,
+  role = "dialog",
+  describedBy,
   className,
 }: ModalProps) {
   const { t } = useTranslation("common");
@@ -86,9 +96,10 @@ export function Modal({
     >
       <div
         ref={panelRef}
-        role="dialog"
+        role={role}
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-describedby={describedBy}
         tabIndex={-1}
         className={[
           "z-modal flex max-h-full w-full flex-col overflow-hidden",

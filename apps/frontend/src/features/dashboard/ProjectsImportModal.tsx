@@ -5,6 +5,7 @@ import { hasOrgSurface } from "../../auth/deploymentMode";
 import type { AuthContextValue } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { Button } from "../../ui/Button";
+import { Modal } from "../../ui/Modal";
 
 export type GithubRepoRow = {
   full_name: string;
@@ -215,29 +216,46 @@ export function ProjectsImportModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-modal flex items-center justify-center p-wide" role="presentation">
-      <div
-        className="absolute inset-0 bg-black/70"
-        role="button"
-        tabIndex={0}
-        aria-label={t("dashboard:close")}
-        onClick={onClose}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onClose();
-          }
-        }}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="relative flex max-h-[90vh] w-full max-w-dialogWide flex-col overflow-hidden rounded-sheet border border-line bg-card shadow-2xl"
-      >
-        <div className="border-b border-line px-roomy py-wide">
-          <h2 className="text-lg font-semibold text-ink-primary">{t("dashboard:importFromGithub")}</h2>
-          <p className="mt-tight text-xs text-ink-muted">{t("dashboard:importFromGithubHint")}</p>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t("dashboard:importFromGithub")}
+      size="dialogWide"
+      footer={
+        <div className="flex flex-wrap items-center justify-between gap-base">
+          <div className="flex flex-wrap gap-base">
+            <Button variant="secondary" size="sm" onClick={() => toggleAllVisible(true)}>
+              {t("dashboard:importSelectAll")}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => toggleAllVisible(false)}>
+              {t("dashboard:importSelectNone")}
+            </Button>
+            <span className="self-center text-xs text-ink-muted">
+              {t("dashboard:importSelectedCount", { count: selectedCount })}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-base">
+            {resultMsg ? <span className="self-center text-xs text-success">{resultMsg}</span> : null}
+            {error && repos.length > 0 ? (
+              <span className="self-center text-xs text-warning">{error}</span>
+            ) : null}
+            <Button type="button" variant="secondary" size="lg" onClick={onClose}>
+              {t("admin:cancel")}
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
+              disabled={importing || selectedCount === 0}
+              onClick={() => void runImport()}
+            >
+              {importing ? t("dashboard:importing") : t("dashboard:importRun")}
+            </Button>
+          </div>
         </div>
+      }
+    >
+      <p className="text-meta text-ink-muted">{t("dashboard:importFromGithubHint")}</p>
 
         <div className="flex flex-wrap items-center gap-soft border-b border-line px-roomy py-soft">
           <input
@@ -315,51 +333,6 @@ export function ProjectsImportModal({
             </ul>
           )}
         </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-base border-t border-line px-roomy py-wide">
-          <div className="flex flex-wrap gap-base">
-            <button
-              type="button"
-              className="rounded-card border border-line px-soft py-snug text-xs text-ink-primary hover:bg-white/5"
-              onClick={() => toggleAllVisible(true)}
-            >
-              {t("dashboard:importSelectAll")}
-            </button>
-            <button
-              type="button"
-              className="rounded-card border border-line px-soft py-snug text-xs text-ink-primary hover:bg-white/5"
-              onClick={() => toggleAllVisible(false)}
-            >
-              {t("dashboard:importSelectNone")}
-            </button>
-            <span className="self-center text-xs text-ink-muted">
-              {t("dashboard:importSelectedCount", { count: selectedCount })}
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-base">
-            {resultMsg ? <span className="self-center text-xs text-emerald-300">{resultMsg}</span> : null}
-            {error && repos.length > 0 ? (
-              <span className="self-center text-xs text-amber-300">{error}</span>
-            ) : null}
-            <Button
-              type="button"
-              variant="secondary"
-              size="lg"
-              onClick={onClose}
-            >
-              {t("admin:cancel")}
-            </Button>
-            <button
-              type="button"
-              disabled={importing || selectedCount === 0}
-              className="rounded-card bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
-              onClick={() => void runImport()}
-            >
-              {importing ? t("dashboard:importing") : t("dashboard:importRun")}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

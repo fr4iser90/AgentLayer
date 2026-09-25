@@ -16,6 +16,7 @@ import {
 } from "./blockSettingsPreview";
 import type { UiBlock } from "./types";
 import { Button } from "../../ui/Button";
+import { Drawer } from "../../ui/Drawer";
 
 type TabId = "general" | "data" | "share" | "display";
 
@@ -254,38 +255,21 @@ export function BlockSettingsModal({
   const isSaving = saving || busy;
 
   return (
-    <div
-      className="fixed inset-0 z-overlay flex justify-end bg-black/50"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="block-settings-title"
-      onClick={onClose}
-    >
-      <aside
-        className="flex h-full w-full max-w-drawer flex-col border-l border-line bg-panel shadow-2xl sm:max-w-drawer"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="shrink-0 border-b border-line px-wide py-soft">
-          <div className="flex items-start justify-between gap-base">
-            <div className="min-w-0">
-              <h2 id="block-settings-title" className="text-sm font-semibold text-ink-primary">
-                {t("dashboard:blockSettingsTitle")}
-              </h2>
-              <p className="mt-hair text-meta text-ink-muted">
-                {blockTypeLabel(block.type)} ·{" "}
-                <span className="font-mono text-white/70">{block.id}</span>
-              </p>
-            </div>
-            <button
-              type="button"
-              className="rounded-tile px-base py-tight text-ink-muted hover:bg-white/10 hover:text-white"
-              onClick={onClose}
-              aria-label={t("dashboard:blockSettingsClose")}
-            >
-              ×
-            </button>
-          </div>
-          <nav className="mt-soft flex gap-tight border-b border-line-subtle pb-0" aria-label={t("dashboard:blockSettingsTabsAria")}>
+    <Drawer
+      open
+      onClose={onClose}
+      title={t("dashboard:blockSettingsTitle")}
+      side="right"
+      headerExtra={
+        <>
+          <p className="text-meta text-ink-muted">
+            {blockTypeLabel(block.type)} ·{" "}
+            <span className="font-mono text-ink-muted">{block.id}</span>
+          </p>
+          <nav
+            className="mt-soft flex gap-tight border-b border-line-subtle"
+            aria-label={t("dashboard:blockSettingsTabsAria")}
+          >
             {tabs.map((item) => (
               <button
                 key={item.id}
@@ -294,7 +278,7 @@ export function BlockSettingsModal({
                   "rounded-t-tile px-soft py-snug text-xs font-medium transition-colors",
                   tab === item.id
                     ? "border border-b-0 border-line-strong bg-black/40 text-ink-primary"
-                    : "text-ink-muted hover:text-white",
+                    : "text-ink-muted hover:text-ink-primary"
                 ].join(" ")}
                 onClick={() => setTab(item.id)}
               >
@@ -302,9 +286,20 @@ export function BlockSettingsModal({
               </button>
             ))}
           </nav>
-        </header>
-
-        <div className="min-h-0 flex-1 overflow-y-auto px-wide py-wide text-sm">
+        </>
+      }
+      footer={
+        <>
+          <Button variant="secondary" size="sm" onClick={onClose} disabled={isSaving}>
+            {t("dashboard:blockSettingsCancel")}
+          </Button>
+          <Button variant="primary" size="sm" onClick={() => void save()} disabled={isSaving}>
+            {isSaving ? t("dashboard:saving") : saveLabel}
+          </Button>
+        </>
+      }
+    >
+      <div className="text-sm">
           {tab === "general" ? (
             <div className="space-y-wide">
               <p className="text-xs leading-snug text-ink-muted">
@@ -527,27 +522,6 @@ export function BlockSettingsModal({
             </div>
           ) : null}
         </div>
-
-        <footer className="flex shrink-0 justify-end gap-base border-t border-line px-wide py-soft">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={onClose}
-            disabled={isSaving}
-          >
-            {t("dashboard:blockSettingsCancel")}
-          </Button>
-          <button
-            type="button"
-            className="rounded-card bg-sky-600 px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
-            onClick={() => void save()}
-            disabled={isSaving}
-          >
-            {isSaving ? t("dashboard:saving") : saveLabel}
-          </button>
-        </footer>
-      </aside>
-    </div>
+    </Drawer>
   );
 }
