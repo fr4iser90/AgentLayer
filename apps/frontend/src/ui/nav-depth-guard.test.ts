@@ -3,12 +3,16 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   auditUnnaviated,
+  checkNavDepth,
   collectNavTargets,
   collectRoutes,
   declarationBlock,
   findBrokenFolds,
   findMissingDoors,
   findOrphans,
+  findDeadLabels,
+  isLabelSource,
+  leafLabelKeys,
   reachesPath,
   scanLayoutNav,
   unnaviatedPaths
@@ -490,5 +494,197 @@ describe("nav guard judges what a fold hides", () => {
     const folded = targets.filter((t) => t.parent === door);
     expect(folded.length).toBeGreaterThan(1);
     for (const t of folded) expect(t.to.startsWith(`${door}/`)).toBe(true);
+  });
+});
+
+/**
+ * Rule 7 — a catalogue entry the rail owns has to be asked for by something.
+ *
+ * `nav.more`, `nav.connections` and `footer.github` sat in `common.json` after
+ * the `More` dropdown, the connections row and the footer's link were deleted,
+ * one wave of the redesign behind their own removal. Nothing could say so: the
+ * strings were correct, the parity check was green (both locales carried them),
+ * and no screen read them.
+ *
+ * The matcher is the whole risk of this rule, and both ways it fails were
+ * produced while writing it. Too loose, and `"connections"` — a route path in
+ * `App.tsx` — counts as a consumer of `nav.connections`, so the rule can never
+ * fire. Too strict, and it matches only `"nav.x"` while eleven real lookups say
+ * `"common:nav.x"`, so it reports the working rail as dead and gets widened
+ * until it catches nothing. Both directions are pinned below, plus the two the
+ * repo's own history says to expect: a comment that names a key, and a key no
+ * scan can see because it is built at runtime.
+ */
+describe("nav guard makes every rail label be asked for", () => {
+  const catalogue = {
+    nav: { home: "Home", group: { deep: "Deep" }, more: "More", moreOptions: "More options" },
+    footer: { github: "GitHub" }
+  };
+  const verdict = (sources: Map<string, string>, ns = ["nav", "footer"]) =>
+    findDeadLabels({ catalogue, sources, namespaces: ns });
+  const dead = (sources: Map<string, string>) => verdict(sources).dead;
+
+  it("prefixes a key with the namespace it is read under", () => {
+    // The first version of this measurement called `leaves(catalogue.nav)` with
+    // no prefix and asked the sources for `"home"`, `"more"`, `"github"` — every
+    // one of them "unused", including the twelve the rail renders right now.
+    expect(leafLabelKeys(catalogue, "nav")).toEqual([
+      "nav.home",
+      "nav.group.deep",
+      "nav.more",
+      "nav.moreOptions"
+    ]);
+    expect(leafLabelKeys(catalogue, "footer")).toEqual(["footer.github"]);
+  });
+
+  it("keeps nesting deeper than one level", () => {
+    expect(leafLabelKeys({ nav: { a: { b: { c: "x" } } } }, "nav")).toEqual(["nav.a.b.c"]);
+  });
+
+  it("accepts a key quoted, with or without the catalogue named in front", () => {
+    // `t()` leaves the default namespace implicit and some components name it
+    // anyway — `t("common:nav.dashboard")` in HomePage, `labelKey:` in the rail.
+    const sources = new Map([
+      ["navModel.ts", 'labelKey: "nav.home", to: "/x"'],
+      ["AppLayout.tsx", 't("footer.github")'],
+      ["HomePage.tsx", 't("common:nav.group.deep", { ns: "common" })']
+    ]);
+    expect(dead(sources)).toEqual(["nav.more", "nav.moreOptions"]);
+  });
+
+  it("does not count the bare word as a consumer of the key", () => {
+    // `path="connections"` is a route, not a label lookup. Matching on the last
+    // segment — or on the word anywhere — is how this rule would never fire.
+    const sources = new Map([["App.tsx", '<Route path="connections" />']]);
+    expect(verdict(sources).dead).toContain("nav.more");
+    expect(
+      findDeadLabels({
+        catalogue: { nav: { connections: "Connections" } },
+        sources,
+        namespaces: ["nav"]
+      }).dead
+    ).toEqual(["nav.connections"]);
+  });
+
+  it("does not let a longer key pay for a shorter one", () => {
+    const sources = new Map([["x.tsx", 't("nav.moreOptions")']]);
+    expect(dead(sources)).toContain("nav.more");
+  });
+
+  it("treats a dot in a key as a dot", () => {
+    const sources = new Map([["x.tsx", 't("navXmore")']]);
+    expect(dead(sources)).toContain("nav.more");
+  });
+
+  it("does not accept a key named in a comment", () => {
+    // This guard's own header now quotes `nav.more` and `nav.connections` to
+    // explain why it exists. A scan that read documentation as a consumer would
+    // certify the very keys it was written to delete.
+    const sources = new Map([
+      ["a.tsx", '// the old t("nav.more") row\n/* t("footer.github") */']
+    ]);
+    // Nothing in the catalogue is asked for here — every key stays dead, which is
+    // the whole point: the mentions are prose inside a comment.
+    expect(dead(sources)).toEqual([
+      "nav.home",
+      "nav.group.deep",
+      "nav.more",
+      "nav.moreOptions",
+      "footer.github"
+    ]);
+  });
+
+  it("does not accept an unquoted mention", () => {
+    expect(dead(new Map([["a.tsx", "see nav.more for the label"]]))).toContain("nav.more");
+  });
+
+  it("declares a namespace it cannot read instead of passing it", () => {
+    // `t(`nav.${suffix}`)` has no literal for any scan to find, so "no dead keys
+    // here" would be a pass earned by not looking. The other namespace keeps
+    // being judged — the finding is about `nav`, not an excuse to stop.
+    const sources = new Map([["a.tsx", 'const l = t(`nav.${suffix}`);']]);
+    const r = verdict(sources);
+    expect(r.unreadable.map((u: { ns: string; kind: string }) => [u.ns, u.kind])).toEqual([
+      ["nav", "dynamic"]
+    ]);
+    expect(r.dead).toEqual(["footer.github"]);
+  });
+
+  it("catches a key concatenated as well as templated", () => {
+    expect(
+      findDeadLabels({
+        catalogue: { footer: { github: "GitHub" } },
+        sources: new Map([["a.tsx", 't("footer." + name)']]),
+        namespaces: ["footer"]
+      }).unreadable.map((u: { kind: string }) => u.kind)
+    ).toEqual(["dynamic"]);
+  });
+
+  it("says so when the catalogue has no such namespace", () => {
+    const r = findDeadLabels({ catalogue: {}, sources: new Map(), namespaces: ["nav"] });
+    expect(r.unreadable.map((u: { kind: string }) => u.kind)).toEqual(["absent"]);
+  });
+
+  it("reports no sources as every key dead, never as a pass", () => {
+    // An unread source list has to fail loudly: the empty answer here is the one
+    // that would let the rule ship without ever having seen a file.
+    expect(dead(new Map())).toEqual([
+      "nav.home",
+      "nav.group.deep",
+      "nav.more",
+      "nav.moreOptions",
+      "footer.github"
+    ]);
+  });
+});
+
+describe("nav guard picks the sources a label can be asked for in", () => {
+  it("reads the rail's own model and its components", () => {
+    expect(isLabelSource("layout/navModel.ts")).toBe(true);
+    expect(isLabelSource("layout/AppLayout.tsx")).toBe(true);
+  });
+
+  it("excludes the catalogues, so a key cannot certify itself", () => {
+    expect(isLabelSource("locales/en/common.json")).toBe(false);
+    expect(isLabelSource("locales/de/common.ts")).toBe(false);
+  });
+
+  it("excludes a test file, which is not a user", () => {
+    // `nav.expandGroup` is quoted in NavRail.test.tsx and in NavRail.tsx. If the
+    // test counted, a key whose component was deleted would stay green — dead,
+    // with a passing assertion about it.
+    expect(isLabelSource("ui/NavRail.test.tsx")).toBe(false);
+    expect(isLabelSource("ui/nav-depth-guard.test.ts")).toBe(false);
+    expect(isLabelSource("ui/NavRail.stories.tsx")).toBe(false);
+  });
+
+  it("excludes files that cannot hold a lookup at all", () => {
+    expect(isLabelSource("index.css")).toBe(false);
+    expect(isLabelSource("locales/en/common.json")).toBe(false);
+  });
+});
+
+describe("nav guard holds on the app the repo ships", () => {
+  it("has no rail label without a consumer", async () => {
+    const r = await checkNavDepth();
+    expect(r.deadLabels).toEqual([]);
+    expect(r.unreadableLabels).toEqual([]);
+    // The counts are asserted open as well: "no dead keys" is equally true of a
+    // rule that read no catalogue and no sources, which is how both halves of
+    // this check have gone blind before.
+    expect(r.labelKeys).toBeGreaterThan(20);
+    expect(r.labelFiles).toBeGreaterThan(100);
+  });
+
+  it("has already lost the three keys this rule was written for", () => {
+    const shipped = JSON.parse(
+      readFileSync(join(process.cwd(), "src/locales/en/common.json"), "utf8")
+    );
+    expect(shipped.nav.more).toBeUndefined();
+    expect(shipped.nav.connections).toBeUndefined();
+    expect(shipped.footer.github).toBeUndefined();
+    // …and the labels that replaced or outlived them are still there.
+    expect(shipped.nav.github).toBeDefined();
+    expect(shipped.footer.docs).toBeDefined();
   });
 });

@@ -15,8 +15,6 @@
     "friends": "Friends",
     "docs": "Dokumentation",
     "github": "GitHub",
-    "connections": "Verbindungen",
-    "more": "Mehr",
     "signIn": "Anmelden",
     "sectionsAria": "Bereiche",
     "workspace": "Arbeitsbereich",
@@ -31,7 +29,6 @@
     "collapseGroup": "{{group}}-Seiten ausblenden"
   },
   "footer": {
-    "github": "GitHub",
     "docs": "Dokumentation",
     "brand": "Agent Layer"
   },

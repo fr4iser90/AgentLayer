@@ -2,7 +2,7 @@
  * Blank out comments while preserving every character offset and newline, so
  * line numbers stay correct after stripping.
  *
- * Shared because two guards need the identical behaviour and a second
+ * Shared because three guards need the identical behaviour and a second
  * implementation is how one gets fixed while the other stays blind:
  *
  * - `check-ink-color.mjs` scans whole files rather than only JSX tags, so a
@@ -13,6 +13,10 @@
  *   find class lists. A JSDoc comment that writes `` `py-6` `` to explain the
  *   old value is indistinguishable from a template literal to that scanner,
  *   and it failed a real build over documentation.
+ * - `check-nav-depth.mjs` collects every quoted string in `src/` to ask whether
+ *   a label key is ever looked up. Its own header names the keys it exists to
+ *   delete (`nav.more`, `nav.connections`), so a scan that read comments would
+ *   find the documentation citing them and call them consumed.
  *
  * String contents are left alone, so a `//` inside a URL in an `href` is not
  * mistaken for a comment start.
