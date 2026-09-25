@@ -3296,9 +3296,6 @@ export function ChatPage() {
           </div>
 
           <div className="flex-1 overflow-y-auto px-base py-base">
-            <p className="px-base pb-tight text-xs font-medium uppercase tracking-wide text-ink-muted">
-              {t("chat:sidebarTitle")}
-            </p>
             <p className="mb-base px-base text-meta leading-snug text-ink-muted/80">
               {t("chat:sidebarHint")}{" "}
               <span className="text-badge-warning">{t("chat:sharedBadge")}</span>

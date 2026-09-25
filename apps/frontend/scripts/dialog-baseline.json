@@ -7,7 +7,6 @@
     "src/features/dashboard/DashboardLayoutProposalPanel.tsx::scrim": "Siehe dialog: die Sheet-Geometrie gehört dem Panel, nicht dem zentrierten Modal-Panel.",
     "src/features/dashboard/gallery/GalleryLightbox.tsx::dialog": "Bild-Lightbox randlos über den ganzen Viewport, Bild darf nicht in einer Karte mit padding stehen.",
     "src/features/dashboard/gallery/GalleryLightbox.tsx::scrim": "Siehe dialog: bg-black/95 als Bühne für das Bild, kein abgesetztes Panel.",
-    "src/features/workspace/CodingWorkspacePanels.tsx::scrim": "fester Panel-Container nur unter md, ab md `md:static` — eine Spalte, die sich nur auf dem Handy überdeckt, kein Dialog.",
-    "src/layout/CollapsibleSidebarShell.tsx::scrim": "md:hidden Konversationsliste mit Peek-Breite als Inhaltspanel; eigene Gestik (Wischen/Peek), die Drawer nicht hat. Offene Entscheidung, ob das mit Drawer verschmilzt."
+    "src/features/workspace/CodingWorkspacePanels.tsx::scrim": "fester Panel-Container nur unter md, ab md `md:static` — eine Spalte, die sich nur auf dem Handy überdeckt, kein Dialog."
   }
 }

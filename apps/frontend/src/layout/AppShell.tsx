@@ -122,6 +122,8 @@ export function AppShell({
         onClose={() => setDrawerOpen(false)}
         title={title}
         side="left"
+        surface="panel"
+        mobileOnly
       >
         <NavRail surface={surface} />
       </Drawer>

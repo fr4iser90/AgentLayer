@@ -85,7 +85,7 @@ describe("guard sees raw stacking", () => {
 describe("named levels are invisible", () => {
   it("does not flag the tokens in tailwind.config.js", () => {
     expect(count(`"fixed inset-0 z-modal flex items-center justify-center"`)).toBe(0);
-    expect(count(`"absolute z-lift z-docked z-canvas z-chrome z-menu z-overlay z-tooltip"`)).toBe(0);
+    expect(count(`"absolute z-lift z-docked z-canvas z-menu z-overlay z-tooltip"`)).toBe(0);
   });
 
   it("does not flag z-auto, including responsive", () => {
@@ -138,8 +138,7 @@ describe("the scale itself keeps the properties the guard assumes", () => {
     const n = (k: string) => Number(config.theme.zIndex[k]);
     expect(n("lift")).toBeLessThan(n("canvas"));
     expect(n("canvas")).toBeLessThan(n("docked"));
-    expect(n("docked")).toBeLessThan(n("chrome"));
-    expect(n("chrome")).toBeLessThan(n("menu"));
+    expect(n("docked")).toBeLessThan(n("menu"));
     expect(n("menu")).toBeLessThan(n("overlay"));
     expect(n("overlay")).toBeLessThan(n("modal"));
     // The tooltip is the only portaled layer, so it must clear every dialog.
