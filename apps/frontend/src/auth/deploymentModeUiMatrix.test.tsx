@@ -13,11 +13,12 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, fireEvent, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
 import type { AuthUser } from "./AuthContext";
 import { RequireOrgAdmin } from "./RequireOrgAdmin";
 import { RequireUserAdmin } from "./RequireUserAdmin";
-import { AdminLayout } from "../layout/AdminLayout";
+import { NavRail } from "../ui/NavRail";
+import { adminNav } from "../layout/navModel";
 import { UserMenu } from "../components/UserMenu";
 import { AdminAgents } from "../pages/admin/AdminAgents";
 import { AdminInterfacesLlmSection } from "../pages/admin/interfaces/AdminInterfacesLlmSection";
@@ -155,7 +156,15 @@ function renderAdminChrome() {
   return render(
     <MemoryRouter initialEntries={["/admin"]}>
       <Routes>
-        <Route path="/admin" element={<AdminLayout />}>
+        <Route
+          path="/admin"
+          element={
+            <>
+              <NavRail surface={adminNav(authState.user, "/admin")} />
+              <Outlet />
+            </>
+          }
+        >
           <Route index element={<div>ADMIN-INDEX</div>} />
         </Route>
       </Routes>

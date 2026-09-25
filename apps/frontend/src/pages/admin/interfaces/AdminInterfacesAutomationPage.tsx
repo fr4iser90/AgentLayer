@@ -7,7 +7,7 @@ export function AdminInterfacesAutomationPage() {
   const { t } = useTranslation(["admin"]);
   return (
     <AdminInterfacesPageShell
-      title={t("admin:navAutomation")}
+      title={t("admin:interfacesAutomationTitle")}
       description={
         <>
           {t("admin:interfacesAutomationDescriptionPrefix")}{" "}

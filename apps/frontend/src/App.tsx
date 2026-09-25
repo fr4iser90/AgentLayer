@@ -8,7 +8,6 @@ import { RequireUserAdmin } from "./auth/RequireUserAdmin";
 import { OrgSetupPage } from "./pages/org/OrgSetupPage";
 import { RequireSession } from "./auth/RequireSession";
 import { AppLayout } from "./layout/AppLayout";
-import { AdminLayout } from "./layout/AdminLayout";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { InterfacesLayout } from "./layout/InterfacesLayout";
 import { AdminInterfacesOverviewPage } from "./pages/admin/interfaces/AdminInterfacesOverviewPage";
@@ -29,7 +28,6 @@ import { AdminSchedules } from "./pages/admin/AdminSchedules";
 import { AdminAgentTraces } from "./pages/admin/AdminAgentTraces";
 import { AdminBenchmarks } from "./pages/admin/AdminBenchmarks";
 import { AdminAgentConfig } from "./pages/admin/AdminAgentConfig";
-import { OrgAdminLayout } from "./layout/OrgAdminLayout";
 import { OrgGrantsPage } from "./pages/org/OrgGrantsPage";
 import { OrgKnowledgePage } from "./pages/org/OrgKnowledgePage";
 import { OrgTeamPage } from "./pages/org/OrgTeamPage";
@@ -137,43 +135,39 @@ export function App() {
                 <Route path="experimental" element={<Navigate to="/settings/profile" replace />} />
               </Route>
               <Route path="org" element={<RequireOrgAdmin />}>
-                <Route element={<OrgAdminLayout />}>
-                  <Route index element={<Navigate to="knowledge" replace />} />
-                  <Route path="setup" element={<OrgSetupPage />} />
-                  <Route path="knowledge" element={<OrgKnowledgePage />} />
-                  <Route path="team" element={<OrgTeamPage />} />
-                  <Route path="grants" element={<OrgGrantsPage />} />
-                </Route>
+                <Route index element={<Navigate to="knowledge" replace />} />
+                <Route path="setup" element={<OrgSetupPage />} />
+                <Route path="knowledge" element={<OrgKnowledgePage />} />
+                <Route path="team" element={<OrgTeamPage />} />
+                <Route path="grants" element={<OrgGrantsPage />} />
               </Route>
               <Route path="admin" element={<RequireSiteAdmin />}>
-                <Route element={<AdminLayout />}>
-                  <Route index element={<AdminDashboard />} />
-                  <Route path="interfaces" element={<InterfacesLayout />}>
-                    <Route index element={<AdminInterfacesOverviewPage />} />
-                    <Route path="bridges" element={<AdminInterfacesBridgesPage />} />
-                    <Route path="providers" element={<AdminInterfacesProvidersPage />} />
-                    <Route path="model-policies" element={<AdminInterfacesModelPoliciesPage />} />
-                    <Route path="routing" element={<AdminInterfacesRoutingPage />} />
-                    <Route path="llm" element={<Navigate to="../routing" replace />} />
-                    <Route path="memory" element={<AdminInterfacesMemoryPage />} />
-                    <Route path="voice" element={<AdminInterfacesVoicePage />} />
-                    <Route path="automation" element={<AdminInterfacesAutomationPage />} />
-                    <Route path="platform" element={<AdminInterfacesPlatformPage />} />
-                  </Route>
-                  <Route path="discord" element={<Navigate to="../interfaces/bridges" replace />} />
-                  <Route path="telegram" element={<Navigate to="../interfaces/bridges" replace />} />
-                  <Route path="tools" element={<AdminTools />} />
-                  <Route path="agents" element={<AdminAgents />} />
-                  <Route path="agent-submissions" element={<AdminAgentSubmissions />} />
-                  <Route path="users" element={<RequireUserAdmin><AdminUsers /></RequireUserAdmin>} />
-                  <Route path="scheduled-jobs" element={<AdminScheduledJobs />} />
-                  <Route path="schedules" element={<AdminSchedules />} />
-                  <Route path="run-traces" element={<AdminAgentTraces />} />
-                  <Route path="benchmarks" element={<AdminBenchmarks />} />
-                  <Route path="harness" element={<Navigate to="../agent-config" replace />} />
-                  <Route path="agent-config" element={<AdminAgentConfig />} />
-                  <Route path="workflows" element={<Navigate to="../scheduled-jobs" replace />} />
+                <Route index element={<AdminDashboard />} />
+                <Route path="interfaces" element={<InterfacesLayout />}>
+                  <Route index element={<AdminInterfacesOverviewPage />} />
+                  <Route path="bridges" element={<AdminInterfacesBridgesPage />} />
+                  <Route path="providers" element={<AdminInterfacesProvidersPage />} />
+                  <Route path="model-policies" element={<AdminInterfacesModelPoliciesPage />} />
+                  <Route path="routing" element={<AdminInterfacesRoutingPage />} />
+                  <Route path="llm" element={<Navigate to="../routing" replace />} />
+                  <Route path="memory" element={<AdminInterfacesMemoryPage />} />
+                  <Route path="voice" element={<AdminInterfacesVoicePage />} />
+                  <Route path="automation" element={<AdminInterfacesAutomationPage />} />
+                  <Route path="platform" element={<AdminInterfacesPlatformPage />} />
                 </Route>
+                <Route path="discord" element={<Navigate to="../interfaces/bridges" replace />} />
+                <Route path="telegram" element={<Navigate to="../interfaces/bridges" replace />} />
+                <Route path="tools" element={<AdminTools />} />
+                <Route path="agents" element={<AdminAgents />} />
+                <Route path="agent-submissions" element={<AdminAgentSubmissions />} />
+                <Route path="users" element={<RequireUserAdmin><AdminUsers /></RequireUserAdmin>} />
+                <Route path="scheduled-jobs" element={<AdminScheduledJobs />} />
+                <Route path="schedules" element={<AdminSchedules />} />
+                <Route path="run-traces" element={<AdminAgentTraces />} />
+                <Route path="benchmarks" element={<AdminBenchmarks />} />
+                <Route path="harness" element={<Navigate to="../agent-config" replace />} />
+                <Route path="agent-config" element={<AdminAgentConfig />} />
+                <Route path="workflows" element={<Navigate to="../scheduled-jobs" replace />} />
               </Route>
             </Route>
             <Route path="*" element={<DefaultLandingRedirect />} />

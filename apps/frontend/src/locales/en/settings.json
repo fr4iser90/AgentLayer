@@ -1,5 +1,8 @@
 {
   "settingsSectionsAria": "Settings sections",
+  "navAccount": "Account",
+  "navAgent": "Agent",
+  "navSharing": "Sharing",
   "connectionsTitle": "Connections",
   "friendsTitle": "Friends",
   "structuredProfileTitle": "Structured profile",

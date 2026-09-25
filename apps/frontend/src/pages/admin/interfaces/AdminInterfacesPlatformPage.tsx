@@ -6,7 +6,7 @@ export function AdminInterfacesPlatformPage() {
   const { t } = useTranslation(["admin"]);
   return (
     <AdminInterfacesPageShell
-      title={t("admin:navPlatform")}
+      title={t("admin:interfacesPlatformTitle")}
       description={t("admin:interfacesPlatformDescription")}
     >
       <AdminInterfacesPlatformSection mode="platform" />

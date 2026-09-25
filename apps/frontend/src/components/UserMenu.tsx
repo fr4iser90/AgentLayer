@@ -3,12 +3,11 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { hasOrgSurface } from "../auth/deploymentMode";
-import { SUPPORTED } from "../i18n/config";
 import { Mascot, pickCharacter } from "../ui/Mascot";
 import { Tooltip } from "../ui/Tooltip";
 
 export function UserMenu() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -80,32 +79,6 @@ export function UserMenu() {
               {t("userMenu.platformAdmin")}
             </Link>
           ) : null}
-          <div className="border-t border-line px-soft py-base">
-            <p className="mb-snug text-meta font-medium uppercase tracking-wide text-ink-muted">
-              {t("language.label")}
-            </p>
-            <div className="flex flex-wrap gap-tight">
-              {SUPPORTED.map((lng) => {
-                const active = i18n.resolvedLanguage?.startsWith(lng) ?? i18n.language.startsWith(lng);
-                const label = lng === "en" ? t("language.en") : t("language.de");
-                return (
-                  <button
-                    key={lng}
-                    type="button"
-                    className={[
-                      "rounded-tile px-base py-tight text-xs",
-                      active
-                        ? "bg-white/15 text-ink-primary"
-                        : "text-ink-muted hover:bg-white/10 hover:text-neutral-200",
-                    ].join(" ")}
-                    onClick={() => void i18n.changeLanguage(lng)}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
           <button
             type="button"
             role="menuitem"

@@ -6,6 +6,8 @@
   "selfEditingPermissionUpdateFailed": "Could not update self-editing permission",
   "loading": "Loading…",
   "interfacesTitle": "Interfaces",
+  "interfacesAutomationTitle": "Automation runtime",
+  "interfacesPlatformTitle": "Platform settings",
   "operatorAdmin": "Operator admin",
   "adminSectionsAria": "Admin sections",
   "overview": "Overview",

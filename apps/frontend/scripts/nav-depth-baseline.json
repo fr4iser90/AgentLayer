@@ -1,0 +1,6 @@
+{
+  "note": "Routes under a guarded prefix that are deliberately not in the rail. Each one is reachable some other way — say how, in the commit that adds it.",
+  "unnaviated": [
+    "/org/setup"
+  ]
+}
