@@ -3,7 +3,11 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "./AuthContext";
 import { hasOrgSurface } from "./deploymentMode";
 import { defaultLandingPath } from "./tenantSurface";
-import { canManageWorkspaceGrants } from "../pages/admin/accessGating";
+import {
+  canManageWorkspaceGrants,
+  canReachOrgSurface,
+  isTenantAdmin
+} from "../pages/admin/accessGating";
 
 /** Tenant org surface — `/app/org` (multi_tenant only). */
 export function RequireOrgAdmin() {
@@ -28,8 +32,7 @@ export function RequireOrgAdmin() {
     return <Navigate to={defaultLandingPath(user)} replace />;
   }
 
-  const tenantAdmin =
-    user?.membership_role === "tenant_owner" || user?.membership_role === "tenant_admin";
+  const tenantAdmin = isTenantAdmin(user);
   const canEditContent = user?.profession_policy?.can_edit_content === true;
   const canManageTeam = tenantAdmin || user?.profession_policy?.can_manage_profession === true;
 
@@ -52,8 +55,10 @@ export function RequireOrgAdmin() {
     return <Navigate to="/org/knowledge" replace />;
   }
 
-  const orgAllowed =
-    tenantAdmin || canEditContent || canManageGrants || (onTeam && canManageTeam);
+  // Same predicate the rail's door into `/org` uses, so the link and the room
+  // cannot disagree. The team page is the one leaf wider than the surface: it
+  // admits a profession manager who edits nothing else.
+  const orgAllowed = canReachOrgSurface(user) || (onTeam && canManageTeam);
   if (!orgAllowed) {
     return <Navigate to={defaultLandingPath(user)} replace />;
   }

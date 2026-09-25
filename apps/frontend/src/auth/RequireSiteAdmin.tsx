@@ -2,6 +2,7 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "./AuthContext";
 import { defaultLandingPath } from "./tenantSurface";
+import { isSiteAdmin } from "../pages/admin/accessGating";
 
 /** Platform operator — `/app/admin` (site_admin). */
 export function RequireSiteAdmin() {
@@ -21,8 +22,7 @@ export function RequireSiteAdmin() {
     return null;
   }
 
-  const siteAdmin =
-    user?.site_role === "site_admin" || user?.role?.toLowerCase() === "admin";
+  const siteAdmin = isSiteAdmin(user);
   if (!siteAdmin) {
     return <Navigate to={defaultLandingPath(user)} replace />;
   }

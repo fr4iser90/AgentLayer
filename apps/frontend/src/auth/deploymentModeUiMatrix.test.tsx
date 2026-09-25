@@ -18,7 +18,7 @@ import type { AuthUser } from "./AuthContext";
 import { RequireOrgAdmin } from "./RequireOrgAdmin";
 import { RequireUserAdmin } from "./RequireUserAdmin";
 import { NavRail } from "../ui/NavRail";
-import { adminNav } from "../layout/navModel";
+import { adminNav, appNav } from "../layout/navModel";
 import { UserMenu } from "../components/UserMenu";
 import { AdminAgents } from "../pages/admin/AdminAgents";
 import { AdminInterfacesLlmSection } from "../pages/admin/interfaces/AdminInterfacesLlmSection";
@@ -247,20 +247,67 @@ function renderOpenMenu() {
   return utils;
 }
 
-describe("user dropdown organization link", () => {
+/**
+ * Doors into the other surfaces. They used to be links in the account menu,
+ * which meant one list of areas per surface, each gated by its own copy of the
+ * rule — see `managementSection` in `navModel.ts`.
+ */
+function renderAppRail() {
+  return render(
+    <MemoryRouter initialEntries={["/chat"]}>
+      <NavRail surface={appNav(authState.user)} />
+    </MemoryRouter>
+  );
+}
+
+describe("rail door into the organization", () => {
+  /** `userIn()` is a site admin *and* a tenant owner in every mode. */
   it.each(MODES.filter((m) => m !== "multi_tenant"))(
     "hidden for %s",
     (mode) => {
       authState.user = userIn(mode);
-      renderOpenMenu();
-      expect(screen.queryByText("userMenu.organization")).toBeNull();
+      renderAppRail();
+      expect(screen.queryByText("nav.org")).toBeNull();
     }
   );
 
   it("shown for multi_tenant", () => {
     authState.user = userIn("multi_tenant");
-    renderOpenMenu();
-    expect(screen.getByText("userMenu.organization")).toBeInTheDocument();
+    renderAppRail();
+    expect(screen.getByText("nav.org")).toBeInTheDocument();
+  });
+});
+
+describe("rail door into the platform admin", () => {
+  it("follows the site-admin predicate, not the mode", () => {
+    authState.user = userIn("single_user");
+    renderAppRail();
+    expect(screen.getByText("nav.admin")).toBeInTheDocument();
+  });
+
+  it("a non-operator gets neither door and keeps the app sections", () => {
+    authState.user = { ...userIn("multi_tenant"), site_role: null, role: "user" } as AuthUser;
+    renderAppRail();
+    expect(screen.queryByText("nav.admin")).toBeNull();
+    expect(screen.getByText("nav.org")).toBeInTheDocument();
+    expect(screen.getByText("nav.chat")).toBeInTheDocument();
+  });
+});
+
+/**
+ * The account menu is account-only since its area doors moved into the rail. A
+ * link back in here would put a second, separately gated copy of an area next
+ * to the rail's — exactly the drift the door rule in `check-nav-depth.mjs` and
+ * `canReachOrgSurface` exist to prevent.
+ */
+describe("account menu carries no area door", () => {
+  it.each(MODES)("%s: sign-out is the only item, nothing links out", (mode) => {
+    authState.user = userIn(mode);
+    const { container } = renderOpenMenu();
+    expect(screen.getAllByRole("menuitem").map((el) => el.textContent)).toEqual([
+      "userMenu.signOut",
+    ]);
+    expect(container.querySelectorAll("a")).toHaveLength(0);
   });
 });
 
@@ -377,9 +424,9 @@ describe("no mode is half-blocked", () => {
    * entry but leaves the route reachable is the exact bug class this guards.
    */
   const expected = {
-    single_user: { orgBlocked: true, usersBlocked: true, peopleNav: false, orgLink: false },
-    agent_system: { orgBlocked: true, usersBlocked: false, peopleNav: true, orgLink: false },
-    multi_tenant: { orgBlocked: false, usersBlocked: false, peopleNav: true, orgLink: true },
+    single_user: { orgBlocked: true, usersBlocked: true, peopleNav: false, orgDoor: false },
+    agent_system: { orgBlocked: true, usersBlocked: false, peopleNav: true, orgDoor: false },
+    multi_tenant: { orgBlocked: false, usersBlocked: false, peopleNav: true, orgDoor: true },
   } as const;
 
   it.each(MODES)("%s matches the intended matrix", (mode) => {
@@ -398,15 +445,22 @@ describe("no mode is half-blocked", () => {
     const peopleNav = screen.queryByText("admin:navPeople") !== null;
     chrome.unmount();
 
+    const rail = renderAppRail();
+    const orgDoor = screen.queryByText("nav.org") !== null;
+    rail.unmount();
+
+    // If the guard ever hides the area, the door has to go with it — and the
+    // account menu must not be a second copy that stayed visible.
     const menu = renderOpenMenu();
-    const orgLink = screen.queryByText("userMenu.organization") !== null;
+    const menuLinks = menu.container.querySelectorAll("a").length;
     menu.unmount();
 
-    expect({ orgBlocked, usersBlocked, peopleNav, orgLink }).toEqual({
+    expect({ orgBlocked, usersBlocked, peopleNav, orgDoor, menuLinks }).toEqual({
       orgBlocked: want.orgBlocked,
       usersBlocked: want.usersBlocked,
       peopleNav: want.peopleNav,
-      orgLink: want.orgLink,
+      orgDoor: want.orgDoor,
+      menuLinks: 0,
     });
   });
 });

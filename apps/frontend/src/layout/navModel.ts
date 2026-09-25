@@ -28,6 +28,7 @@ import {
   Bot,
   BriefcaseBusiness,
   Brain,
+  Building2,
   CalendarClock,
   Clock,
   Cpu,
@@ -47,6 +48,7 @@ import {
   Settings as SettingsIcon,
   Share2,
   Shield,
+  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
   UploadCloud,
@@ -57,8 +59,12 @@ import {
 } from "lucide-react";
 import type { AuthUser } from "../auth/AuthContext";
 import { friendSystemEnabled, navItemAllowed, type NavItemId } from "../auth/tenantSurface";
-import { isSingleUser } from "../auth/deploymentMode";
-import { canManageWorkspaceGrants } from "../pages/admin/accessGating";
+import { hasOrgSurface, isSingleUser } from "../auth/deploymentMode";
+import {
+  canManageWorkspaceGrants,
+  canReachOrgSurface,
+  isSiteAdmin
+} from "../pages/admin/accessGating";
 
 export type NavLeaf = {
   to: string;
@@ -242,12 +248,61 @@ function filterSections(sections: NavSection[], user: AuthUser | null | undefine
     .filter((section) => section.leaves.length > 0);
 }
 
+/** A door into another surface, plus the runtime question that opens it. */
+interface SurfaceDoor extends NavLeaf {
+  open: (user: AuthUser | null | undefined) => boolean;
+}
+
+/**
+ * The doors into the other surfaces.
+ *
+ * These lived in the avatar menu, which is the one place the "everything
+ * visible" rule can quietly die: an operator sitting in `/chat` had to open a
+ * face to find the admin area, and `AppShell` renders that menu on every surface,
+ * so the same link also sat beside a rail that already carried the page.
+ *
+ * The menu also had its own, narrower copy of the gate — `membership_role` was
+ * tenant_owner or tenant_admin, nothing else — while `RequireOrgAdmin` admits a
+ * content editor and a delegated grants holder too. Those two reach
+ * `/org/knowledge` fine and had no link to it anywhere, because the org area's
+ * leaves only join the rail once you are already inside the area. Both doors now
+ * ask the predicate the route guard asks.
+ *
+ * Neither carries a `nav` id: the tenant allowlist in `allowed_nav` lists
+ * consumer items, and hiding the operator's own door behind a consumer setting
+ * is how an admin locks themselves out of the screen that would unlock it.
+ *
+ * A `const` list with the gate beside each door, not pushes inside a function:
+ * `check-nav-depth.mjs` reads the app rail's doors out of this source, and a
+ * roleless guard run would see an empty section built at runtime and call every
+ * surface door missing.
+ */
+const SURFACE_DOORS: SurfaceDoor[] = [
+  { to: "/admin", labelKey: "nav.admin", icon: ShieldCheck, open: (u) => isSiteAdmin(u) },
+  {
+    to: "/org",
+    labelKey: "nav.org",
+    icon: Building2,
+    // `hasOrgSurface` stays beside the door rather than inside
+    // `canReachOrgSurface`, so the deployment mode remains visible in the model.
+    open: (u) => hasOrgSurface(u) && canReachOrgSurface(u)
+  }
+];
+
+function managementSection(user: AuthUser | null | undefined): NavSection | null {
+  const leaves = SURFACE_DOORS.filter((door) => door.open(user)).map(
+    ({ to, labelKey, icon }) => ({ to, labelKey, icon })
+  );
+  return leaves.length ? { labelKey: "nav.management", leaves } : null;
+}
+
 export function appNav(user: AuthUser | null | undefined): NavSurface {
+  const doors = managementSection(user);
   return {
     id: "app",
     namespace: "common",
     ariaKey: "nav.sectionsAria",
-    sections: filterSections(APP_SECTIONS, user)
+    sections: filterSections(doors ? [...APP_SECTIONS, doors] : APP_SECTIONS, user)
   };
 }
 

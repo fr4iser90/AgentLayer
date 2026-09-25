@@ -279,6 +279,14 @@ written as a literal comparison against one of the two known modes:
 | `AdminUsers.tsx` ×6 | `=== "agent_system"` | tenant UI hidden (right), but user management itself stayed |
 | `OrgContentCms.tsx` / `OrgKnowledgePublishSection.tsx` | `=== "agent_system" ? admin : org` | calls the `/v1/org/...` API, which 404s without an org surface |
 
+> **Nachtrag (UI-Redesign, Welle 2).** Die Zeile `UserMenu.tsx` ist Geschichte, und zwar nicht
+> wegen des Prädikats: das Avatar-Menü trug die einzigen Links auf `/org` und `/admin` — für
+> Flächen, deren eigene Blätter erst im Rail auftauchen, wenn man schon drin ist (`/settings`
+> hatte mit `/settings/profile` längst eine Tür). Die Türen sitzen jetzt als `SURFACE_DOORS` in
+> `navModel.ts` und fragen `canReachOrgSurface` / `isSiteAdmin`, also dieselbe Funktion wie der
+> Route-Guard; `check-nav-depth.mjs` Regel 5 prüft, dass keine Fläche ihre Tür verliert. Der Rest
+> der Tabelle gilt unverändert.
+
 A third value read through any of those silently inherits a neighbour's behaviour rather than a
 decision. So the frontend got the same treatment the backend got in §7: a predicate module,
 `src/auth/deploymentMode.ts`, mirroring `has_org_surface()` / `is_single_user()` from
