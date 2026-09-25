@@ -130,7 +130,7 @@ export function DashboardOverviewPanel(props: {
                     <span className="font-medium text-ink-primary">
                       {w.title || w.kind}
                       {(dashboardUnreadCount?.(w.id) ?? 0) > 0 ? (
-                        <span className="ml-snug inline-flex h-4 min-w-4 items-center justify-center rounded-pill bg-orange-500 px-tight text-meta font-bold text-black align-middle">
+                        <span className="ml-snug inline-flex h-4 min-w-4 items-center justify-center rounded-pill bg-unread px-tight text-meta font-bold text-ink-on-fill align-middle">
                           !
                         </span>
                       ) : null}

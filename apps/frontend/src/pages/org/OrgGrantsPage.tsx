@@ -163,7 +163,7 @@ export function OrgGrantsPage() {
       </div>
 
       {message ? <p className="mt-wide text-sm text-emerald-300">{message}</p> : null}
-      {error ? <p className="mt-wide text-sm text-rose-300">{error}</p> : null}
+      {error ? <p className="mt-wide text-sm text-danger">{error}</p> : null}
 
       {loading ? (
         <p className="mt-broad text-sm text-ink-muted">{t("org:grantsLoading")}</p>
@@ -218,7 +218,7 @@ export function OrgGrantsPage() {
                   {row.saving ? (
                     <span className="text-ink-muted">{t("org:grantsSaving")}</span>
                   ) : row.error ? (
-                    <span className="text-rose-300">{row.error}</span>
+                    <span className="text-danger">{row.error}</span>
                   ) : row.visibility !== "tenant" ? (
                     <span className="text-amber-300">{t("org:grantsInertWhilePrivate")}</span>
                   ) : (

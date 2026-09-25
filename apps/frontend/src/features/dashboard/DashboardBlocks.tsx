@@ -337,7 +337,7 @@ function StatBlockBody(props: {
         ↑
       </span>
     ) : stat.trend === "down" ? (
-      <span className="text-rose-400" title={t("dashboard:trendDownTitle")}>
+      <span className="text-danger" title={t("dashboard:trendDownTitle")}>
         ↓
       </span>
     ) : null;

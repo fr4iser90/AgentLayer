@@ -13,7 +13,7 @@ import {
 function verdictTone(verdict: string | undefined): string {
   const v = (verdict || "").toLowerCase();
   if (v === "accept") return "text-emerald-300 bg-emerald-950/40 border-emerald-500/30";
-  if (v === "reject" || v === "regression_tool_calling") return "text-rose-300 bg-rose-950/40 border-rose-500/30";
+  if (v === "reject" || v === "regression_tool_calling") return "text-badge-danger bg-danger-subtle border-danger/30";
   if (v === "mixed") return "text-amber-200 bg-amber-950/30 border-amber-500/30";
   return "text-ink-muted bg-white/5 border-line";
 }
@@ -202,7 +202,7 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
                         <li key={rid}>
                           <Link
                             to={`/admin/benchmarks?run=${encodeURIComponent(rid)}`}
-                            className="rounded-tile border border-line bg-black/30 px-base py-tight font-mono text-meta text-indigo-300 hover:bg-white/5"
+                            className="rounded-tile border border-line bg-black/30 px-base py-tight font-mono text-meta text-badge-accent hover:bg-white/5"
                             title={rid}
                           >
                             {rid.slice(0, 8)}…
@@ -244,7 +244,7 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
                       type="button"
                       disabled={reviewBusy || runIds.length === 0}
                       onClick={() => void onSubmitReview()}
-                      className="rounded-tile bg-indigo-700 px-soft py-snug text-xs text-ink-on-fill hover:bg-indigo-600 disabled:opacity-50"
+                      className="rounded-tile bg-accent px-soft py-snug text-xs text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
                     >
                       {reviewBusy ? t("admin:agentConfigReviewSubmitting") : t("admin:agentConfigReviewSubmit")}
                     </button>

@@ -71,7 +71,7 @@ function GoalActionButtons({
       <Tooltip label={t("chat:goalClear")}>
       <button
           type="button"
-          className="rounded-tile px-snug py-hair text-xs text-rose-200 hover:bg-white/10 disabled:opacity-40"
+          className="rounded-tile px-snug py-hair text-xs text-badge-danger hover:bg-white/10 disabled:opacity-40"
           disabled={disabled}
           onClick={onClear}
         >
@@ -104,7 +104,7 @@ export function OngoingGoalBar(props: GoalActions) {
           {goal.objective}
         </p>
         {blocked && goal.blocked_reason ? (
-          <p className="truncate text-xs text-rose-300/80" title={goal.blocked_reason}>
+          <p className="truncate text-xs text-danger/80" title={goal.blocked_reason}>
             {goal.blocked_reason}
           </p>
         ) : null}
@@ -173,7 +173,7 @@ export function SessionGoalTodosStrip({
               {liveGoal.objective}
             </p>
             {blocked && liveGoal.blocked_reason ? (
-              <p className="truncate text-xs text-rose-300/80" title={liveGoal.blocked_reason}>
+              <p className="truncate text-xs text-danger/80" title={liveGoal.blocked_reason}>
                 {liveGoal.blocked_reason}
               </p>
             ) : null}

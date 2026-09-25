@@ -48,7 +48,7 @@ export function DashboardBoardFilesPanel(props: { dashboardId: string }) {
         </button>
       </div>
       <p className="mt-tight text-xs text-ink-muted">{t("dashboard:boardFilesLibraryHint")}</p>
-      {err ? <p className="mt-base text-xs text-rose-300">{err}</p> : null}
+      {err ? <p className="mt-base text-xs text-danger">{err}</p> : null}
       {busy && files.length === 0 ? (
         <p className="mt-base text-xs text-ink-muted">{t("dashboard:loading")}</p>
       ) : files.length === 0 ? (

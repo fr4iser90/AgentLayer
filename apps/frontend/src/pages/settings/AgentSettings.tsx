@@ -174,7 +174,7 @@ export function AgentSettings() {
           {t("settings:agentIntro")}
         </p>
         <p className="mt-base text-xs text-ink-muted">
-          <Link to="/settings/delegate" className="text-indigo-300 hover:underline">
+          <Link to="/settings/delegate" className="text-accent hover:underline">
             {t("settings:delegateNav")}
           </Link>
           {" — "}

@@ -246,7 +246,7 @@ function AccessStateControl({
               ? state === "allow"
                 ? "bg-emerald-500/25 text-emerald-100"
                 : state === "deny"
-                  ? "bg-rose-500/25 text-rose-100"
+                  ? "bg-danger-subtle text-badge-danger"
                   : "bg-white/15 text-ink-primary"
               : "text-ink-secondary hover:bg-white/10"
           }`}
@@ -1296,7 +1296,7 @@ export function AdminInterfacesLlmSection({
                                   className={`inline-flex rounded-pill border px-snug py-hair text-meta font-medium ${
                                     visible
                                       ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
-                                      : "border-rose-400/30 bg-rose-500/10 text-rose-100"
+                                      : "border-danger/30 bg-danger-subtle text-badge-danger"
                                   }`}
                                 >
                                   {t(`admin:modelAccessState_${accessState}`)}

@@ -448,7 +448,7 @@ export function ToolsSettings() {
                               {high ? (
                                 // Left hand-rolled: orange is reserved for `unread` semantics and
                                 // needs its own token before high-risk can be mapped onto a tone.
-                                <span className="rounded-tile bg-orange-500/20 px-snug py-hair text-meta text-orange-200">
+                                <span className="rounded-tile bg-warning-subtle px-snug py-hair text-meta text-badge-warning">
                                   {t("settings:toolsRiskHigh", { level: risk || "high" })}
                                 </span>
                               ) : risk ? (

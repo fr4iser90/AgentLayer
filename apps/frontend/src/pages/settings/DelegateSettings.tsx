@@ -506,7 +506,7 @@ export function DelegateSettings() {
       <p className="mt-base text-sm text-ink-muted">{t("settings:delegateSubtitle")}</p>
       <p className="mt-base text-xs text-ink-muted">
         {t("settings:delegateVsAgent")}{" "}
-        <Link to="/settings/agent" className="text-indigo-300 hover:underline">
+        <Link to="/settings/agent" className="text-accent hover:underline">
           {t("settings:agentTitle")}
         </Link>
       </p>
@@ -532,7 +532,7 @@ export function DelegateSettings() {
         />
         <button
           type="button"
-          className="mt-wide rounded-tile bg-indigo-600 px-wide py-base text-sm text-ink-on-fill hover:bg-indigo-500 disabled:opacity-50"
+          className="mt-wide rounded-tile bg-accent px-wide py-base text-sm text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
           disabled={savingGlobal || unavailable}
           onClick={() => void saveGlobal()}
         >
@@ -574,7 +574,7 @@ export function DelegateSettings() {
             </div>
             <button
               type="button"
-              className="mt-wide rounded-tile bg-indigo-600 px-wide py-base text-sm text-ink-on-fill hover:bg-indigo-500 disabled:opacity-50"
+              className="mt-wide rounded-tile bg-accent px-wide py-base text-sm text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
               disabled={savingWorkspace || unavailable || !workspaceId}
               onClick={() => void saveWorkspace()}
             >

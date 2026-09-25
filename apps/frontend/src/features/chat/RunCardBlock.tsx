@@ -16,14 +16,14 @@ type Props = {
 };
 
 function borderForKind(kind: RunCard["kind"]): string {
-  if (kind === "subagent") return "border-indigo-500/45";
+  if (kind === "subagent") return "border-subagent/45";
   if (kind === "index") return "border-violet-500/45";
   if (kind === "compaction") return "border-amber-500/45";
   return "border-sky-500/35";
 }
 
 function bgForKind(kind: RunCard["kind"]): string {
-  if (kind === "subagent") return "bg-indigo-950/25";
+  if (kind === "subagent") return "bg-subagent-subtle";
   if (kind === "index") return "bg-violet-950/20";
   if (kind === "compaction") return "bg-amber-950/20";
   return "bg-sky-950/15";
@@ -312,13 +312,13 @@ export function RunCardBlock({
               ) : null}
               {card.assistantExcerpt?.trim() ? (
                 <details className="group/a" open={card.status === "running"}>
-                  <summary className="cursor-pointer list-none text-meta font-medium text-indigo-200/85 marker:content-none [&::-webkit-details-marker]:hidden">
+                  <summary className="cursor-pointer list-none text-meta font-medium text-badge-subagent/85 marker:content-none [&::-webkit-details-marker]:hidden">
                     {t("chat:runCardOutput", { defaultValue: "Output" })}
-                    <span className="ml-tight font-normal text-indigo-200/50 group-open/a:hidden">
+                    <span className="ml-tight font-normal text-badge-subagent/50 group-open/a:hidden">
                       {t("chat:contextInjectExpandHint")}
                     </span>
                   </summary>
-                  <pre className="mt-tight max-h-40 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-indigo-500/20 bg-black/25 px-base py-snug font-sans text-meta leading-relaxed text-ink-secondary">
+                  <pre className="mt-tight max-h-40 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-subagent/20 bg-black/25 px-base py-snug font-sans text-meta leading-relaxed text-ink-secondary">
                     {card.assistantExcerpt.trim()}
                   </pre>
                 </details>
@@ -346,7 +346,7 @@ export function RunCardBlock({
                       )
                     ) : failed ? (
                       <span className="shrink-0" title={t("chat:runCardStepFailed")}>
-                        <X aria-hidden className="h-3.5 w-3.5 text-rose-400/90" />
+                        <X aria-hidden className="h-3.5 w-3.5 text-danger/90" />
                       </span>
                     ) : (
                       <Check aria-hidden className="h-3.5 w-3.5 shrink-0 text-emerald-400/70" />
@@ -409,12 +409,12 @@ export function RunCardBlock({
                           <span className="text-sky-400/70">→</span>
                         ) : row.failed ? (
                           <span className="inline" title={t("chat:runCardStepFailed")}>
-                            <X aria-hidden className="inline h-3.5 w-3.5 text-rose-400/90" />
+                            <X aria-hidden className="inline h-3.5 w-3.5 text-danger/90" />
                           </span>
                         ) : (
                           <Check aria-hidden className="inline h-3.5 w-3.5 text-emerald-400/70" />
                         )}
-                        <span className={row.failed ? "text-rose-200/85" : "text-ink-muted"}>
+                        <span className={row.failed ? "text-badge-danger/85" : "text-ink-muted"}>
                           {" "}
                           {row.label}
                         </span>
@@ -440,7 +440,7 @@ export function RunCardBlock({
                         <span className="font-medium uppercase tracking-wide text-ink-muted">
                           {d.kind}
                         </span>
-                        {d.toolName ? <span className="text-indigo-300/80"> {d.toolName}</span> : null}
+                        {d.toolName ? <span className="text-badge-subagent/80"> {d.toolName}</span> : null}
                         {d.text ? <span className="text-ink-muted"> — {d.text}</span> : null}
                       </div>
                       {d.resultDisplay?.trim() ? (

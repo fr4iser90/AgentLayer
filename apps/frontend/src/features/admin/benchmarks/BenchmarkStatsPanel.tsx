@@ -67,7 +67,7 @@ function PassRateBadge({ rate }: { rate: number | null | undefined }) {
   if (rate == null) return <span className="text-ink-muted">—</span>;
   const pct = Math.round(rate * 100);
   const tone =
-    pct >= 90 ? "text-emerald-300" : pct >= 60 ? "text-amber-200" : "text-rose-300";
+    pct >= 90 ? "text-emerald-300" : pct >= 60 ? "text-amber-200" : "text-danger";
   return <span className={tone}>{pct}%</span>;
 }
 

@@ -12,7 +12,7 @@ export function AgentUpdateBadge(props: {
     return (
       <span
         className={[
-          "inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-pill bg-orange-500 px-tight text-meta font-bold leading-none text-black shadow",
+          "inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-pill bg-unread px-tight text-meta font-bold leading-none text-ink-on-fill shadow",
           pulse ? "animate-pulse" : "",
         ].join(" ")}
         title={label}
@@ -26,7 +26,7 @@ export function AgentUpdateBadge(props: {
   return (
     <span
       className={[
-        "pointer-events-none absolute right-2 top-2 z-canvas flex h-5 min-w-5 items-center justify-center rounded-pill bg-orange-500 px-tight text-meta font-bold leading-none text-black shadow-lg ring-2 ring-black/40",
+        "pointer-events-none absolute right-2 top-2 z-canvas flex h-5 min-w-5 items-center justify-center rounded-pill bg-unread px-tight text-meta font-bold leading-none text-ink-on-fill shadow-lg ring-2 ring-black/40",
         pulse ? "animate-pulse" : "",
       ].join(" ")}
       title={label}

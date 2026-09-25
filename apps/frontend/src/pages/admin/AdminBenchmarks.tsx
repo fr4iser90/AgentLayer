@@ -373,13 +373,13 @@ function BenchmarkFailuresSummary({
 }) {
   if (rows.length === 0) return null;
   return (
-    <div className="mt-wide rounded-card border border-rose-500/25 bg-rose-950/15 p-soft">
-      <div className="mb-base text-sm font-medium text-rose-200">
+    <div className="mt-wide rounded-card border border-danger/30 bg-danger-subtle p-soft">
+      <div className="mb-base text-sm font-medium text-badge-danger">
         {t("admin:benchFailuresSummary")} ({rows.length})
       </div>
       <div className="max-h-64 overflow-auto">
         <table className="w-full text-left text-meta">
-          <thead className="sticky top-0 bg-rose-950/80 text-ink-muted">
+          <thead className="sticky top-0 bg-danger-subtle text-ink-muted">
             <tr>
               <th className="py-tight pr-base">{t("admin:benchFailuresSummaryColScenario")}</th>
               <th className="py-tight pr-base">{t("admin:benchColProviderModel")}</th>
@@ -398,7 +398,7 @@ function BenchmarkFailuresSummary({
                 <td className="py-tight pr-base align-top text-amber-200/90 max-w-chip">
                   {row.transport_error || "—"}
                 </td>
-                <td className="py-tight pr-base align-top text-rose-200/90 max-w-chipWide">
+                <td className="py-tight pr-base align-top text-badge-danger/90 max-w-chipWide">
                   {row.rubric_failure || "—"}
                 </td>
                 <td className="py-tight pr-base align-top text-sky-200/80 max-w-chipWide">
@@ -2458,7 +2458,7 @@ export function AdminBenchmarks() {
                             </div>
                           ) : null}
                           {session.error_text ? (
-                            <p className="mt-tight text-meta text-rose-300">{session.error_text}</p>
+                            <p className="mt-tight text-meta text-danger">{session.error_text}</p>
                           ) : null}
                         </div>
                         <div className="flex shrink-0 flex-wrap gap-base">
@@ -2884,7 +2884,7 @@ export function AdminBenchmarks() {
                           disabled={cancellingRunId === r.id}
                           aria-label={t("admin:benchCancelRun")}
                           onClick={() => void onCancelRun(r)}
-                          className="shrink-0 px-base text-rose-400/90 hover:bg-rose-950/40 hover:text-rose-300 disabled:opacity-50"
+                          className="shrink-0 px-base text-danger/90 hover:bg-danger/20 hover:text-badge-danger disabled:opacity-50"
                         >
                           {cancellingRunId === r.id ? "…" : "■"}
                         </button>
@@ -2969,7 +2969,7 @@ export function AdminBenchmarks() {
                     type="button"
                     disabled={cancellingRunId === detail.id}
                     onClick={() => void onCancelRun(detail)}
-                    className="mt-base rounded-card border border-rose-500/40 bg-rose-950/30 px-soft py-snug text-xs font-medium text-rose-300 hover:bg-rose-950/50 disabled:opacity-50"
+                    className="mt-base rounded-card border border-danger/40 bg-danger-subtle px-soft py-snug text-xs font-medium text-badge-danger hover:bg-danger/20 disabled:opacity-50"
                   >
                     {cancellingRunId === detail.id
                       ? t("admin:benchCancelling")
