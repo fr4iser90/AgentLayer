@@ -1,0 +1,13 @@
+{
+  "note": "Overlays, die bewusst nicht Modal/Drawer sind. Der Wert ist die Begründung, nicht ein Platzhalter — ein Eintrag ohne Grund ist eine Erlaubnis ohne Argument.",
+  "overlays": {
+    "src/features/dashboard/BlockExpandModal.tsx::dialog": "Ganzer Viewport, eigener Header, kein Panel mit Innenabstand — Modal zentriert ein Kartenstück.",
+    "src/features/dashboard/BlockExpandModal.tsx::scrim": "Vollbildübernahme des Blocks (bg-neutral-950/98, flex flex-col), keine Randzone wie bei Modal.",
+    "src/features/dashboard/DashboardLayoutProposalPanel.tsx::dialog": "Bottom-Sheet unter sm, erst ab sm zentriert (items-end sm:items-center) — Modal kennt nur die Mittenlage.",
+    "src/features/dashboard/DashboardLayoutProposalPanel.tsx::scrim": "Siehe dialog: die Sheet-Geometrie gehört dem Panel, nicht dem zentrierten Modal-Panel.",
+    "src/features/dashboard/gallery/GalleryLightbox.tsx::dialog": "Bild-Lightbox randlos über den ganzen Viewport, Bild darf nicht in einer Karte mit padding stehen.",
+    "src/features/dashboard/gallery/GalleryLightbox.tsx::scrim": "Siehe dialog: bg-black/95 als Bühne für das Bild, kein abgesetztes Panel.",
+    "src/features/workspace/CodingWorkspacePanels.tsx::scrim": "fester Panel-Container nur unter md, ab md `md:static` — eine Spalte, die sich nur auf dem Handy überdeckt, kein Dialog.",
+    "src/layout/CollapsibleSidebarShell.tsx::scrim": "md:hidden Konversationsliste mit Peek-Breite als Inhaltspanel; eigene Gestik (Wischen/Peek), die Drawer nicht hat. Offene Entscheidung, ob das mit Drawer verschmilzt."
+  }
+}
