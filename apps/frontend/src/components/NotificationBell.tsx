@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Bell } from "lucide-react";
 import { useNotificationContext } from "../features/notifications/NotificationProvider";
 import { Tooltip } from "../ui/Tooltip";
+import { useClickOutside } from "../ui/useClickOutside";
 
 function severityDot(severity: string): string {
   if (severity === "error" || severity === "action_required") return "bg-red-400";
@@ -45,14 +46,7 @@ export function NotificationBell() {
   } = useNotificationContext();
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open, setOpen]);
+  useClickOutside(rootRef, () => setOpen(false), open);
 
   const unread = summary.unread_count;
 
