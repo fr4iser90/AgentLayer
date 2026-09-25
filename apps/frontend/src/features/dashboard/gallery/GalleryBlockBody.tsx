@@ -159,9 +159,9 @@ export function GalleryBlockBody(props: {
           </div>
         ) : null}
       </div>
-      {bulkUploadErr ? <p className="mb-base text-xs text-red-400">{bulkUploadErr}</p> : null}
+      {bulkUploadErr ? <p className="mb-base text-xs text-danger">{bulkUploadErr}</p> : null}
       {!readOnly && !dashboardId ? (
-        <p className="mb-base text-meta text-amber-200/90">{t("dashboard:saveForUpload")}</p>
+        <p className="mb-base text-meta text-badge-warning">{t("dashboard:saveForUpload")}</p>
       ) : null}
       {!readOnly ? (
         <p className="mb-soft text-meta text-ink-muted">{t("dashboard:photosDragHint")}</p>
@@ -357,7 +357,7 @@ function GalleryPhotoCard(props: {
             />
           </label>
         </div>
-        {uploadErr ? <p className="text-meta text-red-400">{uploadErr}</p> : null}
+        {uploadErr ? <p className="text-meta text-danger">{uploadErr}</p> : null}
         <input
           type="url"
           placeholder={t("dashboard:fileUrlPlaceholder")}

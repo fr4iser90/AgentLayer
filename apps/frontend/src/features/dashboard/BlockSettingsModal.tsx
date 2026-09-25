@@ -312,7 +312,7 @@ export function BlockSettingsModal({
                   {t("dashboard:blockSettingsTitleLabel")}
                 </span>
                 <input
-                  className="w-full rounded-card border border-line bg-field px-soft py-base text-ink-primary outline-none focus:border-sky-500/50"
+                  className="w-full rounded-card border border-line bg-field px-soft py-base text-ink-primary outline-none focus:border-accent/50"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
@@ -331,15 +331,15 @@ export function BlockSettingsModal({
               <label className="block space-y-tight">
                 <span className="text-meta text-ink-muted">{t("dashboard:blockSettingsDataPath")}</span>
                 <input
-                  className="w-full rounded-card border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary outline-none focus:border-sky-500/50"
+                  className="w-full rounded-card border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary outline-none focus:border-accent/50"
                   value={dataPath}
                   onChange={(e) => setDataPath(e.target.value)}
                   placeholder={t("dashboard:blockSettingsDataPathPlaceholder")}
                 />
                 <span className="text-meta text-ink-muted">{t("dashboard:blockSettingsDataPathHint")}</span>
               </label>
-              <div className="rounded-card border border-sky-500/20 bg-sky-950/20 px-soft py-base text-xs text-sky-100/90">
-                <span className="block text-meta font-medium uppercase tracking-wide text-sky-300/80">
+              <div className="rounded-card border border-accent/20 bg-accent-subtle px-soft py-base text-xs text-badge-accent">
+                <span className="block text-meta font-medium uppercase tracking-wide text-badge-accent">
                   {t("dashboard:blockSettingsPreviewLabel")}
                 </span>
                 {previewText}
@@ -387,7 +387,7 @@ export function BlockSettingsModal({
                   </label>
                   <select
                     id="block-settings-share-target"
-                    className="w-full rounded-card border border-line bg-field px-soft py-base text-ink-primary outline-none focus:border-sky-500/50"
+                    className="w-full rounded-card border border-line bg-field px-soft py-base text-ink-primary outline-none focus:border-accent/50"
                     value={shareKey}
                     onChange={(e) => setShareKey(e.target.value)}
                   >
@@ -404,7 +404,7 @@ export function BlockSettingsModal({
                 </div>
               )}
               {blockTargetIsGone(block.props, shareCatalog, shareCandidates) ? (
-                <p className="rounded-card border border-amber-500/25 bg-amber-950/20 px-soft py-base text-xs text-amber-200/90">
+                <p className="rounded-card border border-warning/25 bg-warning-subtle px-soft py-base text-xs text-badge-warning">
                   {t("dashboard:blockSettingsShareTargetGone")}
                 </p>
               ) : null}
@@ -443,7 +443,7 @@ export function BlockSettingsModal({
                       <button
                         key={preset}
                         type="button"
-                        className="rounded-card border border-line-strong bg-black/30 px-soft py-snug text-xs text-ink-primary hover:border-sky-500/40 hover:bg-sky-950/30"
+                        className="rounded-card border border-line-strong bg-black/30 px-soft py-snug text-xs text-ink-primary hover:border-accent/40 hover:bg-accent-subtle"
                         onClick={() => applyPreset(preset)}
                       >
                         {t(`dashboard:blockSettingsPreset_${preset}`)}

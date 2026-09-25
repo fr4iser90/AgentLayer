@@ -20,7 +20,7 @@ const VARIANTS: Record<ButtonVariant, string> = {
   // Outlined by default. A filled destructive belongs in a confirm dialog, not
   // on every row — the app used to read as "everything red".
   danger:
-    "border border-danger/45 bg-transparent text-danger hover:border-danger hover:bg-danger-subtle active:bg-danger/25",
+    "border border-danger/45 bg-transparent text-badge-danger hover:border-danger hover:bg-danger-subtle active:bg-danger/25",
 };
 
 const SIZES: Record<ButtonSize, string> = {

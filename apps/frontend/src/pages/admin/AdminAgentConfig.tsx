@@ -242,7 +242,7 @@ export function AdminAgentConfig() {
               >
                 <span className="font-mono text-xs">{k.id}</span>
                 {k.writable === false ? (
-                  <span className="ml-base text-meta uppercase text-amber-400/80">
+                  <span className="ml-base text-meta uppercase text-warning">
                     {t("admin:agentConfigKnobsReadOnly")}
                   </span>
                 ) : null}
@@ -284,7 +284,7 @@ export function AdminAgentConfig() {
               })}
             </div>
             {selected.writable === false ? (
-              <p className="text-xs text-amber-300/90">{t("admin:agentConfigKnobsReadOnly")}</p>
+              <p className="text-xs text-badge-warning">{t("admin:agentConfigKnobsReadOnly")}</p>
             ) : null}
             <label className="text-xs text-ink-muted">{t("admin:agentConfigValue")}</label>
             <textarea
@@ -305,7 +305,7 @@ export function AdminAgentConfig() {
               type="button"
               disabled={applyBusy || selected.writable === false}
               onClick={() => void onApply()}
-              className="rounded-tile bg-emerald-700 px-soft py-base text-sm text-ink-on-fill hover:bg-emerald-600 disabled:opacity-50"
+              className="rounded-tile bg-success px-soft py-base text-sm text-ink-on-fill hover:bg-success-hover disabled:opacity-50"
             >
               {applyBusy ? t("admin:agentConfigApplying") : t("admin:agentConfigApplyBtn")}
             </button>
@@ -361,7 +361,7 @@ export function AdminAgentConfig() {
       </header>
 
       {error ? (
-        <p className="mb-soft rounded-tile border border-red-500/40 bg-red-500/10 px-soft py-base text-sm text-red-200">
+        <p className="mb-soft rounded-tile border border-danger/40 bg-danger-subtle px-soft py-base text-sm text-badge-danger">
           {error}
         </p>
       ) : null}
@@ -377,7 +377,7 @@ export function AdminAgentConfig() {
                 <h2 className="text-sm font-medium text-ink-primary">{t("admin:agentConfigModelsList")}</h2>
                 <button
                   type="button"
-                  className="text-xs text-sky-400 hover:underline"
+                  className="text-xs text-accent hover:underline"
                   onClick={() => selectModelOverride(null)}
                 >
                   {t("admin:agentConfigModelsNew")}

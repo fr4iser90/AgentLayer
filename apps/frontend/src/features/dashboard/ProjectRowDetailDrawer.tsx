@@ -220,7 +220,7 @@ export function ProjectRowDetailDrawer(props: {
             ) : runNowWorkspaceId ? (
               <p className="mb-base truncate font-mono text-meta text-ink-muted">{runNowWorkspaceId}</p>
             ) : (
-              <p className="mb-base text-xs text-amber-300/90">{t("dashboard:workspaceRequiredForRun")}</p>
+              <p className="mb-base text-xs text-badge-warning">{t("dashboard:workspaceRequiredForRun")}</p>
             )}
             <textarea
               value={runNowInstructions}
@@ -248,7 +248,7 @@ export function ProjectRowDetailDrawer(props: {
               </button>
             </div>
             {recentRunsErr ? (
-              <div className="text-xs text-red-200/90">{recentRunsErr}</div>
+              <div className="text-xs text-badge-danger">{recentRunsErr}</div>
             ) : recentRuns && recentRuns.length === 0 ? (
               <div className="text-xs text-ink-muted">{t("dashboard:recentRunsNoneYet")}</div>
             ) : recentRuns ? (
@@ -263,7 +263,7 @@ export function ProjectRowDetailDrawer(props: {
                     </div>
                     <div className="mt-tight text-meta text-ink-muted">{String(r.created_at ?? "")}</div>
                     {r.error ? (
-                      <div className="mt-tight text-meta text-red-200/90">{String(r.error)}</div>
+                      <div className="mt-tight text-meta text-badge-danger">{String(r.error)}</div>
                     ) : null}
                   </div>
                 ))}

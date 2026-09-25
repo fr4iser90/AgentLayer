@@ -39,7 +39,7 @@ function GoalActionButtons({
         <Tooltip label={t("chat:goalResume")}>
         <button
             type="button"
-            className="rounded-tile px-snug py-hair text-xs text-amber-100 hover:bg-white/10 disabled:opacity-40"
+            className="rounded-tile px-snug py-hair text-xs text-badge-warning hover:bg-white/10 disabled:opacity-40"
             disabled={disabled}
             onClick={onResume}
           >
@@ -50,7 +50,7 @@ function GoalActionButtons({
         <Tooltip label={t("chat:goalPause")}>
         <button
             type="button"
-            className="rounded-tile px-snug py-hair text-xs text-amber-100 hover:bg-white/10 disabled:opacity-40"
+            className="rounded-tile px-snug py-hair text-xs text-badge-warning hover:bg-white/10 disabled:opacity-40"
             disabled={disabled || blocked}
             onClick={onPause}
           >
@@ -61,7 +61,7 @@ function GoalActionButtons({
       <Tooltip label={t("chat:goalEdit")}>
       <button
           type="button"
-          className="rounded-tile px-snug py-hair text-xs text-amber-100 hover:bg-white/10 disabled:opacity-40"
+          className="rounded-tile px-snug py-hair text-xs text-badge-warning hover:bg-white/10 disabled:opacity-40"
           disabled={disabled}
           onClick={onEdit}
         >
@@ -90,12 +90,12 @@ export function OngoingGoalBar(props: GoalActions) {
   const paused = goal.phase === "paused";
   const blocked = goal.phase === "blocked";
   return (
-    <div className="mb-base flex items-center gap-base rounded-card border border-amber-500/25 bg-amber-950/30 px-soft py-base">
-      <span className="text-amber-200/90" aria-hidden>
+    <div className="mb-base flex items-center gap-base rounded-card border border-warning/25 bg-warning-subtle px-soft py-base">
+      <span className="text-badge-warning" aria-hidden>
         ◎
       </span>
       <div className="min-w-0 flex-1">
-        <div className="text-meta font-semibold uppercase tracking-wide text-amber-200/70">
+        <div className="text-meta font-semibold uppercase tracking-wide text-badge-warning">
           {t("chat:ongoingGoal")}
           {paused ? ` · ${t("chat:ongoingGoalPaused")}` : ""}
           {blocked ? ` · ${t("chat:ongoingGoalBlocked")}` : ""}
@@ -118,7 +118,7 @@ export function PlanModeBanner({ active }: { active: boolean }) {
   const { t } = useTranslation(["chat"]);
   if (!active) return null;
   return (
-    <div className="mb-base rounded-card border border-sky-500/30 bg-sky-950/25 px-soft py-snug text-xs text-sky-100/90">
+    <div className="mb-base rounded-card border border-accent/30 bg-accent-subtle px-soft py-snug text-xs text-badge-accent">
       {t("chat:planModeActive")}
     </div>
   );
@@ -152,19 +152,19 @@ export function SessionGoalTodosStrip({
       : null;
 
   return (
-    <div className="mb-base overflow-hidden rounded-card border border-amber-500/25 bg-amber-950/25">
+    <div className="mb-base overflow-hidden rounded-card border border-warning/25 bg-warning-subtle">
       {liveGoal ? (
-        <div className="flex items-start gap-base border-b border-amber-500/15 px-soft py-base">
-          <span className="mt-hair text-amber-200/90" aria-hidden>
+        <div className="flex items-start gap-base border-b border-warning/15 px-soft py-base">
+          <span className="mt-hair text-badge-warning" aria-hidden>
             ◎
           </span>
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-x-base gap-y-hair text-meta font-semibold uppercase tracking-wide text-amber-200/70">
+            <div className="flex flex-wrap items-center gap-x-base gap-y-hair text-meta font-semibold uppercase tracking-wide text-badge-warning">
               <span>{t("chat:ongoingGoal")}</span>
               {paused ? <span>· {t("chat:ongoingGoalPaused")}</span> : null}
               {blocked ? <span>· {t("chat:ongoingGoalBlocked")}</span> : null}
               {rounds ? (
-                <span className="font-medium normal-case tracking-normal text-amber-100/60">
+                <span className="font-medium normal-case tracking-normal text-badge-warning">
                   {rounds}
                 </span>
               ) : null}
@@ -190,7 +190,7 @@ export function SessionGoalTodosStrip({
       ) : null}
       {todos.length > 0 ? (
         <div className="px-soft py-base">
-          <div className="mb-tight text-meta font-semibold uppercase tracking-wide text-amber-200/60">
+          <div className="mb-tight text-meta font-semibold uppercase tracking-wide text-badge-warning">
             {t("chat:sessionTodosHeading")}{" "}
             <span className="font-medium normal-case tracking-normal text-ink-muted">
               {done}/{todos.length}
@@ -204,7 +204,7 @@ export function SessionGoalTodosStrip({
                   item.status === "completed"
                     ? "text-ink-muted line-through"
                     : item.status === "in_progress"
-                      ? "text-amber-100"
+                      ? "text-badge-warning"
                       : "text-ink-secondary"
                 }`}
                 title={item.content}

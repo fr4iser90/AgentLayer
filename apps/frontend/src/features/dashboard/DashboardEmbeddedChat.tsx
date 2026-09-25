@@ -996,18 +996,18 @@ export function DashboardEmbeddedChat({
               {t("dashboard:embeddedChatNoVisibleYet")}
             </div>
           ) : initErr ? (
-            <div className="mx-soft mb-base rounded-tile border border-red-500/40 bg-red-950/30 px-base py-base text-xs text-red-200">
+            <div className="mx-soft mb-base rounded-tile border border-danger/40 bg-danger-subtle px-base py-base text-xs text-badge-danger">
               {initErr}
             </div>
           ) : (
             <>
               {sendErr ? (
-                <div className="mx-soft mt-base shrink-0 rounded-tile border border-red-500/40 bg-red-950/30 px-base py-snug text-xs text-red-200">
+                <div className="mx-soft mt-base shrink-0 rounded-tile border border-danger/40 bg-danger-subtle px-base py-snug text-xs text-badge-danger">
                   {sendErr}
                 </div>
               ) : null}
               {sendSlowHint ? (
-                <div className="mx-soft mt-base shrink-0 rounded-tile border border-amber-500/30 bg-amber-950/20 px-base py-snug text-xs text-amber-200">
+                <div className="mx-soft mt-base shrink-0 rounded-tile border border-warning/30 bg-warning-subtle px-base py-snug text-xs text-badge-warning">
                   {sendSlowHint}
                 </div>
               ) : null}
@@ -1026,7 +1026,7 @@ export function DashboardEmbeddedChat({
                           key={`${thread?.id ?? "t"}-${i}-${m.role}`}
                           className={`rounded-tile px-base py-snug text-xs ${
                             m.role === "user"
-                              ? "border border-sky-900/40 bg-sky-950/20 text-ink-primary"
+                              ? "border border-accent/40 bg-accent-subtle text-ink-primary"
                               : "border border-line bg-[#1a1a1a] text-ink-primary"
                           }`}
                         >
@@ -1054,7 +1054,7 @@ export function DashboardEmbeddedChat({
                         </li>
                       ) : null}
                       {activeProposalSetId && !readOnly ? (
-                        <li className="rounded-tile border border-emerald-500/20 bg-emerald-950/10 px-base py-snug">
+                        <li className="rounded-tile border border-success/20 bg-success-subtle px-base py-snug">
                           <span className="mb-tight block text-meta font-medium uppercase text-ink-muted">
                             {t("dashboard:assistant")}
                           </span>
@@ -1105,7 +1105,7 @@ export function DashboardEmbeddedChat({
                       size="sm"
                     />
                     {modelsCatalogReady && modelsCatalogHint ? (
-                      <p className="mt-tight text-meta leading-snug text-amber-300/90">{modelsCatalogHint}</p>
+                      <p className="mt-tight text-meta leading-snug text-badge-warning">{modelsCatalogHint}</p>
                     ) : null}
                   </label>
                 </div>
@@ -1187,8 +1187,8 @@ export function DashboardEmbeddedChat({
                   </div>
                 ) : null}
                 {focusedBlockId && !readOnly ? (
-                  <div className="mb-base flex max-w-full items-center gap-snug rounded-tile border border-emerald-500/25 bg-emerald-950/20 px-base py-tight text-meta text-emerald-100">
-                    <span className="shrink-0 text-emerald-400/90">◎</span>
+                  <div className="mb-base flex max-w-full items-center gap-snug rounded-tile border border-success/25 bg-success-subtle px-base py-tight text-meta text-badge-success">
+                    <span className="shrink-0 text-success">◎</span>
                     <span className="min-w-0 truncate">
                       {focusedBlockLabel?.trim() || focusedBlockId}
                     </span>
@@ -1196,7 +1196,7 @@ export function DashboardEmbeddedChat({
                       <Tooltip label={t("dashboard:chatFocusedBlockClear")}>
                       <button
                           type="button"
-                          className="shrink-0 rounded-tile px-tight text-emerald-200/70 hover:bg-emerald-900/40 hover:text-white"
+                          className="shrink-0 rounded-tile px-tight text-badge-success hover:bg-success-subtle hover:text-white"
                           onClick={onClearFocusedBlock}
                           aria-label={t("dashboard:chatFocusedBlockClear")}
                         >
@@ -1271,7 +1271,7 @@ export function DashboardEmbeddedChat({
                     type="button"
                     disabled={!canSend}
                     onClick={() => void send()}
-                    className="shrink-0 rounded-card bg-sky-600 px-soft py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+                    className="shrink-0 rounded-card bg-accent px-soft py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
                   >
                     {t("dashboard:send")}
                   </button>

@@ -247,7 +247,7 @@ export function FriendsSettings() {
           onClick={() => setActiveTab("friends")}
           className={`px-soft py-base text-sm font-medium transition-colors ${
             activeTab === "friends"
-              ? "text-ink-primary border-b-2 border-sky-500"
+              ? "text-ink-primary border-b-2 border-accent"
               : "text-ink-muted hover:text-white"
           }`}
         >
@@ -260,7 +260,7 @@ export function FriendsSettings() {
           onClick={() => setActiveTab("manual")}
           className={`px-soft py-base text-sm font-medium transition-colors ${
             activeTab === "manual"
-              ? "text-ink-primary border-b-2 border-sky-500"
+              ? "text-ink-primary border-b-2 border-accent"
               : "text-ink-muted hover:text-white"
           }`}
         >
@@ -271,14 +271,14 @@ export function FriendsSettings() {
       {loading ? (
         <p className="text-sm text-ink-muted">{t("settings:agentLoading")}</p>
       ) : err ? (
-        <p className="text-sm text-amber-400">{err}</p>
+        <p className="text-sm text-warning">{err}</p>
       ) : activeTab === "friends" ? (
         <div className="space-y-broad">
           {/* Incoming Requests */}
           {incomingRequests.length > 0 && (
             <div className="rounded-sheet border border-line bg-card overflow-hidden">
               <div className="p-wide border-b border-line">
-                <h3 className="font-medium text-amber-300">{t("settings:friendsIncomingTitle")}</h3>
+                <h3 className="font-medium text-badge-warning">{t("settings:friendsIncomingTitle")}</h3>
               </div>
               <div className="divide-y divide-line">
                 {incomingRequests.map((req) => (
@@ -291,7 +291,7 @@ export function FriendsSettings() {
                       <button
                         type="button"
                         onClick={() => acceptRequest(req.id)}
-                        className="px-soft py-snug rounded-tile bg-emerald-600 text-ink-on-fill text-sm hover:bg-emerald-500"
+                        className="px-soft py-snug rounded-tile bg-success text-ink-on-fill text-sm hover:bg-success-hover"
                       >
                         {t("settings:friendsAcceptBtn")}
                       </button>
@@ -313,7 +313,7 @@ export function FriendsSettings() {
           {outgoingRequests.length > 0 && (
             <div className="rounded-sheet border border-line bg-card overflow-hidden">
               <div className="p-wide border-b border-line">
-                <h3 className="font-medium text-sky-300">{t("settings:friendsOutgoingTitle")}</h3>
+                <h3 className="font-medium text-badge-accent">{t("settings:friendsOutgoingTitle")}</h3>
               </div>
               <div className="divide-y divide-line">
                 {outgoingRequests.map((req) => (
@@ -358,7 +358,7 @@ export function FriendsSettings() {
                     type="button"
                     onClick={sendFriendRequest}
                     disabled={!newRequestEmail.trim() || saving}
-                    className="px-wide py-base rounded-tile bg-sky-600 text-ink-on-fill text-sm hover:bg-sky-500 disabled:opacity-50"
+                    className="px-wide py-base rounded-tile bg-accent text-ink-on-fill text-sm hover:bg-accent-hover disabled:opacity-50"
                   >
                     {t("settings:friendsSendRequest")}
                   </button>
@@ -379,7 +379,7 @@ export function FriendsSettings() {
           {confirmedFriends.length > 0 && (
             <div className="rounded-sheet border border-line bg-card overflow-hidden">
               <div className="p-wide border-b border-line">
-                <h3 className="flex items-center gap-snug font-medium text-emerald-300">
+                <h3 className="flex items-center gap-snug font-medium text-badge-success">
                   <CircleCheck aria-hidden className="h-4 w-4" />
                   {t("settings:friendsConfirmedTitle")}
                 </h3>
@@ -402,7 +402,7 @@ export function FriendsSettings() {
                       <button
                         type="button"
                         onClick={() => openEditFriend(friend)}
-                        className="text-xs text-sky-400 hover:text-sky-300"
+                        className="text-xs text-accent hover:text-badge-accent"
                       >
                         {t("settings:friendsEditWithIcon")}
                       </button>
@@ -454,7 +454,7 @@ export function FriendsSettings() {
                     className="p-wide flex items-start justify-between group hover:bg-white/[0.02]"
                   >
                     <div className="space-y-tight cursor-pointer flex-1">
-                      <div className="font-medium text-ink-primary group-hover:text-sky-400">
+                      <div className="font-medium text-ink-primary group-hover:text-accent">
                         {person.name}
                       </div>
                       {person.nickname && (
@@ -585,7 +585,7 @@ export function FriendsSettings() {
                   type="button"
                   onClick={addKnownPerson}
                   disabled={!newPerson.name.trim() || saving}
-                  className="px-wide py-base rounded-tile bg-sky-600 text-ink-on-fill text-sm hover:bg-sky-500 disabled:opacity-50"
+                  className="px-wide py-base rounded-tile bg-accent text-ink-on-fill text-sm hover:bg-accent-hover disabled:opacity-50"
                 >
                   {t("settings:friendsAdd")}
                 </button>

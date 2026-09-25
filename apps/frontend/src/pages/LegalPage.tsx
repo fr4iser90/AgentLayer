@@ -40,7 +40,7 @@ export function LegalPage() {
     <div className="h-full min-h-0 overflow-y-auto">
       <div className="mx-auto max-w-measure px-broad py-page">
         <p className="mb-broad">
-          <Link to="/login" className="text-sm text-sky-400 hover:underline">
+          <Link to="/login" className="text-sm text-accent hover:underline">
             {t("legal.back")}
           </Link>
         </p>

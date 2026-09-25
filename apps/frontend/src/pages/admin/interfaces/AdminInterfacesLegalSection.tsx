@@ -143,14 +143,14 @@ export function AdminInterfacesLegalSection() {
 
       {showPages ? (
         <div className="mt-wide flex flex-wrap gap-soft text-xs">
-          <Link to="/legal/impressum" className="text-sky-400 hover:underline" target="_blank" rel="noopener noreferrer">
+          <Link to="/legal/impressum" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">
             {t("admin:ifPlatformLegalPreviewImpressum")}
           </Link>
-          <Link to="/legal/privacy" className="text-sky-400 hover:underline" target="_blank" rel="noopener noreferrer">
+          <Link to="/legal/privacy" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">
             {t("admin:ifPlatformLegalPreviewPrivacy")}
           </Link>
           {s.legalTermsEnabled ? (
-            <Link to="/legal/terms" className="text-sky-400 hover:underline" target="_blank" rel="noopener noreferrer">
+            <Link to="/legal/terms" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">
               {t("admin:ifPlatformLegalPreviewTerms")}
             </Link>
           ) : null}

@@ -134,11 +134,11 @@ export function OrgSetupPage() {
             required
           />
           <p className="text-meta text-ink-muted">{t("org:setupVerticalProfileHint")}</p>
-          {err ? <p className="text-sm text-red-400">{err}</p> : null}
+          {err ? <p className="text-sm text-danger">{err}</p> : null}
           <button
             type="submit"
             disabled={busy}
-            className="rounded-tile bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+            className="rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
           >
             {t("org:setupContinue")}
           </button>
@@ -179,11 +179,11 @@ export function OrgSetupPage() {
             ) : null}
           </div>
 
-          {err ? <p className="text-sm text-red-400">{err}</p> : null}
+          {err ? <p className="text-sm text-danger">{err}</p> : null}
           <button
             type="button"
             disabled={busy}
-            className="rounded-tile bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+            className="rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
             onClick={() => void finishSetup()}
           >
             {busy ? t("org:setupFinishing") : t("org:setupFinish")}

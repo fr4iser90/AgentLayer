@@ -109,7 +109,7 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
   };
 
   return (
-    <div className="max-h-[min(42vh,320px)] overflow-y-auto border-b border-sky-500/20 bg-sky-950/80 px-soft py-base">
+    <div className="max-h-[min(42vh,320px)] overflow-y-auto border-b border-accent/20 bg-accent-subtle px-soft py-base">
       <div className="mx-auto max-w-page space-y-base">
         <div className="flex flex-wrap items-center gap-base">
           <div className="flex rounded-tile border border-line p-hair text-meta">
@@ -131,7 +131,7 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
           <div className="ml-auto flex gap-tight">
             <button
               type="button"
-              className={`rounded-tile px-base py-hair text-meta ${media.queue.shuffle ? "bg-sky-600/40 text-white" : "text-ink-muted hover:bg-white/5"}`}
+              className={`rounded-tile px-base py-hair text-meta ${media.queue.shuffle ? "bg-accent-subtle text-white" : "text-ink-muted hover:bg-white/5"}`}
               onClick={media.toggleShuffle}
             >
               {t("dashboard:mediaFooterShuffle")}
@@ -170,7 +170,7 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
                   <li
                     key={`${id ?? idx}-${idx}`}
                     className={`flex items-center gap-base rounded-tile px-base py-snug text-xs ${
-                      playing ? "bg-sky-800/50 text-sky-50" : "text-ink-primary hover:bg-white/5"
+                      playing ? "bg-accent text-badge-accent" : "text-ink-primary hover:bg-white/5"
                     }`}
                   >
                     <button
@@ -206,7 +206,7 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
                   type="button"
                   className={`rounded-pill px-base py-hair text-meta ${
                     media.libraryFilter === f
-                      ? "bg-sky-600/50 text-ink-primary"
+                      ? "bg-accent text-ink-primary"
                       : "border border-line text-ink-muted hover:bg-white/5"
                   }`}
                   onClick={() => media.setLibraryFilter(f)}
@@ -238,7 +238,7 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
                 <button
                   type="button"
                   disabled={busy || !streamUrl.trim()}
-                  className="rounded-tile bg-sky-700/60 px-base py-tight text-meta text-ink-primary hover:bg-sky-600/60 disabled:opacity-40"
+                  className="rounded-tile bg-accent px-base py-tight text-meta text-ink-primary hover:bg-accent-hover disabled:opacity-40"
                   onClick={onAddStream}
                 >
                   {t("dashboard:mediaFooterAddPlay")}
@@ -337,7 +337,7 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
           </>
         )}
 
-        {err ? <p className="text-meta text-red-300">{err}</p> : null}
+        {err ? <p className="text-meta text-badge-danger">{err}</p> : null}
       </div>
     </div>
   );

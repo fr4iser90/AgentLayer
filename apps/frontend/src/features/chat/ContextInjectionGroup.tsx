@@ -46,15 +46,15 @@ export const ContextInjectionGroup = memo(function ContextInjectionGroup({
 
   return (
     <details className="mb-soft group">
-      <summary className="inline-flex max-w-full cursor-pointer list-none flex-wrap items-center gap-snug rounded-tile border border-amber-500/35 bg-amber-950/35 px-firm py-snug text-meta font-medium text-amber-100/90 marker:content-none [&::-webkit-details-marker]:hidden hover:bg-amber-950/50">
+      <summary className="inline-flex max-w-full cursor-pointer list-none flex-wrap items-center gap-snug rounded-tile border border-warning/35 bg-warning-subtle px-firm py-snug text-meta font-medium text-badge-warning marker:content-none [&::-webkit-details-marker]:hidden hover:bg-warning-subtle">
         <span className="relative flex h-1.5 w-1.5 shrink-0" aria-hidden>
-          <span className="absolute inline-flex h-full w-full rounded-pill bg-amber-400/80 opacity-75" />
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-pill bg-amber-300" />
+          <span className="absolute inline-flex h-full w-full rounded-pill bg-warning opacity-75" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-pill bg-warning" />
         </span>
         <span>{t("chat:contextInjectGroupTitle", { count: items.length })}</span>
         {totalChars > 0 ? (
           <span
-            className="text-meta font-normal text-amber-200/55"
+            className="text-meta font-normal text-badge-warning"
             title={t("chat:contextInjectTokensHint")}
           >
             {t("chat:contextInjectBudget", {
@@ -64,19 +64,19 @@ export const ContextInjectionGroup = memo(function ContextInjectionGroup({
           </span>
         ) : null}
         {highlight.length > 0 ? (
-          <span className="max-w-chipWide truncate text-meta font-normal text-amber-200/65">
+          <span className="max-w-chipWide truncate text-meta font-normal text-badge-warning">
             {highlight.join(" · ")}
             {more > 0 ? ` · +${more}` : ""}
           </span>
         ) : null}
-        <span className="text-meta font-normal text-amber-200/55 group-open:hidden">
+        <span className="text-meta font-normal text-badge-warning group-open:hidden">
           {t("chat:contextInjectExpandHint")}
         </span>
-        <span className="hidden text-meta font-normal text-amber-200/55 group-open:inline">
+        <span className="hidden text-meta font-normal text-badge-warning group-open:inline">
           {t("chat:contextInjectCollapseHint")}
         </span>
       </summary>
-      <div className="mt-base flex flex-col gap-tight border-l border-amber-500/20 pl-base">
+      <div className="mt-base flex flex-col gap-tight border-l border-warning/20 pl-base">
         {sorted.map((it) => (
           <ContextInjectionBadge
             key={it.key}

@@ -62,9 +62,9 @@ const SHELL_CLASS_CHAT =
 
 function diffLineClass(line: string): string {
   if (line.startsWith("+++") || line.startsWith("---")) return "text-ink-muted";
-  if (line.startsWith("@@")) return "text-sky-400/90";
-  if (line.startsWith("+")) return "text-emerald-300/95";
-  if (line.startsWith("-")) return "text-red-300/95";
+  if (line.startsWith("@@")) return "text-accent";
+  if (line.startsWith("+")) return "text-badge-success";
+  if (line.startsWith("-")) return "text-badge-danger";
   return "text-ink-secondary";
 }
 
@@ -94,7 +94,7 @@ function PanelTabs({
         <button type="button" className={tabClass(panelTab === "changes")} onClick={() => onTab("changes")}>
           Changes
           {changesBadge ? (
-            <span className="ml-tight rounded-tile bg-amber-600/40 px-tight py-px text-meta text-amber-100">{changesBadge}</span>
+            <span className="ml-tight rounded-tile bg-warning-subtle px-tight py-px text-meta text-badge-warning">{changesBadge}</span>
           ) : null}
         </button>
       ) : null}
@@ -115,7 +115,7 @@ function DiffView({ text, truncated }: { text: string; truncated: boolean }) {
         ))}
       </div>
       {truncated ? (
-        <p className="mt-base text-meta text-amber-300/80">{t("dashboard:diffTruncated")}</p>
+        <p className="mt-base text-meta text-badge-warning">{t("dashboard:diffTruncated")}</p>
       ) : null}
     </>
   );
@@ -431,7 +431,7 @@ export function CodingWorkspacePanels({
           {panelTab === "files" ? (
             <>
               {listError ? (
-                <li className="px-base py-base text-red-300/90">{listError}</li>
+                <li className="px-base py-base text-badge-danger">{listError}</li>
               ) : entries.length === 0 && !listLoading ? (
                 <li className="px-base py-base text-ink-muted">{t("dashboard:filesEmpty")}</li>
               ) : (
@@ -461,7 +461,7 @@ export function CodingWorkspacePanels({
                       )}
                       <span className="min-w-0 flex-1 truncate text-ink-primary">{e.name}</span>
                       {e.is_symlink ? (
-                        <span className="text-meta text-amber-400/80">{t("workspace:treeEntrySymlink")}</span>
+                        <span className="text-meta text-warning">{t("workspace:treeEntrySymlink")}</span>
                       ) : null}
                     </button>
                   </li>
@@ -471,7 +471,7 @@ export function CodingWorkspacePanels({
           ) : changesLoading && !changesSummary ? (
             <li className="px-base py-base text-ink-muted">{t("dashboard:loading")}</li>
           ) : changesError ? (
-            <li className="px-base py-base text-red-300/90">{changesError}</li>
+            <li className="px-base py-base text-badge-danger">{changesError}</li>
           ) : !changesSummary?.has_changes ? (
             <li className="px-base py-base text-ink-muted">{t("dashboard:noUncommittedChanges")}</li>
           ) : (changesSummary.files ?? []).length === 0 ? (
@@ -494,7 +494,7 @@ export function CodingWorkspacePanels({
           )}
         </ul>
         {panelTab === "files" && listTruncated ? (
-          <p className="shrink-0 border-t border-line px-base py-tight text-meta text-amber-300/80">
+          <p className="shrink-0 border-t border-line px-base py-tight text-meta text-badge-warning">
             {t("dashboard:listTruncated")}
           </p>
         ) : null}
@@ -518,7 +518,7 @@ export function CodingWorkspacePanels({
               {fileLoading ? (
                 <p className="text-xs text-ink-muted">{t("dashboard:loading")}</p>
               ) : fileError ? (
-                <p className="text-xs text-red-300/90">{fileError}</p>
+                <p className="text-xs text-badge-danger">{fileError}</p>
               ) : fileContent != null ? (
                 <pre className="whitespace-pre-wrap break-words font-mono text-meta leading-relaxed text-ink-primary">
                   {fileContent}
@@ -530,7 +530,7 @@ export function CodingWorkspacePanels({
           ) : changeDiffLoading ? (
             <p className="text-xs text-ink-muted">{t("dashboard:loadingDiff")}</p>
           ) : changeDiffError ? (
-            <p className="text-xs text-red-300/90">{changeDiffError}</p>
+            <p className="text-xs text-badge-danger">{changeDiffError}</p>
           ) : changeDiff != null ? (
             <DiffView text={changeDiff} truncated={changeDiffTruncated} />
           ) : changesSummary?.stat && !selectedChangePath ? (
@@ -546,7 +546,7 @@ export function CodingWorkspacePanels({
           {panelTab === "changes" && selectedChangePath ? (
             <button
               type="button"
-              className="mt-soft text-meta text-sky-400/90 hover:underline"
+              className="mt-soft text-meta text-accent hover:underline"
               onClick={() => {
                 const parts = selectedChangePath.split("/").filter(Boolean);
                 parts.pop();

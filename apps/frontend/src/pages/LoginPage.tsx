@@ -65,7 +65,7 @@ export function LoginPage() {
         {setupStatus?.needs_setup ? (
           <p className="mt-wide text-sm text-ink-muted">
             {t("auth:instanceNotSetup")}{" "}
-            <Link to="/setup" className="text-sky-400 hover:underline">
+            <Link to="/setup" className="text-accent hover:underline">
               {t("auth:startSetup")}
             </Link>
           </p>
@@ -80,7 +80,7 @@ export function LoginPage() {
               value={email}
               onChange={(ev) => setEmail(ev.target.value)}
               required
-              className="rounded-card border border-line bg-field px-soft py-base text-ink-primary placeholder:text-field-placeholder focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              className="rounded-card border border-line bg-field px-soft py-base text-ink-primary placeholder:text-field-placeholder focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             />
           </label>
           <label className="flex flex-col gap-snug text-sm">
@@ -92,18 +92,18 @@ export function LoginPage() {
               value={password}
               onChange={(ev) => setPassword(ev.target.value)}
               required
-              className="rounded-card border border-line bg-field px-soft py-base text-ink-primary placeholder:text-field-placeholder focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              className="rounded-card border border-line bg-field px-soft py-base text-ink-primary placeholder:text-field-placeholder focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             />
           </label>
           {error ? (
-            <p className="text-sm text-red-400" role="alert">
+            <p className="text-sm text-danger" role="alert">
               {error}
             </p>
           ) : null}
           <button
             type="submit"
             disabled={pending || loading}
-            className="rounded-card bg-sky-600 px-wide py-firm text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+            className="rounded-card bg-accent px-wide py-firm text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
           >
             {pending ? t("auth:signingIn") : t("auth:signIn")}
           </button>

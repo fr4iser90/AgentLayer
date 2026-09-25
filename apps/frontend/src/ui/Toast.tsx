@@ -259,7 +259,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                             item.action?.onClick();
                             dismiss(item.id);
                           }}
-                          className="shrink-0 rounded-tile px-base py-tight text-label font-medium text-accent hover:bg-accent-subtle"
+                          className="shrink-0 rounded-tile px-base py-tight text-label font-medium text-badge-accent hover:bg-accent-subtle"
                         >
                           {item.action.label}
                         </button>
@@ -310,7 +310,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                           item.action?.onClick();
                           dismiss(item.id);
                         }}
-                        className="shrink-0 rounded-tile px-base py-tight text-label font-medium text-accent hover:bg-accent-subtle"
+                        className="shrink-0 rounded-tile px-base py-tight text-label font-medium text-badge-accent hover:bg-accent-subtle"
                       >
                         {item.action.label}
                       </button>

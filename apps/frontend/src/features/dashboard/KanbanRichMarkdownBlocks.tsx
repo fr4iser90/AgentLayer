@@ -131,7 +131,7 @@ export function KanbanBlockBody(props: {
           {!readOnly ? (
             <button
               type="button"
-              className="rounded-tile bg-sky-600/80 px-soft py-snug text-xs font-medium text-ink-primary hover:bg-sky-500"
+              className="rounded-tile bg-accent px-soft py-snug text-xs font-medium text-ink-primary hover:bg-accent-hover"
               onClick={addColumn}
             >
               {t("dashboard:kanbanAddColumn")}
@@ -143,7 +143,7 @@ export function KanbanBlockBody(props: {
           <div className="mb-soft flex justify-end">
             <button
               type="button"
-              className="rounded-tile bg-sky-600/80 px-soft py-snug text-xs font-medium text-ink-primary hover:bg-sky-500"
+              className="rounded-tile bg-accent px-soft py-snug text-xs font-medium text-ink-primary hover:bg-accent-hover"
               onClick={addColumn}
             >
               {t("dashboard:kanbanAddColumn")}
@@ -233,7 +233,7 @@ export function KanbanBlockBody(props: {
             {!readOnly ? (
               <button
                 type="button"
-                className="dashboard-grid-no-drag mt-base rounded-tile border border-dashed border-line-strong py-snug text-xs text-ink-muted hover:border-sky-500/40 hover:text-sky-300"
+                className="dashboard-grid-no-drag mt-base rounded-tile border border-dashed border-line-strong py-snug text-xs text-ink-muted hover:border-accent/40 hover:text-badge-accent"
                 onClick={() => addCard(ci)}
               >
                 {t("dashboard:kanbanAddCard")}
@@ -257,10 +257,10 @@ const mdClass = {
   ul: "my-base list-disc pl-roomy text-ink-primary",
   ol: "my-base list-decimal pl-roomy text-ink-primary",
   li: "my-hair",
-  a: "text-sky-400 underline hover:text-sky-300",
-  code: "rounded-tile bg-white/10 px-tight py-hair font-mono text-body text-sky-200",
+  a: "text-accent underline hover:text-badge-accent",
+  code: "rounded-tile bg-white/10 px-tight py-hair font-mono text-body text-badge-accent",
   pre: "my-base overflow-x-auto rounded-card border border-line bg-black/50 p-soft text-sm",
-  blockquote: "border-l-2 border-sky-500/50 pl-soft italic text-ink-muted",
+  blockquote: "border-l-2 border-accent/50 pl-soft italic text-ink-muted",
   table: "my-base w-full border-collapse text-sm",
   th: "border border-line bg-white/5 px-base py-tight text-left text-ink-primary",
   td: "border border-line px-base py-tight text-ink-primary",
@@ -341,7 +341,7 @@ export function RichMarkdownBlockBody(props: {
         <div>
           <label className="mb-tight block text-meta uppercase text-ink-muted">{t("dashboard:markdownLabel")}</label>
           <textarea
-            className="dashboard-grid-no-drag min-h-[220px] w-full resize-y rounded-card border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary outline-none focus:border-sky-500/50"
+            className="dashboard-grid-no-drag min-h-[220px] w-full resize-y rounded-card border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary outline-none focus:border-accent/50"
             placeholder={placeholder}
             value={text}
             onChange={(e) => setData((d) => setPath(d, dp, e.target.value))}

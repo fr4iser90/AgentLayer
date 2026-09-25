@@ -47,7 +47,7 @@ export function HarnessRunContextBar({ auth }: Props) {
       </div>
       <Link
         to="/admin/agent-config"
-        className="shrink-0 rounded-tile border border-sky-500/40 bg-sky-950/30 px-firm py-tight text-meta text-sky-200 hover:bg-sky-950/50"
+        className="shrink-0 rounded-tile border border-accent/40 bg-accent-subtle px-firm py-tight text-meta text-badge-accent hover:bg-accent-subtle"
       >
         {t("admin:benchHarnessContextEdit")}
       </Link>

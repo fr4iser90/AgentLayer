@@ -112,7 +112,7 @@ export function FormulaCalcBlockBody({
     <div className="flex h-full min-h-0 flex-col gap-soft overflow-auto p-tight text-sm">
       {title ? <h3 className="font-medium text-ink-primary">{title}</h3> : null}
       {(disclaimer || t("dashboard:formulaDisclaimer")) && (
-        <p className="rounded-tile border border-amber-500/30 bg-amber-500/10 px-base py-tight text-xs text-amber-100">
+        <p className="rounded-tile border border-warning/30 bg-warning-subtle px-base py-tight text-xs text-badge-warning">
           {disclaimer || t("dashboard:formulaDisclaimer")}
         </p>
       )}
@@ -169,14 +169,14 @@ export function FormulaCalcBlockBody({
         {!readOnly ? (
           <button
             type="submit"
-            className="rounded-tile bg-sky-600 px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-sky-500"
+            className="rounded-tile bg-accent px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-accent-hover"
           >
             {t("dashboard:formulaCalculate")}
           </button>
         ) : null}
       </form>
       {formulaNote ? <p className="font-mono text-meta text-ink-muted">{formulaNote}</p> : null}
-      {error ? <p className="text-xs text-red-300">{error}</p> : null}
+      {error ? <p className="text-xs text-badge-danger">{error}</p> : null}
       {results ? (
         <ul className="space-y-tight text-ink-primary">
           {outputDefs.map((o) => (

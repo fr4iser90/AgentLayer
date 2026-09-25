@@ -8,12 +8,12 @@ export function AdminScheduledJobs() {
       <h1 className="text-2xl font-semibold text-ink-primary">{t("admin:pluginCronTitle")}</h1>
       <p className="mt-wide text-sm text-ink-muted">{t("admin:pluginCronIntro")}</p>
       <p className="mt-wide text-sm text-ink-muted">
-        <Link to="/admin/schedules" className="text-sky-400 hover:underline">
+        <Link to="/admin/schedules" className="text-accent hover:underline">
           {t("admin:schedulesTitle")}
         </Link>
       </p>
       <p className="mt-wide text-sm text-ink-muted">{t("admin:pluginCronLlmNote")}</p>
-      <p className="mt-wide text-sm text-amber-200/90">{t("admin:pluginCronNoApi")}</p>
+      <p className="mt-wide text-sm text-badge-warning">{t("admin:pluginCronNoApi")}</p>
     </div>
   );
 }

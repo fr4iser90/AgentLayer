@@ -244,7 +244,7 @@ function AccessStateControl({
           className={`px-base py-tight ${
             value === state
               ? state === "allow"
-                ? "bg-emerald-500/25 text-emerald-100"
+                ? "bg-success-subtle text-badge-success"
                 : state === "deny"
                   ? "bg-danger-subtle text-badge-danger"
                   : "bg-white/15 text-ink-primary"
@@ -740,23 +740,23 @@ export function AdminInterfacesLlmSection({
           <section className="rounded-sheet border border-line bg-card p-roomy">
             <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifLlmEndpointsTitle")}</h2>
             <p className="mt-base text-xs text-ink-muted">{t("admin:ifLlmEndpointsIntro")}</p>
-            <div className="mt-wide rounded-card border border-sky-400/25 bg-sky-500/10 p-wide">
-              <h3 className="text-sm font-medium text-sky-100">{t("admin:ifLlmActiveCatalogTitle")}</h3>
-              <p className="mt-tight text-xs text-sky-100/75">{t("admin:ifLlmActiveCatalogIntro")}</p>
+            <div className="mt-wide rounded-card border border-accent/25 bg-accent-subtle p-wide">
+              <h3 className="text-sm font-medium text-badge-accent">{t("admin:ifLlmActiveCatalogTitle")}</h3>
+              <p className="mt-tight text-xs text-badge-accent">{t("admin:ifLlmActiveCatalogIntro")}</p>
               <div className="mt-soft grid gap-soft xl:grid-cols-2">
                 {accessProviderGroups.map((group) => (
                   <div key={group.id} className="rounded-tile border border-line bg-black/25 p-soft">
                     <div className="flex items-start justify-between gap-soft">
                       <div>
                         <h4 className="text-xs font-semibold text-ink-primary">{group.title}</h4>
-                        <p className="mt-tight text-meta text-sky-100/70">{group.intro}</p>
+                        <p className="mt-tight text-meta text-badge-accent">{group.intro}</p>
                       </div>
                       <span className="rounded-tile bg-white/10 px-snug py-hair font-mono text-meta text-ink-secondary">
                         {group.providers.length}
                       </span>
                     </div>
                     {group.providers.length === 0 ? (
-                      <p className="mt-soft text-xs text-amber-200">{group.empty}</p>
+                      <p className="mt-soft text-xs text-badge-warning">{group.empty}</p>
                     ) : (
                       <div className="mt-soft space-y-base">
                         {group.providers.map((provider) => {
@@ -800,20 +800,20 @@ export function AdminInterfacesLlmSection({
               </div>
             </div>
             {operatorEnvImportGroups.map((group) => (
-              <div key={group.kind} className="mt-wide rounded-card border border-amber-400/25 bg-amber-500/10 p-wide">
+              <div key={group.kind} className="mt-wide rounded-card border border-warning/25 bg-warning-subtle p-wide">
                 <div className="flex flex-col gap-soft sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <h3 className="text-sm font-medium text-amber-100">
+                    <h3 className="text-sm font-medium text-badge-warning">
                       {t("admin:envProviderFoundTitle", { count: group.providers.length })}
                     </h3>
-                    <p className="mt-tight text-xs text-amber-100/75">
+                    <p className="mt-tight text-xs text-badge-warning">
                       {t("admin:envProviderFoundIntro", { prefix: group.envPrefix })}
                     </p>
                   </div>
                   <button
                     type="button"
                     disabled={s.envOperatorImporting === group.kind}
-                    className="rounded-tile bg-amber-500 px-soft py-snug text-sm font-medium text-black hover:bg-amber-400 disabled:opacity-50"
+                    className="rounded-tile bg-warning px-soft py-snug text-sm font-medium text-black hover:bg-warning-hover disabled:opacity-50"
                     onClick={() => void s.importOperatorEnvProviders(group.kind)}
                   >
                     {s.envOperatorImporting === group.kind ? t("admin:envLlmImporting") : t("admin:envLlmImportButton")}
@@ -822,7 +822,7 @@ export function AdminInterfacesLlmSection({
                 <div className="mt-soft space-y-base">
                   {group.providers.map((p) => (
                     <details key={p.provider_id} className="rounded-tile border border-line bg-black/25 p-soft">
-                      <summary className="cursor-pointer text-xs text-amber-100">
+                      <summary className="cursor-pointer text-xs text-badge-warning">
                         <span className="font-mono">{p.provider_id}</span> · {p.label}
                         {p.already_in_db ? ` · ${t("admin:envLlmAlreadyInDb")}` : ""}
                       </summary>
@@ -842,12 +842,12 @@ export function AdminInterfacesLlmSection({
                         </p>
                       </div>
                       <details className="mt-base">
-                        <summary className="cursor-pointer text-meta text-amber-100/80">
+                        <summary className="cursor-pointer text-meta text-badge-warning">
                           {t("admin:envLlmCleanupChecklist")}
                         </summary>
                         <ul className="mt-tight grid gap-tight sm:grid-cols-2">
                           {p.cleanup_keys.map((key) => (
-                            <li key={key} className="font-mono text-meta text-amber-100/70">
+                            <li key={key} className="font-mono text-meta text-badge-warning">
                               {key}
                             </li>
                           ))}
@@ -857,7 +857,7 @@ export function AdminInterfacesLlmSection({
                   ))}
                 </div>
                 {s.envOperatorCleanupNotes[group.kind] ? (
-                  <p className="mt-soft text-xs text-amber-100/75">{s.envOperatorCleanupNotes[group.kind]}</p>
+                  <p className="mt-soft text-xs text-badge-warning">{s.envOperatorCleanupNotes[group.kind]}</p>
                 ) : null}
               </div>
             ))}
@@ -876,14 +876,14 @@ export function AdminInterfacesLlmSection({
                     </div>
                     <button
                       type="button"
-                      className="mt-soft rounded-tile border border-sky-500/40 bg-sky-500/10 px-soft py-snug text-xs text-sky-200 hover:bg-sky-500/20"
+                      className="mt-soft rounded-tile border border-accent/40 bg-accent-subtle px-soft py-snug text-xs text-badge-accent hover:bg-accent-subtle"
                       onClick={() => addOperatorEndpoint(group.kind)}
                     >
                       {t("admin:ifMemAddEndpoint")}
                     </button>
                     <div className="mt-soft space-y-soft">
                       {group.endpoints.length === 0 ? (
-                        <p className="rounded-tile border border-amber-400/20 bg-amber-500/10 px-soft py-base text-xs text-amber-100">
+                        <p className="rounded-tile border border-warning/20 bg-warning-subtle px-soft py-base text-xs text-badge-warning">
                           {adminText(group.metadata.empty_i18n_key)}
                         </p>
                       ) : null}
@@ -912,7 +912,7 @@ export function AdminInterfacesLlmSection({
                               db
                             </span>
                             {endpoint.enabled ? null : (
-                              <span className="rounded-tile bg-amber-500/15 px-snug py-hair text-meta text-amber-100">
+                              <span className="rounded-tile bg-warning-subtle px-snug py-hair text-meta text-badge-warning">
                                 {t("admin:off")}
                               </span>
                             )}
@@ -1142,14 +1142,14 @@ export function AdminInterfacesLlmSection({
               <div className="mt-wide flex flex-wrap items-center gap-soft">
                 <button
                   type="button"
-                  className="rounded-tile bg-sky-500 px-soft py-snug text-sm font-medium text-ink-on-fill hover:bg-sky-400 disabled:opacity-50"
+                  className="rounded-tile bg-accent px-soft py-snug text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
                   disabled={policySaving || policyLoading}
                   onClick={() => void saveModelAccessPolicy()}
                 >
                   {policySaving ? t("admin:modelAccessSaving") : t("admin:modelAccessSave")}
                 </button>
                 {policyMsg ? (
-                  <span className={`text-xs ${policyMsg.ok ? "text-emerald-300" : "text-amber-300"}`}>
+                  <span className={`text-xs ${policyMsg.ok ? "text-badge-success" : "text-badge-warning"}`}>
                     {policyMsg.text}
                   </span>
                 ) : null}
@@ -1168,7 +1168,7 @@ export function AdminInterfacesLlmSection({
                     </span>
                   </div>
                   {group.providers.length === 0 ? (
-                    <p className="mt-soft rounded-tile border border-amber-400/20 bg-amber-500/10 px-soft py-base text-xs text-amber-100">
+                    <p className="mt-soft rounded-tile border border-warning/20 bg-warning-subtle px-soft py-base text-xs text-badge-warning">
                       {group.empty}
                     </p>
                   ) : (
@@ -1223,7 +1223,7 @@ export function AdminInterfacesLlmSection({
               ))}
             </div>
             {modelAccessProviderGroups.length === 0 ? (
-              <p className="mt-wide text-xs text-amber-300/90">{t("admin:ifLlmChatVisibilityEmpty")}</p>
+              <p className="mt-wide text-xs text-badge-warning">{t("admin:ifLlmChatVisibilityEmpty")}</p>
             ) : (
               <div className="mt-wide max-h-96 space-y-soft overflow-auto rounded-card border border-line bg-black/15 p-base">
                 {modelAccessProviderGroups.map((provider) => {
@@ -1279,7 +1279,7 @@ export function AdminInterfacesLlmSection({
                                 {profileBadges.map((badge) => (
                                   <span
                                     key={badge}
-                                    className="inline-flex rounded-pill border border-sky-400/30 bg-sky-500/10 px-snug py-hair text-meta font-medium text-sky-100"
+                                    className="inline-flex rounded-pill border border-accent/30 bg-accent-subtle px-snug py-hair text-meta font-medium text-badge-accent"
                                   >
                                     {badge}
                                   </span>
@@ -1295,7 +1295,7 @@ export function AdminInterfacesLlmSection({
                                 <span
                                   className={`inline-flex rounded-pill border px-snug py-hair text-meta font-medium ${
                                     visible
-                                      ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
+                                      ? "border-success/30 bg-success-subtle text-badge-success"
                                       : "border-danger/30 bg-danger-subtle text-badge-danger"
                                   }`}
                                 >

@@ -297,20 +297,20 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               <div className="mt-wide space-y-soft">
                 {pendingVoiceEnvGroups.map(({ kind, prefix, providers }) => {
                   return (
-                    <div key={kind} className="rounded-card border border-amber-400/25 bg-amber-500/10 p-wide">
+                    <div key={kind} className="rounded-card border border-warning/25 bg-warning-subtle p-wide">
                       <div className="flex flex-col gap-soft sm:flex-row sm:items-start sm:justify-between">
                         <div>
-                          <h3 className="text-sm font-medium text-amber-100">
+                          <h3 className="text-sm font-medium text-badge-warning">
                             {t("admin:envProviderFoundTitle", { count: providers.length })}
                           </h3>
-                          <p className="mt-tight text-xs text-amber-100/75">
+                          <p className="mt-tight text-xs text-badge-warning">
                             {t("admin:envProviderFoundIntro", { prefix })}
                           </p>
                         </div>
                         <button
                           type="button"
                           disabled={s.envOperatorImporting === kind}
-                          className="rounded-tile bg-amber-500 px-soft py-snug text-sm font-medium text-black hover:bg-amber-400 disabled:opacity-50"
+                          className="rounded-tile bg-warning px-soft py-snug text-sm font-medium text-black hover:bg-warning-hover disabled:opacity-50"
                           onClick={() => void s.importOperatorEnvProviders(kind)}
                         >
                           {s.envOperatorImporting === kind ? t("admin:envLlmImporting") : t("admin:envLlmImportButton")}
@@ -319,7 +319,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
                       <div className="mt-soft space-y-base">
                         {providers.map((p) => (
                           <details key={p.provider_id} className="rounded-tile border border-line bg-black/25 p-soft">
-                            <summary className="cursor-pointer text-xs text-amber-100">
+                            <summary className="cursor-pointer text-xs text-badge-warning">
                               <span className="font-mono">{p.provider_id}</span> · {p.label}
                               {p.already_in_db ? ` · ${t("admin:envLlmAlreadyInDb")}` : ""}
                             </summary>
@@ -329,14 +329,14 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
                             </p>
                             <ul className="mt-base grid gap-tight sm:grid-cols-2">
                               {p.cleanup_keys.map((key) => (
-                                <li key={key} className="font-mono text-meta text-amber-100/70">{key}</li>
+                                <li key={key} className="font-mono text-meta text-badge-warning">{key}</li>
                               ))}
                             </ul>
                           </details>
                         ))}
                       </div>
                       {s.envOperatorCleanupNotes[kind] ? (
-                        <p className="mt-soft text-xs text-amber-100/75">{s.envOperatorCleanupNotes[kind]}</p>
+                        <p className="mt-soft text-xs text-badge-warning">{s.envOperatorCleanupNotes[kind]}</p>
                       ) : null}
                     </div>
                   );
@@ -356,7 +356,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               <div className="flex flex-wrap items-center justify-between gap-base">
                 <span className="text-xs font-medium text-ink-muted">{t("admin:ifPlatformVoiceEndpoint")}</span>
                 {s.voiceApiBaseSource === "env" ? (
-                  <span className="text-xs text-amber-300/90">{t("admin:ifPlatformVoiceBaseUrlFromEnv")}</span>
+                  <span className="text-xs text-badge-warning">{t("admin:ifPlatformVoiceBaseUrlFromEnv")}</span>
                 ) : s.voiceApiBaseEffective ? (
                   <span className="font-mono text-xs text-ink-muted">{t("admin:ifMemActive")}</span>
                 ) : null}
@@ -444,7 +444,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
                 {t("admin:ifPlatformVoiceApiKey")}{" "}
                 {s.voiceApiKeyConfigured ? t("admin:ifMemKeyStored") : t("admin:ifMemKeyEmpty")}
                 {s.voiceApiKeySource === "env" ? (
-                  <span className="text-amber-300/90"> {t("admin:ifMemFromEnv")}</span>
+                  <span className="text-badge-warning"> {t("admin:ifMemFromEnv")}</span>
                 ) : null}
               </p>
               <label className="mt-base block text-xs text-ink-muted" htmlFor="voice-api-key">

@@ -189,11 +189,11 @@ export function MediaPlayerBlockBody(props: {
                 <p className="text-xs text-ink-muted">{t("dashboard:mediaMiniPlayerStreamHint")}</p>
               ) : null}
               {globalPlayingNow ? (
-                <p className="text-xs text-sky-200/90">{t("dashboard:mediaPlayingInFooter")}</p>
+                <p className="text-xs text-badge-accent">{t("dashboard:mediaPlayingInFooter")}</p>
               ) : null}
               <button
                 type="button"
-                className="rounded-card border border-sky-500/40 bg-sky-950/40 px-soft py-snug text-xs text-sky-100 hover:bg-sky-900/40"
+                className="rounded-card border border-accent/40 bg-accent-subtle px-soft py-snug text-xs text-badge-accent hover:bg-accent-subtle"
                 onClick={() => (globalPlayingNow ? globalMedia.togglePause() : startPlayback(nowItem))}
               >
                 {globalPlayingNow && !globalMedia.paused
@@ -209,7 +209,7 @@ export function MediaPlayerBlockBody(props: {
             </audio>
           )
         ) : (
-          <p className="text-sm text-amber-200">{t("dashboard:mediaPlaybackUnavailable")}</p>
+          <p className="text-sm text-badge-warning">{t("dashboard:mediaPlaybackUnavailable")}</p>
         )}
         {nowItem && nowEmbed ? (
           <p className="mt-base text-xs text-ink-muted">{itemLabel(nowItem, sectionTitle)}</p>
@@ -249,14 +249,14 @@ export function MediaPlayerBlockBody(props: {
             />
             <button
               type="button"
-              className="rounded-card border border-sky-500/40 bg-sky-950/40 px-soft py-base text-xs text-sky-100 hover:bg-sky-900/40 disabled:opacity-50"
+              className="rounded-card border border-accent/40 bg-accent-subtle px-soft py-base text-xs text-badge-accent hover:bg-accent-subtle disabled:opacity-50"
               disabled={uploading || !embedUrl.trim()}
               onClick={() => void onAddEmbed()}
             >
               {t("dashboard:mediaAddEmbed")}
             </button>
           </div>
-          {err ? <p className="text-xs text-red-400">{err}</p> : null}
+          {err ? <p className="text-xs text-danger">{err}</p> : null}
         </div>
       ) : null}
 
@@ -269,7 +269,7 @@ export function MediaPlayerBlockBody(props: {
               <li
                 key={`${id ?? idx}-${idx}`}
                 className={`flex items-center gap-base rounded-card px-base py-snug text-sm ${
-                  active ? "bg-sky-950/40 text-sky-100" : "text-ink-primary hover:bg-white/5"
+                  active ? "bg-accent-subtle text-badge-accent" : "text-ink-primary hover:bg-white/5"
                 }`}
               >
                 <button

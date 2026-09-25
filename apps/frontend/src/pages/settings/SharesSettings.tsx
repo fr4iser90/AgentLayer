@@ -455,7 +455,7 @@ export default function SharesSettings() {
           }}
           className={`px-soft py-base text-sm font-medium transition-colors ${
             activeTab === "outgoing"
-              ? "text-ink-primary border-b-2 border-sky-500"
+              ? "text-ink-primary border-b-2 border-accent"
               : "text-ink-muted hover:text-white"
           }`}
         >
@@ -469,7 +469,7 @@ export default function SharesSettings() {
           }}
           className={`px-soft py-base text-sm font-medium transition-colors ${
             activeTab === "incoming"
-              ? "text-ink-primary border-b-2 border-sky-500"
+              ? "text-ink-primary border-b-2 border-accent"
               : "text-ink-muted hover:text-white"
           }`}
         >
@@ -480,7 +480,7 @@ export default function SharesSettings() {
       {loading ? (
         <p className="text-sm text-ink-muted">{t("settings:sharesLoading")}</p>
       ) : err ? (
-        <p className="text-sm text-amber-400">{err}</p>
+        <p className="text-sm text-warning">{err}</p>
       ) : activeTab === "outgoing" ? (
         <div className="space-y-broad">
           {Object.entries(groupByUser(outgoing)).map(([userId, shares]) => {
@@ -584,7 +584,7 @@ export default function SharesSettings() {
                           value: row.resource_identifier,
                         })}{" "}
                         ·{" "}
-                        <span className={row.fresh ? "text-emerald-400" : "text-amber-400"}>
+                        <span className={row.fresh ? "text-success" : "text-warning"}>
                           {row.fresh
                             ? t("settings:sharesPublishedFresh")
                             : t("settings:sharesPublishedStale")}
@@ -614,7 +614,7 @@ export default function SharesSettings() {
                           type="button"
                           disabled={publishing || unchanged || !draft}
                           onClick={() => void publishKind(row)}
-                          className="rounded-tile bg-emerald-700 px-soft py-snug text-sm text-ink-on-fill disabled:opacity-50"
+                          className="rounded-tile bg-success px-soft py-snug text-sm text-ink-on-fill disabled:opacity-50"
                         >
                           {t("settings:sharesPublishButton")}
                         </button>
@@ -665,7 +665,7 @@ export default function SharesSettings() {
                             disabled={saving}
                             className="sr-only peer"
                           />
-                          <div className="w-9 h-5 bg-neutral-700 peer-checked:bg-emerald-600 rounded-pill peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-pill after:h-4 after:w-4 after:transition-all" />
+                          <div className="w-9 h-5 bg-neutral-700 peer-checked:bg-success rounded-pill peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-pill after:h-4 after:w-4 after:transition-all" />
                         </label>
                       </div>
 
@@ -686,7 +686,7 @@ export default function SharesSettings() {
                               type="button"
                               disabled={saving}
                               onClick={() => void savePolicy(resourceId)}
-                              className="text-sm text-sky-400 hover:text-sky-300 disabled:opacity-50"
+                              className="text-sm text-accent hover:text-badge-accent disabled:opacity-50"
                             >
                               {t("settings:sharesSavePolicy")}
                             </button>
@@ -743,7 +743,7 @@ export default function SharesSettings() {
                       setNewResourceType("");
                       setNewResourceIdentifier("");
                     }}
-                    className="rounded-tile bg-emerald-700 px-soft py-snug text-sm text-ink-on-fill disabled:opacity-50"
+                    className="rounded-tile bg-success px-soft py-snug text-sm text-ink-on-fill disabled:opacity-50"
                   >
                     {t("settings:sharesAddResource")}
                   </button>
@@ -777,7 +777,7 @@ export default function SharesSettings() {
                       </div>
                       <div className="text-sm">
                         {enabled ? (
-                          <span className="text-emerald-400 font-medium">
+                          <span className="text-success font-medium">
                             {t("settings:sharesAccessGranted")}
                           </span>
                         ) : (

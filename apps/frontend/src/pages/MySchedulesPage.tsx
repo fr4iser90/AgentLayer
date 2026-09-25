@@ -81,7 +81,7 @@ type SchedulerJobPreset = {
 
 function pill(enabled: boolean) {
   return enabled
-    ? "bg-emerald-600/25 text-emerald-200 border-emerald-500/40"
+    ? "bg-success-subtle text-badge-success border-success/40"
     : "bg-white/10 text-ink-muted border-line";
 }
 
@@ -384,7 +384,7 @@ export function MySchedulesPage() {
         </div>
       </div>
 
-      {err ? <div className="mt-wide rounded-card border border-red-500/30 bg-red-500/10 p-soft text-sm text-red-100">{err}</div> : null}
+      {err ? <div className="mt-wide rounded-card border border-danger/30 bg-danger-subtle p-soft text-sm text-badge-danger">{err}</div> : null}
 
       <div className="mt-broad overflow-x-auto rounded-sheet border border-line">
         <table className="min-w-full text-left text-sm">
@@ -710,7 +710,7 @@ export function MySchedulesPage() {
           <p className="font-mono text-meta text-ink-muted">{runsJob.id}</p>
 
           {runsErr ? (
-            <p className="mt-base rounded-card border border-danger bg-danger-subtle p-base text-sm text-danger">
+            <p className="mt-base rounded-card border border-danger bg-danger-subtle p-base text-sm text-badge-danger">
               {runsErr}
             </p>
           ) : null}
@@ -780,7 +780,7 @@ export function MySchedulesPage() {
                       ) : null}
                     </div>
                     {selectedRun.error ? (
-                      <div className="rounded-tile border border-red-500/30 bg-red-500/10 p-base text-red-100">{selectedRun.error}</div>
+                      <div className="rounded-tile border border-danger/30 bg-danger-subtle p-base text-badge-danger">{selectedRun.error}</div>
                     ) : null}
                     {selectedRun.summary_json?.git ? (
                       <div>
@@ -810,7 +810,7 @@ export function MySchedulesPage() {
                           {selectedRun.summary_json.tools!.map((t, i) => (
                             <li
                               key={`${t.round}-${t.name}-${i}`}
-                              className={t.ok ? "text-emerald-200/90" : "text-red-200/90"}
+                              className={t.ok ? "text-badge-success" : "text-badge-danger"}
                             >
                               r{t.round} {t.name}
                               {t.args?.path ? ` path=${String(t.args.path)}` : ""}

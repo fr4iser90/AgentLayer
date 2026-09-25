@@ -73,7 +73,7 @@ export function DashboardEmbeddedThreadMenu({
                 type="button"
                 className={[
                   "w-full px-soft py-base text-left text-xs hover:bg-white/5",
-                  !activeThreadId ? "bg-sky-950/40 text-sky-100" : "text-ink-primary",
+                  !activeThreadId ? "bg-accent-subtle text-badge-accent" : "text-ink-primary",
                 ].join(" ")}
                 onClick={() => {
                   onSelect("");
@@ -92,7 +92,7 @@ export function DashboardEmbeddedThreadMenu({
                   type="button"
                   className={[
                     "w-full px-soft py-base text-left text-xs hover:bg-white/5",
-                    selected ? "bg-sky-950/40 text-sky-100" : "text-ink-primary",
+                    selected ? "bg-accent-subtle text-badge-accent" : "text-ink-primary",
                   ].join(" ")}
                   onClick={() => {
                     onSelect(row.id);

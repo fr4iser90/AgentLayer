@@ -123,7 +123,7 @@ export function DashboardPublicSharePage() {
     return (
       <div className="mx-auto flex max-w-dialog flex-1 flex-col justify-center bg-neutral-950 p-deep text-center">
         <h1 className="text-lg font-medium text-ink-primary">{t("dashboard:publicShareTitle")}</h1>
-        <p className="mt-soft text-sm text-red-300">{t("dashboard:publicShareMissingToken")}</p>
+        <p className="mt-soft text-sm text-badge-danger">{t("dashboard:publicShareMissingToken")}</p>
       </div>
     );
   }
@@ -152,7 +152,7 @@ export function DashboardPublicSharePage() {
             className="w-full rounded-card border border-line-strong bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-violet-500/50"
             autoComplete="current-password"
           />
-          {passwordError ? <p className="text-xs text-red-300">{passwordError}</p> : null}
+          {passwordError ? <p className="text-xs text-badge-danger">{passwordError}</p> : null}
           <button
             type="submit"
             className="w-full rounded-card bg-violet-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-violet-500"
@@ -168,7 +168,7 @@ export function DashboardPublicSharePage() {
     return (
       <div className="mx-auto flex max-w-dialog flex-1 flex-col justify-center bg-neutral-950 p-deep text-center">
         <h1 className="text-lg font-medium text-ink-primary">{t("dashboard:publicShareTitle")}</h1>
-        <p className="mt-soft text-sm text-red-300">{error || t("dashboard:publicShareNotFound")}</p>
+        <p className="mt-soft text-sm text-badge-danger">{error || t("dashboard:publicShareNotFound")}</p>
       </div>
     );
   }
@@ -189,7 +189,7 @@ export function DashboardPublicSharePage() {
       ) : (
         <div className="flex min-h-dvh flex-1 flex-col overflow-hidden bg-neutral-950">
           <header className="shrink-0 border-b border-line bg-panel px-wide py-wide sm:px-broad">
-            <p className="text-meta font-semibold uppercase tracking-wide text-sky-300/90">
+            <p className="text-meta font-semibold uppercase tracking-wide text-badge-accent">
               {t("dashboard:publicShareBadge")}
             </p>
             <h1 className="mt-tight text-xl font-semibold text-ink-primary">{pageTitle}</h1>

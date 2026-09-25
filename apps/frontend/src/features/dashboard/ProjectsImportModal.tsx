@@ -262,7 +262,7 @@ export function ProjectsImportModal({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("dashboard:importSearchRepos")}
-            className="min-w-[200px] flex-1 rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-sky-500/50"
+            className="min-w-[200px] flex-1 rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-accent/50"
           />
           <label className="flex items-center gap-base text-xs text-ink-primary">
             <input
@@ -297,7 +297,7 @@ export function ProjectsImportModal({
             <p className="text-sm text-ink-muted">{t("dashboard:loading")}</p>
           ) : error && repos.length === 0 ? (
             <div className="space-y-base text-sm">
-              <p className="text-red-300">{error}</p>
+              <p className="text-badge-danger">{error}</p>
               <p className="text-ink-muted">{t("dashboard:importGithubTokenHint")}</p>
             </div>
           ) : filtered.length === 0 ? (

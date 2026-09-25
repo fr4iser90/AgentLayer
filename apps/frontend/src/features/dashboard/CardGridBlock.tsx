@@ -132,7 +132,7 @@ export function CardGridBlockBody(props: {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={searchPlaceholder}
-            className="w-full min-w-[12rem] max-w-control rounded-tile border border-line bg-field px-soft py-snug text-xs text-ink-primary outline-none focus:border-sky-500/50 sm:w-56"
+            className="w-full min-w-[12rem] max-w-control rounded-tile border border-line bg-field px-soft py-snug text-xs text-ink-primary outline-none focus:border-accent/50 sm:w-56"
           />
         ) : null}
       </div>
@@ -157,7 +157,7 @@ export function CardGridBlockBody(props: {
                 disabled={!enableRowDetail}
                 className={[
                   "dashboard-grid-no-drag flex min-h-[120px] flex-col rounded-sheet border border-line bg-gradient-to-br from-slate-900/90 to-black/60 p-wide text-left shadow-sm transition-colors",
-                  enableRowDetail ? "hover:border-sky-500/40 hover:bg-slate-900" : "cursor-default",
+                  enableRowDetail ? "hover:border-accent/40 hover:bg-slate-900" : "cursor-default",
                 ].join(" ")}
                 onClick={() => {
                   if (enableRowDetail && id) setDetailRowId(id);
@@ -170,13 +170,13 @@ export function CardGridBlockBody(props: {
                       <Star
                         aria-hidden
                         fill="currentColor"
-                        className="inline h-3.5 w-3.5 text-amber-300"
+                        className="inline h-3.5 w-3.5 text-badge-warning"
                       />
                     </span>
                   ) : null}
                 </div>
                 {cardFields.includes("remote_url") && remote ? (
-                  <p className="mb-base truncate font-mono text-meta text-sky-300/90">{remote}</p>
+                  <p className="mb-base truncate font-mono text-meta text-badge-accent">{remote}</p>
                 ) : null}
                 {cardFields.includes("tags") && tags ? (
                   <p className="mb-base line-clamp-2 text-xs text-ink-muted">{tags}</p>

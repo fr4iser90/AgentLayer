@@ -74,7 +74,7 @@ export function ProfileSettings() {
           {t("settings:profileIntroLead")}{" "}
           <code className="rounded-tile bg-white/5 px-tight text-xs">GET /auth/me</code>.{" "}
           {t("settings:profileIntroConnectionsBefore")}{" "}
-          <Link to="/settings/connections" className="text-sky-400 hover:underline">
+          <Link to="/settings/connections" className="text-accent hover:underline">
             {t("settings:profileIntroConnectionsLink")}
           </Link>
           . {t("settings:profileIntroPasswordNote")}
@@ -84,7 +84,7 @@ export function ProfileSettings() {
       {loading ? (
         <p className="text-sm text-ink-muted">{t("settings:profileLoading")}</p>
       ) : err ? (
-        <p className="text-sm text-amber-400">{err}</p>
+        <p className="text-sm text-warning">{err}</p>
       ) : (
         <div className="rounded-sheet border border-line bg-card p-roomy">
           <dl className="space-y-wide text-sm">
@@ -123,7 +123,7 @@ export function ProfileSettings() {
           </dl>
           <button
             type="button"
-            className="mt-broad text-xs text-sky-400 hover:text-sky-300 hover:underline"
+            className="mt-broad text-xs text-accent hover:text-badge-accent hover:underline"
             onClick={() => void load()}
           >
             {t("settings:profileRefresh")}

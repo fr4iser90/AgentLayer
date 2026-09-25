@@ -265,9 +265,9 @@ export function WorkspaceMcpModal({
                 </div>
               </fieldset>
               {launchMode === "tool" ? (
-                <p className="sm:col-span-2 rounded-tile border border-amber-500/25 bg-amber-950/30 px-base py-snug text-meta leading-snug text-amber-100/90">
+                <p className="sm:col-span-2 rounded-tile border border-warning/25 bg-warning-subtle px-base py-snug text-meta leading-snug text-badge-warning">
                   {t("workspace:onServerOnce")}{" "}
-                  <code className="break-all text-amber-200/95">{toolInstallCmd}</code>
+                  <code className="break-all text-badge-warning">{toolInstallCmd}</code>
                 </p>
               ) : null}
               <label className="block">
@@ -308,7 +308,7 @@ export function WorkspaceMcpModal({
                     ({workspacePath})
                   </span>
                 ) : (
-                  <span className="text-meta text-amber-300/90">{t("workspace:workspaceCwdUnknownHint")}</span>
+                  <span className="text-meta text-badge-warning">{t("workspace:workspaceCwdUnknownHint")}</span>
                 )}
               </label>
             </div>
@@ -317,10 +317,10 @@ export function WorkspaceMcpModal({
                 {JSON.stringify(previewRow, null, 2)}
               </pre>
             ) : null}
-            {uvFormError ? <p className="mt-base text-xs text-red-300/95">{uvFormError}</p> : null}
+            {uvFormError ? <p className="mt-base text-xs text-badge-danger">{uvFormError}</p> : null}
             <button
               type="button"
-              className="mt-base rounded-card border border-sky-600/50 bg-sky-950/40 px-soft py-snug text-xs font-medium text-sky-200 hover:bg-sky-900/50"
+              className="mt-base rounded-card border border-accent/50 bg-accent-subtle px-soft py-snug text-xs font-medium text-badge-accent hover:bg-accent-subtle"
               onClick={handleAddUvServer}
             >
               {t("workspace:addToJsonList")}

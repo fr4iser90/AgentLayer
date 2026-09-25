@@ -80,7 +80,7 @@ export function ModelCatalogSelect({
     <div ref={rootRef} className="relative">
       <button
         type="button"
-        className={`mt-hair flex w-full items-center justify-between gap-base rounded-card border border-line bg-[#1a1a1a] ${buttonPadding} text-left text-ink-primary shadow-sm outline-none transition hover:border-sky-500/45 hover:bg-[#202020] focus:border-sky-400/70 focus:ring-2 focus:ring-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60 ${buttonTextSize}`}
+        className={`mt-hair flex w-full items-center justify-between gap-base rounded-card border border-line bg-[#1a1a1a] ${buttonPadding} text-left text-ink-primary shadow-sm outline-none transition hover:border-accent/45 hover:bg-[#202020] focus:border-line-focus focus:ring-2 focus:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-60 ${buttonTextSize}`}
         disabled={isDisabled}
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -123,7 +123,7 @@ export function ModelCatalogSelect({
                     aria-selected={active}
                     disabled={rowDisabled}
                     className={`flex w-full items-start gap-base rounded-card px-base py-base text-left transition ${
-                      active ? "bg-sky-500/15 ring-1 ring-sky-400/30" : "hover:bg-white/5"
+                      active ? "bg-accent-subtle ring-1 ring-accent/30" : "hover:bg-white/5"
                     } ${rowDisabled ? "cursor-not-allowed opacity-45" : ""}`}
                     onClick={() => {
                       if (rowDisabled) return;

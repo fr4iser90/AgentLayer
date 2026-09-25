@@ -57,7 +57,7 @@ export function DashboardLayoutProposalInline({
 
   if (notFound || error || !proposalSet) {
     return (
-      <div className="mt-base rounded-card border border-red-500/30 bg-red-950/20 px-base py-base text-meta text-red-200">
+      <div className="mt-base rounded-card border border-danger/30 bg-danger-subtle px-base py-base text-meta text-badge-danger">
         {t("dashboard:layoutProposalsEmpty")}
       </div>
     );
@@ -65,11 +65,11 @@ export function DashboardLayoutProposalInline({
 
   return (
     <div className="mt-base space-y-base">
-      <p className="text-meta font-medium uppercase tracking-wide text-emerald-400/90">
+      <p className="text-meta font-medium uppercase tracking-wide text-success">
         {t("dashboard:layoutProposalsInlineHint")}
       </p>
       {applyErr ? (
-        <p className="rounded-tile border border-red-500/30 bg-red-950/20 px-base py-tight text-meta text-red-200">
+        <p className="rounded-tile border border-danger/30 bg-danger-subtle px-base py-tight text-meta text-badge-danger">
           {applyErr}
         </p>
       ) : null}
@@ -79,7 +79,7 @@ export function DashboardLayoutProposalInline({
           return (
             <article
               key={p.id}
-              className="overflow-hidden rounded-card border border-emerald-500/25 bg-[#0d1210]"
+              className="overflow-hidden rounded-card border border-success/25 bg-[#0d1210]"
             >
               <div className="border-b border-line-subtle px-base py-snug">
                 <div className="text-meta font-semibold text-ink-primary">{p.title}</div>
@@ -132,7 +132,7 @@ export function DashboardLayoutProposalInline({
                     <button
                       type="button"
                       disabled={applyBusy}
-                      className="rounded-tile bg-emerald-600 px-base py-hair text-meta font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
+                      className="rounded-tile bg-success px-base py-hair text-meta font-medium text-ink-on-fill hover:bg-success-hover disabled:opacity-50"
                       onClick={() => void handleApply(p.id)}
                     >
                       {applyBusy ? t("dashboard:saving") : t("dashboard:layoutProposalsApplyConfirm")}
@@ -142,7 +142,7 @@ export function DashboardLayoutProposalInline({
                   <button
                     type="button"
                     disabled={applyBusy}
-                    className="rounded-tile bg-emerald-600 px-base py-hair text-meta font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
+                    className="rounded-tile bg-success px-base py-hair text-meta font-medium text-ink-on-fill hover:bg-success-hover disabled:opacity-50"
                     onClick={() => setConfirmId(p.id)}
                   >
                     {t("dashboard:layoutProposalsApply")}

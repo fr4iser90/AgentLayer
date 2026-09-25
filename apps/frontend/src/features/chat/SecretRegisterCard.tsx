@@ -87,22 +87,22 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
         : null;
 
   return (
-    <div className="w-full max-w-measure rounded-sheet border border-amber-900/45 bg-amber-950/20 px-soft py-soft text-sm shadow-sm">
+    <div className="w-full max-w-measure rounded-sheet border border-warning/45 bg-warning-subtle px-soft py-soft text-sm shadow-sm">
       <div className="flex items-start gap-base">
         <KeyRound aria-hidden className="mt-hair h-4 w-4 shrink-0" />
         <div className="min-w-0 flex-1">
-          <p className="font-medium text-amber-100/95">
+          <p className="font-medium text-badge-warning">
             {prompt.title || prompt.serviceKey}
           </p>
           {prompt.reason ? (
-            <p className="mt-hair text-meta text-amber-200/70">{prompt.reason}</p>
+            <p className="mt-hair text-meta text-badge-warning">{prompt.reason}</p>
           ) : null}
           {prompt.help ? (
             <p className="mt-tight text-meta leading-snug text-ink-muted">{prompt.help}</p>
           ) : null}
 
           {prompt.status === "saved" ? (
-            <p className="mt-base text-xs text-emerald-400/90">{statusLabel}</p>
+            <p className="mt-base text-xs text-success">{statusLabel}</p>
           ) : (
             <div className="mt-base space-y-base">
               {hasFields ? (
@@ -120,7 +120,7 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
                       onChange={(e) =>
                         setFieldValues((prev) => ({ ...prev, [f.name]: e.target.value }))
                       }
-                      className="mt-hair w-full rounded-card border border-line bg-field px-firm py-snug text-sm text-ink-primary outline-none focus:border-amber-600/50"
+                      className="mt-hair w-full rounded-card border border-line bg-field px-firm py-snug text-sm text-ink-primary outline-none focus:border-warning/50"
                     />
                   </label>
                 ))
@@ -133,19 +133,19 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
                     disabled={disabled}
                     value={rawSecret}
                     onChange={(e) => setRawSecret(e.target.value)}
-                    className="mt-hair w-full rounded-card border border-line bg-field px-firm py-snug text-sm text-ink-primary outline-none focus:border-amber-600/50"
+                    className="mt-hair w-full rounded-card border border-line bg-field px-firm py-snug text-sm text-ink-primary outline-none focus:border-warning/50"
                   />
                 </label>
               )}
               {localError ? (
-                <p className="text-xs text-red-400/90">{localError}</p>
+                <p className="text-xs text-danger">{localError}</p>
               ) : null}
               <div className="flex flex-wrap items-center gap-base pt-tight">
                 <button
                   type="button"
                   disabled={disabled}
                   onClick={() => void save()}
-                  className="rounded-card bg-amber-700/80 px-soft py-snug text-xs font-medium text-ink-primary hover:bg-amber-600/90 disabled:opacity-50"
+                  className="rounded-card bg-warning px-soft py-snug text-xs font-medium text-ink-primary hover:bg-warning-hover disabled:opacity-50"
                 >
                   {saving ? t("chat:secretCardSaving") : t("chat:secretCardSave")}
                 </button>

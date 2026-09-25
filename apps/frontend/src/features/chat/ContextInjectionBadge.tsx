@@ -27,24 +27,24 @@ export const ContextInjectionBadge = memo(function ContextInjectionBadge({
 
   return (
     <details className="mb-base group">
-      <summary className="inline-flex cursor-pointer list-none items-center gap-snug rounded-tile border border-amber-500/35 bg-amber-950/35 px-base py-tight text-meta font-medium text-amber-100/90 marker:content-none [&::-webkit-details-marker]:hidden hover:bg-amber-950/50">
+      <summary className="inline-flex cursor-pointer list-none items-center gap-snug rounded-tile border border-warning/35 bg-warning-subtle px-base py-tight text-meta font-medium text-badge-warning marker:content-none [&::-webkit-details-marker]:hidden hover:bg-warning-subtle">
         <span className="relative flex h-1.5 w-1.5 shrink-0" aria-hidden>
-          <span className="absolute inline-flex h-full w-full rounded-pill bg-amber-400/80 opacity-75" />
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-pill bg-amber-300" />
+          <span className="absolute inline-flex h-full w-full rounded-pill bg-warning opacity-75" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-pill bg-warning" />
         </span>
         <span className="max-w-chipWide truncate">{title}</span>
         {count > 0 ? (
           <span
-            className="text-meta font-normal text-amber-200/55"
+            className="text-meta font-normal text-badge-warning"
             title={t("chat:contextInjectTokensHint")}
           >
             {t("chat:contextInjectBudget", { chars: count, tokens })}
           </span>
         ) : null}
-        <span className="text-meta font-normal text-amber-200/55 group-open:hidden">
+        <span className="text-meta font-normal text-badge-warning group-open:hidden">
           {t("chat:contextInjectExpandHint")}
         </span>
-        <span className="hidden text-meta font-normal text-amber-200/55 group-open:inline">
+        <span className="hidden text-meta font-normal text-badge-warning group-open:inline">
           {t("chat:contextInjectCollapseHint")}
         </span>
       </summary>

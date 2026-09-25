@@ -17,7 +17,7 @@ type Props = {
 export function PermissionAskCard({ request, onReply, disabled }: Props) {
   const { t } = useTranslation(["chat"]);
   return (
-    <div className="rounded-card border border-amber-500/40 bg-amber-500/10 px-wide py-soft text-sm text-ink-primary">
+    <div className="rounded-card border border-warning/40 bg-warning-subtle px-wide py-soft text-sm text-ink-primary">
       <p className="font-medium">
         {t("chat:permissionAskTitle", { tool: request.toolName })}
         {request.round != null ? (
@@ -35,7 +35,7 @@ export function PermissionAskCard({ request, onReply, disabled }: Props) {
         <button
           type="button"
           disabled={disabled}
-          className="rounded-tile bg-amber-500/90 px-soft py-snug text-xs font-medium text-black disabled:opacity-50"
+          className="rounded-tile bg-warning px-soft py-snug text-xs font-medium text-black disabled:opacity-50"
           onClick={() => onReply("once")}
         >
           {t("chat:permissionAllowOnce")}

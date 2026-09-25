@@ -48,7 +48,7 @@ export function UserMessageBubble({ message, timeLabel, showRetry, onCopy, onRet
   const { t } = useTranslation(["chat"]);
 
   return (
-    <div className="group relative max-w-measure rounded-sheet border border-sky-900/40 bg-[#1a2a3d] px-wide py-soft text-sm text-ink-primary shadow-sm">
+    <div className="group relative max-w-measure rounded-sheet border border-accent/40 bg-[#1a2a3d] px-wide py-soft text-sm text-ink-primary shadow-sm">
       <div className="mb-tight flex items-center justify-between gap-base">
         <span className="text-meta font-medium uppercase tracking-wide text-ink-muted">
           {t("chat:roleYou")}
@@ -61,7 +61,7 @@ export function UserMessageBubble({ message, timeLabel, showRetry, onCopy, onRet
           <button
               type="button"
               onClick={onCopy}
-              className="rounded-tile px-base py-hair text-meta font-medium uppercase tracking-wide text-sky-200/80 hover:bg-white/10 hover:text-sky-100"
+              className="rounded-tile px-base py-hair text-meta font-medium uppercase tracking-wide text-badge-accent hover:bg-white/10 hover:text-badge-accent"
             >
               {t("chat:messageCopy")}
             </button>

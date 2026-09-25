@@ -51,7 +51,7 @@ export function TurnNavigator({ userTurns, activeId, onSelect, className = "" }:
                   onClick={() => onSelect(turn.id)}
                   className={`w-full rounded-card border px-base py-snug text-left text-meta leading-snug transition-colors ${
                     active
-                      ? "border-sky-500/50 bg-sky-950/40 text-sky-100"
+                      ? "border-accent/50 bg-accent-subtle text-badge-accent"
                       : "border-transparent text-ink-muted hover:border-line hover:bg-white/5 hover:text-neutral-200"
                   }`}
                 >
@@ -83,7 +83,7 @@ export function TurnNavigatorHorizontal({ userTurns, activeId, onSelect, classNa
               onClick={() => onSelect(turn.id)}
               className={`shrink-0 rounded-pill border px-firm py-tight text-meta transition-colors ${
                 active
-                  ? "border-sky-500/50 bg-sky-950/40 text-sky-100"
+                  ? "border-accent/50 bg-accent-subtle text-badge-accent"
                   : "border-line text-ink-muted hover:bg-white/5"
               }`}
             >

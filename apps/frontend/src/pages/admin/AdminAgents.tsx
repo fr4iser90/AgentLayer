@@ -421,7 +421,7 @@ export function AdminAgents() {
             <button
               type="button"
               disabled={importBusy || (!importText.trim() && !(importFiles?.length))}
-              className="mt-wide rounded-tile bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+              className="mt-wide rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
               onClick={() => void analyzeImport()}
             >
               {importBusy ? t("admin:agentsImportAnalyzing") : t("admin:agentsImportAnalyze")}
@@ -453,7 +453,7 @@ export function AdminAgents() {
                   <span className="font-mono text-sm font-semibold text-ink-primary">
                     {String(importResult.agent_draft.agent_yaml.id ?? "")}
                   </span>
-                  <span className="rounded-tile bg-amber-900/60 px-snug py-hair text-meta text-amber-100">
+                  <span className="rounded-tile bg-warning-subtle px-snug py-hair text-meta text-badge-warning">
                     {t("admin:toolsImportRisk", { risk: importResult.agent_draft.risk })}
                   </span>
                 </div>
@@ -484,7 +484,7 @@ export function AdminAgents() {
                   ))}
                 </ul>
                 {importResult.tool_mapping.missing_or_ambiguous.length ? (
-                  <p className="mt-base text-meta text-amber-200">
+                  <p className="mt-base text-meta text-badge-warning">
                     {t("admin:agentsImportMissingTools")}:{" "}
                     {importResult.tool_mapping.missing_or_ambiguous.join(", ")}
                   </p>
@@ -515,7 +515,7 @@ export function AdminAgents() {
       <div className="mt-wide flex flex-wrap gap-base">
         <button
           type="button"
-          className="rounded-tile bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500"
+          className="rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover"
           onClick={() => void loadList()}
         >
           {t("admin:agentsRefresh")}
@@ -528,7 +528,7 @@ export function AdminAgents() {
         </Link>
       </div>
 
-      {msg ? <p className="mt-wide text-sm text-amber-300">{msg}</p> : null}
+      {msg ? <p className="mt-wide text-sm text-badge-warning">{msg}</p> : null}
       {loading ? <p className="mt-broad text-sm text-ink-muted">{t("admin:agentsLoading")}</p> : null}
 
       {!loading && agents.length === 0 ? (
@@ -545,7 +545,7 @@ export function AdminAgents() {
                   onClick={() => setSelectedId(a.id)}
                   className={`w-full rounded-sheet border px-soft py-soft text-left transition-colors ${
                     selectedId === a.id
-                      ? "border-sky-500/40 bg-sky-950/20"
+                      ? "border-accent/40 bg-accent-subtle"
                       : "border-line bg-card hover:border-line-strong"
                   }`}
                 >
@@ -636,7 +636,7 @@ export function AdminAgents() {
                         </p>
                         <p className="mt-tight text-xs text-ink-secondary">
                           {t("admin:agentsDirectAccess")}:{" "}
-                          <span className={detail?.governance?.access.direct_allowed ? "text-emerald-300" : "text-danger"}>
+                          <span className={detail?.governance?.access.direct_allowed ? "text-badge-success" : "text-danger"}>
                             {detail?.governance?.access.direct_allowed ? t("admin:agentsAllowed") : t("admin:agentsDenied")}
                           </span>{" "}
                           <span className="text-ink-muted">
@@ -645,7 +645,7 @@ export function AdminAgents() {
                         </p>
                         <p className="mt-tight text-xs text-ink-secondary">
                           {t("admin:agentsDelegateAccess")}:{" "}
-                          <span className={detail?.governance?.access.delegate_allowed ? "text-emerald-300" : "text-danger"}>
+                          <span className={detail?.governance?.access.delegate_allowed ? "text-badge-success" : "text-danger"}>
                             {detail?.governance?.access.delegate_allowed ? t("admin:agentsAllowed") : t("admin:agentsDenied")}
                           </span>{" "}
                           <span className="text-ink-muted">
@@ -731,7 +731,7 @@ export function AdminAgents() {
                       <button
                         type="button"
                         disabled={policyBusy}
-                        className="rounded-tile bg-sky-600 px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+                        className="rounded-tile bg-accent px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
                         onClick={() => void saveAccessPolicy()}
                       >
                         {t("admin:agentsSavePolicy")}
@@ -797,7 +797,7 @@ export function AdminAgents() {
                         <button
                           type="button"
                           disabled={promptBusy || !promptText.trim()}
-                          className="rounded-tile bg-sky-600 px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+                          className="rounded-tile bg-accent px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
                           onClick={() => void savePromptDraft()}
                         >
                           {t("admin:agentsSavePromptDraft")}
@@ -854,7 +854,7 @@ export function AdminAgents() {
                     <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
                       {t("admin:agentsEffectiveTools")} ({detail?.effective_tool_names?.length ?? 0})
                     </p>
-                    <p className="mt-tight max-h-32 overflow-y-auto break-all font-mono text-meta text-emerald-300/90">
+                    <p className="mt-tight max-h-32 overflow-y-auto break-all font-mono text-meta text-badge-success">
                       {(detail?.effective_tool_names ?? []).join(", ") || "—"}
                     </p>
                   </div>

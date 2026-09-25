@@ -512,7 +512,7 @@ export function DelegateSettings() {
       </p>
 
       {unavailable ? (
-        <p className="mt-wide text-sm text-amber-200/90">{t("settings:delegateStorageUnavailable")}</p>
+        <p className="mt-wide text-sm text-badge-warning">{t("settings:delegateStorageUnavailable")}</p>
       ) : null}
 
       {msg ? <p className="mt-wide text-sm text-ink-secondary">{msg}</p> : null}

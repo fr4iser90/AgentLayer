@@ -41,13 +41,13 @@ export function DashboardOnboardingBanner({
   const starters = onboarding.chat_starters ?? [];
 
   return (
-    <div className="mb-wide rounded-sheet border border-emerald-500/30 bg-emerald-950/20 p-wide">
+    <div className="mb-wide rounded-sheet border border-success/30 bg-success-subtle p-wide">
       <div className="flex items-start justify-between gap-soft">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-200/90">
+          <p className="text-xs font-semibold uppercase tracking-wide text-badge-success">
             {t("dashboard:onboardingTitle")}
           </p>
-          <p className="mt-base text-sm text-emerald-50/95">{onboarding.greeting}</p>
+          <p className="mt-base text-sm text-badge-success">{onboarding.greeting}</p>
         </div>
         <button
           type="button"
@@ -77,7 +77,7 @@ export function DashboardOnboardingBanner({
             <button
               key={starter}
               type="button"
-              className="rounded-card border border-emerald-500/35 bg-emerald-900/30 px-soft py-snug text-left text-xs text-emerald-50 hover:bg-emerald-800/40"
+              className="rounded-card border border-success/35 bg-success-subtle px-soft py-snug text-left text-xs text-badge-success hover:bg-success-subtle"
               onClick={() => onStartChat(starter)}
             >
               {starter}
@@ -85,7 +85,7 @@ export function DashboardOnboardingBanner({
           ))}
           <button
             type="button"
-            className="rounded-card bg-emerald-600/80 px-soft py-snug text-xs font-medium text-ink-primary hover:bg-emerald-500"
+            className="rounded-card bg-success px-soft py-snug text-xs font-medium text-ink-primary hover:bg-success-hover"
             onClick={() =>
               onStartChat(
                 t("dashboard:onboardingGenericStarter", {

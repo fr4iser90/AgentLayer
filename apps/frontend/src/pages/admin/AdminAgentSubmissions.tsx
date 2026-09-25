@@ -198,7 +198,7 @@ export function AdminAgentSubmissions() {
         </button>
       </div>
 
-      {msg ? <p className="mt-wide text-sm text-amber-300">{msg}</p> : null}
+      {msg ? <p className="mt-wide text-sm text-badge-warning">{msg}</p> : null}
       {loading ? <p className="mt-broad text-sm text-ink-muted">{t("admin:agentSubmissionsLoading")}</p> : null}
       {!loading && submissions.length === 0 ? (
         <p className="mt-broad text-sm text-ink-muted">{t("admin:agentSubmissionsNone")}</p>
@@ -214,7 +214,7 @@ export function AdminAgentSubmissions() {
                   onClick={() => setSelectedId(s.id)}
                   className={`w-full rounded-sheet border px-soft py-soft text-left transition-colors ${
                     selectedId === s.id
-                      ? "border-sky-500/40 bg-sky-950/20"
+                      ? "border-accent/40 bg-accent-subtle"
                       : "border-line bg-card hover:border-line-strong"
                   }`}
                 >
@@ -310,7 +310,7 @@ export function AdminAgentSubmissions() {
                   <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
                     {t("admin:agentSubmissionsToolWarnings")}
                   </p>
-                  <ul className="mt-tight list-disc space-y-hair pl-wide text-meta text-amber-200">
+                  <ul className="mt-tight list-disc space-y-hair pl-wide text-meta text-badge-warning">
                     {preview.tool_warnings.map((w) => (
                       <li key={w} className="font-mono">{w}</li>
                     ))}
@@ -320,10 +320,10 @@ export function AdminAgentSubmissions() {
 
               {selected.materialize_error ? (
                 <div className="mt-soft">
-                  <p className="text-meta font-medium uppercase tracking-wide text-red-300/80">
+                  <p className="text-meta font-medium uppercase tracking-wide text-badge-danger">
                     {t("admin:agentSubmissionsMaterializeError")}
                   </p>
-                  <p className="mt-tight font-mono text-meta text-red-200">{selected.materialize_error}</p>
+                  <p className="mt-tight font-mono text-meta text-badge-danger">{selected.materialize_error}</p>
                 </div>
               ) : null}
 
@@ -342,14 +342,14 @@ export function AdminAgentSubmissions() {
                   <div className="mt-soft flex flex-wrap gap-base">
                     <button
                       type="button"
-                      className="rounded-tile bg-emerald-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
+                      className="rounded-tile bg-success px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-success-hover disabled:opacity-50"
                       onClick={() => setConfirm({ decision: "approve" })}
                     >
                       {t("admin:agentSubmissionsApprove")}
                     </button>
                     <button
                       type="button"
-                      className="rounded-tile bg-red-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-red-500 disabled:opacity-50"
+                      className="rounded-tile bg-danger px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-danger-hover disabled:opacity-50"
                       onClick={() => setConfirm({ decision: "reject" })}
                     >
                       {t("admin:agentSubmissionsReject")}

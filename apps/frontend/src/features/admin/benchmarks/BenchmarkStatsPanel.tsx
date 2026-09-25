@@ -67,7 +67,7 @@ function PassRateBadge({ rate }: { rate: number | null | undefined }) {
   if (rate == null) return <span className="text-ink-muted">—</span>;
   const pct = Math.round(rate * 100);
   const tone =
-    pct >= 90 ? "text-emerald-300" : pct >= 60 ? "text-amber-200" : "text-danger";
+    pct >= 90 ? "text-badge-success" : pct >= 60 ? "text-badge-warning" : "text-danger";
   return <span className={tone}>{pct}%</span>;
 }
 
@@ -118,7 +118,7 @@ function ModelLeaderboardTable({
               </td>
               <td className="py-snug pr-soft">{formatMs(row.avg_latency_ms)}</td>
               <td className="py-snug pr-soft">{formatMs(row.median_latency_ms)}</td>
-              <td className="py-snug pr-soft text-emerald-300/90">{formatMs(row.min_latency_ms)}</td>
+              <td className="py-snug pr-soft text-badge-success">{formatMs(row.min_latency_ms)}</td>
             </tr>
           ))}
         </tbody>
@@ -145,7 +145,7 @@ function ScenarioGroupCard({
           {group.fastest ? (
             <span>
               {t("admin:benchStatsFastestPassing")}:{" "}
-              <span className="font-mono text-emerald-300/90">
+              <span className="font-mono text-badge-success">
                 {formatBenchmarkProviderModel(group.fastest)} ({formatMs(group.fastest.avg_latency_ms)} ms)
               </span>
             </span>
@@ -153,7 +153,7 @@ function ScenarioGroupCard({
           {group.best_pass ? (
             <span>
               {t("admin:benchStatsBestPass")}:{" "}
-              <span className="font-mono text-sky-300/90">{formatBenchmarkProviderModel(group.best_pass)}</span>
+              <span className="font-mono text-badge-accent">{formatBenchmarkProviderModel(group.best_pass)}</span>
             </span>
           ) : null}
         </div>
@@ -377,7 +377,7 @@ export function BenchmarkStatsPanel({
             })}`}
           </p>
         ) : null}
-        {error ? <p className="mt-base text-sm text-red-400">{error}</p> : null}
+        {error ? <p className="mt-base text-sm text-danger">{error}</p> : null}
       </section>
 
       <section className="rounded-sheet border border-line bg-card p-wide">

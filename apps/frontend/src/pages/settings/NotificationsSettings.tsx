@@ -130,12 +130,12 @@ export function NotificationsSettings() {
       </div>
 
       {error ? (
-        <div className="rounded-card border border-red-500/40 bg-red-950/30 px-soft py-base text-sm text-red-200">
+        <div className="rounded-card border border-danger/40 bg-danger-subtle px-soft py-base text-sm text-badge-danger">
           {error}
         </div>
       ) : null}
       {saved ? (
-        <div className="rounded-card border border-emerald-500/30 bg-emerald-950/20 px-soft py-base text-sm text-emerald-200">
+        <div className="rounded-card border border-success/30 bg-success-subtle px-soft py-base text-sm text-badge-success">
           {t("settings:notificationsSaved")}
         </div>
       ) : null}
@@ -152,7 +152,7 @@ export function NotificationsSettings() {
         {!telegramLinked ? (
           <p className="text-sm text-ink-muted">
             {t("settings:notificationsLinkTelegram")}{" "}
-            <Link to="/settings/connections" className="text-sky-400 hover:text-sky-300">
+            <Link to="/settings/connections" className="text-accent hover:text-badge-accent">
               {t("settings:connectionsTitle")}
             </Link>
           </p>
@@ -185,7 +185,7 @@ export function NotificationsSettings() {
         {!discordLinked ? (
           <p className="text-sm text-ink-muted">
             {t("settings:notificationsLinkDiscord")}{" "}
-            <Link to="/settings/connections" className="text-sky-400 hover:text-sky-300">
+            <Link to="/settings/connections" className="text-accent hover:text-badge-accent">
               {t("settings:connectionsTitle")}
             </Link>
           </p>
@@ -226,7 +226,7 @@ export function NotificationsSettings() {
         <button
           type="button"
           disabled={saving}
-          className="rounded-card bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+          className="rounded-card bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
           onClick={() => void save()}
         >
           {saving ? t("settings:notificationsSaving") : t("settings:notificationsSave")}

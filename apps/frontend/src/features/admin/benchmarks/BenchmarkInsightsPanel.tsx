@@ -17,8 +17,8 @@ function formatPassRate(rate: number | null | undefined): string {
 
 function passRateTone(rate: number): string {
   const pct = Math.round(rate * 100);
-  if (pct >= 90) return "text-emerald-300";
-  if (pct >= 60) return "text-amber-200";
+  if (pct >= 90) return "text-badge-success";
+  if (pct >= 60) return "text-badge-warning";
   return "text-danger";
 }
 
@@ -252,7 +252,7 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
         ) : null}
       </section>
 
-      {error ? <p className="text-sm text-red-400">{error}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       {loading && !analysis ? (
         <p className="text-xs text-ink-muted">{t("admin:loading")}</p>

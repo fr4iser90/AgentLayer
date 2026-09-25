@@ -25,7 +25,7 @@ function StatusCard({
       <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">{title}</p>
       <p className="mt-base text-sm font-medium text-ink-primary">{status}</p>
       {detail ? <p className="mt-tight text-xs text-ink-muted">{detail}</p> : null}
-      <p className="mt-soft text-xs text-sky-400/90">{t("admin:openCard")}</p>
+      <p className="mt-soft text-xs text-accent">{t("admin:openCard")}</p>
     </Link>
   );
 }
