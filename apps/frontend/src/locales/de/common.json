@@ -12,9 +12,18 @@
     "schedules": "Zeitpläne",
     "tasks": "Aufgaben",
     "shares": "Shares",
+    "friends": "Friends",
+    "docs": "Dokumentation",
+    "github": "GitHub",
     "connections": "Verbindungen",
     "more": "Mehr",
-    "signIn": "Anmelden"
+    "signIn": "Anmelden",
+    "sectionsAria": "Bereiche",
+    "workspace": "Arbeitsbereich",
+    "sharing": "Freigaben",
+    "resources": "Hilfe",
+    "backToApp": "Zurück zur App",
+    "openMenu": "Menü öffnen"
   },
   "footer": {
     "github": "GitHub",

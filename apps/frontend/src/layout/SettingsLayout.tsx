@@ -1,94 +1,17 @@
-import { NavLink, Outlet } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { Link, Users } from "lucide-react";
-import { useAuth } from "../auth/AuthContext";
-import { friendSystemEnabled } from "../auth/tenantSurface";
+import { Outlet } from "react-router-dom";
 
-const subLinkBase =
-  "rounded-card px-soft py-base text-sm transition-colors border border-transparent";
-const subLink = `${subLinkBase} block`;
-const subLinkIcon = `${subLinkBase} flex items-center gap-snug`;
-
-const subLinkActive = "bg-white/10 text-ink-primary border-line";
-const subLinkIdle = "text-ink-muted hover:bg-white/5 hover:text-neutral-200";
-
+/**
+ * Padding for the settings pages.
+ *
+ * This used to be a sidebar with nine links mounted inside `AppLayout`'s own
+ * nav — the second level the design rule forbids. Its links are a section set of
+ * the rail now (`settingsNav` in `navModel.ts`), so what is left here is the
+ * inset those pages were laid out against.
+ */
 export function SettingsLayout() {
-  const { t } = useTranslation(["settings", "common"]);
-  const { user } = useAuth();
-  const friendsOn = friendSystemEnabled(user);
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden md:flex-row">
-      <aside className="shrink-0 border-b border-line bg-panel px-soft py-wide md:w-52 md:border-b-0 md:border-r">
-        <p className="mb-soft px-base text-meta font-medium uppercase tracking-wide text-ink-muted">
-          {t("common:settings")}
-        </p>
-        <nav
-          className="flex flex-row flex-wrap gap-tight md:flex-col md:gap-hair"
-          aria-label={t("settings:settingsSectionsAria")}
-        >
-          <NavLink
-            to="/settings/profile"
-            className={({ isActive }) => `${subLink} ${isActive ? subLinkActive : subLinkIdle}`}
-          >
-            {t("settings:profileTitle")}
-          </NavLink>
-          <NavLink
-            to="/settings/voice"
-            className={({ isActive }) => `${subLink} ${isActive ? subLinkActive : subLinkIdle}`}
-          >
-            {t("settings:voiceTitle")}
-          </NavLink>
-          <NavLink
-            to="/settings/connections"
-            className={({ isActive }) => `${subLink} ${isActive ? subLinkActive : subLinkIdle}`}
-          >
-            {t("settings:connectionsTitle")}
-          </NavLink>
-          <NavLink
-            to="/settings/notifications"
-            className={({ isActive }) => `${subLink} ${isActive ? subLinkActive : subLinkIdle}`}
-          >
-            {t("settings:notificationsTitle")}
-          </NavLink>
-          <NavLink
-            to="/settings/tools"
-            className={({ isActive }) => `${subLink} ${isActive ? subLinkActive : subLinkIdle}`}
-          >
-            {t("settings:toolsTitle")}
-          </NavLink>
-          <NavLink
-            to="/settings/agent"
-            className={({ isActive }) => `${subLink} ${isActive ? subLinkActive : subLinkIdle}`}
-          >
-            {t("settings:agentTitle")}
-          </NavLink>
-          <NavLink
-            to="/settings/delegate"
-            className={({ isActive }) => `${subLink} ${isActive ? subLinkActive : subLinkIdle}`}
-          >
-            {t("settings:delegateNav")}
-          </NavLink>
-          {friendsOn ? (
-            <NavLink
-              to="/settings/friends"
-              className={({ isActive }) => `${subLinkIcon} ${isActive ? subLinkActive : subLinkIdle}`}
-            >
-              <Users aria-hidden className="h-4 w-4 shrink-0" />
-              {t("settings:friendsTitle")}
-            </NavLink>
-          ) : null}
-          <NavLink
-            to="/settings/shares"
-            className={({ isActive }) => `${subLinkIcon} ${isActive ? subLinkActive : subLinkIdle}`}
-          >
-            <Link aria-hidden className="h-4 w-4 shrink-0" />
-            {t("settings:sharesTitle")}
-          </NavLink>
-        </nav>
-      </aside>
-      <div className="min-h-0 flex-1 overflow-y-auto px-broad py-deep">
-        <Outlet />
-      </div>
+    <div className="px-broad py-deep">
+      <Outlet />
     </div>
   );
 }

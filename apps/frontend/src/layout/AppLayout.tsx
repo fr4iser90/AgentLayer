@@ -1,181 +1,26 @@
-import { useEffect, useRef, useState } from "react";
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
-import { navItemAllowed, hasRestrictedNav } from "../auth/tenantSurface";
-import { UserMenu } from "../components/UserMenu";
-import { NotificationBell } from "../components/NotificationBell";
+import { hasRestrictedNav } from "../auth/tenantSurface";
 import { NotificationProvider } from "../features/notifications/NotificationProvider";
 import { GlobalMediaProvider } from "../features/media/GlobalMediaProvider";
 import { MediaMiniPlayer } from "../features/media/MediaMiniPlayer";
-import { AgentRunningBadge } from "../features/chat/AgentRunningBadge";
-import { SUPPORTED } from "../i18n/config";
 import { LegalFooterLinks } from "../components/LegalFooterLinks";
-
-const GITHUB_REPO =
-  "https://github.com/fr4iser90/AgentLayer_-_Jetson-Orin-Nano-Super-Developer-Kit-dedicated";
-
-const linkClass = ({ isActive }: { isActive: boolean }) =>
-  [
-    "rounded-tile px-soft py-base text-sm transition-colors",
-    isActive
-      ? "bg-white/10 text-ink-primary"
-      : "text-ink-muted hover:bg-white/5 hover:text-neutral-200",
-  ].join(" ");
-
-const menuItemClass =
-  "block w-full px-soft py-base text-left text-sm text-ink-primary hover:bg-white/10";
+import { AppShell } from "./AppShell";
+import { surfaceForPath } from "./navModel";
 
 const signInClass =
-  "rounded-tile px-soft py-base text-sm text-ink-muted hover:bg-white/5 hover:text-neutral-200";
+  "rounded-tile px-soft py-base text-sm text-ink-muted hover:bg-white/5 hover:text-ink-secondary";
 
-function MoreNavMenu({
-  showSchedulesMobile,
-  showConnectionsMobile,
-  showDashboard,
-  showProjects,
-  showStudio,
-  showTasks,
-  showShares,
-  showDocs,
-}: {
-  showSchedulesMobile: boolean;
-  showConnectionsMobile: boolean;
-  showDashboard: boolean;
-  showProjects: boolean;
-  showStudio: boolean;
-  showTasks: boolean;
-  showShares: boolean;
-  showDocs: boolean;
-}) {
-  const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  const hasMobileExtras = showSchedulesMobile || showConnectionsMobile;
-  const hasDesktopExtras =
-    showDashboard || showProjects || showStudio || showTasks || showShares || showDocs;
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
-
-  if (!hasMobileExtras && !hasDesktopExtras) return null;
-
-  return (
-    <div className={hasDesktopExtras ? "relative" : "relative md:hidden"} ref={rootRef}>
-      <button
-        type="button"
-        className={linkClass({ isActive: open })}
-        aria-expanded={open}
-        aria-haspopup="menu"
-        onClick={() => setOpen((v) => !v)}
-      >
-        {t("nav.more")}
-      </button>
-      {open ? (
-        <div
-          role="menu"
-          className="absolute left-0 z-menu mt-tight min-w-[11rem] rounded-card border border-line bg-raised py-tight shadow-xl"
-        >
-          {hasMobileExtras ? (
-            <div className="md:hidden">
-              {showSchedulesMobile ? (
-                <NavLink
-                  role="menuitem"
-                  to="/schedules"
-                  className={menuItemClass}
-                  onClick={() => setOpen(false)}
-                >
-                  {t("nav.schedules")}
-                </NavLink>
-              ) : null}
-              {showConnectionsMobile ? (
-                <NavLink
-                  role="menuitem"
-                  to="/settings/connections"
-                  className={menuItemClass}
-                  onClick={() => setOpen(false)}
-                >
-                  {t("nav.connections")}
-                </NavLink>
-              ) : null}
-              {hasDesktopExtras ? <div className="my-tight border-t border-line" /> : null}
-            </div>
-          ) : null}
-          {showDashboard ? (
-            <NavLink
-              role="menuitem"
-              to="/dashboard"
-              className={menuItemClass}
-              onClick={() => setOpen(false)}
-            >
-              {t("nav.dashboard")}
-            </NavLink>
-          ) : null}
-          {showProjects ? (
-            <NavLink
-              role="menuitem"
-              to="/projects"
-              className={menuItemClass}
-              onClick={() => setOpen(false)}
-            >
-              {t("nav.projects")}
-            </NavLink>
-          ) : null}
-          {showStudio ? (
-            <NavLink
-              role="menuitem"
-              to="/studio"
-              className={menuItemClass}
-              onClick={() => setOpen(false)}
-            >
-              {t("nav.studio")}
-            </NavLink>
-          ) : null}
-          {showTasks ? (
-            <NavLink
-              role="menuitem"
-              to="/tasks"
-              className={menuItemClass}
-              onClick={() => setOpen(false)}
-            >
-              {t("nav.tasks")}
-            </NavLink>
-          ) : null}
-          {showShares ? (
-            <NavLink
-              role="menuitem"
-              to="/settings/shares"
-              className={menuItemClass}
-              onClick={() => setOpen(false)}
-            >
-              {t("nav.shares")}
-            </NavLink>
-          ) : null}
-          {showDocs ? (
-            <NavLink
-              role="menuitem"
-              to="/docs"
-              className={menuItemClass}
-              onClick={() => setOpen(false)}
-            >
-              {t("footer.docs")}
-            </NavLink>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
+/**
+ * The chrome for every signed-in surface.
+ *
+ * Which rail is on screen is decided by `surfaceForPath`, not by nesting another
+ * layout with its own sidebar — that is how `/settings/*` and
+ * `/admin/interfaces/*` used to end up two and three nav levels deep.
+ */
 export function AppLayout() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { accessToken, user, loading } = useAuth();
   const location = useLocation();
   const signedIn = !!accessToken && !!user;
@@ -190,121 +35,45 @@ export function AppLayout() {
     );
   }
 
-  const shell = (
-    <div className="flex h-dvh min-h-0 flex-col overflow-hidden">
-      <header className="flex shrink-0 items-center gap-soft border-b border-line bg-panel px-wide py-base">
-        <span className="shrink-0 text-sm font-semibold tracking-tight text-ink-primary">
-          {t("app.title")}
-        </span>
-        <nav className="flex min-w-0 flex-1 flex-wrap items-center gap-tight">
-          {loading ? (
-            <span className="px-soft py-base text-xs text-ink-muted">{t("nav.loading")}</span>
-          ) : signedIn ? (
-            <>
-              {navItemAllowed(user, "chat") ? (
-                <NavLink to="/chat" className={linkClass}>
-                  {t("nav.chat")}
-                </NavLink>
-              ) : null}
-              <AgentRunningBadge />
-              {navItemAllowed(user, "schedules") ? (
-                <NavLink to="/schedules" className={({ isActive }) => `${linkClass({ isActive })} hidden md:inline-flex`}>
-                  {t("nav.schedules")}
-                </NavLink>
-              ) : null}
-              {navItemAllowed(user, "projects") ? (
-                <NavLink
-                  to="/projects"
-                  className={({ isActive }) => `${linkClass({ isActive })} hidden md:inline-flex`}
-                >
-                  {t("nav.projects")}
-                </NavLink>
-              ) : null}
-              <NavLink
-                to="/settings/connections"
-                className={({ isActive }) => `${linkClass({ isActive })} hidden md:inline-flex`}
-              >
-                {t("nav.connections")}
-              </NavLink>
-              <MoreNavMenu
-                showSchedulesMobile={navItemAllowed(user, "schedules")}
-                showConnectionsMobile
-                showDashboard={navItemAllowed(user, "dashboard")}
-                showProjects={navItemAllowed(user, "projects")}
-                showStudio={navItemAllowed(user, "studio")}
-                showTasks={navItemAllowed(user, "tasks")}
-                showShares={navItemAllowed(user, "shares")}
-                showDocs={showDocsFooter}
-              />
-            </>
-          ) : (
-            <div className="flex min-w-0 flex-wrap items-center gap-base">
-              <div className="flex gap-tight" aria-label={t("language.label")}>
-                {SUPPORTED.map((lng) => {
-                  const active =
-                    i18n.resolvedLanguage?.startsWith(lng) ?? i18n.language.startsWith(lng);
-                  return (
-                    <button
-                      key={lng}
-                      type="button"
-                      className={[
-                        "rounded-tile px-base py-tight text-meta font-medium",
-                        active
-                          ? "bg-white/15 text-ink-primary"
-                          : "text-ink-muted hover:bg-white/5 hover:text-neutral-200",
-                      ].join(" ")}
-                      onClick={() => void i18n.changeLanguage(lng)}
-                    >
-                      {lng.toUpperCase()}
-                    </button>
-                  );
-                })}
-              </div>
-              <Link to="/login" className={signInClass}>
-                {t("nav.signIn")}
-              </Link>
-            </div>
-          )}
-        </nav>
-        {loading ? null : signedIn ? (
-          <div className="ml-auto flex shrink-0 items-center gap-tight">
-            <NotificationBell />
-            <UserMenu />
-          </div>
-        ) : null}
-      </header>
-      <div className="min-h-0 flex-1 overflow-hidden [&>*]:h-full [&>*]:min-h-0">
-        <Outlet />
-      </div>
+  const surface = surfaceForPath(location.pathname, user);
+
+  const footer = (
+    <>
       <MediaMiniPlayer />
       <footer className="shrink-0 border-t border-line bg-panel px-wide py-base">
         <div className="mx-auto flex max-w-page flex-wrap items-center justify-center gap-x-wide gap-y-tight text-meta text-ink-muted">
           <LegalFooterLinks />
           {showDocsFooter && !signedIn ? (
             <>
-              <a
-                href={GITHUB_REPO}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-neutral-300"
-              >
-                {t("footer.github")}
-              </a>
-              <span className="text-white/15" aria-hidden>
-                ·
-              </span>
-              <NavLink to="/docs" className="hover:text-neutral-300">
+              <Link to="/docs" className="hover:text-ink-secondary">
                 {t("footer.docs")}
-              </NavLink>
-              <span className="text-white/15" aria-hidden>
+              </Link>
+              <span className="text-line-strong" aria-hidden>
                 ·
               </span>
             </>
           ) : null}
-          <span className="text-white/25">{t("footer.brand")}</span>
+          <span className="text-ink-muted">{t("footer.brand")}</span>
         </div>
       </footer>
-    </div>
+    </>
+  );
+
+  const shell = (
+    <AppShell
+      surface={surface}
+      signedIn={signedIn && !loading}
+      scroll={surface.id === "app" ? "fill" : "page"}
+      runningBadge={surface.id === "app"}
+      footer={footer}
+      signIn={
+        <Link to="/login" className={signInClass}>
+          {t("nav.signIn")}
+        </Link>
+      }
+    >
+      <Outlet />
+    </AppShell>
   );
 
   const wrappedShell = signedIn ? (

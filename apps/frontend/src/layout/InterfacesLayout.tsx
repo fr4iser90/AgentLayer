@@ -1,53 +1,22 @@
-import { NavLink, Outlet } from "react-router-dom";
-import { useTranslation } from "react-i18next";
+import { Outlet } from "react-router-dom";
 import { OperatorSettingsProvider } from "../features/admin/operatorSettings/OperatorSettingsProvider";
 import { OperatorSettingsStickySave } from "../features/admin/operatorSettings/OperatorSettingsStickySave";
 
-const subLink =
-  "block rounded-card border border-transparent px-soft py-base text-sm transition-colors";
-const subActive = "border-line bg-white/10 text-ink-primary";
-const subIdle = "text-ink-muted hover:bg-white/5 hover:text-neutral-200";
-
+/**
+ * Provider scope for the interface settings.
+ *
+ * Its own sidebar of nine links is gone — that was a third nav container nested
+ * inside the admin one. The pages are leaves of the admin rail now
+ * (`INTERFACES_SECTIONS` in `navModel.ts`), spliced in while the path is inside
+ * the area. What remains is the shared operator-settings state and the sticky
+ * save bar that reads it.
+ */
 export function InterfacesLayout() {
-  const { t } = useTranslation(["admin"]);
-  const NAV = [
-    { to: "/admin/interfaces", end: true, label: t("admin:overview") },
-    { to: "/admin/interfaces/bridges", label: t("admin:bridges") },
-    { to: "/admin/interfaces/providers", label: t("admin:interfacesProvidersTitle") },
-    { to: "/admin/interfaces/model-policies", label: t("admin:interfacesModelPoliciesTitle") },
-    { to: "/admin/interfaces/routing", label: t("admin:interfacesRoutingTitle") },
-    { to: "/admin/interfaces/memory", label: t("admin:memoryRagTitle") },
-    { to: "/admin/interfaces/voice", label: t("admin:interfacesVoiceTitle") },
-    { to: "/admin/interfaces/automation", label: t("admin:navAutomation") },
-    { to: "/admin/interfaces/platform", label: t("admin:navPlatform") },
-  ] as const;
   return (
     <OperatorSettingsProvider>
-      <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
-        <aside className="shrink-0 border-b border-line bg-panel px-soft py-wide md:w-48 md:border-b-0 md:border-r">
-          <p className="mb-base px-base text-meta font-medium uppercase tracking-wide text-ink-muted">
-            {t("admin:interfacesTitle")}
-          </p>
-          <nav
-            className="flex flex-row flex-wrap gap-tight md:flex-col md:gap-hair"
-            aria-label={t("admin:interfaceSettingsAria")}
-          >
-            {NAV.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={"end" in item ? item.end : false}
-                className={({ isActive }) => `${subLink} ${isActive ? subActive : subIdle}`}
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
-        </aside>
-        <div className="relative min-h-0 min-w-0 flex-1 overflow-y-auto">
-          <Outlet />
-          <OperatorSettingsStickySave />
-        </div>
+      <div className="relative">
+        <Outlet />
+        <OperatorSettingsStickySave />
       </div>
     </OperatorSettingsProvider>
   );
