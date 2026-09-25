@@ -86,5 +86,13 @@
   },
   "drawer": {
     "close": "Close panel"
+  },
+  "session": {
+    "expiredTitle": "Session expired",
+    "expiredBody": "Sign in again to keep working.",
+    "signIn": "Sign in",
+    "networkTitle": "Server unreachable",
+    "networkBody": "The request timed out after {{seconds}} s. Check your connection.",
+    "retry": "Try again"
   }
 }

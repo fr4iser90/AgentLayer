@@ -117,6 +117,11 @@ import {
   putConversationAgentLog,
 } from "../features/chat/conversationsApi";
 import {
+  reportAgentLogFailure,
+  reportDelegatePrefFailure,
+  saveConversation,
+} from "../features/chat/chatSave";
+import {
   chatPerfBeginPoll,
   chatPerfBeginTurn,
   chatPerfEndTurn,
@@ -565,7 +570,7 @@ export function ChatPage() {
     void putConversationAgentLog(authRef.current, tid, {
       agentLog,
       turnLogs: th.turnLogs ?? [],
-    }).catch(() => {});
+    }).catch(reportAgentLogFailure);
   }, []);
 
   const schedulePersistAgentLog = useCallback(() => {
@@ -1432,7 +1437,7 @@ export function ChatPage() {
           t.id === activeThreadId ? { ...t, mode: m, updatedAt: Date.now() } : t
         );
         const th = next.find((x) => x.id === activeThreadId);
-        if (th) void putConversation(auth, th).catch(() => {});
+        if (th) void saveConversation(auth, th);
         return next;
       });
     },
@@ -1451,7 +1456,7 @@ export function ChatPage() {
             : t
         );
         const th = next.find((x) => x.id === activeThreadId);
-        if (th) void putConversation(auth, th).catch(() => {});
+        if (th) void saveConversation(auth, th);
         return next;
       });
     },
@@ -1485,7 +1490,7 @@ export function ChatPage() {
           t.id === activeThreadId ? { ...t, workspaceId: wsId, updatedAt: Date.now() } : t
         );
         const th = next.find((x) => x.id === activeThreadId);
-        if (th) void putConversation(auth, th).catch(() => {});
+        if (th) void saveConversation(auth, th);
         return next;
       });
     },
@@ -1816,7 +1821,7 @@ export function ChatPage() {
               messageCount: nextMessages.length + 1,
               updatedAt: Date.now(),
             };
-            void putConversation(auth, updated).catch(() => {});
+            void saveConversation(auth, updated);
             return updated;
           });
           return next;
@@ -1847,7 +1852,7 @@ export function ChatPage() {
             messageCount: th.messages.length + 1,
             updatedAt: Date.now(),
           };
-          void putConversation(auth, updated).catch(() => {});
+          void saveConversation(auth, updated);
           return updated;
         });
         return next;
@@ -2056,10 +2061,26 @@ export function ChatPage() {
     });
     chatPerfBeginTurn(tid, userMsgId);
 
+    // Escalate the wait hint while a long turn runs. `onSlow` was built for the
+    // embedded dashboard chat and ChatPage keeps its own socket, so the
+    // transcript used to sit on the static "Agent läuft" through runs that take
+    // minutes — the surface with the long work was the one surface that never
+    // said it was still working.
+    const slowHintTimers: number[] = [];
+    const armSlowHint = (atMs: number, key: string) => {
+      slowHintTimers.push(
+        window.setTimeout(() => {
+          if (finished) return;
+          agentLiveTurnRef.current.setWaitHint(t(key));
+        }, atMs)
+      );
+    };
+
     let finished = false;
     const finish = () => {
       if (finished) return;
       finished = true;
+      for (const id of slowHintTimers) window.clearTimeout(id);
       chatPerfEndTurn(tid, userMsgId);
       agentTurnFinishRef.current = null;
       agentChatSession.setFinishCallback(null);
@@ -2082,7 +2103,7 @@ export function ChatPage() {
           void putConversationAgentLog(authRef.current, id, {
             agentLog: log,
             turnLogs: th?.turnLogs ?? [],
-          }).catch(() => {});
+          }).catch(reportAgentLogFailure);
         }
         if (agentChatSession.isPageMounted()) {
           setThreads((prev) =>
@@ -2144,6 +2165,8 @@ export function ChatPage() {
     };
     agentTurnFinishRef.current = finish;
     agentChatSession.setFinishCallback(finish);
+    armSlowHint(20_000, "chat:slowHintRunning");
+    armSlowHint(60_000, "chat:slowHintLong");
 
     agentHandlerRef.current = (ev: MessageEvent) => {
       try {
@@ -2247,7 +2270,7 @@ export function ChatPage() {
             void putConversationAgentLog(authRef.current, id, {
               agentLog: liveLog,
               turnLogs: th?.turnLogs ?? [],
-            }).catch(() => {});
+            }).catch(reportAgentLogFailure);
             if (agentChatSession.isPageMounted()) {
               setThreads((prev) =>
                 prev.map((row) => {
@@ -2311,7 +2334,7 @@ export function ChatPage() {
                     th.id === tid ? { ...th, agentId: aid, updatedAt: Date.now() } : th
                   );
                   const th = next.find((x) => x.id === tid);
-                  if (th) void putConversation(auth, th).catch(() => {});
+                  if (th) void saveConversation(auth, th);
                   return next;
                 });
               }
@@ -2339,7 +2362,7 @@ export function ChatPage() {
                     th.id === tid ? { ...th, workspaceId: wid, updatedAt: Date.now() } : th
                   );
                   const th = next.find((x) => x.id === tid);
-                  if (th) void putConversation(auth, th).catch(() => {});
+                  if (th) void saveConversation(auth, th);
                   return next;
                 });
               }
@@ -3116,7 +3139,7 @@ export function ChatPage() {
     const trimmed = next.trim();
     if (!trimmed) return;
     patchThread(id, { title: trimmed });
-    void putConversation(auth, { ...thread, title: trimmed }).catch(() => {});
+    void saveConversation(auth, { ...thread, title: trimmed });
   };
 
   const shareThread = async (thread: ChatThread) => {
@@ -3574,7 +3597,7 @@ export function ChatPage() {
                         patchThread(activeThreadId, { delegateAutoRespondEnabled: enabled });
                         void patchDelegatePrefs(auth, activeThreadId, {
                           delegate_auto_respond_enabled: enabled,
-                        }).catch(() => {});
+                        }).catch(reportDelegatePrefFailure);
                         if (!enabled) delegateClearRef.current();
                       }}
                     />
@@ -3600,7 +3623,7 @@ export function ChatPage() {
                           if (!Number.isFinite(sec) || !activeThreadId) return;
                           void patchDelegatePrefs(auth, activeThreadId, {
                             delegate_auto_respond_after_sec: sec,
-                          }).catch(() => {});
+                          }).catch(reportDelegatePrefFailure);
                         }}
                       />
                       s

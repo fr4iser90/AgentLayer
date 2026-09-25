@@ -1,0 +1,21 @@
+{
+  "note": "Swallowed promise rejections without a `// why:` line. Re-record with --update after an intentional change; new ones fail. Annotate rather than widen where you can.",
+  "sites": [
+    "src/features/dashboard/DashboardBlocks.tsx::.catch(() => null)",
+    "src/features/dashboard/DashboardEmbeddedChat.tsx::.catch(() => {})",
+    "src/features/dashboard/ProjectRowDetailDrawer.tsx::.catch(() => null)",
+    "src/features/dashboard/ProjectWorkspaceControls.tsx::.catch(() => null)",
+    "src/features/dashboard/ProjectsImportModal.tsx::.catch(() => null)",
+    "src/features/workspace/WorkspaceRetrievalBar.tsx::.catch(() => null)",
+    "src/pages/ChatPage.tsx::.catch(() => {\n                                                                       \n      })",
+    "src/pages/ChatPage.tsx::.catch(() => {})",
+    "src/pages/MySchedulesPage.tsx::.catch(() => null)",
+    "src/pages/TasksPage.tsx::.catch(() => undefined)",
+    "src/pages/admin/AdminSchedules.tsx::.catch(() => null)",
+    "src/ui/silent-catch-guard.test.ts::.catch(() => noop)",
+    "src/ui/silent-catch-guard.test.ts::.catch(() => null)",
+    "src/ui/silent-catch-guard.test.ts::.catch(() => undefined)",
+    "src/ui/silent-catch-guard.test.ts::.catch(() => {})",
+    "src/ui/silent-catch-guard.test.ts::.catch((_: unknown) => {})"
+  ]
+}
