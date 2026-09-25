@@ -4,6 +4,7 @@ import { CircleCheck } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { Button } from "../../ui/Button";
+import { EmptyState } from "../../ui/EmptyState";
 
 type FriendRequest = {
   id: number;
@@ -421,23 +422,30 @@ export function FriendsSettings() {
           )}
 
           {confirmedFriends.length === 0 && incomingRequests.length === 0 && outgoingRequests.length === 0 && (
-            <div className="p-deep text-center text-ink-muted rounded-sheet border border-line bg-card">
-              {t("settings:friendsEmptyStart")}
+            <div className="rounded-sheet border border-line bg-card">
+              <EmptyState
+                pose="waiting"
+                title={t("settings:friendsEmptyStart")}
+                animated={false}
+                size={56}
+              />
             </div>
           )}
         </div>
       ) : (
         <div className="space-y-broad">
           <p className="text-sm text-ink-muted">
-            Hier kannst du Personen manuell eintragen die nicht auf diesem System registriert sind.
-            Diese Personen werden in jeden Chat mitgeschickt.
+            {t("settings:friendsManualIntro")}
           </p>
 
           <div className="rounded-sheet border border-line bg-card overflow-hidden">
             {knownPeople.length === 0 ? (
-              <div className="p-deep text-center text-ink-muted">
-                {t("settings:friendsNoPeopleYet")}
-              </div>
+              <EmptyState
+                pose="empty"
+                title={t("settings:friendsNoPeopleYet")}
+                animated={false}
+                size={56}
+              />
             ) : (
               <div className="divide-y divide-line">
                 {knownPeople.map((person, index) => (
