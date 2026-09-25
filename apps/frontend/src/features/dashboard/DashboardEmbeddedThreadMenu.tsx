@@ -1,7 +1,8 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ChatThread } from "../chat/chatThreadStorage";
 import { Tooltip } from "../../ui/Tooltip";
+import { useClickOutside } from "../../ui/useClickOutside";
 
 type LabelPack = { shared: string; personal: string; untitled: string };
 
@@ -31,21 +32,7 @@ export function DashboardEmbeddedThreadMenu({
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
+  useClickOutside(rootRef, () => setOpen(false), open);
 
   const labels: LabelPack = {
     shared: t("chat:visibilitySharedLabel"),

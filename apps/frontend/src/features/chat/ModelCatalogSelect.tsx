@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   catalogModelOptionUnreachableTitle,
   catalogRowForSelection,
@@ -13,6 +13,7 @@ import {
   type ModelRow,
 } from "../../lib/modelCatalog";
 import { Tooltip } from "../../ui/Tooltip";
+import { useClickOutside } from "../../ui/useClickOutside";
 
 type ModelCatalogSelectProps = {
   rows: ModelRow[];
@@ -73,21 +74,7 @@ export function ModelCatalogSelect({
   const buttonTextSize = size === "sm" ? "text-xs" : "text-sm";
   const buttonPadding = size === "sm" ? "px-base py-snug" : "px-firm py-snug";
 
-  useEffect(() => {
-    if (!open) return;
-    function onPointerDown(ev: PointerEvent) {
-      if (!rootRef.current?.contains(ev.target as Node)) setOpen(false);
-    }
-    function onKeyDown(ev: KeyboardEvent) {
-      if (ev.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
+  useClickOutside(rootRef, () => setOpen(false), open);
 
   return (
     <div ref={rootRef} className="relative">

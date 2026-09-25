@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { hasOrgSurface } from "../auth/deploymentMode";
 import { Mascot, pickCharacter } from "../ui/Mascot";
 import { Tooltip } from "../ui/Tooltip";
+import { useClickOutside } from "../ui/useClickOutside";
 
 export function UserMenu() {
   const { t } = useTranslation();
@@ -19,14 +20,7 @@ export function UserMenu() {
     hasOrgSurface(user) &&
     (user?.membership_role === "tenant_owner" || user?.membership_role === "tenant_admin");
 
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
+  useClickOutside(rootRef, () => setOpen(false), open);
 
   return (
     <div className="relative" ref={rootRef}>
