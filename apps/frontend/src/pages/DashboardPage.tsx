@@ -21,6 +21,7 @@ import {
 } from "../features/dashboard/DashboardOnboardingBanner";
 import { DashboardGridCanvas } from "../features/dashboard/DashboardGridCanvas";
 import { Drawer } from "../ui/Drawer";
+import { Modal } from "../ui/Modal";
 import { DashboardBoardFilesPanel } from "../features/dashboard/DashboardBoardFilesPanel";
 import { DashboardSidebarNav } from "../features/dashboard/DashboardSidebarNav";
 import { DashboardOverviewPanel } from "../features/dashboard/DashboardOverviewPanel";
@@ -1197,38 +1198,13 @@ export function DashboardPage() {
         </div>
 
         {installModalRow ? (
-          <div className="fixed inset-0 z-modal flex items-center justify-center p-wide" role="presentation">
-            <div
-              className="absolute inset-0 bg-black/70"
-              role="button"
-              tabIndex={0}
-              aria-label={t("dashboard:close")}
-              onClick={() => {
-                if (!installBusy) setInstallModalRow(null);
-              }}
-              onKeyDown={(e) => {
-                if ((e.key === "Enter" || e.key === " ") && !installBusy) {
-                  e.preventDefault();
-                  setInstallModalRow(null);
-                }
-              }}
-            />
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="ws-install-title"
-              className="relative w-full max-w-dialog rounded-sheet border border-line bg-card p-broad shadow-xl"
-            >
-              <h2 id="ws-install-title" className="text-lg font-semibold text-ink-primary">
-                {t("dashboard:installPackConfirmTitle", { label: installModalRow.label })}
-              </h2>
-              {installModalRow.description ? (
-                <p className="mt-base text-sm text-ink-muted">{installModalRow.description}</p>
-              ) : null}
-              <p className="mt-soft text-sm text-ink-muted">
-                {t("dashboard:installPackConfirmBody")}
-              </p>
-              <div className="mt-broad flex justify-end gap-base">
+          <Modal
+            open
+            onClose={() => setInstallModalRow(null)}
+            title={t("dashboard:installPackConfirmTitle", { label: installModalRow.label })}
+            dismissOnScrim={!installBusy}
+            footer={(
+              <>
                 <Button
                   type="button"
                   variant="secondary"
@@ -1238,17 +1214,25 @@ export function DashboardPage() {
                 >
                   {t("admin:cancel")}
                 </Button>
-                <button
+                <Button
                   type="button"
+                  variant="primary"
+                  size="lg"
                   disabled={installBusy || !installModalRow.has_schema}
-                  className="rounded-card bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={() => void runInstallFromModal()}
                 >
                   {installBusy ? t("dashboard:installing") : t("dashboard:install")}
-                </button>
-              </div>
-            </div>
-          </div>
+                </Button>
+              </>
+            )}
+          >
+            {installModalRow.description ? (
+              <p className="text-body text-ink-muted">{installModalRow.description}</p>
+            ) : null}
+            <p className="text-body text-ink-muted">
+              {t("dashboard:installPackConfirmBody")}
+            </p>
+          </Modal>
         ) : null}
       </div>
     );
@@ -2443,31 +2427,23 @@ export function DashboardPage() {
       ) : null}
 
       {newWsModalOpen ? (
-        <div className="fixed inset-0 z-modal flex items-center justify-center p-wide" role="presentation">
-          <div
-            className="absolute inset-0 bg-black/70"
-            role="button"
-            tabIndex={0}
-            aria-label={t("dashboard:close")}
-            onClick={() => setNewWsModalOpen(false)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                setNewWsModalOpen(false);
-              }
-            }}
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="ws-new-title"
-            className="relative max-h-[85vh] w-full max-w-dialog overflow-y-auto rounded-sheet border border-line bg-card p-broad shadow-xl"
-          >
-            <h2 id="ws-new-title" className="text-lg font-semibold text-ink-primary">
-              {t("dashboard:newDashboardModalTitle")}
-            </h2>
-            <p className="mt-base text-sm text-ink-muted">{t("dashboard:newDashboardPickType")}</p>
-            <ul className="mt-wide flex flex-col gap-base">
+        <Modal
+          open
+          onClose={() => setNewWsModalOpen(false)}
+          title={t("dashboard:newDashboardModalTitle")}
+          footer={
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              onClick={() => setNewWsModalOpen(false)}
+            >
+              {t("admin:cancel")}
+            </Button>
+          }
+        >
+          <p className="text-body text-ink-muted">{t("dashboard:newDashboardPickType")}</p>
+          <ul className="mt-wide flex flex-col gap-base">
               {kindsAllowedForNewDashboard.length === 0 ? (
                 <li className="text-sm text-ink-muted">{t("dashboard:installPackFromCatalogFirst")}</li>
               ) : (
@@ -2484,50 +2460,19 @@ export function DashboardPage() {
                 ))
               )}
             </ul>
-            <div className="mt-broad flex justify-end">
-              <Button
-                type="button"
-                variant="secondary"
-                size="lg"
-                onClick={() => setNewWsModalOpen(false)}
-              >
-                {t("admin:cancel")}
-              </Button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       ) : null}
 
       {installModalRow && schemaInstalled ? (
-        <div className="fixed inset-0 z-modal flex items-center justify-center p-wide" role="presentation">
-          <div
-            className="absolute inset-0 bg-black/70"
-            role="button"
-            tabIndex={0}
-            aria-label={t("dashboard:close")}
-            onClick={() => {
-              if (!installBusy) setInstallModalRow(null);
-            }}
-            onKeyDown={(e) => {
-              if ((e.key === "Enter" || e.key === " ") && !installBusy) {
-                e.preventDefault();
-                setInstallModalRow(null);
-              }
-            }}
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="ws-tpl-install-title"
-            className="relative w-full max-w-dialog rounded-sheet border border-line bg-card p-broad shadow-xl"
-          >
-            <h2 id="ws-tpl-install-title" className="text-lg font-semibold text-ink-primary">
-              {t("dashboard:installPackConfirmTitle", { label: installModalRow.label })}
-            </h2>
-            {installModalRow.description ? (
-              <p className="mt-base text-sm text-ink-muted">{installModalRow.description}</p>
-            ) : null}
-            <div className="mt-broad flex justify-end gap-base">
+        <Modal
+          open
+          onClose={() => {
+            if (!installBusy) setInstallModalRow(null);
+          }}
+          title={t("dashboard:installPackConfirmTitle", { label: installModalRow.label })}
+          dismissOnScrim={!installBusy}
+          footer={
+            <>
               <Button
                 type="button"
                 variant="secondary"
@@ -2537,61 +2482,62 @@ export function DashboardPage() {
               >
                 {t("admin:cancel")}
               </Button>
-              <button
+              <Button
                 type="button"
+                variant="primary"
+                size="lg"
                 disabled={installBusy || !installModalRow.has_schema}
-                className="rounded-card bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
                 onClick={() => void runInstallTemplates(installModalRow.kind)}
               >
                 {installBusy ? t("dashboard:installing") : t("dashboard:install")}
-              </button>
-            </div>
-          </div>
-        </div>
+              </Button>
+            </>
+          }
+        >
+          {installModalRow.description ? (
+            <p className="text-body text-ink-muted">{installModalRow.description}</p>
+          ) : null}
+        </Modal>
       ) : null}
 
       {pinModalOpen ? (
-        <div className="fixed inset-0 z-modal flex items-center justify-center bg-black/60 p-wide">
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="w-full max-w-dialog rounded-sheet border border-line bg-card p-broad shadow-xl"
-          >
-            <h2 className="text-lg font-semibold text-ink-primary">{t("dashboard:pinBlockTitle")}</h2>
-            <label className="mt-wide block text-sm text-ink-muted">
-              {t("dashboard:pinBlockTarget")}
-              <select
-                value={pinTargetId}
-                onChange={(e) => setPinTargetId(e.target.value)}
-                className="mt-tight w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
-              >
-                {pinTargetOptions.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.title || w.kind}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="mt-broad flex justify-end gap-base">
-              <Button
-                type="button"
-                variant="secondary"
-                size="lg"
-                onClick={() => setPinModalOpen(false)}
-              >
+        <Modal
+          open
+          onClose={() => setPinModalOpen(false)}
+          title={t("dashboard:pinBlockTitle")}
+          dismissOnScrim={!pinBusy}
+          footer={(
+            <>
+              <Button type="button" variant="secondary" size="lg" onClick={() => setPinModalOpen(false)}>
                 {t("admin:cancel")}
               </Button>
-              <button
+              <Button
                 type="button"
+                variant="primary"
+                size="lg"
                 disabled={pinBusy || !pinTargetId}
-                className="rounded-card bg-violet-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-violet-500 disabled:opacity-50"
                 onClick={() => void confirmPinBlock()}
               >
                 {pinBusy ? "…" : t("dashboard:pinBlockConfirm")}
-              </button>
-            </div>
-          </div>
-        </div>
+              </Button>
+            </>
+          )}
+        >
+          <label className="block text-sm text-ink-muted">
+            {t("dashboard:pinBlockTarget")}
+            <select
+              value={pinTargetId}
+              onChange={(e) => setPinTargetId(e.target.value)}
+              className="mt-tight w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
+            >
+              {pinTargetOptions.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.title || w.kind}
+                </option>
+              ))}
+            </select>
+          </label>
+        </Modal>
       ) : null}
     </>
   );
