@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { X } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { isPackageEnabledForChat, setPackageEnabledForChat } from "../../features/settings/toolPrefs";
 import { Badge } from "../../ui/Badge";
+import { Button, buttonClass } from "../../ui/Button";
+import { Drawer } from "../../ui/Drawer";
 
 type ToolPackageUi = {
   category: string;
@@ -570,32 +571,35 @@ function PackageDrawer({
   const example = t("settings:toolsTryExample", { tool: first });
 
   return (
-    <div className="fixed inset-0 z-overlay flex justify-end bg-black/60 p-0 sm:p-wide" role="dialog" aria-modal="true">
-      <button
-        type="button"
-        className="absolute inset-0 h-full w-full cursor-default"
-        aria-label={t("settings:close")}
-        onClick={onClose}
-      />
-      <div className="relative flex h-full w-full max-w-drawer flex-col border-l border-line bg-[#141414] shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-sheet">
-        <div className="flex items-start justify-between gap-soft border-b border-line px-roomy py-wide">
-          <div>
-            <p className="text-meta uppercase text-ink-muted">{pid}</p>
-            <h2 className="text-lg font-semibold text-ink-primary">{title}</h2>
-            {(pkg.ui?.tagline || pkg.TOOL_DESCRIPTION) && (
-              <p className="mt-tight text-sm text-ink-muted">{(pkg.ui?.tagline || pkg.TOOL_DESCRIPTION || "").slice(0, 400)}</p>
-            )}
-          </div>
-          <button
-            type="button"
-            aria-label={t("settings:close")}
-            className="rounded-card px-base py-tight text-sm text-ink-muted hover:bg-white/10 hover:text-white"
+    <Drawer
+      open
+      onClose={onClose}
+      title={title}
+      headerExtra={
+        <>
+          <p className="font-mono text-meta uppercase text-ink-muted">{pid}</p>
+          {(pkg.ui?.tagline || pkg.TOOL_DESCRIPTION) && (
+            <p className="mt-tight text-sm text-ink-muted">
+              {(pkg.ui?.tagline || pkg.TOOL_DESCRIPTION || "").slice(0, 400)}
+            </p>
+          )}
+        </>
+      }
+      footer={
+        <>
+          <Link
+            to="/settings/connections"
+            className={buttonClass("primary")}
             onClick={onClose}
           >
-            <X aria-hidden className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="min-h-0 flex-1 space-y-broad overflow-y-auto px-roomy py-wide">
+            {t("settings:connectionsTitle")}
+          </Link>
+          <Button variant="secondary" onClick={onClose}>
+            {t("settings:toolsDrawerClose")}
+          </Button>
+        </>
+      }
+    >
           <section>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-200/80">{t("settings:toolsExamplePrompt")}</h3>
             <p className="mt-tight text-sm text-ink-secondary">{example}</p>
@@ -627,24 +631,6 @@ function PackageDrawer({
             <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{t("settings:toolsLogsLastUsed")}</h3>
             <p className="mt-tight text-xs text-ink-muted">{t("settings:toolsLogsNotExposed")}</p>
           </section>
-        </div>
-        <div className="flex gap-base border-t border-line px-roomy py-wide">
-          <Link
-            to="/settings/connections"
-            className="rounded-card bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500"
-            onClick={onClose}
-          >
-            {t("settings:connectionsTitle")}
-          </Link>
-          <button
-            type="button"
-            className="rounded-card border border-line-strong px-wide py-base text-sm text-ink-primary hover:bg-white/10"
-            onClick={onClose}
-          >
-            {t("settings:toolsDrawerClose")}
-          </button>
-        </div>
-      </div>
-    </div>
+    </Drawer>
   );
 }

@@ -78,6 +78,7 @@ import { formatBenchmarkProviderModel } from "../../features/admin/benchmarks/be
 import { Button } from "../../ui/Button";
 import { Tooltip } from "../../ui/Tooltip";
 import { Badge } from "../../ui/Badge";
+import { Modal } from "../../ui/Modal";
 
 const benchCheckboxClass =
   "h-4 w-4 shrink-0 rounded-tile border-2 border-sky-400/70 bg-black/60 text-sky-500 accent-sky-500 focus:ring-2 focus:ring-sky-400/70 focus:ring-offset-0";
@@ -3289,22 +3290,44 @@ export function AdminBenchmarks() {
       />
 
       {bulkDeleteOpen ? (
-        <div
-          className="fixed inset-0 z-modal flex items-center justify-center bg-black/60 p-wide"
-          role="presentation"
-          onClick={() => {
+        <Modal
+          open
+          onClose={() => {
             if (!bulkDeleting) setBulkDeleteOpen(false);
           }}
+          title={t("admin:benchBulkDeleteTitle")}
+          role="alertdialog"
+          describedBy="bench-bulk-delete-hint"
+          dismissOnScrim={!bulkDeleting}
+          footer={
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                size="lg"
+                disabled={bulkDeleting}
+                onClick={() => setBulkDeleteOpen(false)}
+              >
+                {t("admin:cancel")}
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                size="lg"
+                disabled={
+                  bulkDeleting || bulkDeletePreviewLoading || bulkDeletePreviewCount === 0
+                }
+                onClick={() => void confirmBulkDeleteRuns()}
+              >
+                {bulkDeleting ? "…" : t("admin:benchBulkDeleteConfirm")}
+              </Button>
+            </>
+          }
         >
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="w-full max-w-dialog rounded-sheet border border-line bg-[#1a1a1a] p-roomy shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-base font-semibold text-ink-primary">{t("admin:benchBulkDeleteTitle")}</h2>
-            <p className="mt-base text-sm text-ink-secondary">{t("admin:benchBulkDeleteHint")}</p>
-            <label className="mt-wide block text-xs text-ink-muted">
+          <p id="bench-bulk-delete-hint" className="text-body text-ink-secondary">
+            {t("admin:benchBulkDeleteHint")}
+          </p>
+          <label className="mt-wide block text-xs text-ink-muted">
               {t("admin:benchSuite")}
               <select
                 value={bulkDeleteSuite}
@@ -3332,35 +3355,15 @@ export function AdminBenchmarks() {
                 <option value="180">{t("admin:benchBulkDeleteOlder180d")}</option>
               </select>
             </label>
-            <p className="mt-soft text-sm text-amber-200/90">
+            <p className="mt-soft text-sm text-warning">
               {bulkDeletePreviewLoading
                 ? t("admin:benchBulkDeletePreviewLoading")
                 : t("admin:benchBulkDeletePreview", { count: bulkDeletePreviewCount })}
             </p>
-            <p className="mt-tight text-meta text-ink-muted">{t("admin:benchBulkDeleteActiveSkipped")}</p>
-            <div className="mt-roomy flex flex-wrap justify-end gap-base">
-              <Button
-                type="button"
-                variant="secondary"
-                size="lg"
-                disabled={bulkDeleting}
-                onClick={() => setBulkDeleteOpen(false)}
-              >
-                {t("admin:cancel")}
-              </Button>
-              <button
-                type="button"
-                className="rounded-card border border-red-600/50 bg-red-950/60 px-wide py-base text-sm font-medium text-red-100 hover:bg-red-900/50 disabled:opacity-50"
-                disabled={
-                  bulkDeleting || bulkDeletePreviewLoading || bulkDeletePreviewCount === 0
-                }
-                onClick={() => void confirmBulkDeleteRuns()}
-              >
-                {bulkDeleting ? "…" : t("admin:benchBulkDeleteConfirm")}
-              </button>
-            </div>
-          </div>
-        </div>
+            <p className="mt-tight text-meta text-ink-muted">
+              {t("admin:benchBulkDeleteActiveSkipped")}
+            </p>
+        </Modal>
       ) : null}
     </div>
   );
