@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { getAgentChatSession } from "./agentChatSession";
 import { useAgentWaitHint } from "./useAgentLiveTurn";
 import { badgeClasses } from "../../ui/Badge";
+import { PulseDot } from "../../ui/PulseDot";
 
 function useActiveAgentTurn() {
   const session = getAgentChatSession();
@@ -55,13 +56,7 @@ export function AgentRunningBadge() {
       className={badgeClasses("accent", "ml-tight max-w-chipWide hover:bg-accent/25")}
       title={label}
     >
-      <span
-        className="relative flex h-1.5 w-1.5 shrink-0"
-        aria-hidden
-      >
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-pill bg-accent/70 opacity-75" />
-        <span className="relative inline-flex h-1.5 w-1.5 rounded-pill bg-badge-accent" />
-      </span>
+      <PulseDot />
       <span className="min-w-0 truncate">{label}</span>
       <span className="shrink-0 tabular-nums text-ink-muted">{timeLabel}</span>
     </Link>
