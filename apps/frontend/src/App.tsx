@@ -53,6 +53,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { SetupWizardPage } from "./pages/SetupWizardPage";
 import { MySchedulesPage } from "./pages/MySchedulesPage";
 import { TasksPage } from "./pages/TasksPage";
+import { ToastProvider } from "./ui/Toast";
 
 function LegacyCodingAgentRedirect() {
   const { search } = useLocation();
@@ -62,7 +63,8 @@ function LegacyCodingAgentRedirect() {
 export function App() {
   return (
     <BrowserRouter basename="/app">
-      <AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
         <Routes>
           <Route element={<AppLayout />}>
             <Route path="login" element={<LoginPage />} />
@@ -177,7 +179,8 @@ export function App() {
             <Route path="*" element={<DefaultLandingRedirect />} />
           </Route>
         </Routes>
-      </AuthProvider>
+        </AuthProvider>
+      </ToastProvider>
     </BrowserRouter>
   );
 }

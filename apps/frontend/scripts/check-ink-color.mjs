@@ -101,45 +101,11 @@ const FOREIGN =
  * String contents are left alone, so a `//` inside a URL in an `href` is not
  * mistaken for a comment start.
  */
-function stripComments(src) {
-  let out = "";
-  let quote = null;
-  let i = 0;
-  while (i < src.length) {
-    const c = src[i];
-    if (quote) {
-      out += c;
-      if (c === quote) quote = null;
-      i += 1;
-      continue;
-    }
-    if (c === '"' || c === "'" || c === "`") {
-      quote = c;
-      out += c;
-      i += 1;
-      continue;
-    }
-    if (c === "/" && src[i + 1] === "/") {
-      while (i < src.length && src[i] !== "\n") {
-        out += " ";
-        i += 1;
-      }
-      continue;
-    }
-    if (c === "/" && src[i + 1] === "*") {
-      while (i < src.length && !(src[i] === "*" && src[i + 1] === "/")) {
-        out += src[i] === "\n" ? "\n" : " ";
-        i += 1;
-      }
-      out += "  ";
-      i += 2;
-      continue;
-    }
-    out += c;
-    i += 1;
-  }
-  return out;
-}
+// The implementation lives in scripts/strip-comments.mjs, shared with
+// spacing-scan.mjs. Two copies of a comment stripper is how one gets fixed and
+// the other stays blind — which is the exact failure this file has already
+// documented for its own regex three times over.
+import { stripComments } from "./strip-comments.mjs";
 
 function classify(token) {
   const bare = token.split("/")[0];

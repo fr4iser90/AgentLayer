@@ -75,5 +75,16 @@
     "result": "Ergebnis",
     "generatedImageAlt": "Generiertes Bild",
     "noPresetSelected": "Kein Preset ausgewählt."
+  },
+  "toast": {
+    "region": "Benachrichtigungen",
+    "bannerRegion": "Wichtige Meldungen",
+    "dismiss": "Meldung schließen"
+  },
+  "modal": {
+    "close": "Dialog schließen"
+  },
+  "drawer": {
+    "close": "Bereich schließen"
   }
 }
