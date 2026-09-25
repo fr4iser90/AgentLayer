@@ -51,6 +51,13 @@ export function AppShell({
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // Which rail doors the reader folded. Here rather than inside `NavRail`
+  // because this file renders that rail twice, and two copies of one preference
+  // is the drift the single list of links exists to prevent.
+  const [navFolds, setNavFolds] = useState<Record<string, boolean>>({});
+  const foldDoor = (to: string, open: boolean) =>
+    setNavFolds((current) => ({ ...current, [to]: open }));
+
   // Navigating closes the drawer: on a phone the rail covers the page you just
   // asked for, and leaving it open makes the next tap a second navigation.
   useEffect(() => {
@@ -101,7 +108,7 @@ export function AppShell({
               {title}
             </p>
           ) : null}
-          <NavRail surface={surface} />
+          <NavRail surface={surface} folds={navFolds} onFold={foldDoor} />
         </aside>
         <main
           className={[
@@ -125,7 +132,7 @@ export function AppShell({
         surface="panel"
         mobileOnly
       >
-        <NavRail surface={surface} />
+        <NavRail surface={surface} folds={navFolds} onFold={foldDoor} />
       </Drawer>
     </div>
   );

@@ -287,6 +287,26 @@ written as a literal comparison against one of the two known modes:
 > Route-Guard; `check-nav-depth.mjs` Regel 5 prüft, dass keine Fläche ihre Tür verliert. Der Rest
 > der Tabelle gilt unverändert.
 
+> **Nachtrag 2 (UI-Redesign, Welle 2).** Die Seiten unter `/admin/interfaces` waren die erste
+> eigene Sidebar, die aus dem Rail verschwand — übrig geblieben war, dass ihre Blätter *nach dem
+> Pfad* in das Admin-Rail eingesetzt wurden. Zwei Folgen: jede Bewegung zwischen zwei
+> Interface-Einstellungen baute die Liste unter dem Zeiger um, und die Fläche stand zweimal in
+> einer Liste — `Interfaces` in der Plattform-Sektion und `Overview` in einer eigenen Sektion,
+> zwei Zeilen, eine Seite. Jetzt stehen die acht Seiten als `children` unter der Tür in
+> `navModel.ts`; die Liste ist fest, nur ihre Falz ändert sich, und die ist ein Wert in
+> `AppShell`, weil `NavRail` zweimal gezeichnet wird (Spalte und Drawer). Regel 6 in
+> `check-nav-depth.mjs` prüft die Form der Falz: eine Ebene tief, die Tür nicht eine ihrer
+> eigenen Seiten, jede Seite unter dem Pfad der Tür, keine gefaltete Seite zusätzlich neben ihr.
+> Messbar: 21 Zeilen im Bereich → 12 zugeklappt / 20 aufgeklappt, doppelte Zeile 1 → 0,
+> Rail-Blätter im Modell 46 → 45, Frontend-Tests 415 → 436.
+>
+> **Eine Falle, die den Regeltext fast blind gemacht hätte:** der alte Blatt-Leser der Regel lief
+> bis zum ersten `}` nach `to: "…"`. Innerhalb einer `children`-Liste ist das die schließende
+> Klammer des *ersten* Kindes, also waren gefaltete Seiten für die Regel Blätter neben der Tür —
+> unsichtbar statt geprüft. Gelesen wird jetzt gegen Klammern und Strings; die Tests in
+> `src/ui/nav-depth-guard.test.ts` halten beide Richtungen fest (Falz wird gefolgt, die
+> namenlos referenzierte Liste wird nicht ein zweites Mal oben gelesen).
+
 A third value read through any of those silently inherits a neighbour's behaviour rather than a
 decision. So the frontend got the same treatment the backend got in §7: a predicate module,
 `src/auth/deploymentMode.ts`, mirroring `has_org_surface()` / `is_single_user()` from
