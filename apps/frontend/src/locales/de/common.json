@@ -26,7 +26,9 @@
     "admin": "Plattform-Admin",
     "org": "Organisation",
     "backToApp": "Zurück zur App",
-    "openMenu": "Menü öffnen"
+    "openMenu": "Menü öffnen",
+    "expandGroup": "{{group}}-Seiten einblenden",
+    "collapseGroup": "{{group}}-Seiten ausblenden"
   },
   "footer": {
     "github": "GitHub",

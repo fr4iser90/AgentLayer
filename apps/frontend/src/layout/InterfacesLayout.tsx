@@ -6,10 +6,11 @@ import { OperatorSettingsStickySave } from "../features/admin/operatorSettings/O
  * Provider scope for the interface settings.
  *
  * Its own sidebar of nine links is gone — that was a third nav container nested
- * inside the admin one. The pages are leaves of the admin rail now
- * (`INTERFACES_SECTIONS` in `navModel.ts`), spliced in while the path is inside
- * the area. What remains is the shared operator-settings state and the sticky
- * save bar that reads it.
+ * inside the admin one. The pages are a fold under the admin rail's door now
+ * (`children` of `/admin/interfaces` in `navModel.ts`), so the rail keeps its
+ * shape while the path moves around inside the area and the door above them
+ * stands for the lot. What remains here is the shared operator-settings state
+ * and the sticky save bar that reads it.
  */
 export function InterfacesLayout() {
   return (

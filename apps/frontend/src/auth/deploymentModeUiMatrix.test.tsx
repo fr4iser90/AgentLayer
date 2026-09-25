@@ -160,7 +160,7 @@ function renderAdminChrome() {
           path="/admin"
           element={
             <>
-              <NavRail surface={adminNav(authState.user, "/admin")} />
+              <NavRail surface={adminNav(authState.user)} folds={{}} onFold={() => {}} />
               <Outlet />
             </>
           }
@@ -255,7 +255,7 @@ function renderOpenMenu() {
 function renderAppRail() {
   return render(
     <MemoryRouter initialEntries={["/chat"]}>
-      <NavRail surface={appNav(authState.user)} />
+      <NavRail surface={appNav(authState.user)} folds={{}} onFold={() => {}} />
     </MemoryRouter>
   );
 }

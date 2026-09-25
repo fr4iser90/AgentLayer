@@ -6,6 +6,7 @@ import {
   collectNavTargets,
   collectRoutes,
   declarationBlock,
+  findBrokenFolds,
   findMissingDoors,
   findOrphans,
   reachesPath,
@@ -351,5 +352,143 @@ describe("nav guard makes every surface have a door in the app rail", () => {
     const blocks = ["APP_SECTIONS", "SURFACE_DOORS"].map((n) => declarationBlock(src, n));
     for (const block of blocks) expect(block).not.toBeNull();
     expect(findMissingDoors(blocks.filter(Boolean).join("\n"), PREFIXES)).toEqual([]);
+  });
+});
+
+/**
+ * Rule 6 — a fold is the one way a leaf stops being visible on its own, so a
+ * fold that hides the wrong pages is a rail offering a door and deleting the
+ * rooms behind it.
+ *
+ * The reader had already failed once before the rule existed: the leaf matcher
+ * ran to the first `}` after `to: "…"`, which inside `children: [ … ]` is the
+ * first child's closing brace. Every folded page therefore looked like a leaf
+ * beside the door, and a fold that hid one was invisible to the guard rather
+ * than reported. The tests below pin both halves — the fold is followed, and the
+ * named list it points at is not read a second time at the top level, which is
+ * how a model written the way the guard asks would be punished with a duplicate.
+ */
+type Target = { to: string; external: boolean; parent?: string; depth?: number };
+
+describe("nav guard follows a fold one level down", () => {
+  it("reads the pages a door folds", () => {
+    const src = `const ADMIN_SECTIONS = [{ leaves: [{
+      to: "/admin/interfaces",
+      children: [{ to: "/admin/interfaces/bridges" }, { to: "/admin/interfaces/voice" }]
+    }] }];`;
+    expect(collectNavTargets(src)).toEqual([
+      { to: "/admin/interfaces", external: false },
+      { to: "/admin/interfaces/bridges", external: false, parent: "/admin/interfaces", depth: 2 },
+      { to: "/admin/interfaces/voice", external: false, parent: "/admin/interfaces", depth: 2 }
+    ]);
+  });
+
+  it("follows a fold written by name and reads it once", () => {
+    // The named list keeps the door one line long. Scanning it at the top level
+    // too would report each page as a child *and* as a leaf beside the door.
+    const src = `const INTERFACES_CHILDREN: NavLeaf[] = [
+      { to: "/admin/interfaces/bridges", icon: GitBranch },
+      { to: "/admin/interfaces/voice", icon: Mic }
+    ];
+    const ADMIN_SECTIONS: NavSection[] = [
+      { leaves: [{ to: "/admin/interfaces", children: INTERFACES_CHILDREN }] }
+    ];`;
+    const pairs = (collectNavTargets(src) as Target[]).map((t) => [t.to, t.parent ?? null]);
+    expect(pairs).toEqual([
+      ["/admin/interfaces", null],
+      ["/admin/interfaces/bridges", "/admin/interfaces"],
+      ["/admin/interfaces/voice", "/admin/interfaces"]
+    ]);
+  });
+
+  it("keeps a child's external flag off the door", () => {
+    // `external` decides whether a route has to exist. A door that inherited it
+    // from its own fold would stop being a link and stop needing a page.
+    const src = `{ to: "/docs", children: [{ to: "https://example.com", external: true }] }`;
+    const [door, child] = collectNavTargets(src) as Target[];
+    expect(door).toEqual({ to: "/docs", external: false });
+    expect(child).toMatchObject({ to: "https://example.com", external: true });
+  });
+
+  it("keeps the door's own external flag", () => {
+    const src = `{ to: "https://example.com", external: true, children: [{ to: "/docs" }] }`;
+    expect(collectNavTargets(src)[0]).toEqual({ to: "https://example.com", external: true });
+  });
+
+  it("reports a fold it cannot read instead of passing it", () => {
+    // `children: SOMETHING` where SOMETHING is not a list in this file — moved to
+    // another module, renamed, mistyped. Quiet here means the rule certifies a
+    // group it never saw.
+    const src = `{ to: "/admin/interfaces", children: INTERFACES_FROM_A_PACKAGE }`;
+    const targets = collectNavTargets(src) as Target[];
+    expect(targets).toEqual([
+      { to: "/admin/interfaces", external: false, foldUnreadable: "INTERFACES_FROM_A_PACKAGE" }
+    ]);
+    expect(findBrokenFolds(targets).map((p: { kind: string }) => p.kind)).toEqual(["unread"]);
+  });
+});
+
+describe("nav guard judges what a fold hides", () => {
+  const page = (to: string, parent: string, depth = 2): Target => ({
+    to,
+    external: false,
+    parent,
+    depth
+  });
+  const kinds = (...targets: Target[]) =>
+    findBrokenFolds(targets).map((p: { kind: string }) => p.kind);
+
+  it("accepts pages that sit below their door", () => {
+    expect(
+      findBrokenFolds([
+        { to: "/admin/interfaces", external: false },
+        page("/admin/interfaces/bridges", "/admin/interfaces"),
+        page("/admin/interfaces/voice", "/admin/interfaces")
+      ])
+    ).toEqual([]);
+  });
+
+  it("fails a fold inside a fold", () => {
+    // The nested second container this rail deleted, grown back one level lower.
+    expect(
+      kinds(page("/admin/interfaces/bridges/rooms", "/admin/interfaces/bridges", 3))
+    ).toEqual(["nested"]);
+  });
+
+  it("fails a door listed among its own pages", () => {
+    // The `/admin/interfaces` overview row: two rows, one page, both lit at once,
+    // because a NavLink without `end` matches its descendants.
+    expect(kinds(page("/admin/interfaces", "/admin/interfaces"))).toEqual(["self"]);
+  });
+
+  it("fails a page that is not below its door", () => {
+    // Folding the interfaces door would hide a tools page that has no other row,
+    // with nothing on screen saying where it went.
+    expect(kinds(page("/admin/tools", "/admin/interfaces"))).toEqual(["outside"]);
+  });
+
+  it("fails a folded page that also stands beside its door", () => {
+    expect(
+      kinds(
+        { to: "/admin/interfaces", external: false },
+        { to: "/admin/interfaces/voice", external: false },
+        page("/admin/interfaces/voice", "/admin/interfaces")
+      )
+    ).toEqual(["twice"]);
+  });
+
+  it("holds on the model the app ships, and proves the fold is there", () => {
+    // "No fold is broken" is also true of a rail with no folds at all, which is
+    // how a rule like this goes blind: the eight pages move back into a section
+    // of their own, or a second overview row appears, and the check still says
+    // OK. So the shipped model is asserted open *and* folded.
+    const src = readFileSync(join(process.cwd(), "src/layout/navModel.ts"), "utf8");
+    const targets = collectNavTargets(src) as Target[];
+    const door = "/admin/interfaces";
+    expect(findBrokenFolds(targets)).toEqual([]);
+    expect(targets.filter((t) => t.to === door)).toHaveLength(1);
+    const folded = targets.filter((t) => t.parent === door);
+    expect(folded.length).toBeGreaterThan(1);
+    for (const t of folded) expect(t.to.startsWith(`${door}/`)).toBe(true);
   });
 });

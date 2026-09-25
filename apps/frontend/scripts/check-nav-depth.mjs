@@ -9,7 +9,7 @@
  * `/admin/interfaces/voice` sat three containers deep, and nothing could say so
  * because the answer was spread over four files.
  *
- * Five rules, all static, all cheap:
+ * Six rules, all static, all cheap:
  *
  * 1. **One nav container.** Among `src/layout/*.tsx` only `AppShell.tsx` may
  *    carry an area nav (`<nav>` or `NavLink`). A layout that grows its own
@@ -38,6 +38,15 @@
  *    both areas behind a typed URL. The rule is structural: it asks whether a
  *    door exists in the list, not whether the current role sees it, because
  *    gating happens at runtime and the guard cannot have a user.
+ * 6. **A fold hides the pages below its own door.** A leaf may carry `children`,
+ *    folded in place inside the same list, and four things hold: the fold is one
+ *    level deep, the door is not one of its own pages, every page sits below the
+ *    door's path, and no folded page also stands beside it. `/admin/interfaces`
+ *    was in the admin rail twice — `Interfaces` in the platform section,
+ *    `Overview` in a section of its own — and both lit at once, because the
+ *    area's list was spliced in beside the door that opened it. A fold failing
+ *    here hides an unrelated area behind an unrelated door, which is worse than
+ *    the duplicate it replaces.
  *
  * Run with --update to re-record the unnaviated allowlist after adding a route
  * that is deliberately not in the rail. Recorded `reachedVia` values are carried
@@ -90,12 +99,30 @@ const APP_RAIL_BLOCKS = ["APP_SECTIONS", "SURFACE_DOORS"];
  * not.
  */
 export function declarationBlock(src, name) {
+  const span = declarationSpan(src, name);
+  return span ? src.slice(span[0], span[1] + 1) : null;
+}
+
+/** `declarationBlock` with the offsets, for reading a file in two passes. */
+function declarationSpan(src, name) {
   const at = src.indexOf(`const ${name}`);
   if (at < 0) return null;
   const assign = src.indexOf("=", at);
   if (assign < 0) return null;
   const open = src.indexOf("[", assign);
   if (open < 0) return null;
+  const close = spanEnd(src, open);
+  return close < 0 ? null : [open, close + 1];
+}
+
+/**
+ * Index of the character that closes the bracket opened at `open`, or -1.
+ *
+ * Brackets, parens and braces all count towards the depth because a leaf's value
+ * may be an arrow function (`open: (u) => …`), and string literals are consumed
+ * whole, so a bracket written inside a label cannot close the block early.
+ */
+function spanEnd(src, open) {
   let depth = 0;
   let quote = null;
   for (let i = open; i < src.length; i += 1) {
@@ -109,10 +136,10 @@ export function declarationBlock(src, name) {
     else if (ch === "[" || ch === "(" || ch === "{") depth += 1;
     else if (ch === "]" || ch === ")" || ch === "}") {
       depth -= 1;
-      if (depth === 0) return src.slice(open, i + 1);
+      if (depth === 0) return i;
     }
   }
-  return null;
+  return -1;
 }
 
 /**
@@ -197,16 +224,118 @@ export function collectRoutes(src) {
   return routes;
 }
 
-/** Every `to:` literal in the nav model, with the leaf's own text beside it. */
+/**
+ * Every `to:` in the nav model — doors, and the pages folded under them.
+ *
+ * A folded door broke the first version of this reader. It matched `{ to: "…"`
+ * up to the *first* `}`, which for a door is the close of its first child rather
+ * than the close of the door, so the door read as no door at all and every page
+ * inside it vanished from the list — which rule 3 would have reported as areas
+ * nobody can reach, eventually leading to the guard being widened until it
+ * caught nothing. Objects are matched by bracket now, and a fold is followed one
+ * level down, with the door's path beside each child so rule 6 can judge it.
+ *
+ * A fold may be written inline or by name (`children: INTERFACES_CHILDREN`), so
+ * the named list is read out of the same file and blanked from the top-level
+ * pass: leaving it visible would report the same page twice, once as a door's
+ * child and once as a leaf beside it, and the model would be punished for the
+ * shape the guard itself asks for.
+ */
 export function collectNavTargets(src) {
+  const lists = foldLists(src);
   const out = [];
-  // Leaf objects hold no nested braces, so the first `}` closes them.
-  const re = /\{\s*to:\s*"([^"]+)"([^}]*)\}/g;
+  collectLevel(maskDeclarations(src, lists), null, 1, out, lists);
+  return out;
+}
+
+/** The named lists a `children:` refers to, resolved to their source or `null`. */
+function foldLists(src) {
+  const lists = new Map();
+  for (const m of src.matchAll(/\bchildren:\s*([A-Za-z_$][\w$]*)/g)) {
+    lists.set(m[1], declarationBlock(src, m[1]));
+  }
+  return lists;
+}
+
+/**
+ * The file with those lists replaced by spaces of the same length.
+ *
+ * Same length, so every other offset in the text still means what it meant — the
+ * masking is done once, over the original source, and nothing re-reads it
+ * positionally afterwards.
+ */
+function maskDeclarations(src, lists) {
+  let masked = src;
+  for (const name of lists.keys()) {
+    const span = declarationSpan(src, name);
+    if (!span) continue;
+    masked = masked.slice(0, span[0]) + " ".repeat(span[1] - span[0]) + masked.slice(span[1]);
+  }
+  return masked;
+}
+
+function collectLevel(src, parent, depth, out, lists) {
+  const re = /\{\s*to:\s*"([^"]+)"/g;
   let m;
   while ((m = re.exec(src))) {
-    out.push({ to: m[1], external: /\bexternal:\s*true\b/.test(m[2]) });
+    const end = spanEnd(src, m.index);
+    if (end < 0) continue;
+    const body = src.slice(m.index, end + 1);
+    const ref = /\bchildren:\s*(\[|[A-Za-z_$][\w$]*)/.exec(body);
+    let own = body;
+    if (ref) {
+      // The door's own flags are read without its fold: `external: true` belongs
+      // to a child, and a door that inherits it stops being a link at all.
+      const close = ref[1] === "[" ? spanEnd(body, body.indexOf("[", ref.index)) : -1;
+      own = close > 0 ? body.slice(0, ref.index) + body.slice(close + 1) : body.slice(0, ref.index);
+    }
+    const leaf = { to: m[1], external: /\bexternal:\s*true\b/.test(own) };
+    if (parent) {
+      leaf.parent = parent;
+      // 2 = a page folded under one door; 3 and more = a fold inside a fold.
+      leaf.depth = depth;
+    }
+    if (ref) {
+      const block = ref[1] === "[" ? body.slice(ref.index) : lists.get(ref[1]);
+      if (!block) leaf.foldUnreadable = ref[1];
+      out.push(leaf);
+      if (block) collectLevel(block, leaf.to, depth + 1, out, lists);
+    } else {
+      out.push(leaf);
+    }
+    re.lastIndex = end;
   }
-  return out;
+}
+
+/**
+ * Folds that are not folds of the pages they hide. See rule 6.
+ *
+ * Five ways to get it wrong, one kind each: a fold the rule cannot read, a fold
+ * inside a fold (the nested sidebar, back again), a door listed among its own
+ * pages (the area twice in one list), a page that is not below its door
+ * (collapsing it hides another area), and a folded page that also stands beside
+ * its door.
+ */
+export function findBrokenFolds(targets) {
+  const top = new Set(targets.filter((t) => !t.parent && !t.external).map((t) => t.to));
+  const problems = [];
+  for (const leaf of targets) {
+    if (leaf.foldUnreadable) {
+      problems.push({ to: leaf.to, kind: "unread", detail: leaf.foldUnreadable });
+      continue;
+    }
+    if (!leaf.parent) continue;
+    if (leaf.depth > 2) {
+      problems.push({ to: leaf.to, parent: leaf.parent, kind: "nested" });
+    } else if (leaf.to === leaf.parent) {
+      problems.push({ to: leaf.to, parent: leaf.parent, kind: "self" });
+    } else if (!leaf.to.startsWith(`${leaf.parent}/`)) {
+      problems.push({ to: leaf.to, parent: leaf.parent, kind: "outside" });
+    } else if (top.has(leaf.to)) {
+      problems.push({ to: leaf.to, parent: leaf.parent, kind: "twice" });
+    }
+  }
+  return problems;
 }
 
 /**
@@ -327,6 +456,14 @@ const UNNAVIATED_WHY = {
   no_nav: "die genannte Datei navigiert nicht (mehr) auf diesen Pfad"
 };
 
+const FOLD_WHY = {
+  nested: "Gruppe in einer Gruppe — die Falz ist eine Ebene tief, darunter käme die ausgelagerte Sidebar zurück, die dieser Rail abgeschafft hat",
+  self: "die Tür steht als eine ihrer eigenen Seiten — die Fläche erscheint zweimal in einer Liste, beide Zeilen leuchten",
+  outside: "die Seite liegt nicht unter dem Pfad ihrer Tür — zugeklappt verschwindet sie hinter einer fachfremden Tür",
+  twice: "die Seite liegt auch als Blatt neben ihrer Tür — zwei Zeilen, eine Seite",
+  unread: "children: zeigt auf einen Namen, der in navModel.ts kein Array ist — die Regel kann die Gruppe nicht lesen"
+};
+
 async function* walkLayout() {
   for (const entry of await readdir(LAYOUT, { withFileTypes: true })) {
     if (entry.isFile() && entry.name.endsWith(".tsx")) {
@@ -367,6 +504,13 @@ export async function checkNavDepth() {
   const unreadable = APP_RAIL_BLOCKS.filter((_, i) => railBlocks[i] === null);
   const missingDoors = findMissingDoors(railBlocks.filter(Boolean).join("\n"));
 
+  // Rule 6 judges the folds the model already declares, so it reads the same
+  // target list the dead-leaf and orphan rules read: a page that is folded under
+  // a door is still in the rail, and a fold that hides a page which is not below
+  // its door is a link nobody asked for.
+  const folds = findBrokenFolds(targets);
+  const folded = targets.filter((t) => t.depth === 2);
+
   return {
     nested,
     dead,
@@ -374,8 +518,11 @@ export async function checkNavDepth() {
     exceptions,
     missingDoors,
     unreadable,
+    folds,
     routes: routes.length,
     leaves: targets.length,
+    groups: new Set(folded.map((t) => t.parent)).size,
+    folded: folded.length,
     recorded: entries.length
   };
 }
@@ -504,9 +651,24 @@ if (isMain) {
             "[nav-depth] reachedVia auf die Datei setzen, die dorthin navigiert, oder den Eintrag löschen, wenn die Stelle jetzt im Rail liegt."
           );
         }
+        // A fold is the only way a leaf stops being visible on its own, so it is
+        // the one place where the rail can promise a page and hide it.
+        if (r.folds.length) {
+          failed = true;
+          console.error(
+            `[nav-depth] FAILED - ${r.folds.length} fehlerhafte Faltung(en) im Rail:`
+          );
+          for (const f of r.folds)
+            console.error(
+              `  ${f.to}${f.parent ? `  unter ${f.parent}` : ""}${f.detail ? `  children: ${f.detail}` : ""} — ${FOLD_WHY[f.kind]}`
+            );
+          console.error(
+            "[nav-depth] Eine Gruppe hängt unter ihrer Tür: Pfad der Tür vorangestellt, die Tür selbst nicht in der Gruppe, keine Gruppe unter einer Gruppe."
+          );
+        }
         if (failed) process.exit(1);
         console.log(
-          `[nav-depth] OK - ${r.routes} routes, ${r.leaves} rail leaves, ${SURFACE_PREFIXES.length} Flächen mit Tür, eine Nav-Liste, ${r.recorded} Ausnahme(n) mit Weg`
+          `[nav-depth] OK - ${r.routes} routes, ${r.leaves} rail leaves (${r.folded} in ${r.groups} Gruppe(n) gefaltet), ${SURFACE_PREFIXES.length} Flächen mit Tür, eine Nav-Liste, ${r.recorded} Ausnahme(n) mit Weg`
         );
       })
       .catch((e) => {

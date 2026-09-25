@@ -11,13 +11,17 @@
  *
  * The model here is one rail whose contents are chosen by route. Three rules:
  *
- * - **Two levels, never three.** A surface has sections, a section has leaves.
- *   A leaf that mounts another nav container is a modelling error — entering
- *   `/admin/interfaces` now swaps the rail's sections instead of adding a
- *   second one beside it.
+ * - **One `nav`, never a second one.** A surface has sections, a section has
+ *   leaves, and a leaf may fold the pages below it inside the same list
+ *   (`children`). What is forbidden is a leaf that mounts another nav container:
+ *   that is how `/admin/interfaces/voice` became three containers deep.
+ *   `check-nav-depth.mjs` counts the containers on screen and the depth of a
+ *   `children` list, so neither grows by accident.
  * - **Everything visible.** There is no `more` bucket. An item that must not
  *   appear for this user is filtered out by `navItemAllowed`, not demoted into
- *   a dropdown.
+ *   a dropdown. A fold belongs to the reader, not to the model — it defaults to
+ *   open while the route is inside it, and the guard reads this file rather than
+ *   the rendered list, so collapsing can never make an area unreachable.
  * - **Every surface carries its way out.** Non-app surfaces end in a
  *   "back to app" leaf, because the app's own items are not on screen there.
  */
@@ -77,6 +81,15 @@ export type NavLeaf = {
   nav?: NavItemId;
   /** The leaf leaves the app: `to` is a full URL, rendered as `<a>`. */
   external?: boolean;
+  /**
+   * Pages below this leaf, folded under it inside the same list.
+   *
+   * The leaf stays a link, so folding never costs the area its own page: the
+   * row for `/admin/interfaces` goes there and its chevron opens the eight
+   * settings below it. One level only — a child with children is the nested
+   * sidebar this model deleted, and `check-nav-depth.mjs` fails it.
+   */
+  children?: NavLeaf[];
 };
 
 export type NavSection = {
@@ -168,12 +181,48 @@ const SETTINGS_SECTIONS: NavSection[] = [
   }
 ];
 
+/**
+ * The eight settings pages below `/admin/interfaces`.
+ *
+ * These were a second sidebar mounted *inside* the admin one, which is what put
+ * `/admin/interfaces/*` three containers deep. They are leaves of the admin rail
+ * now, folded under the door that opens the area rather than standing beside it:
+ * the area used to be in the same list twice — `Interfaces` in the platform
+ * section and `Overview` in a section of its own, two rows for one page, both
+ * lit at once because a `NavLink` without `end` matches its descendants.
+ *
+ * They are no longer spliced in by path either. The rail had one shape outside
+ * the area and another inside it, so every hop between two interface settings
+ * rebuilt the list under the pointer; now the list is fixed and only its fold
+ * changes, which is also what lets the fold be a preference rather than a
+ * surprise.
+ */
+const INTERFACES_CHILDREN: NavLeaf[] = [
+  { to: "/admin/interfaces/bridges", labelKey: "admin:bridges", icon: GitBranch },
+  { to: "/admin/interfaces/providers", labelKey: "admin:interfacesProvidersTitle", icon: Cpu },
+  {
+    to: "/admin/interfaces/model-policies",
+    labelKey: "admin:interfacesModelPoliciesTitle",
+    icon: KeyRound
+  },
+  { to: "/admin/interfaces/routing", labelKey: "admin:interfacesRoutingTitle", icon: Layers },
+  { to: "/admin/interfaces/memory", labelKey: "admin:memoryRagTitle", icon: Brain },
+  { to: "/admin/interfaces/voice", labelKey: "admin:interfacesVoiceTitle", icon: Mic },
+  { to: "/admin/interfaces/automation", labelKey: "admin:interfacesAutomationTitle", icon: Workflow },
+  { to: "/admin/interfaces/platform", labelKey: "admin:interfacesPlatformTitle", icon: Shield }
+];
+
 const ADMIN_SECTIONS: NavSection[] = [
   { leaves: [{ to: "/admin", labelKey: "admin:overview", icon: Gauge, end: true }] },
   {
     labelKey: "admin:navPlatform",
     leaves: [
-      { to: "/admin/interfaces", labelKey: "admin:interfacesTitle", icon: Radio },
+      {
+        to: "/admin/interfaces",
+        labelKey: "admin:interfacesTitle",
+        icon: Radio,
+        children: INTERFACES_CHILDREN
+      },
       { to: "/admin/tools", labelKey: "admin:toolsRegistryTitle", icon: Wrench },
       { to: "/admin/agents", labelKey: "admin:agentsTitle", icon: Bot },
       {
@@ -196,39 +245,6 @@ const ADMIN_SECTIONS: NavSection[] = [
       { to: "/admin/benchmarks", labelKey: "admin:benchNav", icon: Activity },
       { to: "/admin/agent-config", labelKey: "admin:agentConfigNav", icon: SlidersHorizontal },
       { to: "/admin/run-traces", labelKey: "admin:runTraces", icon: ScrollText }
-    ]
-  }
-];
-
-/**
- * The interfaces area's nine pages.
- *
- * These were a second sidebar mounted *inside* the admin one, which is what put
- * `/admin/interfaces/*` three containers deep. They are ordinary leaves now,
- * spliced into the admin rail while the user is inside the area: moving between
- * two interface settings is one click, and so is leaving for `/admin/tools`.
- */
-const INTERFACES_SECTIONS: NavSection[] = [
-  {
-    labelKey: "admin:interfacesTitle",
-    leaves: [
-      { to: "/admin/interfaces", labelKey: "admin:overview", icon: Gauge, end: true },
-      { to: "/admin/interfaces/bridges", labelKey: "admin:bridges", icon: GitBranch },
-      { to: "/admin/interfaces/providers", labelKey: "admin:interfacesProvidersTitle", icon: Cpu },
-      {
-        to: "/admin/interfaces/model-policies",
-        labelKey: "admin:interfacesModelPoliciesTitle",
-        icon: KeyRound
-      },
-      { to: "/admin/interfaces/routing", labelKey: "admin:interfacesRoutingTitle", icon: Layers },
-      { to: "/admin/interfaces/memory", labelKey: "admin:memoryRagTitle", icon: Brain },
-      { to: "/admin/interfaces/voice", labelKey: "admin:interfacesVoiceTitle", icon: Mic },
-      {
-        to: "/admin/interfaces/automation",
-        labelKey: "admin:interfacesAutomationTitle",
-        icon: Workflow
-      },
-      { to: "/admin/interfaces/platform", labelKey: "admin:interfacesPlatformTitle", icon: Shield }
     ]
   }
 ];
@@ -321,16 +337,13 @@ export function settingsNav(user: AuthUser | null | undefined): NavSurface {
   };
 }
 
-export function adminNav(user: AuthUser | null | undefined, pathname: string): NavSurface {
+export function adminNav(user: AuthUser | null | undefined): NavSurface {
   const sections = [...ADMIN_SECTIONS];
   if (!isSingleUser(user)) {
     sections.push({
       labelKey: "admin:navPeople",
       leaves: [{ to: "/admin/users", labelKey: "admin:usersTitle", icon: Users }]
     });
-  }
-  if (isInterfacesArea(pathname)) {
-    sections.push(...INTERFACES_SECTIONS);
   }
   return {
     id: "admin",
@@ -360,28 +373,37 @@ export function orgNav(user: AuthUser | null | undefined): NavSurface {
   };
 }
 
-/** True while inside the interfaces area, where its section joins the rail. */
-export function isInterfacesArea(pathname: string): boolean {
-  return pathname.startsWith("/admin/interfaces");
-}
-
 /**
  * The rail for a path.
  *
  * `AppLayout` calls this once per render, which is what keeps exactly one nav
  * container on screen: the surfaces replace each other rather than nesting.
+ * Inside `/admin/interfaces` the rail does not change at all — the area's pages
+ * hang under their door in the admin rail, folded open — so moving between two
+ * of them leaves the list where it was.
  */
 export function surfaceForPath(
   pathname: string,
   user: AuthUser | null | undefined
 ): NavSurface {
-  if (pathname.startsWith("/admin")) return adminNav(user, pathname);
+  if (pathname.startsWith("/admin")) return adminNav(user);
   if (pathname.startsWith("/org")) return orgNav(user);
   if (pathname.startsWith("/settings")) return settingsNav(user);
   return appNav(user);
 }
 
-/** Every leaf of a surface, flattened — what the reachability guard reads. */
+/**
+ * Every leaf of a surface, flattened — what the reachability guard reads.
+ *
+ * Children come with their door, because "is this page in the rail" has the
+ * same answer whether or not the reader has it folded shut at the moment.
+ */
 export function navLeaves(surface: NavSurface): NavLeaf[] {
-  return surface.sections.flatMap((section) => section.leaves);
+  return surface.sections.flatMap((section) =>
+    section.leaves.flatMap((leaf) => [leaf, ...navLeavesOf(leaf)])
+  );
+}
+
+function navLeavesOf(leaf: NavLeaf): NavLeaf[] {
+  return (leaf.children ?? []).flatMap((child) => [child, ...navLeavesOf(child)]);
 }
