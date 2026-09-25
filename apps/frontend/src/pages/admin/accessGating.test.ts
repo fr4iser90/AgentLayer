@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   canAssignAgents,
   canManageWorkspaceGrants,
+  canReachOrgSurface,
+  isSiteAdmin,
   isTargetEditable,
   normalizeCapabilities,
   visibleColSpan,
@@ -129,5 +131,59 @@ describe("visibleColSpan", () => {
   it("full span for a site admin or delegated holder", () => {
     expect(visibleColSpan(siteAdmin, false)).toBe(15);
     expect(visibleColSpan(delegatedWithAgentAssign, true)).toBe(14);
+  });
+});
+
+/**
+ * The two predicates that decide whether a surface door is drawn. They used to
+ * be inline in the components that asked them — `RequireSiteAdmin` and the
+ * avatar menu each had a copy — and the menu's copy of the org question left out
+ * everyone who was not a tenant owner or admin, so a knowledge editor could open
+ * `/org/knowledge` and see no link to it anywhere.
+ *
+ * Pinned here rather than in a render test because the question is data, not
+ * layout: which field, compared with what.
+ */
+describe("isSiteAdmin", () => {
+  it("reads the authoritative site_role", () => {
+    expect(isSiteAdmin({ site_role: "site_admin" })).toBe(true);
+    expect(isSiteAdmin({ site_role: "site_user" })).toBe(false);
+  });
+
+  it("still reads the legacy role, case and padding aside", () => {
+    expect(isSiteAdmin({ role: "admin" })).toBe(true);
+    expect(isSiteAdmin({ role: " Admin " })).toBe(true);
+    expect(isSiteAdmin({ role: "user" })).toBe(false);
+  });
+
+  it("is not a tenant question", () => {
+    expect(isSiteAdmin({ membership_role: "tenant_owner" })).toBe(false);
+    expect(isSiteAdmin(undefined)).toBe(false);
+    expect(isSiteAdmin(null)).toBe(false);
+  });
+});
+
+describe("canReachOrgSurface", () => {
+  it("true for the membership roles that administer the company", () => {
+    expect(canReachOrgSurface({ membership_role: "tenant_owner" })).toBe(true);
+    expect(canReachOrgSurface({ membership_role: "tenant_admin" })).toBe(true);
+  });
+
+  it("true for a content editor and a delegated grants holder", () => {
+    // The two halves the avatar menu never knew about.
+    expect(
+      canReachOrgSurface({ profession_policy: { can_edit_content: true } })
+    ).toBe(true);
+    expect(
+      canReachOrgSurface({ site_role: "site_user", capabilities: ["workspace.manage"] })
+    ).toBe(true);
+  });
+
+  it("false for a plain member, which is what hid the door honestly", () => {
+    expect(canReachOrgSurface({ membership_role: "member" })).toBe(false);
+    expect(
+      canReachOrgSurface({ profession_policy: { can_edit_content: false } })
+    ).toBe(false);
+    expect(canReachOrgSurface(undefined)).toBe(false);
   });
 });

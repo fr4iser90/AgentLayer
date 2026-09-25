@@ -1,8 +1,12 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   auditUnnaviated,
   collectNavTargets,
   collectRoutes,
+  declarationBlock,
+  findMissingDoors,
   findOrphans,
   reachesPath,
   scanLayoutNav,
@@ -263,5 +267,89 @@ describe("nav guard makes an exception name its way in", () => {
   it("reads paths out of both entry shapes", () => {
     // The orphan rule still has to see the paths after the schema grew.
     expect(unnaviatedPaths(["/org/setup", entry])).toEqual(["/org/setup", "/org/setup"]);
+  });
+});
+
+/**
+ * The door rule, added in the same step that deleted the avatar menu's links
+ * into `/admin` and `/org`. Until then the guard could see one nav container and
+ * say OK while two of the four surfaces were reachable only from a dropdown with
+ * its own copy of the gate — reachability was true by accident, in a place the
+ * rule did not look.
+ *
+ * The matcher here is new to this guard (read an array literal out of TypeScript
+ * source), so the parser gets the same suspicion as the rest: an annotated
+ * declaration, a bracket inside a string, an arrow function inside a leaf.
+ */
+describe("nav guard makes every surface have a door in the app rail", () => {
+  const PREFIXES = ["/settings", "/admin", "/org"];
+
+  it("reads past the type annotation's brackets", () => {
+    // `NavSection[]` puts a `[` before the value's `[`. Reading from the name
+    // would return "[]" and report every door missing — or, if the caller
+    // treated an empty read as "nothing to check", every door present.
+    const src = `const APP_SECTIONS: NavSection[] = [
+      { leaves: [{ to: "/admin", labelKey: "nav.admin", icon: Shield }] }
+    ];`;
+    expect(declarationBlock(src, "APP_SECTIONS")).toContain('to: "/admin"');
+    expect(findMissingDoors(declarationBlock(src, "APP_SECTIONS") ?? "", ["/admin"])).toEqual([]);
+  });
+
+  it("is not truncated by a bracket inside a string", () => {
+    const src = `const SURFACE_DOORS: SurfaceDoor[] = [
+      { to: "/org", labelKey: "nav.brackets[a]", icon: Icon, open: (u) => ok(u) },
+      { to: "/admin", labelKey: "nav.admin", icon: Icon, open: (u) => ok(u) }
+    ];`;
+    const block = declarationBlock(src, "SURFACE_DOORS") ?? "";
+    expect(findMissingDoors(block, PREFIXES)).toEqual(["/settings"]);
+  });
+
+  it("reports nothing read as nothing read, not as a pass", () => {
+    expect(declarationBlock("const OTHER = [];", "APP_SECTIONS")).toBeNull();
+  });
+
+  it("accepts a door below the prefix, since the leaf is the way in", () => {
+    const src = `const APP_SECTIONS = [{ leaves: [{ to: "/settings/profile", labelKey: "s" }] }];`;
+    expect(findMissingDoors(src, ["/settings"])).toEqual([]);
+  });
+
+  it("does not let a longer prefix count as a door", () => {
+    // `/adminx` is a different area. Matching by prefix alone would let a rename
+    // keep the rule green while `/admin` itself lost its link.
+    const src = `const APP_SECTIONS = [{ leaves: [{ to: "/adminx", labelKey: "x" }] }];`;
+    expect(findMissingDoors(src, ["/admin"])).toEqual(["/admin"]);
+  });
+
+  it("reads the app rail's list, not the file's whole link set", () => {
+    // The way in cannot be inside the room: `ADMIN_SECTIONS` carries
+    // `{ to: "/admin" }` and is mounted only once you are already there, so it
+    // must not satisfy the rule. `findMissingDoors` cannot tell the two lists
+    // apart by itself — the caller picks the declaration, and this pins that the
+    // pick is narrow enough to matter.
+    const src = `const APP_SECTIONS: NavSection[] = [
+      { leaves: [{ to: "/chat", labelKey: "nav.chat", icon: Chat }] }
+    ];
+    const ADMIN_SECTIONS: NavSection[] = [
+      { leaves: [{ to: "/admin", labelKey: "admin:overview", icon: Gauge, end: true }] }
+    ];`;
+    expect(findMissingDoors(src, ["/admin"])).toEqual([]);
+    expect(findMissingDoors(declarationBlock(src, "APP_SECTIONS") ?? "", ["/admin"])).toEqual([
+      "/admin"
+    ]);
+  });
+
+  it("ignores an external leaf, which is not a door into a surface", () => {
+    const src = `const APP_SECTIONS = [{ leaves: [{ to: "/org", labelKey: "x", external: true }] }];`;
+    expect(findMissingDoors(src, ["/org"])).toEqual(["/org"]);
+  });
+
+  it("holds on the model the app actually ships", () => {
+    // The fixtures above prove the matcher; this proves the matcher is aimed at
+    // the real file, so deleting a door fails `npm run test` and not only the
+    // guard invocation.
+    const src = readFileSync(join(process.cwd(), "src/layout/navModel.ts"), "utf8");
+    const blocks = ["APP_SECTIONS", "SURFACE_DOORS"].map((n) => declarationBlock(src, n));
+    for (const block of blocks) expect(block).not.toBeNull();
+    expect(findMissingDoors(blocks.filter(Boolean).join("\n"), PREFIXES)).toEqual([]);
   });
 });

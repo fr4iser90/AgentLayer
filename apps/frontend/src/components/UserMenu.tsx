@@ -1,12 +1,23 @@
 import { useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
-import { hasOrgSurface } from "../auth/deploymentMode";
 import { Mascot, pickCharacter } from "../ui/Mascot";
 import { Tooltip } from "../ui/Tooltip";
 import { useClickOutside } from "../ui/useClickOutside";
 
+/**
+ * The account control: who you are, in which language, and how to leave.
+ *
+ * It used to carry links to Settings, the organization and the platform admin.
+ * Those were three areas living outside the rail, each with a second copy of the
+ * gate that decides them: `siteAdmin` here duplicated `RequireSiteAdmin` line
+ * for line, and `showOrg` was a *narrower* rule than `RequireOrgAdmin`, so a
+ * content editor who reaches `/org/knowledge` legitimately saw no way in. The
+ * rail is the one list of areas — the doors to the other surfaces are leaves of
+ * `appNav`, and `check-nav-depth.mjs` fails if a surface loses its door there.
+ *
+ * What is left is account-level and has no area equivalent.
+ */
 export function UserMenu() {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
@@ -14,11 +25,6 @@ export function UserMenu() {
   const rootRef = useRef<HTMLDivElement>(null);
 
   const email = user?.email ?? "";
-  const siteAdmin =
-    user?.site_role === "site_admin" || user?.role?.toLowerCase() === "admin";
-  const showOrg =
-    hasOrgSurface(user) &&
-    (user?.membership_role === "tenant_owner" || user?.membership_role === "tenant_admin");
 
   useClickOutside(rootRef, () => setOpen(false), open);
 
@@ -44,34 +50,6 @@ export function UserMenu() {
             <p className="truncate border-b border-line px-soft py-base text-xs text-ink-muted" title={email}>
               {email}
             </p>
-          ) : null}
-          <Link
-            role="menuitem"
-            to="/settings"
-            className="block px-soft py-base text-sm text-ink-primary hover:bg-white/10"
-            onClick={() => setOpen(false)}
-          >
-            {t("userMenu.settings")}
-          </Link>
-          {showOrg ? (
-            <Link
-              role="menuitem"
-              to="/org"
-              className="block px-soft py-base text-sm text-ink-primary hover:bg-white/10"
-              onClick={() => setOpen(false)}
-            >
-              {t("userMenu.organization")}
-            </Link>
-          ) : null}
-          {siteAdmin ? (
-            <Link
-              role="menuitem"
-              to="/admin"
-              className="block px-soft py-base text-sm text-ink-primary hover:bg-white/10"
-              onClick={() => setOpen(false)}
-            >
-              {t("userMenu.platformAdmin")}
-            </Link>
           ) : null}
           <button
             type="button"

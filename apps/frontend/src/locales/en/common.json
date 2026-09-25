@@ -22,6 +22,9 @@
     "workspace": "Workspace",
     "sharing": "Sharing",
     "resources": "Help",
+    "management": "Management",
+    "admin": "Platform admin",
+    "org": "Organization",
     "backToApp": "Back to app",
     "openMenu": "Open menu"
   },
@@ -37,9 +40,6 @@
   "settings": "Settings",
   "userMenu": {
     "account": "Account",
-    "settings": "Settings",
-    "organization": "Organization",
-    "platformAdmin": "Platform admin",
     "signOut": "Sign out"
   },
   "language": {

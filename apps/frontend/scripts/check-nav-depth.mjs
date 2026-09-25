@@ -9,7 +9,7 @@
  * `/admin/interfaces/voice` sat three containers deep, and nothing could say so
  * because the answer was spread over four files.
  *
- * Three rules, all static, all cheap:
+ * Five rules, all static, all cheap:
  *
  * 1. **One nav container.** Among `src/layout/*.tsx` only `AppShell.tsx` may
  *    carry an area nav (`<nav>` or `NavLink`). A layout that grows its own
@@ -29,6 +29,15 @@
  *    behind it could have stopped being true. The guard now opens the named file
  *    and looks for the navigation: route gone, leaf added, or a pointer that no
  *    longer points anywhere, and the entry fails.
+ * 5. **Every surface has a door in the app rail.** `/settings`, `/admin` and
+ *    `/org` must each have an app-rail leaf that starts at them — one inside
+ *    `APP_SECTIONS`, the two management doors inside `SURFACE_DOORS`. Until
+ *    wave 2 the platform-admin and organization links lived in the avatar menu,
+ *    so `check-nav-depth` saw one nav container and zero doors for two of the
+ *    four surfaces — deleting those links without this rule would have hidden
+ *    both areas behind a typed URL. The rule is structural: it asks whether a
+ *    door exists in the list, not whether the current role sees it, because
+ *    gating happens at runtime and the guard cannot have a user.
  *
  * Run with --update to re-record the unnaviated allowlist after adding a route
  * that is deliberately not in the rail. Recorded `reachedVia` values are carried
@@ -55,6 +64,72 @@ const MODEL_FILE = "navModel.ts";
 
 /** Surfaces whose direct children must all be in the rail. */
 const GUARDED_PREFIXES = ["/admin", "/admin/interfaces", "/org", "/settings"];
+
+/** Surfaces that must each have a door in the app rail — see rule 5. */
+const SURFACE_PREFIXES = ["/settings", "/admin", "/org"];
+
+/**
+ * The declarations that make up the app rail's static content.
+ *
+ * Two, because the doors into the other surfaces are a list of their own
+ * (`SURFACE_DOORS`) that `appNav` appends after gating. Reading the compiled
+ * return value of `appNav` instead would need a user, and a guard has none.
+ */
+const APP_RAIL_BLOCKS = ["APP_SECTIONS", "SURFACE_DOORS"];
+
+/**
+ * The source text of one array declaration's value, brackets matched.
+ *
+ * The search for `[` starts at the `=`, not at the name: these declarations are
+ * annotated (`const APP_SECTIONS: NavSection[] = [`), and the first bracket
+ * after the name belongs to the type — reading from there returns `"[]"` and
+ * every rule built on it silently passes with nothing in the list.
+ *
+ * String literals are consumed whole, so a `]` inside a label cannot close the
+ * block early, and the array it is written in is where a door either is or is
+ * not.
+ */
+export function declarationBlock(src, name) {
+  const at = src.indexOf(`const ${name}`);
+  if (at < 0) return null;
+  const assign = src.indexOf("=", at);
+  if (assign < 0) return null;
+  const open = src.indexOf("[", assign);
+  if (open < 0) return null;
+  let depth = 0;
+  let quote = null;
+  for (let i = open; i < src.length; i += 1) {
+    const ch = src[i];
+    if (quote) {
+      if (ch === "\\") i += 1;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === "`") quote = ch;
+    else if (ch === "[" || ch === "(" || ch === "{") depth += 1;
+    else if (ch === "]" || ch === ")" || ch === "}") {
+      depth -= 1;
+      if (depth === 0) return src.slice(open, i + 1);
+    }
+  }
+  return null;
+}
+
+/**
+ * Which surfaces the app rail has no door into.
+ *
+ * A door is a leaf whose path is the prefix or something below it — the admin
+ * door is `/admin` itself, the settings door is `/settings/profile`, and both
+ * count. The caller hands in the app rail's own declarations: feeding this the
+ * whole model would let `ADMIN_SECTIONS`' `/admin` overview satisfy the rule
+ * from inside the area it is supposed to be the way into.
+ */
+export function findMissingDoors(appRailSrc, prefixes = SURFACE_PREFIXES) {
+  const reached = collectNavTargets(appRailSrc)
+    .filter((t) => !t.external)
+    .map((t) => t.to.replace(/\/+$/, ""));
+  return prefixes.filter((p) => !reached.some((to) => to === p || to.startsWith(`${p}/`)));
+}
 
 /**
  * End of a JSX tag, honouring `{…}` expressions and string literals: a route's
@@ -285,11 +360,20 @@ export async function checkNavDepth() {
 
   const exceptions = await auditEntries(entries, routes, targets);
 
+  // Rule 5 is read out of the model's source, not its exports: `appNav` appends
+  // the management doors at runtime from the role, so a roleless guard run would
+  // compile them away and call every surface missing.
+  const railBlocks = APP_RAIL_BLOCKS.map((name) => declarationBlock(modelSrc, name));
+  const unreadable = APP_RAIL_BLOCKS.filter((_, i) => railBlocks[i] === null);
+  const missingDoors = findMissingDoors(railBlocks.filter(Boolean).join("\n"));
+
   return {
     nested,
     dead,
     orphans,
     exceptions,
+    missingDoors,
+    unreadable,
     routes: routes.length,
     leaves: targets.length,
     recorded: entries.length
@@ -350,6 +434,11 @@ async function update() {
   console.log(
     `[nav-depth] recorded ${keep.length} unnaviated route(s): ${keep.map((k) => k.path).join(", ")}`
   );
+  // The list this writes excuses a route from the rail; it does not open a
+  // surface. Rule 5 is not updatable — that is the point of it.
+  console.log(
+    `[nav-depth] merken: eine neue Fläche braucht trotzdem ein Blatt in ${APP_RAIL_BLOCKS.join(" / ")} (${SURFACE_PREFIXES.join(", ")})`
+  );
 }
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
@@ -361,36 +450,53 @@ if (isMain) {
     });
   } else {
     checkNavDepth()
-      .then(({ nested, dead, orphans, exceptions, routes, leaves, recorded }) => {
+      .then((r) => {
         let failed = false;
-        if (nested.length) {
+        if (r.nested.length) {
           failed = true;
           console.error(
-            `[nav-depth] FAILED - ${nested.length} layout(s) carry their own area nav:`
+            `[nav-depth] FAILED - ${r.nested.length} layout(s) carry their own area nav:`
           );
-          for (const n of nested) console.error(`  ${n.file}  ${n.tag}`);
+          for (const n of r.nested) console.error(`  ${n.file}  ${n.tag}`);
           console.error(`Only ${SHELL} may. Add a section to navModel.ts instead.`);
         }
-        if (dead.length) {
+        if (r.dead.length) {
           failed = true;
-          console.error(`[nav-depth] FAILED - ${dead.length} rail link(s) have no route:`);
-          for (const d of dead) console.error(`  ${d}`);
+          console.error(`[nav-depth] FAILED - ${r.dead.length} rail link(s) have no route:`);
+          for (const d of r.dead) console.error(`  ${d}`);
         }
-        if (orphans.length) {
+        if (r.orphans.length) {
           failed = true;
-          console.error(`[nav-depth] FAILED - ${orphans.length} area(s) nobody can navigate to:`);
-          for (const o of orphans) console.error(`  ${o}`);
+          console.error(`[nav-depth] FAILED - ${r.orphans.length} area(s) nobody can navigate to:`);
+          for (const o of r.orphans) console.error(`  ${o}`);
           console.error("Add a leaf to navModel.ts, or --update with a reason.");
+        }
+        if (r.unreadable.length || r.missingDoors.length) {
+          failed = true;
+          for (const name of r.unreadable) {
+            console.error(
+              `[nav-depth] FAILED - ${name} ist in navModel.ts nicht als Array zu lesen — die Tür-Regel sieht keine Blätter`
+            );
+          }
+          if (r.missingDoors.length) {
+            console.error(
+              `[nav-depth] FAILED - ${r.missingDoors.length} Fläche(n) ohne Tür im App-Rail:`
+            );
+            for (const p of r.missingDoors) console.error(`  ${p}`);
+          }
+          console.error(
+            `Ein Blatt in ${APP_RAIL_BLOCKS.join(" / ")} ist der Weg hinein. Das Avatar-Menü trägt diese Links nicht mehr — eine zweite Liste mit eigener Rolle ist die Ablage, nicht der Weg.`
+          );
         }
         // A recorded exception is the one finding that cannot be seen from the
         // route tree: the app still works, the reason beside it just stopped
         // being true.
-        if (exceptions.length) {
+        if (r.exceptions.length) {
           failed = true;
           console.error(
-            `[nav-depth] FAILED - ${exceptions.length} aufgezeichnete Rail-Ausnahme(n) ohne gültigen Weg:`
+            `[nav-depth] FAILED - ${r.exceptions.length} aufgezeichnete Rail-Ausnahme(n) ohne gültigen Weg:`
           );
-          for (const e of exceptions)
+          for (const e of r.exceptions)
             console.error(
               `  ${e.path}${e.via ? `  ${e.via}` : ""} — ${UNNAVIATED_WHY[e.kind]}`
             );
@@ -400,7 +506,7 @@ if (isMain) {
         }
         if (failed) process.exit(1);
         console.log(
-          `[nav-depth] OK - ${routes} routes, ${leaves} rail leaves, one nav container, ${recorded} Ausnahme(n) mit Weg`
+          `[nav-depth] OK - ${r.routes} routes, ${r.leaves} rail leaves, ${SURFACE_PREFIXES.length} Flächen mit Tür, eine Nav-Liste, ${r.recorded} Ausnahme(n) mit Weg`
         );
       })
       .catch((e) => {
