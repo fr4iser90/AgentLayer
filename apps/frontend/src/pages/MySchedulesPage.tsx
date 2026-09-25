@@ -11,6 +11,7 @@ import {
   normalizeExecutionTargetInput,
 } from "../lib/schedulerExecutionTarget";
 import { Button } from "../ui/Button";
+import { Modal } from "../ui/Modal";
 import { Badge, type BadgeTone } from "../ui/Badge";
 
 type SchedulerJobRow = {
@@ -475,23 +476,39 @@ export function MySchedulesPage() {
       </div>
 
       {createOpen ? (
-        <div className="fixed inset-0 z-modal flex items-center justify-center bg-black/60 p-wide">
-          <div className="w-full max-w-dialogWide rounded-sheet border border-line bg-card p-wide">
-            <div className="mb-soft flex items-start justify-between gap-soft">
-              <div>
-                <div className="text-lg font-semibold text-ink-primary">{t("admin:createScheduleTitle")}</div>
-                <div className="text-xs text-ink-muted">{t("admin:schedulesCreateHelpUser")}</div>
-              </div>
-              <button
+        <Modal
+          open
+          onClose={() => setCreateOpen(false)}
+          title={t("admin:createScheduleTitle")}
+          size="dialogWide"
+          footer={
+            <>
+              <Button
                 type="button"
-                className="rounded-tile border border-line px-soft py-snug text-xs text-ink-primary hover:bg-white/5"
+                variant="secondary"
+                size="md"
                 onClick={() => setCreateOpen(false)}
               >
-                {t("admin:close")}
-              </button>
-            </div>
+                {t("admin:cancel")}
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                onClick={() => void createJob()}
+                disabled={
+                  !createInstructions.trim() ||
+                  (createNeedsWorkspace && !createWorkspaceId.trim())
+                }
+              >
+                Create
+              </Button>
+            </>
+          }
+        >
+          <p className="text-meta text-ink-muted">{t("admin:schedulesCreateHelpUser")}</p>
 
-            <div className="grid gap-soft md:grid-cols-2">
+          <div className="mt-soft grid gap-soft md:grid-cols-2">
               <label className="text-xs text-ink-muted md:col-span-2">
                 {t("admin:schedulesPresetOptional")}
                 <select
@@ -615,49 +632,39 @@ export function MySchedulesPage() {
                 Enabled
               </label>
             </div>
+        </Modal>
+      ) : null}
 
-            <div className="mt-wide flex items-center justify-end gap-base">
+      {editJob ? (
+        <Modal
+          open
+          onClose={() => setEditJob(null)}
+          title={t("settings:schedulesEditTitle")}
+          size="dialogWide"
+          footer={
+            <>
               <Button
                 type="button"
                 variant="secondary"
                 size="md"
-                onClick={() => setCreateOpen(false)}
+                onClick={() => setEditJob(null)}
               >
                 {t("admin:cancel")}
               </Button>
-              <button
+              <Button
                 type="button"
-                className="rounded-tile bg-violet-600/80 px-soft py-base text-sm font-medium text-ink-primary hover:bg-violet-500 disabled:opacity-60"
-                onClick={() => void createJob()}
-                disabled={
-                  !createInstructions.trim() ||
-                  (createNeedsWorkspace && !createWorkspaceId.trim())
-                }
+                variant="primary"
+                size="md"
+                onClick={() => void saveEdit()}
+                disabled={!editInstructions.trim()}
               >
-                Create
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {editJob ? (
-        <div className="fixed inset-0 z-modal flex items-center justify-center bg-black/60 p-wide">
-          <div className="w-full max-w-dialogWide rounded-sheet border border-line bg-card p-wide">
-            <div className="mb-soft flex items-start justify-between gap-soft">
-              <div>
-                <div className="text-lg font-semibold text-ink-primary">{t("settings:schedulesEditTitle")}</div>
-                <div className="text-xs text-ink-muted font-mono">id: {editJob.id}</div>
-              </div>
-              <button
-                type="button"
-                className="rounded-tile border border-line px-soft py-snug text-xs text-ink-primary hover:bg-white/5"
-                onClick={() => setEditJob(null)}
-              >
-                {t("admin:close")}
-              </button>
-            </div>
-            <div className="grid gap-soft">
+                Save
+              </Button>
+            </>
+          }
+        >
+          <p className="font-mono text-meta text-ink-muted">id: {editJob.id}</p>
+          <div className="mt-soft grid gap-soft">
               <label className="text-xs text-ink-muted">
                 Title
                 <input
@@ -686,54 +693,29 @@ export function MySchedulesPage() {
                 />
               </label>
             </div>
-            <div className="mt-wide flex items-center justify-end gap-base">
-              <Button
-                type="button"
-                variant="secondary"
-                size="md"
-                onClick={() => setEditJob(null)}
-              >
-                {t("admin:cancel")}
-              </Button>
-              <button
-                type="button"
-                className="rounded-tile bg-violet-600/80 px-soft py-base text-sm font-medium text-ink-primary hover:bg-violet-500 disabled:opacity-60"
-                onClick={() => void saveEdit()}
-                disabled={!editInstructions.trim()}
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       ) : null}
 
       {runsJob ? (
-        <div className="fixed inset-0 z-modal flex items-center justify-center bg-black/60 p-wide">
-          <div className="flex max-h-[90vh] w-full max-w-dialogFull flex-col rounded-sheet border border-line bg-card p-wide">
-            <div className="mb-soft flex shrink-0 items-start justify-between gap-soft">
-              <div>
-                <div className="text-lg font-semibold text-ink-primary">{t("settings:schedulesRunHistoryTitle")}</div>
-                <div className="text-sm text-ink-muted">{runsJob.title || "—"}</div>
-                <div className="font-mono text-meta text-ink-muted">{runsJob.id}</div>
-              </div>
-              <button
-                type="button"
-                className="rounded-tile border border-line px-soft py-snug text-xs text-ink-primary hover:bg-white/5"
-                onClick={() => {
-                  setRunsJob(null);
-                  setSelectedRun(null);
-                }}
-              >
-                {t("admin:close")}
-              </button>
-            </div>
+        <Modal
+          open
+          onClose={() => {
+            setRunsJob(null);
+            setSelectedRun(null);
+          }}
+          title={t("settings:schedulesRunHistoryTitle")}
+          size="dialogFull"
+        >
+          <p className="text-body text-ink-muted">{runsJob.title || "—"}</p>
+          <p className="font-mono text-meta text-ink-muted">{runsJob.id}</p>
 
-            {runsErr ? (
-              <div className="mb-soft rounded-card border border-red-500/30 bg-red-500/10 p-base text-sm text-red-100">{runsErr}</div>
-            ) : null}
+          {runsErr ? (
+            <p className="mt-base rounded-card border border-danger bg-danger-subtle p-base text-sm text-danger">
+              {runsErr}
+            </p>
+          ) : null}
 
-            <div className="grid min-h-0 flex-1 gap-soft md:grid-cols-2">
+          <div className="mt-soft grid min-h-0 gap-soft md:grid-cols-2">
               <div className="min-h-0 overflow-auto rounded-card border border-line">
                 <table className="min-w-full text-left text-xs">
                   <thead className="sticky top-0 bg-raised text-ink-muted">
@@ -850,8 +832,7 @@ export function MySchedulesPage() {
                 )}
               </div>
             </div>
-          </div>
-        </div>
+        </Modal>
       ) : null}
     </div>
   );
