@@ -1,4 +1,6 @@
-import { useEffect, useId } from "react";
+import { useId } from "react";
+import { Modal } from "../ui/Modal";
+import { Button } from "../ui/Button";
 
 type Props = {
   open: boolean;
@@ -12,6 +14,15 @@ type Props = {
   onCancel: () => void;
 };
 
+/**
+ * Destructive confirmation.
+ *
+ * It keeps its own `alertdialog` role rather than being a plain dialog: the
+ * point of this box is that the answer is not optional. Everything else —
+ * focus trap, Escape, scroll lock, focus restore — comes from `Modal`, which
+ * this file did not have before. It handled Escape itself and let Tab walk out
+ * of the box into the page behind it.
+ */
 export function ConfirmModal({
   open,
   title,
@@ -21,68 +32,41 @@ export function ConfirmModal({
   variant = "default",
   busy = false,
   onConfirm,
-  onCancel,
+  onCancel
 }: Props) {
-  const titleId = useId();
   const descId = useId();
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !busy) onCancel();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, busy, onCancel]);
-
-  if (!open) return null;
-
-  const confirmClass =
-    variant === "danger"
-      ? "border-red-600/50 bg-red-950/60 text-red-100 hover:bg-red-900/50 disabled:opacity-50"
-      : "border-sky-600/50 bg-sky-950/50 text-sky-100 hover:bg-sky-900/40 disabled:opacity-50";
+  // While the action is in flight the box must not be dismissible: closing it
+  // would read as an answer the user never gave, and there is no undo.
+  const requestClose = () => {
+    if (!busy) onCancel();
+  };
 
   return (
-    <div
-      className="fixed inset-0 z-modal flex items-center justify-center bg-black/60 p-wide"
-      role="presentation"
-      onClick={() => {
-        if (!busy) onCancel();
-      }}
-    >
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descId}
-        className="w-full max-w-dialog rounded-sheet border border-line bg-[#1a1a1a] p-roomy shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 id={titleId} className="text-base font-semibold text-ink-primary">
-          {title}
-        </h2>
-        <p id={descId} className="mt-base text-sm leading-relaxed text-ink-secondary">
-          {description}
-        </p>
-        <div className="mt-roomy flex flex-wrap justify-end gap-base">
-          <button
-            type="button"
-            className="rounded-card border border-line px-wide py-base text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
-            disabled={busy}
-            onClick={onCancel}
-          >
+    <Modal
+      open={open}
+      onClose={requestClose}
+      title={title}
+      role="alertdialog"
+      describedBy={descId}
+      dismissOnScrim={!busy}
+      footer={
+        <>
+          <Button variant="secondary" disabled={busy} onClick={onCancel}>
             {cancelLabel}
-          </button>
-          <button
-            type="button"
-            className={`rounded-card border px-wide py-base text-sm font-medium ${confirmClass}`}
+          </Button>
+          <Button
+            variant={variant === "danger" ? "danger" : "primary"}
             disabled={busy}
             onClick={onConfirm}
           >
             {busy ? "…" : confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </>
+      }
+    >
+      <p id={descId} className="text-body leading-relaxed text-ink-secondary">
+        {description}
+      </p>
+    </Modal>
   );
 }

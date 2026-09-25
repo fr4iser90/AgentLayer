@@ -20,7 +20,7 @@ import {
   isOnboardingDismissed,
 } from "../features/dashboard/DashboardOnboardingBanner";
 import { DashboardGridCanvas } from "../features/dashboard/DashboardGridCanvas";
-import { DashboardSettingsDrawer } from "../features/dashboard/DashboardSettingsDrawer";
+import { Drawer } from "../ui/Drawer";
 import { DashboardBoardFilesPanel } from "../features/dashboard/DashboardBoardFilesPanel";
 import { DashboardSidebarNav } from "../features/dashboard/DashboardSidebarNav";
 import { DashboardOverviewPanel } from "../features/dashboard/DashboardOverviewPanel";
@@ -1873,9 +1873,10 @@ export function DashboardPage() {
       </CollapsibleSidebarShell>
 
       {dashboardReady && detail ? (
-        <DashboardSettingsDrawer
+        <Drawer
           open={settingsOpen}
           title={`Settings — ${detail.title || subtitleForDashboardKind(detail.kind, kindCatalog, detail.template_id)}`}
+          width="drawerWide"
           onClose={() => setSettingsOpen(false)}
         >
           <div className="space-y-wide">
@@ -2423,7 +2424,7 @@ export function DashboardPage() {
               </div>
             ) : null}
           </div>
-        </DashboardSettingsDrawer>
+        </Drawer>
       ) : null}
 
       {projectsImportOpen && selectedId ? (

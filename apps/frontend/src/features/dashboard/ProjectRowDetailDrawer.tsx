@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { Badge, type BadgeTone } from "../../ui/Badge";
+import { Drawer } from "../../ui/Drawer";
 import { ProjectWorkspaceControls } from "./ProjectWorkspaceControls";
 import { getPath, setPath } from "./dashboardDataPaths";
 import type { ColumnDef } from "./types";
@@ -131,24 +132,19 @@ export function ProjectRowDetailDrawer(props: {
   }, [enableRunNow, detailRowId]);
 
   return (
-    <div className="fixed inset-0 z-overlay flex items-stretch justify-end bg-black/60 p-wide">
-      <div className="h-full w-full max-w-drawer overflow-auto rounded-sheet border border-line bg-card p-wide shadow-2xl">
-        <div className="mb-wide flex items-start justify-between gap-soft">
-          <div>
-            <div className="text-xs uppercase tracking-wide text-ink-muted">{t("dashboard:project")}</div>
-            <div className="text-lg font-semibold text-ink-primary">
-              {String((detailRow as any).title ?? "").trim() || t("dashboard:untitled")}
-            </div>
-            <div className="mt-tight text-xs text-ink-muted">id: {detailRowId}</div>
-          </div>
-          <button
-            type="button"
-            className="rounded-tile border border-line px-soft py-snug text-xs text-ink-primary hover:bg-white/5"
-            onClick={onClose}
-          >
-            {t("dashboard:close")}
-          </button>
-        </div>
+    <Drawer
+      open
+      onClose={onClose}
+      title={String((detailRow as any).title ?? "").trim() || t("dashboard:untitled")}
+      headerExtra={
+        <>
+          <p className="text-meta uppercase tracking-wide text-ink-muted">
+            {t("dashboard:project")}
+          </p>
+          <p className="mt-hair font-mono text-meta text-ink-muted">id: {detailRowId}</p>
+        </>
+      }
+    >
 
         {enableWorkspaceLink ? (
           <ProjectWorkspaceControls
@@ -292,7 +288,6 @@ export function ProjectRowDetailDrawer(props: {
               </div>
             ))}
         </div>
-      </div>
-    </div>
+    </Drawer>
   );
 }

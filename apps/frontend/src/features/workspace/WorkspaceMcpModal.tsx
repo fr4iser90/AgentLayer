@@ -13,6 +13,7 @@ import {
   type UvMcpLaunchMode,
 } from "./workspaceMcpBuilders";
 import { Button } from "../../ui/Button";
+import { Modal } from "../../ui/Modal";
 
 type Props = {
   open: boolean;
@@ -173,20 +174,31 @@ export function WorkspaceMcpModal({
   const previewRow = "row" in previewBuilt ? previewBuilt.row : null;
 
   return (
-    <div
-      className="fixed inset-0 z-modal flex items-center justify-center bg-black/60 p-wide"
-      role="dialog"
-      aria-modal="true"
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t("workspace:mcpModalTitle")}
+      size="dialogWide"
+      footer={
+        <>
+          <Button variant="secondary" size="sm" onClick={onClose} disabled={saving}>
+            {t("workspace:cancel")}
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => void handleSave()}
+            disabled={saving}
+          >
+            {saving ? t("workspace:saving") : t("workspace:save")}
+          </Button>
+        </>
+      }
     >
-      <div className="flex max-h-[92vh] w-full max-w-dialogWide flex-col overflow-hidden rounded-sheet border border-line-strong bg-[#141414] shadow-xl">
-        <div className="shrink-0 border-b border-line px-wide py-soft">
-          <h2 className="text-sm font-semibold text-ink-primary">{t("workspace:mcpModalTitle")}</h2>
-          <p className="mt-tight text-meta leading-snug text-ink-muted">
-            {t("workspace:mcpModalDescription", { workspaceName })}
-          </p>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto px-wide py-soft">
+      <p className="text-meta leading-snug text-ink-muted">
+        {t("workspace:mcpModalDescription", { workspaceName })}
+      </p>
+      <div className="mt-soft">
           <section className="rounded-card border border-line bg-black/25 p-soft">
             <p className="text-meta font-semibold uppercase tracking-wide text-ink-muted">{t("workspace:addViaUv")}</p>
             <div className="mt-base grid gap-base sm:grid-cols-2">
@@ -342,27 +354,7 @@ export function WorkspaceMcpModal({
           </pre>
         </div>
 
-        {error ? <p className="shrink-0 px-wide pb-base text-xs text-red-300/95">{error}</p> : null}
-        <div className="flex shrink-0 justify-end gap-base border-t border-line px-wide py-soft">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={onClose}
-            disabled={saving}
-          >
-            {t("workspace:cancel")}
-          </Button>
-          <button
-            type="button"
-            className="rounded-card bg-sky-600 px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
-            onClick={() => void handleSave()}
-            disabled={saving}
-          >
-            {saving ? t("workspace:saving") : t("workspace:save")}
-          </button>
-        </div>
-      </div>
-    </div>
+        {error ? <p className="mt-base text-xs text-danger">{error}</p> : null}
+    </Modal>
   );
 }

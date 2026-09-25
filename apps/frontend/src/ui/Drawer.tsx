@@ -38,6 +38,13 @@ export interface DrawerProps {
   side?: DrawerSide;
   width?: DrawerWidth;
   children?: ReactNode;
+  /**
+   * Pinned content between the title row and the scrolling body — a tab strip,
+   * a subtitle. Anything that has to stay reachable while the body scrolls.
+   * Without this slot a caller either loses those controls on scroll or grows a
+   * second header beside this one.
+   */
+  headerExtra?: ReactNode;
   footer?: ReactNode;
   className?: string;
 }
@@ -49,6 +56,7 @@ export function Drawer({
   side = "right",
   width = "drawer",
   children,
+  headerExtra,
   footer,
   className,
 }: DrawerProps) {
@@ -127,6 +135,9 @@ export function Drawer({
             <X size={16} aria-hidden />
           </button>
         </header>
+        {headerExtra ? (
+          <div className="shrink-0 px-roomy pb-soft">{headerExtra}</div>
+        ) : null}
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-roomy py-soft">
           {children}
         </div>
