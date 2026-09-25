@@ -130,7 +130,7 @@ export function ProjectWorkspaceControls({
           {matched ? (
             <p className="mb-base truncate font-mono text-meta text-ink-muted">{matched.path}</p>
           ) : workspaceId ? (
-            <p className="mb-base text-meta text-amber-300/90">{t("dashboard:workspaceNotFound")}</p>
+            <p className="mb-base text-meta text-badge-warning">{t("dashboard:workspaceNotFound")}</p>
           ) : null}
           {!readOnly && remote ? (
             <>

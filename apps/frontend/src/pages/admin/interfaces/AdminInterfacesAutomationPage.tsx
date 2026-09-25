@@ -13,7 +13,7 @@ export function AdminInterfacesAutomationPage() {
           {t("admin:interfacesAutomationDescriptionPrefix")}{" "}
           <span className="font-mono text-ink-secondary">scheduler_jobs</span>{" "}
           {t("admin:interfacesAutomationDescriptionWorker")}{" "}
-          <Link to="/admin/schedules" className="text-sky-400 hover:underline">
+          <Link to="/admin/schedules" className="text-accent hover:underline">
             {t("admin:schedulesTitle")}
           </Link>
           {t("admin:interfacesAutomationDescriptionSuffix")}

@@ -91,7 +91,7 @@ function DashboardNavRow(props: {
           type="button"
           className={[
             "shrink-0 rounded-tile px-snug text-xs",
-            fav ? "text-amber-300/90 hover:bg-amber-950/30" : "text-white/20 hover:bg-white/5 hover:text-white/45",
+            fav ? "text-badge-warning hover:bg-warning-subtle" : "text-white/20 hover:bg-white/5 hover:text-white/45",
           ].join(" ")}
           onClick={onToggleFav}
         >
@@ -293,7 +293,7 @@ export function DashboardSidebarNav(props: {
       {showSearch ? (
         <div className="shrink-0 border-b border-line px-base py-base">
           <input
-            className="dashboard-grid-no-drag w-full rounded-tile border border-line bg-field px-firm py-snug text-xs text-ink-primary outline-none focus:border-sky-500/50"
+            className="dashboard-grid-no-drag w-full rounded-tile border border-line bg-field px-firm py-snug text-xs text-ink-primary outline-none focus:border-accent/50"
             placeholder={t("dashboard:searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}

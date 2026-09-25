@@ -377,7 +377,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
           </p>
           <button
             type="button"
-            className="text-xs text-sky-400 hover:text-sky-300"
+            className="text-xs text-accent hover:text-badge-accent"
             onClick={startNew}
           >
             {t("org:cmsNewNote")}
@@ -443,7 +443,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
           <p className="mt-base text-xs text-ink-muted">
             {t("org:cmsStatusLabel")}: {statusBadge(status, t)}
             {selected.last_review_comment ? (
-              <span className="mt-tight block text-amber-400/90">
+              <span className="mt-tight block text-warning">
                 {t("org:cmsLastReviewComment")}: {selected.last_review_comment}
               </span>
             ) : null}
@@ -501,7 +501,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
             <button
               type="button"
               disabled={busy}
-              className="rounded-tile border border-sky-500/40 px-wide py-snug text-sm text-sky-300 hover:bg-sky-500/10 disabled:opacity-50"
+              className="rounded-tile border border-accent/40 px-wide py-snug text-sm text-badge-accent hover:bg-accent-subtle disabled:opacity-50"
               onClick={() => void submitForReview()}
             >
               {t("org:cmsSubmitForReview")}
@@ -512,7 +512,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
               <button
                 type="button"
                 disabled={busy}
-                className="rounded-tile bg-emerald-600 px-wide py-snug text-sm font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
+                className="rounded-tile bg-success px-wide py-snug text-sm font-medium text-ink-on-fill hover:bg-success-hover disabled:opacity-50"
                 onClick={() => void approveSelected()}
               >
                 {t("org:cmsApprove")}
@@ -520,7 +520,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
               <button
                 type="button"
                 disabled={busy}
-                className="rounded-tile border border-amber-500/40 px-wide py-snug text-sm text-amber-300 hover:bg-amber-500/10 disabled:opacity-50"
+                className="rounded-tile border border-warning/40 px-wide py-snug text-sm text-badge-warning hover:bg-warning-subtle disabled:opacity-50"
                 onClick={() => void rejectSelected()}
               >
                 {t("org:cmsReject")}
@@ -531,7 +531,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
             <button
               type="button"
               disabled={busy}
-              className="rounded-tile bg-sky-600 px-wide py-snug text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+              className="rounded-tile bg-accent px-wide py-snug text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
               onClick={() => void publishSelected()}
             >
               {busy ? t("org:knowledgePublishing") : t("org:cmsPublish")}
@@ -567,8 +567,8 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
           </div>
         ) : null}
 
-        {msg ? <p className="mt-soft text-sm text-emerald-400/90">{msg}</p> : null}
-        {err ? <p className="mt-soft text-sm text-red-400/90">{err}</p> : null}
+        {msg ? <p className="mt-soft text-sm text-success">{msg}</p> : null}
+        {err ? <p className="mt-soft text-sm text-danger">{err}</p> : null}
       </form>
     </div>
   );

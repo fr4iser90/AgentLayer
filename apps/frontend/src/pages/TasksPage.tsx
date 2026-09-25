@@ -66,7 +66,7 @@ function TaskList({
               {task.status !== "done" ? (
                 <button
                   type="button"
-                  className="rounded-tile border border-emerald-500/30 px-base py-tight text-meta text-emerald-300/90 hover:bg-emerald-950/40"
+                  className="rounded-tile border border-success/30 px-base py-tight text-meta text-badge-success hover:bg-success-subtle"
                   onClick={() => onDone(task.id)}
                 >
                   {t("tasks:markDone")}
@@ -180,7 +180,7 @@ export function TasksPage() {
           </div>
           <Link
             to={conversationId ? `/chat?c=${encodeURIComponent(conversationId)}` : "/chat"}
-            className="rounded-card border border-line px-soft py-base text-sm text-sky-400/90 hover:bg-white/5"
+            className="rounded-card border border-line px-soft py-base text-sm text-accent hover:bg-white/5"
           >
             {t_0("tasks:backToChat")}
           </Link>
@@ -201,7 +201,7 @@ export function TasksPage() {
           </div>
         ) : null}
 
-        {error ? <p className="mt-wide text-sm text-red-400">{error}</p> : null}
+        {error ? <p className="mt-wide text-sm text-danger">{error}</p> : null}
 
         <section className="mt-deep">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">
@@ -285,7 +285,7 @@ export function TasksPage() {
                 />
                 <button
                   type="button"
-                  className="shrink-0 rounded-card border border-sky-500/40 bg-sky-500/15 px-wide py-base text-sm text-sky-200"
+                  className="shrink-0 rounded-card border border-accent/40 bg-accent-subtle px-wide py-base text-sm text-badge-accent"
                   onClick={() => {
                     const g = projectGoal.trim();
                     if (!g || !selectedWorkspaceId) return;

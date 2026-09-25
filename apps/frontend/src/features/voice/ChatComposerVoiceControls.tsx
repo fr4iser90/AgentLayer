@@ -46,11 +46,11 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
 
   if (!operatorOn || !anyConfigured) {
     return (
-      <div className="w-full rounded-card border border-amber-500/20 bg-amber-950/20 px-firm py-base">
-        <p className="text-meta leading-snug text-amber-100/90">{t("chat:voiceComposerDisabled")}</p>
+      <div className="w-full rounded-card border border-warning/20 bg-warning-subtle px-firm py-base">
+        <p className="text-meta leading-snug text-badge-warning">{t("chat:voiceComposerDisabled")}</p>
         <Link
           to="/settings/voice"
-          className="mt-tight inline-block text-meta text-sky-400/90 hover:text-sky-300 hover:underline"
+          className="mt-tight inline-block text-meta text-accent hover:text-badge-accent hover:underline"
         >
           {t("chat:voiceComposerSettingsLink")}
         </Link>
@@ -66,7 +66,7 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
         </span>
         <Link
           to="/settings/voice"
-          className="shrink-0 text-meta text-sky-400/80 hover:text-sky-300 hover:underline"
+          className="shrink-0 text-meta text-accent hover:text-badge-accent hover:underline"
         >
           {t("chat:voiceComposerSettingsLink")}
         </Link>
@@ -79,7 +79,7 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
       >
         <input
           type="checkbox"
-          className="rounded-tile border-line bg-field text-sky-500"
+          className="rounded-tile border-line bg-field text-accent"
           checked={voiceStatus.prefs.output_enabled}
           disabled={!ttsOk || saving}
           onChange={(e) => void patchPrefs({ output_enabled: e.target.checked })}
@@ -97,7 +97,7 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
       >
         <input
           type="checkbox"
-          className="rounded-tile border-line bg-field text-sky-500"
+          className="rounded-tile border-line bg-field text-accent"
           checked={voiceStatus.prefs.input_enabled}
           disabled={!sttOk || saving}
           onChange={(e) => void patchPrefs({ input_enabled: e.target.checked })}

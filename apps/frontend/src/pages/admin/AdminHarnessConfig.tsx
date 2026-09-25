@@ -192,11 +192,11 @@ export function AdminHarnessConfig() {
         <p className="mt-tight text-sm text-ink-muted">{t("admin:harnessSubtitle")}</p>
         <p className="mt-base text-xs text-ink-muted">
           {t("admin:harnessWorkflowHint")}{" "}
-          <Link to="/admin/benchmarks" className="text-sky-400 hover:underline">
+          <Link to="/admin/benchmarks" className="text-accent hover:underline">
             {t("admin:benchNav")}
           </Link>
           {" · "}
-          <Link to="/admin/agent-config" className="text-sky-400 hover:underline">
+          <Link to="/admin/agent-config" className="text-accent hover:underline">
             {t("admin:agentConfigNav")}
           </Link>
         </p>
@@ -204,7 +204,7 @@ export function AdminHarnessConfig() {
 
       <div className="min-h-0 flex-1 overflow-y-auto p-wide">
         {error ? (
-          <p className="mb-wide rounded-tile border border-red-500/40 bg-red-950/30 px-soft py-base text-sm text-red-200">
+          <p className="mb-wide rounded-tile border border-danger/40 bg-danger-subtle px-soft py-base text-sm text-badge-danger">
             {error}
           </p>
         ) : null}
@@ -264,7 +264,7 @@ export function AdminHarnessConfig() {
                 type="button"
                 disabled={busy}
                 onClick={() => void onSaveGlobal()}
-                className="mt-wide rounded-tile bg-sky-600 px-soft py-snug text-sm text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+                className="mt-wide rounded-tile bg-accent px-soft py-snug text-sm text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
               >
                 {t("admin:harnessSaveGlobal")}
               </button>
@@ -300,7 +300,7 @@ export function AdminHarnessConfig() {
                           <td className="py-base text-right">
                             <button
                               type="button"
-                              className="text-sky-400 hover:underline"
+                              className="text-accent hover:underline"
                               onClick={() => startEdit(row)}
                             >
                               {t("admin:harnessEdit")}
@@ -435,7 +435,7 @@ export function AdminHarnessConfig() {
                     type="button"
                     disabled={busy}
                     onClick={() => void onSaveOverride()}
-                    className="rounded-tile bg-sky-600 px-soft py-snug text-sm text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+                    className="rounded-tile bg-accent px-soft py-snug text-sm text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
                   >
                     {editingId ? t("admin:harnessUpdateOverride") : t("admin:harnessAddOverrideBtn")}
                   </button>

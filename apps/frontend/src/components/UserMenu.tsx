@@ -27,7 +27,7 @@ export function UserMenu() {
       <Tooltip label={email || t("userMenu.account")}>
       <button
           type="button"
-          className="flex h-9 w-9 items-center justify-center rounded-pill outline-none ring-sky-500/40 transition-transform duration-fast ease-standard hover:scale-105 focus-visible:ring-2"
+          className="flex h-9 w-9 items-center justify-center rounded-pill outline-none ring-accent/40 transition-transform duration-fast ease-standard hover:scale-105 focus-visible:ring-2"
           aria-expanded={open}
           aria-haspopup="menu"
           onClick={() => setOpen((v) => !v)}

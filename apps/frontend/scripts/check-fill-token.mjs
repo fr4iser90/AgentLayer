@@ -33,6 +33,7 @@ import { join, relative, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import colors from "tailwindcss/colors.js";
 import config from "../tailwind.config.js";
+import { bareClassName, intentionalReason, unhitIntentionalKeys } from "./intentional-colours.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -98,6 +99,7 @@ export async function checkFillToken() {
   const findings = [];
   const current = {};
   const hueCount = new Map();
+  const hit = new Set();
   let total = 0;
 
   for await (const file of walk(SRC)) {
@@ -109,6 +111,13 @@ export async function checkFillToken() {
     for (const f of scanFills(text)) {
       total += 1;
       hueCount.set(f.hue, (hueCount.get(f.hue) ?? 0) + 1);
+      // A justified raw fill stays out of `current` too, so --update cannot write
+      // it back into the baseline: the baseline says "not yet", the allow-list
+      // says "not ever", and a class sitting in both reads as the first.
+      if (intentionalReason(rel, f.cls)) {
+        hit.add(`${rel}::${bareClassName(f.cls)}`);
+        continue;
+      }
       here.add(f.cls);
       const allowed = new Set(baseline[rel] ?? []);
       if (!allowed.has(f.cls)) {
@@ -120,11 +129,19 @@ export async function checkFillToken() {
     if (fresh.length) findings.push({ file: rel, issues: fresh });
   }
 
-  return { ok: findings.length === 0, findings, current, hueCount, total };
+  return {
+    ok: findings.length === 0,
+    findings,
+    current,
+    hueCount,
+    total,
+    intentional: hit.size,
+    stale: unhitIntentionalKeys(hit, (cls) => cls.startsWith("bg-")),
+  };
 }
 
 async function main() {
-  const { ok, findings, current, hueCount, total } = await checkFillToken();
+  const { ok, findings, current, hueCount, total, intentional, stale } = await checkFillToken();
 
   if (process.argv.includes("--update")) {
     await writeFile(BASELINE, JSON.stringify(current, null, 2) + "\n", "utf8");
@@ -144,6 +161,13 @@ async function main() {
     return;
   }
 
+  if (stale.length) {
+    console.error(`[fill] FAILED - ${stale.length} begründete Ausnahme(n) treffen nichts mehr:`);
+    for (const k of stale) console.error(`  ${k}`);
+    console.error("[fill] Die Klasse ist nicht mehr im Baum. Streiche sie aus scripts/intentional-colours.mjs, sonst liest sie als Erlaubnis für etwas, das es nicht gibt.");
+    process.exit(1);
+  }
+
   if (!ok) {
     const totalNew = findings.reduce((n, f) => n + f.issues.length, 0);
     console.error(
@@ -159,7 +183,7 @@ async function main() {
     process.exit(1);
   }
   console.log(
-    `[fill] OK - ${total} Paletten-Fills geprüft, keine neue Drift über die aufgezeichnete Baseline.`
+    `[fill] OK - ${total} Paletten-Fills geprüft, ${intentional} begründet roh, keine neue Drift über die aufgezeichnete Baseline.`
   );
 }
 

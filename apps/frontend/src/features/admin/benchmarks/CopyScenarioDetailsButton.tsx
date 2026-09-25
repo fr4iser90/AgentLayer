@@ -48,8 +48,8 @@ export function CopyScenarioDetailsButton({
         className={
           className ||
           (compact
-            ? "rounded-tile px-tight text-meta text-ink-muted hover:bg-white/5 hover:text-sky-300"
-            : "rounded-tile border border-line px-base py-hair text-meta text-ink-muted hover:border-sky-500/30 hover:text-sky-300")
+            ? "rounded-tile px-tight text-meta text-ink-muted hover:bg-white/5 hover:text-badge-accent"
+            : "rounded-tile border border-line px-base py-hair text-meta text-ink-muted hover:border-accent/30 hover:text-badge-accent")
         }
         aria-label={label}
         onClick={(e) => void onClick(e)}

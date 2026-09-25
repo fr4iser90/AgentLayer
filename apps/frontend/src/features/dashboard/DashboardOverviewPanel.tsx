@@ -125,7 +125,7 @@ export function DashboardOverviewPanel(props: {
                   <button
                     type="button"
                     onClick={() => onOpenDashboard(w.id)}
-                    className="flex w-full flex-col rounded-sheet border border-line bg-card p-wide text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
+                    className="flex w-full flex-col rounded-sheet border border-line bg-card p-wide text-left transition hover:border-accent/35 hover:bg-white/[0.03]"
                   >
                     <span className="font-medium text-ink-primary">
                       {w.title || w.kind}

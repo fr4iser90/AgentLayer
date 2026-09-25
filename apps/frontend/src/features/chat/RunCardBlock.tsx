@@ -275,7 +275,7 @@ export function RunCardBlock({
             <span className="font-medium text-ink-primary">{title}</span>
             <span className="text-meta text-ink-muted">{meta.join(" · ")}</span>
             {card.status === "running" ? (
-              <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-pill bg-violet-400" />
+              <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-pill bg-accent" />
             ) : null}
           </div>
           {compactionSubtitle ?? card.subtitle ? (
@@ -287,7 +287,7 @@ export function RunCardBlock({
             <p className="mt-tight text-meta">
               <Link
                 to={`/admin/run-traces?run=${encodeURIComponent(card.subagentRunId)}`}
-                className="font-mono text-sky-400/90 hover:text-sky-300 hover:underline"
+                className="font-mono text-accent hover:text-badge-accent hover:underline"
                 title={t("chat:runCardOpenTrace")}
               >
                 {t("chat:runCardRunId", { id: card.subagentRunId.slice(0, 8) })}
@@ -299,13 +299,13 @@ export function RunCardBlock({
             <div className="mt-base space-y-snug">
               {card.reasoningExcerpt?.trim() ? (
                 <details className="group/r">
-                  <summary className="cursor-pointer list-none text-meta font-medium text-sky-200/80 marker:content-none [&::-webkit-details-marker]:hidden">
+                  <summary className="cursor-pointer list-none text-meta font-medium text-badge-accent marker:content-none [&::-webkit-details-marker]:hidden">
                     {t("chat:runCardThinking", { defaultValue: "Thinking" })}
-                    <span className="ml-tight font-normal text-sky-200/50 group-open/r:hidden">
+                    <span className="ml-tight font-normal text-badge-accent group-open/r:hidden">
                       {t("chat:contextInjectExpandHint")}
                     </span>
                   </summary>
-                  <pre className="mt-tight max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-sky-500/20 bg-black/25 px-base py-snug font-sans text-meta leading-relaxed text-ink-muted">
+                  <pre className="mt-tight max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-accent/20 bg-black/25 px-base py-snug font-sans text-meta leading-relaxed text-ink-muted">
                     {card.reasoningExcerpt.trim()}
                   </pre>
                 </details>
@@ -340,7 +340,7 @@ export function RunCardBlock({
                   >
                     {running ? (
                       isLatest ? (
-                        <span className="shrink-0 text-sky-400/90">→</span>
+                        <span className="shrink-0 text-accent">→</span>
                       ) : (
                         <span className="shrink-0 text-ink-faint">·</span>
                       )
@@ -349,12 +349,12 @@ export function RunCardBlock({
                         <X aria-hidden className="h-3.5 w-3.5 text-danger/90" />
                       </span>
                     ) : (
-                      <Check aria-hidden className="h-3.5 w-3.5 shrink-0 text-emerald-400/70" />
+                      <Check aria-hidden className="h-3.5 w-3.5 shrink-0 text-success" />
                     )}
                     <span
                       className={
                         running && isLatest
-                          ? "truncate text-sky-300/90"
+                          ? "truncate text-badge-accent"
                           : "truncate text-ink-muted"
                       }
                     >
@@ -370,13 +370,13 @@ export function RunCardBlock({
               className="group/out mt-snug"
               open={lastOutputRow?.failed === true || card.status === "failed"}
             >
-              <summary className="cursor-pointer list-none text-meta font-medium text-emerald-200/80 marker:content-none [&::-webkit-details-marker]:hidden">
+              <summary className="cursor-pointer list-none text-meta font-medium text-badge-success marker:content-none [&::-webkit-details-marker]:hidden">
                 {t("chat:runCardCommandOutput")}
-                <span className="ml-tight font-normal text-emerald-200/45 group-open/out:hidden">
+                <span className="ml-tight font-normal text-badge-success group-open/out:hidden">
                   {t("chat:contextInjectExpandHint")}
                 </span>
               </summary>
-              <pre className="mt-tight max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-emerald-500/20 bg-black/30 px-base py-snug font-mono text-meta leading-relaxed text-ink-secondary">
+              <pre className="mt-tight max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-success/20 bg-black/30 px-base py-snug font-mono text-meta leading-relaxed text-ink-secondary">
                 {lastOutputRow?.resultDisplay || toolCardOutput}
               </pre>
             </details>
@@ -384,7 +384,7 @@ export function RunCardBlock({
           {expandableDetails ? (
             <button
               type="button"
-              className="mt-snug text-meta text-sky-400/90 hover:text-sky-300 hover:underline"
+              className="mt-snug text-meta text-accent hover:text-badge-accent hover:underline"
               onClick={() => {
                 if (onToggleExpanded) onToggleExpanded();
                 else setExpanded(!expanded);
@@ -406,13 +406,13 @@ export function RunCardBlock({
                     <li key={`step-${i}`} className="text-meta leading-snug text-ink-muted">
                       <div>
                         {card.status === "running" ? (
-                          <span className="text-sky-400/70">→</span>
+                          <span className="text-accent">→</span>
                         ) : row.failed ? (
                           <span className="inline" title={t("chat:runCardStepFailed")}>
                             <X aria-hidden className="inline h-3.5 w-3.5 text-danger/90" />
                           </span>
                         ) : (
-                          <Check aria-hidden className="inline h-3.5 w-3.5 text-emerald-400/70" />
+                          <Check aria-hidden className="inline h-3.5 w-3.5 text-success" />
                         )}
                         <span className={row.failed ? "text-badge-danger/85" : "text-ink-muted"}>
                           {" "}
@@ -421,13 +421,13 @@ export function RunCardBlock({
                       </div>
                       {row.resultDisplay ? (
                         <details className="group/out mt-tight" open={row.failed}>
-                          <summary className="cursor-pointer list-none text-meta font-medium text-emerald-200/80 marker:content-none [&::-webkit-details-marker]:hidden">
+                          <summary className="cursor-pointer list-none text-meta font-medium text-badge-success marker:content-none [&::-webkit-details-marker]:hidden">
                             {t("chat:runCardCommandOutput")}
-                            <span className="ml-tight font-normal text-emerald-200/45 group-open/out:hidden">
+                            <span className="ml-tight font-normal text-badge-success group-open/out:hidden">
                               {t("chat:contextInjectExpandHint")}
                             </span>
                           </summary>
-                          <pre className="mt-tight max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-emerald-500/20 bg-black/30 px-base py-snug font-mono text-meta leading-relaxed text-ink-secondary">
+                          <pre className="mt-tight max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-success/20 bg-black/30 px-base py-snug font-mono text-meta leading-relaxed text-ink-secondary">
                             {row.resultDisplay}
                           </pre>
                         </details>
@@ -445,13 +445,13 @@ export function RunCardBlock({
                       </div>
                       {d.resultDisplay?.trim() ? (
                         <details className="group/out mt-tight" open={d.toolOk === false}>
-                          <summary className="cursor-pointer list-none text-meta font-medium text-emerald-200/80 marker:content-none [&::-webkit-details-marker]:hidden">
+                          <summary className="cursor-pointer list-none text-meta font-medium text-badge-success marker:content-none [&::-webkit-details-marker]:hidden">
                             {t("chat:runCardCommandOutput")}
-                            <span className="ml-tight font-normal text-emerald-200/45 group-open/out:hidden">
+                            <span className="ml-tight font-normal text-badge-success group-open/out:hidden">
                               {t("chat:contextInjectExpandHint")}
                             </span>
                           </summary>
-                          <pre className="mt-tight max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-emerald-500/20 bg-black/30 px-base py-snug font-mono text-meta leading-relaxed text-ink-secondary">
+                          <pre className="mt-tight max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-success/20 bg-black/30 px-base py-snug font-mono text-meta leading-relaxed text-ink-secondary">
                             {d.resultDisplay.trim()}
                           </pre>
                         </details>

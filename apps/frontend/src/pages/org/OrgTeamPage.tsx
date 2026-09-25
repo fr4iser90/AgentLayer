@@ -148,7 +148,7 @@ export function OrgTeamPage() {
         </div>
         <button
           type="button"
-          className="mt-soft rounded-tile bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500"
+          className="mt-soft rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover"
           onClick={() => void saveAssignment()}
         >
           {t("org:teamSaveAssignment")}
@@ -162,8 +162,8 @@ export function OrgTeamPage() {
         </pre>
       </section>
 
-      {msg ? <p className="mt-wide text-sm text-emerald-400">{msg}</p> : null}
-      {err ? <p className="mt-wide text-sm text-red-400">{err}</p> : null}
+      {msg ? <p className="mt-wide text-sm text-success">{msg}</p> : null}
+      {err ? <p className="mt-wide text-sm text-danger">{err}</p> : null}
     </div>
   );
 }

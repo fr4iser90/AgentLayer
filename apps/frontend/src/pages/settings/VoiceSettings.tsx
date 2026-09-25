@@ -68,7 +68,7 @@ export function VoiceSettings() {
       <h1 className="text-xl font-semibold text-ink-primary">{t("settings:voiceTitle")}</h1>
       <p className="mt-base text-sm text-ink-muted">{t("settings:voiceIntro")}</p>
       {disabledGlobally ? (
-        <p className="mt-wide rounded-card border border-amber-500/30 bg-amber-950/30 px-soft py-base text-sm text-amber-100">
+        <p className="mt-wide rounded-card border border-warning/30 bg-warning-subtle px-soft py-base text-sm text-badge-warning">
           {t("settings:voiceDisabledOperator")}
         </p>
       ) : null}
@@ -162,7 +162,7 @@ export function VoiceSettings() {
           type="button"
           disabled={saving}
           onClick={() => void save()}
-          className="rounded-card bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+          className="rounded-card bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
         >
           {t("settings:voiceSave")}
         </button>

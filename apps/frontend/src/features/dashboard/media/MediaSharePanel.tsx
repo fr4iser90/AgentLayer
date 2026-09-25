@@ -152,7 +152,7 @@ export function MediaSharePanel() {
         {t("dashboard:mediaSharePanelTitle")}
       </h4>
       <p className="mt-tight text-meta leading-snug text-ink-muted">{t("dashboard:mediaSharePanelHint")}</p>
-      {err ? <p className="mt-base text-xs text-red-400">{err}</p> : null}
+      {err ? <p className="mt-base text-xs text-danger">{err}</p> : null}
       {ownedUploads.length === 0 ? (
         <p className="mt-base text-xs text-ink-muted">{t("dashboard:mediaShareNoUploads")}</p>
       ) : (
@@ -226,7 +226,7 @@ export function MediaSharePanel() {
                           <button
                             type="button"
                             disabled={busy || !shareEmail.trim()}
-                            className="rounded-tile border border-sky-500/40 bg-sky-950/40 px-base py-tight text-meta text-sky-100"
+                            className="rounded-tile border border-accent/40 bg-accent-subtle px-base py-tight text-meta text-badge-accent"
                             onClick={() => void shareItem(u.id)}
                           >
                             {t("dashboard:mediaShareAction")}

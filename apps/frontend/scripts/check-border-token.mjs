@@ -33,6 +33,7 @@ import { readFile, readdir, writeFile } from "node:fs/promises";
 import { join, relative, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import config from "../tailwind.config.js";
+import { bareClassName, intentionalReason, unhitIntentionalKeys } from "./intentional-colours.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -51,38 +52,18 @@ for (const [name, value] of Object.entries(config.theme.extend.colors)) {
   else for (const sub of Object.keys(value)) TOKEN.add(sub === "DEFAULT" ? name : `${name}-${sub}`);
 }
 
-// Deliberately raw, with the reason stated where the check reads it.
+// Deliberately raw, with the reason stated where the check reads it. The list is
+// shared with the fill and ink guards (scripts/intentional-colours.mjs): a
+// catalogue key is usually a border, a fill and a label of the same thing, and
+// three copies of one decision drift into three different claims about it.
 //
-// These are catalogue keys: the colour indexes a set of peer kinds rather than
-// describing a status, so mapping them onto a semantic token would delete the
-// distinction the surface exists to draw. They live here instead of in
-// border-baseline.json because a baseline entry says "we have not got to this
-// yet" while these say "there is nothing to get to", and only the second kind
-// of sentence can be checked for still being true — an entry whose class has
-// left the tree fails the run (see `stale` in checkBorderToken).
-const INTENTIONAL = {
-  // 12 activity kinds and 4 run-card kinds are distinguished by hue alone.
-  // Four semantic tokens cannot carry 12 distinctions; collapsing `scan_queue`
-  // onto `warning` would make it identical to `permission` two rows away.
-  "src/features/chat/AgentActivityPanel.tsx": {
-    "border-orange-500/45":
-      "Katalog-Farbe für deferred_wait/scan_queue; abgrenzbar von warning (permission) und sky (tool_start)",
-  },
-  // A canvas block can be selected (sky ring), highlighted (orange ring) and
-  // unread (unread border) at the same time. `unread` is already taken by the
-  // third state in the same expression, `accent` by the first. Only the border
-  // is listed: this guard reads `border-*`, the companion `ring-orange-500/40`
-  // is not in its scope and would read as a stale justification forever.
-  "src/features/dashboard/DashboardCanvasSurface.tsx": {
-    "border-orange-500/50": "Hervorhebungs-Ring, dritter Zustand neben selected (accent) und unread",
-  },
-  "src/features/dashboard/DashboardGridInner.tsx": {
-    "border-orange-500/50": "Hervorhebungs-Ring, dritter Zustand neben selected (accent) und unread",
-  },
-};
-const INTENTIONAL_KEYS = new Set(
-  Object.entries(INTENTIONAL).flatMap(([file, byCls]) => Object.keys(byCls).map((cls) => `${file}::${cls}`))
-);
+// It lives there rather than in border-baseline.json because a baseline entry
+// says "we have not got to this yet" while these say "there is nothing to get
+// to", and only the second kind of sentence can be checked for still being true
+// — an entry whose class has left the tree fails the run (see `stale`). Scoped
+// to this guard's own property, so a justified fill can never count as a hit
+// for a border.
+const IS_BORDER = (cls) => cls.startsWith("border-");
 
 // Grey/white hairlines: never acceptable in new code, they are what the
 // codemod replaced.
@@ -176,19 +157,23 @@ export async function checkBorderToken() {
         seen.add(finding.cls);
         checked += 1;
       }
-      const key = `${rel}::${finding.cls}`;
-      if (INTENTIONAL_KEYS.has(key)) {
-        hit.add(key);
+      // Two keys, deliberately: the baseline records a class as written, so a
+      // `hover:border-white/10` is tolerated only as exactly that — widening it
+      // to the bare class would forgive `border-white/10` in plain state, which
+      // is the one spelling the codemod removed. The allow-list is keyed bare,
+      // because the justification there is about the colour, not the state.
+      if (intentionalReason(rel, finding.cls)) {
+        hit.add(`${rel}::${bareClassName(finding.cls)}`);
         continue;
       }
-      if (tolerated.has(key)) continue;
+      if (tolerated.has(`${rel}::${finding.cls}`)) continue;
       violations.push({ file: rel, ...finding });
     }
   }
   // A justification that no longer names anything in the tree is not a
   // justification, it is a comment somebody forgot to delete. Failing on it
   // keeps the allow-list from becoming the thing the baseline was.
-  const stale = [...INTENTIONAL_KEYS].filter((k) => !hit.has(k));
+  const stale = unhitIntentionalKeys(hit, IS_BORDER);
   return { violations, checked, tolerated: tolerated.size, intentional: hit.size, stale };
 }
 
@@ -203,7 +188,7 @@ async function update() {
       const key = `${rel}::${cls}`;
       // A justified class must not also sit in the baseline: two records of the
       // same decision, one of them silent, is how the drift came back before.
-      if (INTENTIONAL_KEYS.has(key)) continue;
+      if (intentionalReason(rel, cls)) continue;
       classes[key] = true;
     }
   }

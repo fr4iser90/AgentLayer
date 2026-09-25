@@ -214,14 +214,14 @@ export function StudioPage() {
         </div>
 
         {catalogError ? (
-          <p className="mt-wide rounded-card border border-red-900/50 bg-red-950/40 px-soft py-base text-sm text-red-200">
+          <p className="mt-wide rounded-card border border-danger/50 bg-danger-subtle px-soft py-base text-sm text-badge-danger">
             {catalogError}
           </p>
         ) : null}
 
         {catalog && !catalogError ? (
           <div className="mt-wide flex flex-wrap items-center gap-base text-sm">
-            <span className="rounded-pill bg-emerald-950/80 px-base py-hair text-emerald-300">
+            <span className="rounded-pill bg-success-subtle px-base py-hair text-badge-success">
               {t("common:studio.catalogFromServer")}
             </span>
             <span className="text-ink-muted">v{catalog.studio_version ?? "?"}</span>
@@ -230,7 +230,7 @@ export function StudioPage() {
             </span>
             <button
               type="button"
-              className="text-sky-400 underline hover:text-sky-300"
+              className="text-accent underline hover:text-badge-accent"
               onClick={() => window.location.reload()}
             >
               {t("common:studio.reloadCatalog")}
@@ -273,7 +273,7 @@ export function StudioPage() {
             </div>
 
             {jobError ? (
-              <p className="mt-wide rounded-card border border-red-900/50 bg-red-950/40 px-soft py-base text-sm text-red-200">
+              <p className="mt-wide rounded-card border border-danger/50 bg-danger-subtle px-soft py-base text-sm text-badge-danger">
                 {jobError}
               </p>
             ) : null}

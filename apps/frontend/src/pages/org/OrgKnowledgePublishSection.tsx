@@ -144,15 +144,15 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
         <button
           type="button"
           disabled={busy}
-          className="rounded-tile bg-sky-600 px-wide py-snug text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+          className="rounded-tile bg-accent px-wide py-snug text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
           onClick={() => void publish()}
         >
           {busy ? t("org:knowledgePublishing") : t("org:cmsPublish")}
         </button>
       </div>
 
-      {msg ? <p className="mt-soft text-sm text-emerald-400/90">{msg}</p> : null}
-      {err ? <p className="mt-soft text-sm text-red-400/90">{err}</p> : null}
+      {msg ? <p className="mt-soft text-sm text-success">{msg}</p> : null}
+      {err ? <p className="mt-soft text-sm text-danger">{err}</p> : null}
     </section>
   );
 }

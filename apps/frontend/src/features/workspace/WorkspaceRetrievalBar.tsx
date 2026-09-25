@@ -35,7 +35,7 @@ function fmtIndexTime(iso: string | null | undefined, t: (key: string) => string
 
 function pill(on: boolean) {
   return on
-    ? `rounded-tile border border-emerald-500/40 bg-emerald-950/50 px-snug py-hair text-meta font-medium uppercase tracking-wide text-emerald-200/95`
+    ? `rounded-tile border border-success/40 bg-success-subtle px-snug py-hair text-meta font-medium uppercase tracking-wide text-badge-success`
     : `rounded-tile border border-line-strong bg-white/5 px-snug py-hair text-meta font-medium uppercase tracking-wide text-ink-muted`;
 }
 
@@ -365,7 +365,7 @@ export function WorkspaceRetrievalBar({
           <button
               type="button"
               disabled={!indexOn || indexBusy || showProgress}
-              className={`${INDEX_BTN} border-sky-500/35 bg-sky-950/40 text-sky-200/95 hover:bg-sky-900/50`}
+              className={`${INDEX_BTN} border-accent/35 bg-accent-subtle text-badge-accent hover:bg-accent-subtle`}
               onClick={() => void runIndex("code")}
             >
               {busy === "code" && showProgress ? "…" : t("workspace:code")}
@@ -375,7 +375,7 @@ export function WorkspaceRetrievalBar({
           <button
               type="button"
               disabled={!docsRagOn || indexBusy || showProgress}
-              className={`${INDEX_BTN} border-amber-500/35 bg-amber-950/40 text-amber-200/95 hover:bg-amber-900/50`}
+              className={`${INDEX_BTN} border-warning/35 bg-warning-subtle text-badge-warning hover:bg-warning-subtle`}
               onClick={() => void runIndex("docs")}
             >
               {busy === "docs" && showProgress ? "…" : t("workspace:docs")}
@@ -398,7 +398,7 @@ export function WorkspaceRetrievalBar({
           </div>
         </div>
       ) : indexFailed && activeJob?.error ? (
-        <p className="mt-tight text-meta text-amber-300/90" title={activeJob.error}>
+        <p className="mt-tight text-meta text-badge-warning" title={activeJob.error}>
           {t("workspace:indexFailed", { err: activeJob.error.slice(0, 120) })}
         </p>
       ) : null}
@@ -419,7 +419,7 @@ export function WorkspaceRetrievalBar({
         </span>
         {indexOn && indexStale ? (
           <span
-            className="text-amber-300/95"
+            className="text-badge-warning"
             title={
               staleReason === "never_indexed"
                 ? t("workspace:noCodeIndexYet")
@@ -455,11 +455,11 @@ export function WorkspaceRetrievalBar({
                 : "—"}
         </span>
         {workspace.last_index_error ? (
-          <span className="text-amber-300/90" title={workspace.last_index_error}>
+          <span className="text-badge-warning" title={workspace.last_index_error}>
             · {t("workspace:err")}
           </span>
         ) : null}
-        {statusErr ? <span className="text-red-400/90">· {statusErr}</span> : null}
+        {statusErr ? <span className="text-danger">· {statusErr}</span> : null}
       </div>
     </div>
   );

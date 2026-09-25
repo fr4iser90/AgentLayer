@@ -332,7 +332,7 @@ export function ConnectionsSettings() {
           <button
             type="button"
             disabled={discordSaving}
-            className="rounded-tile bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+            className="rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
             onClick={() => void saveDiscordLink()}
           >
             {discordSaving ? t("settings:saving") : t("settings:connectionsSaveDiscord")}
@@ -391,7 +391,7 @@ export function ConnectionsSettings() {
           <button
             type="button"
             disabled={telegramSaving}
-            className="rounded-tile bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+            className="rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
             onClick={() => void saveTelegramLink()}
           >
             {telegramSaving ? t("settings:saving") : t("settings:connectionsSaveTelegram")}
@@ -439,8 +439,8 @@ export function ConnectionsSettings() {
             msg === t("settings:telegramSaved") ||
             msg === t("settings:connectionsDiscordRemoved") ||
             msg === t("settings:connectionsTelegramRemoved")
-              ? "text-emerald-400"
-              : "text-amber-400"
+              ? "text-success"
+              : "text-warning"
           }`}
         >
           {msg}
@@ -529,7 +529,7 @@ export function ConnectionsSettings() {
                             return (
                               <label key={f.name} className="block text-xs text-ink-muted" htmlFor={id}>
                                 {f.label || f.name}
-                                {f.required ? <span className="text-amber-400/80"> *</span> : null}
+                                {f.required ? <span className="text-warning"> *</span> : null}
                                 <input
                                   id={id}
                                   type={inputType}
@@ -560,7 +560,7 @@ export function ConnectionsSettings() {
                       <button
                         type="button"
                         disabled={saving || secretsUnavailable}
-                        className="rounded-tile bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-40"
+                        className="rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-40"
                         onClick={() => void saveSecret()}
                       >
                         {saving ? t("settings:saving") : t("admin:save")}
@@ -607,7 +607,7 @@ export function ConnectionsSettings() {
                         <button
                           type="button"
                           disabled={saving || secretsUnavailable}
-                          className="rounded-tile bg-sky-600 px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-40"
+                          className="rounded-tile bg-accent px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-40"
                           onClick={() => void saveSecret()}
                         >
                           {saving ? t("settings:saving") : t("admin:save")}
@@ -634,7 +634,7 @@ export function ConnectionsSettings() {
 
       <p className="text-xs text-ink-muted">
         {t("settings:connectionsEndUserTools")}{" "}
-        <Link to="/settings/tools" className="text-sky-400 hover:text-sky-300 hover:underline">
+        <Link to="/settings/tools" className="text-accent hover:text-badge-accent hover:underline">
           {t("settings:toolsTitle")}
         </Link>
         .
@@ -642,7 +642,7 @@ export function ConnectionsSettings() {
 
       <button
         type="button"
-        className="text-xs text-sky-400 hover:text-sky-300 hover:underline"
+        className="text-xs text-accent hover:text-badge-accent hover:underline"
         onClick={() => void load()}
       >
         {t("settings:profileRefresh")}

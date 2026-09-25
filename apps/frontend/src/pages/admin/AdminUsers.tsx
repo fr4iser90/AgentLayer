@@ -589,7 +589,7 @@ export function AdminUsers() {
       <h1 className="text-2xl font-semibold text-ink-primary">{t("admin:usersPageTitle")}</h1>
       <p className="mt-base text-sm text-ink-muted">
         {t("admin:usersPageIntro")}{" "}
-        <Link to="/admin/tools" className="text-sky-400 hover:text-sky-300 hover:underline">
+        <Link to="/admin/tools" className="text-accent hover:text-badge-accent hover:underline">
           {t("admin:adminToTools")}
         </Link>
         .
@@ -633,7 +633,7 @@ export function AdminUsers() {
                 loadingRows(visibleColSpan, t("admin:loading"))
               ) : listErr ? (
                 <tr>
-                  <td colSpan={visibleColSpan} className="px-wide py-broad text-center text-red-400">
+                  <td colSpan={visibleColSpan} className="px-wide py-broad text-center text-danger">
                     {listErr}
                   </td>
                 </tr>
@@ -694,7 +694,7 @@ export function AdminUsers() {
                         </Badge>
                         {!targetEditable ? (
                           <span
-                            className="mt-hair block text-xs font-normal text-amber-400"
+                            className="mt-hair block text-xs font-normal text-warning"
                             title={t("admin:usersSiteAdminLocked")}
                           >
                             {t("admin:usersSiteAdminLocked")}
@@ -878,7 +878,7 @@ export function AdminUsers() {
         </div>
         <button
           type="button"
-          className="mt-base text-xs text-sky-400 hover:text-sky-300 hover:underline"
+          className="mt-base text-xs text-accent hover:text-badge-accent hover:underline"
           onClick={() => void reloadAll()}
         >
           {t("admin:usersRefreshList")}
@@ -937,7 +937,7 @@ export function AdminUsers() {
         </div>
         {tenantCreateMsg ? (
           <p
-            className={`mt-soft text-sm ${tenantCreateMsg.startsWith(t("admin:usersTenantCreatedPrefix")) ? "text-emerald-400" : "text-amber-400"}`}
+            className={`mt-soft text-sm ${tenantCreateMsg.startsWith(t("admin:usersTenantCreatedPrefix")) ? "text-success" : "text-warning"}`}
           >
             {tenantCreateMsg}
           </p>
@@ -999,7 +999,7 @@ export function AdminUsers() {
           <button
             type="button"
             disabled={createBusy}
-            className="rounded-tile bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+            className="rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
             onClick={() => void createUser()}
           >
             {createBusy ? "…" : t("admin:usersCreateUser")}
@@ -1007,7 +1007,7 @@ export function AdminUsers() {
         </div>
         {createMsg ? (
           <p
-            className={`mt-soft text-sm ${createMsg.startsWith(t("admin:usersCreatedPrefix")) ? "text-emerald-400" : "text-amber-400"}`}
+            className={`mt-soft text-sm ${createMsg.startsWith(t("admin:usersCreatedPrefix")) ? "text-success" : "text-warning"}`}
           >
             {createMsg}
           </p>

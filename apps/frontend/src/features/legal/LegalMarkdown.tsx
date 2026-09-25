@@ -9,7 +9,7 @@ const mdClass = {
   ul: "mb-soft list-disc space-y-tight pl-roomy text-ink-primary",
   ol: "mb-soft list-decimal space-y-tight pl-roomy text-ink-primary",
   li: "leading-relaxed",
-  a: "text-sky-400 underline hover:text-sky-300",
+  a: "text-accent underline hover:text-badge-accent",
   code: "rounded-tile bg-white/10 px-tight py-hair font-mono text-[0.9em] text-ink-primary",
   pre: "mb-soft overflow-x-auto rounded-card bg-black/40 p-soft text-sm text-ink-primary",
   blockquote: "mb-soft border-l-2 border-line-strong pl-soft text-ink-secondary",

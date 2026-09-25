@@ -81,9 +81,9 @@ import { Badge } from "../../ui/Badge";
 import { Modal } from "../../ui/Modal";
 
 const benchCheckboxClass =
-  "h-4 w-4 shrink-0 rounded-tile border-2 border-sky-400/70 bg-black/60 text-sky-500 accent-sky-500 focus:ring-2 focus:ring-sky-400/70 focus:ring-offset-0";
+  "h-4 w-4 shrink-0 rounded-tile border-2 border-accent/70 bg-black/60 text-accent accent-accent focus:ring-2 focus:ring-accent/70 focus:ring-offset-0";
 const benchCheckboxLargeClass =
-  "h-5 w-5 shrink-0 rounded-tile border-2 border-sky-400/80 bg-black/60 text-sky-500 accent-sky-500 focus:ring-2 focus:ring-sky-400/80 focus:ring-offset-0";
+  "h-5 w-5 shrink-0 rounded-tile border-2 border-accent/80 bg-black/60 text-accent accent-accent focus:ring-2 focus:ring-accent/80 focus:ring-offset-0";
 const benchRadioClass =
   "h-4 w-4 shrink-0 border-2 border-violet-400/80 bg-black/60 text-violet-500 accent-violet-500 focus:ring-2 focus:ring-violet-400/80 focus:ring-offset-0";
 
@@ -172,7 +172,7 @@ function CollapsibleMono({
       {long ? (
         <button
           type="button"
-          className="mt-tight text-sky-400 hover:underline"
+          className="mt-tight text-accent hover:underline"
           onClick={() => setExpanded((v) => !v)}
         >
           {expanded ? t("admin:benchDetailShowLess") : t("admin:benchDetailShowFull")}
@@ -395,13 +395,13 @@ function BenchmarkFailuresSummary({
                 <td className="py-tight pr-base font-mono align-top text-meta">
                   {formatBenchmarkProviderModel(row)}
                 </td>
-                <td className="py-tight pr-base align-top text-amber-200/90 max-w-chip">
+                <td className="py-tight pr-base align-top text-badge-warning max-w-chip">
                   {row.transport_error || "—"}
                 </td>
                 <td className="py-tight pr-base align-top text-badge-danger/90 max-w-chipWide">
                   {row.rubric_failure || "—"}
                 </td>
-                <td className="py-tight pr-base align-top text-sky-200/80 max-w-chipWide">
+                <td className="py-tight pr-base align-top text-badge-accent max-w-chipWide">
                   {row.insights || "—"}
                 </td>
               </tr>
@@ -460,7 +460,7 @@ function BenchmarkScenarioDetailWithAttempts({
                   onClick={() => onSelectAttempt(idx)}
                   className={`rounded-tile px-base py-hair font-mono text-meta ${
                     active
-                      ? "bg-sky-600 text-ink-on-fill"
+                      ? "bg-accent text-ink-on-fill"
                       : "border border-line-strong bg-black/30 text-white/80 hover:bg-white/10"
                   }`}
                 >
@@ -532,10 +532,10 @@ function BenchmarkScenarioDetail({
         <CopyScenarioDetailsButton res={res} />
       </div>
       {noToolsForwarded ? (
-        <p className="text-amber-400/90">{t("admin:benchDetailNoToolsForwarded")}</p>
+        <p className="text-warning">{t("admin:benchDetailNoToolsForwarded")}</p>
       ) : null}
       {legacy && response ? (
-        <p className="text-amber-400/90">{t("admin:benchDetailLegacyHint")}</p>
+        <p className="text-warning">{t("admin:benchDetailLegacyHint")}</p>
       ) : null}
       {legacy && !response ? (
         <p className="text-ink-muted">{t("admin:benchDetailLegacyHint")}</p>
@@ -551,12 +551,12 @@ function BenchmarkScenarioDetail({
           <div className="mb-tight font-medium text-ink-muted">
             {t("admin:benchDetailResponse")}
             {res.assistant_content_truncated ? (
-              <span className="ml-base font-normal text-amber-400/80">
+              <span className="ml-base font-normal text-warning">
                 ({t("admin:benchDetailTruncated")})
               </span>
             ) : null}
             {streamOnly ? (
-              <span className="ml-base font-normal text-amber-400/80">
+              <span className="ml-base font-normal text-warning">
                 ({t("admin:benchDetailResponseFromStream")})
               </span>
             ) : null}
@@ -569,7 +569,7 @@ function BenchmarkScenarioDetail({
           {t("admin:benchDetailTools")}:{" "}
           <span className="font-mono text-white/80">{toolsDisplay}</span>
           {(res.tool_names?.length ?? 0) === 0 && toolRounds.length > 0 ? (
-            <span className="ml-tight text-amber-400/80">({t("admin:benchDetailToolsFromWs")})</span>
+            <span className="ml-tight text-warning">({t("admin:benchDetailToolsFromWs")})</span>
           ) : null}
         </span>
         {res.run_metrics?.capture_mode ? (
@@ -641,9 +641,9 @@ function BenchmarkScenarioDetail({
         </div>
       ) : null}
       {(res.transport_error || res.error) ? (
-        <div className="rounded-tile border border-amber-500/25 bg-amber-950/20 p-base">
-          <div className="font-medium text-amber-300">{t("admin:benchDetailTransportError")}</div>
-          <pre className="mt-tight whitespace-pre-wrap font-mono text-meta text-amber-100/90">
+        <div className="rounded-tile border border-warning/25 bg-warning-subtle p-base">
+          <div className="font-medium text-badge-warning">{t("admin:benchDetailTransportError")}</div>
+          <pre className="mt-tight whitespace-pre-wrap font-mono text-meta text-badge-warning">
             {res.transport_error || res.error}
           </pre>
           {res.run_metrics?.http_status != null ? (
@@ -654,25 +654,25 @@ function BenchmarkScenarioDetail({
         </div>
       ) : null}
       {res.rubric_failure_reason ? (
-        <div className="rounded-tile border border-red-500/30 bg-red-950/30 p-base">
-          <div className="font-medium text-red-300">{t("admin:benchDetailRubricFailure")}</div>
-          <pre className="mt-tight whitespace-pre-wrap font-mono text-meta text-red-200/90">
+        <div className="rounded-tile border border-danger/30 bg-danger-subtle p-base">
+          <div className="font-medium text-badge-danger">{t("admin:benchDetailRubricFailure")}</div>
+          <pre className="mt-tight whitespace-pre-wrap font-mono text-meta text-badge-danger">
             {res.rubric_failure_reason}
           </pre>
         </div>
       ) : null}
       {!res.rubric_failure_reason && res.failure_reason && !(res.transport_error || res.error) ? (
-        <div className="rounded-tile border border-red-500/30 bg-red-950/30 p-base">
-          <div className="font-medium text-red-300">{t("admin:benchDetailFailure")}</div>
-          <pre className="mt-tight whitespace-pre-wrap font-mono text-meta text-red-200/90">
+        <div className="rounded-tile border border-danger/30 bg-danger-subtle p-base">
+          <div className="font-medium text-badge-danger">{t("admin:benchDetailFailure")}</div>
+          <pre className="mt-tight whitespace-pre-wrap font-mono text-meta text-badge-danger">
             {res.failure_reason}
           </pre>
         </div>
       ) : null}
       {(benchDiag?.insights?.length ?? 0) > 0 ? (
-        <div className="rounded-tile border border-sky-500/25 bg-sky-950/25 p-base">
-          <div className="font-medium text-sky-300">{t("admin:benchDetailInsights")}</div>
-          <ul className="mt-tight list-inside list-disc text-meta text-sky-100/90">
+        <div className="rounded-tile border border-accent/25 bg-accent-subtle p-base">
+          <div className="font-medium text-badge-accent">{t("admin:benchDetailInsights")}</div>
+          <ul className="mt-tight list-inside list-disc text-meta text-badge-accent">
             {benchDiag!.insights!.map((line, i) => (
               <li key={i}>{line}</li>
             ))}
@@ -725,14 +725,14 @@ function BenchmarkScenarioDetail({
                       <td className="max-w-chip truncate px-base py-tight" title={args}>
                         {args}
                       </td>
-                      <td className="max-w-chip truncate px-base py-tight text-amber-100/80" title={wire}>
+                      <td className="max-w-chip truncate px-base py-tight text-badge-warning" title={wire}>
                         {wire}
                       </td>
-                      <td className="max-w-chip truncate px-base py-tight text-red-200/90" title={missing}>
+                      <td className="max-w-chip truncate px-base py-tight text-badge-danger" title={missing}>
                         {missing}
                       </td>
                       <td className="px-base py-tight">{promoted}</td>
-                      <td className="max-w-chip truncate px-base py-tight text-amber-200/90" title={result}>
+                      <td className="max-w-chip truncate px-base py-tight text-badge-warning" title={result}>
                         {result}
                       </td>
                     </tr>
@@ -774,9 +774,9 @@ function BenchmarkScenarioDetail({
         </div>
       ) : null}
       {res.run_metrics?.bench_diagnostics?.ws_errors?.length ? (
-        <div className="rounded-tile border border-amber-500/20 bg-amber-950/20 p-base">
-          <div className="font-medium text-amber-300">{t("admin:benchDetailWsErrors")}</div>
-          <ul className="mt-tight list-inside list-disc font-mono text-meta text-amber-100/90">
+        <div className="rounded-tile border border-warning/20 bg-warning-subtle p-base">
+          <div className="font-medium text-badge-warning">{t("admin:benchDetailWsErrors")}</div>
+          <ul className="mt-tight list-inside list-disc font-mono text-meta text-badge-warning">
             {res.run_metrics.bench_diagnostics.ws_errors.map((row, i) => (
               <li key={i}>
                 {row.type || "error"}
@@ -831,7 +831,7 @@ function BenchmarkScenarioDetail({
       {runTraceId ? (
         <Link
           to={`/admin/run-traces?run=${encodeURIComponent(runTraceId)}`}
-          className="inline-block text-sky-400 hover:underline"
+          className="inline-block text-accent hover:underline"
         >
           {t("admin:benchDetailRunTrace")} · {runTraceId.slice(0, 8)}…
         </Link>
@@ -1780,7 +1780,7 @@ export function AdminBenchmarks() {
         <p className="mt-tight text-sm text-ink-muted">{t("admin:benchSubtitle")}</p>
         <p className="mt-base text-xs text-ink-muted">
           {t("admin:benchDbProfilesHint")}{" "}
-          <Link to="/admin/interfaces/providers" className="text-sky-400/90 hover:underline">
+          <Link to="/admin/interfaces/providers" className="text-accent hover:underline">
             {t("admin:interfacesProvidersTitle")}
           </Link>
           . {t("admin:benchRunIdentityHint")}
@@ -1817,7 +1817,7 @@ export function AdminBenchmarks() {
         </button>
       </div>
 
-      {error ? <p className="text-sm text-red-400">{error}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       {loading && tab === "run" ? (
         <p className="text-sm text-ink-muted">{t("admin:loading")}</p>
@@ -1837,7 +1837,7 @@ export function AdminBenchmarks() {
                   onClick={() => setRunMode("manual")}
                   className={`rounded-tile px-soft py-snug text-xs font-medium ${
                     runMode === "manual"
-                      ? "bg-sky-600 text-ink-on-fill"
+                      ? "bg-accent text-ink-on-fill"
                       : "text-ink-muted hover:bg-white/5 hover:text-white"
                   }`}
                 >
@@ -1876,7 +1876,7 @@ export function AdminBenchmarks() {
               </select>
               <Link
                 to="/admin/users"
-                className="text-xs text-sky-400 hover:underline"
+                className="text-xs text-accent hover:underline"
               >
                 {t("admin:benchManageUsers")}
               </Link>
@@ -1910,12 +1910,12 @@ export function AdminBenchmarks() {
                 <p className="mt-base text-xs text-ink-muted">{t("admin:loading")}</p>
               ) : readiness ? (
                 <ul className="mt-base space-y-tight text-xs">
-                  <li className={readiness.secrets.gmail ? "text-emerald-300/90" : "text-amber-400/90"}>
+                  <li className={readiness.secrets.gmail ? "text-badge-success" : "text-warning"}>
                     Gmail: {readiness.secrets.gmail ? t("admin:benchSecretOk") : t("admin:benchSecretMissing")}
                   </li>
                   <li
                     className={
-                      readiness.secrets.ssc_api_key ? "text-emerald-300/90" : "text-amber-400/90"
+                      readiness.secrets.ssc_api_key ? "text-badge-success" : "text-warning"
                     }
                   >
                     SSC API key:{" "}
@@ -1924,15 +1924,15 @@ export function AdminBenchmarks() {
                       : t("admin:benchSecretMissing")}
                   </li>
                   {!readiness.secrets_enabled ? (
-                    <li className="text-amber-400/90">{t("admin:benchSecretsDisabled")}</li>
+                    <li className="text-warning">{t("admin:benchSecretsDisabled")}</li>
                   ) : null}
                   {typeof readiness.workspace_count === "number" &&
                   typeof readiness.workspace_quota === "number" ? (
                     <li
                       className={
                         readiness.has_workspace_headroom
-                          ? "text-emerald-300/90"
-                          : "text-amber-400/90"
+                          ? "text-badge-success"
+                          : "text-warning"
                       }
                     >
                       {t("admin:benchWorkspaceQuota", {
@@ -1944,7 +1944,7 @@ export function AdminBenchmarks() {
                     </li>
                   ) : null}
                   {readiness.has_bench_sandbox_resources ? (
-                    <li className="text-amber-400/90">
+                    <li className="text-warning">
                       {t("admin:benchSandboxResources", {
                         workspaces: readiness.bench_workspace_count ?? 0,
                         dashboards: readiness.bench_dashboard_count ?? 0,
@@ -1953,7 +1953,7 @@ export function AdminBenchmarks() {
                     </li>
                   ) : null}
                   {readiness.has_workspace_headroom === false ? (
-                    <li className="text-amber-400/90">{t("admin:benchWorkspaceQuotaFull")}</li>
+                    <li className="text-warning">{t("admin:benchWorkspaceQuotaFull")}</li>
                   ) : null}
                 </ul>
               ) : (
@@ -1975,9 +1975,9 @@ export function AdminBenchmarks() {
                 {t("admin:benchCleanupWorkspacesHint")}
               </p>
               {cleanupFeedback ? (
-                <p className="mt-base text-xs text-emerald-300/90">{cleanupFeedback}</p>
+                <p className="mt-base text-xs text-badge-success">{cleanupFeedback}</p>
               ) : null}
-              <label className="mt-soft flex cursor-pointer items-start gap-soft rounded-card border border-line bg-black/20 p-base text-xs text-ink-muted hover:border-sky-400/40 hover:bg-sky-950/10">
+              <label className="mt-soft flex cursor-pointer items-start gap-soft rounded-card border border-line bg-black/20 p-base text-xs text-ink-muted hover:border-accent/40 hover:bg-accent-subtle">
                 <input
                   type="checkbox"
                   checked={retainWorkspaces}
@@ -1994,7 +1994,7 @@ export function AdminBenchmarks() {
               </p>
               <p className="mt-base text-meta text-ink-muted">
                 {t("admin:benchSecretsManageHint")}{" "}
-                <Link to="/settings/connections" className="text-sky-400/90 hover:underline">
+                <Link to="/settings/connections" className="text-accent hover:underline">
                   {t("admin:benchSecretsSettingsLink")}
                 </Link>
               </p>
@@ -2021,7 +2021,7 @@ export function AdminBenchmarks() {
                 <button
                   type="button"
                   onClick={selectAllProviders}
-                  className="text-xs text-sky-400 hover:underline"
+                  className="text-xs text-accent hover:underline"
                 >
                   {t("admin:benchSelectAllEndpoints")}
                 </button>
@@ -2053,7 +2053,7 @@ export function AdminBenchmarks() {
                     <div
                       key={p.catalog_owned_by}
                       className={`rounded-card border p-soft ${
-                        checked ? "border-sky-500/30 bg-sky-950/20" : "border-line bg-black/20"
+                        checked ? "border-accent/30 bg-accent-subtle" : "border-line bg-black/20"
                       }`}
                     >
                       <label className="flex cursor-pointer items-start gap-soft rounded-tile p-tight hover:bg-white/5">
@@ -2094,7 +2094,7 @@ export function AdminBenchmarks() {
                                 onClick={() =>
                                   selectAllProviderModels(p.catalog_owned_by, catalogModels)
                                 }
-                                className="text-sky-400 hover:underline"
+                                className="text-accent hover:underline"
                               >
                                 {t("admin:benchSelectAllModels")}
                               </button>
@@ -2109,7 +2109,7 @@ export function AdminBenchmarks() {
                                     key={id}
                                     className={`flex cursor-pointer items-center gap-soft rounded-tile border px-base py-tight ${
                                       isOn
-                                        ? "border-sky-400/40 bg-sky-950/40 text-ink-primary"
+                                        ? "border-accent/40 bg-accent-subtle text-ink-primary"
                                         : "border-transparent hover:border-line hover:bg-white/5"
                                     }`}
                                   >
@@ -2161,7 +2161,7 @@ export function AdminBenchmarks() {
                               <button
                                 type="button"
                                 onClick={() => addProviderCustomModel(p.catalog_owned_by)}
-                                className="text-sky-400 hover:underline"
+                                className="text-accent hover:underline"
                               >
                                 {t("admin:benchAddModel")}
                               </button>
@@ -2224,7 +2224,7 @@ export function AdminBenchmarks() {
                                 </select>
                               </label>
                               {reviewerOptions.length === 0 ? (
-                                <p className="mt-base text-meta text-amber-300">
+                                <p className="mt-base text-meta text-badge-warning">
                                   {tLoose("admin:benchTuneReviewerNoModels")}
                                 </p>
                               ) : null}
@@ -2237,9 +2237,9 @@ export function AdminBenchmarks() {
                 })}
               </div>
             ) : (
-              <p className="mt-soft text-xs text-amber-200/90">
+              <p className="mt-soft text-xs text-badge-warning">
                 {t("admin:benchDbProfilesEmpty")}{" "}
-                <Link to="/admin/interfaces/providers" className="text-sky-400 hover:underline">
+                <Link to="/admin/interfaces/providers" className="text-accent hover:underline">
                   {t("admin:interfacesProvidersTitle")}
                 </Link>
               </p>
@@ -2301,7 +2301,7 @@ export function AdminBenchmarks() {
                 ? tLoose("admin:benchTuneReviewerSelectProviderHint")
                 : tLoose("admin:benchTuneReviewerPatchHint")}
             </p>
-            {reviewNotice ? <p className="mt-soft text-meta text-emerald-300">{reviewNotice}</p> : null}
+            {reviewNotice ? <p className="mt-soft text-meta text-badge-success">{reviewNotice}</p> : null}
             {tuningSessions.length ? (
               <div className="mt-wide space-y-base">
                 {tuningSessions.slice(0, 5).map((session) => {
@@ -2412,7 +2412,7 @@ export function AdminBenchmarks() {
                                       key={a.preset_id}
                                       className={`border-t border-line-subtle ${
                                         a.preset_id === bestAttempt?.preset_id
-                                          ? "bg-emerald-500/10"
+                                          ? "bg-success-subtle"
                                           : ""
                                       }`}
                                     >
@@ -2441,7 +2441,7 @@ export function AdminBenchmarks() {
                                           <button
                                             key={r.run_id}
                                             type="button"
-                                            className="mr-base text-sky-300 hover:underline"
+                                            className="mr-base text-badge-accent hover:underline"
                                             onClick={() => {
                                               setTab("history");
                                               setSelectedId(r.run_id);
@@ -2477,7 +2477,7 @@ export function AdminBenchmarks() {
                           {session.best_run_id ? (
                             <button
                               type="button"
-                              className="text-sky-300 hover:underline"
+                              className="text-badge-accent hover:underline"
                               onClick={() => {
                                 setTab("history");
                                 setSelectedId(session.best_run_id || null);
@@ -2489,7 +2489,7 @@ export function AdminBenchmarks() {
                           <button
                             type="button"
                             disabled={!canPromote || promotingTuneId === session.id}
-                            className="rounded-tile border border-emerald-500/40 px-base py-tight text-emerald-200 hover:bg-emerald-500/10 disabled:opacity-40"
+                            className="rounded-tile border border-success/40 px-base py-tight text-badge-success hover:bg-success-subtle disabled:opacity-40"
                             onClick={() => void onPromoteTune(session)}
                           >
                             {session.promoted_at
@@ -2539,7 +2539,7 @@ export function AdminBenchmarks() {
               <button
                 type="button"
                 onClick={selectAllScenarios}
-                className="text-xs text-sky-400 hover:underline"
+                className="text-xs text-accent hover:underline"
               >
                 {t("admin:benchSelectAllScenarios")}
               </button>
@@ -2558,7 +2558,7 @@ export function AdminBenchmarks() {
                   <div
                     key={sc.id}
                     className={`rounded-card border p-soft ${
-                      checked ? "border-sky-500/30 bg-sky-950/20" : "border-line bg-black/20"
+                      checked ? "border-accent/30 bg-accent-subtle" : "border-line bg-black/20"
                     }`}
                   >
                     <div className="flex items-start gap-soft">
@@ -2570,7 +2570,7 @@ export function AdminBenchmarks() {
                       />
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-base">
-                          <span className="font-mono text-xs text-sky-300/90">{sc.id}</span>
+                          <span className="font-mono text-xs text-badge-accent">{sc.id}</span>
                           <span className="text-sm text-ink-primary">{sc.title}</span>
                           <Badge tone="neutral">
                             {t("admin:benchTier", { n: sc.tier })}
@@ -2600,14 +2600,14 @@ export function AdminBenchmarks() {
                           const secretWarn = scenarioSecretWarning(sc);
                           if (secretWarn) {
                             return (
-                              <p className="mt-hair text-meta text-amber-400/90">
+                              <p className="mt-hair text-meta text-warning">
                                 {t("admin:benchWillSkip")}: {secretWarn}
                               </p>
                             );
                           }
                           if (sc.skip_without_env) {
                             return (
-                              <p className="mt-hair text-meta text-amber-400/90">
+                              <p className="mt-hair text-meta text-warning">
                                 {t("admin:benchEnvSkip")}: {sc.skip_without_env}
                               </p>
                             );
@@ -2619,7 +2619,7 @@ export function AdminBenchmarks() {
                           onClick={() =>
                             setExpandedScenarioId(expanded ? null : sc.id)
                           }
-                          className="mt-tight text-meta text-sky-400 hover:underline"
+                          className="mt-tight text-meta text-accent hover:underline"
                         >
                           {expanded ? t("admin:benchHidePrompt") : t("admin:benchShowPrompt")}
                         </button>
@@ -2790,7 +2790,7 @@ export function AdminBenchmarks() {
                     </span>
                   )}
                   {readiness?.has_workspace_headroom === false ? (
-                    <span className="text-amber-300">{t("admin:benchWorkspaceQuotaFull")}</span>
+                    <span className="text-badge-warning">{t("admin:benchWorkspaceQuotaFull")}</span>
                   ) : null}
                 </div>
                 <p className="mt-tight text-meta text-ink-muted">
@@ -2806,7 +2806,7 @@ export function AdminBenchmarks() {
                 className={`rounded-card px-wide py-base text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 ${
                   runMode === "autotune"
                     ? "bg-violet-600 hover:bg-violet-500"
-                    : "bg-sky-600 hover:bg-sky-500"
+                    : "bg-accent hover:bg-accent-hover"
                 }`}
               >
                 {benchmarkRunActive
@@ -2844,7 +2844,7 @@ export function AdminBenchmarks() {
                 <button
                   type="button"
                   onClick={() => void loadRuns()}
-                  className="text-xs text-sky-400"
+                  className="text-xs text-accent"
                 >
                   {t("admin:agentTracesRefresh")}
                 </button>
@@ -2884,7 +2884,7 @@ export function AdminBenchmarks() {
                           disabled={cancellingRunId === r.id}
                           aria-label={t("admin:benchCancelRun")}
                           onClick={() => void onCancelRun(r)}
-                          className="shrink-0 px-base text-danger/90 hover:bg-danger/20 hover:text-badge-danger disabled:opacity-50"
+                          className="shrink-0 px-base text-badge-danger/90 hover:bg-danger/20 hover:text-badge-danger disabled:opacity-50"
                         >
                           {cancellingRunId === r.id ? "…" : "■"}
                         </button>
@@ -2977,7 +2977,7 @@ export function AdminBenchmarks() {
                   </button>
                 ) : null}
                 {detail.error_text ? (
-                  <p className="mt-base text-sm text-red-400">{detail.error_text}</p>
+                  <p className="mt-base text-sm text-danger">{detail.error_text}</p>
                 ) : null}
                 {detail.resource_prefix ? (
                   <p className="mt-tight text-xs font-mono text-ink-muted">
@@ -3008,7 +3008,7 @@ export function AdminBenchmarks() {
                   </div>
                 ) : null}
                 {detail.status === "running" || detail.status === "queued" ? (
-                  <div className="mt-base space-y-tight text-xs text-sky-400/90">
+                  <div className="mt-base space-y-tight text-xs text-accent">
                     <p>
                       {t("admin:benchRunLive")}
                       {(detail.summary_json?.executed ?? 0) > 0
@@ -3021,7 +3021,7 @@ export function AdminBenchmarks() {
                         : ""}
                     </p>
                     {detail.report_json?.in_flight ? (
-                      <p className="font-mono text-meta text-sky-300/95">
+                      <p className="font-mono text-meta text-badge-accent">
                         {t("admin:benchInFlightNow")}: {detail.report_json.in_flight.scenario_id}{" "}
                         · {formatInFlightProviderModel(detail.report_json.in_flight)} ·{" "}
                         {formatInFlightActivity(detail.report_json.in_flight, t)}
@@ -3038,7 +3038,7 @@ export function AdminBenchmarks() {
                     {detail.report_json?.in_flight &&
                     formatInFlightPreview(detail.report_json.in_flight) ? (
                       <p
-                        className="font-mono text-meta leading-snug text-sky-200/70 truncate max-w-chipWide"
+                        className="font-mono text-meta leading-snug text-badge-accent truncate max-w-chipWide"
                         title={detail.report_json.in_flight.generation_preview}
                       >
                         {t("admin:benchInFlightPreview")}:{" "}
@@ -3110,21 +3110,21 @@ export function AdminBenchmarks() {
                       </tr>
                     ) : null}
                     {detail.report_json?.in_flight ? (
-                      <tr className="border-t border-sky-500/20 bg-sky-500/5">
-                        <td className="py-snug pr-tight align-top text-sky-400" aria-hidden>
+                      <tr className="border-t border-accent/20 bg-accent-subtle">
+                        <td className="py-snug pr-tight align-top text-accent" aria-hidden>
                           ◉
                         </td>
-                        <td className="py-snug pr-base font-mono text-sky-300">
+                        <td className="py-snug pr-base font-mono text-badge-accent">
                           {detail.report_json.in_flight.scenario_id}
                         </td>
-                        <td className="py-snug pr-base font-mono text-meta text-sky-300/90">
+                        <td className="py-snug pr-base font-mono text-meta text-badge-accent">
                           {formatInFlightProviderModel(detail.report_json.in_flight)}
                         </td>
-                        <td className="py-snug pr-base text-sky-300">
+                        <td className="py-snug pr-base text-badge-accent">
                           {t("admin:benchInFlightRunning")} —{" "}
                           {formatInFlightActivity(detail.report_json.in_flight, t)}
                         </td>
-                        <td className="py-snug pr-base text-sky-300/90">
+                        <td className="py-snug pr-base text-badge-accent">
                           {formatInFlightToolsColumn(detail.report_json.in_flight, t)}
                           {(detail.report_json.in_flight.tool_names?.length ?? 0) > 0 ? (
                             <span className="ml-tight text-ink-muted">
@@ -3144,10 +3144,10 @@ export function AdminBenchmarks() {
                           ) : null}
                         </td>
                         <td className="py-snug pr-base text-ink-muted">—</td>
-                        <td className="py-snug pr-base font-mono text-meta text-sky-300/90">
+                        <td className="py-snug pr-base font-mono text-meta text-badge-accent">
                           {formatInFlightPromptTokens(detail.report_json.in_flight) ?? "—"}
                         </td>
-                        <td className="py-snug pr-base text-sky-300/90">
+                        <td className="py-snug pr-base text-badge-accent">
                           {formatInFlightElapsed(detail.report_json.in_flight) ?? "…"}
                         </td>
                       </tr>
@@ -3204,7 +3204,7 @@ export function AdminBenchmarks() {
                                 </span>
                               ) : null}
                               {hasMultipleAttempts(res) && res.passed && res.run_metrics?.pass_at_1 === false ? (
-                                <span className="ml-tight text-amber-400/90">
+                                <span className="ml-tight text-warning">
                                   ({t("admin:benchPassAt1Miss")})
                                 </span>
                               ) : null}

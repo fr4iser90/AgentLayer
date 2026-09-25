@@ -28,7 +28,7 @@ function borderForKind(kind: string): string {
   if (kind === "llm_queue") return "border-amber-500/45";
   if (kind === "deferred_wait" || kind === "scan_queue") return "border-orange-500/45";
   if (kind === "permission") return "border-amber-500/50";
-  if (kind === "session") return "border-neutral-600";
+  if (kind === "session") return "border-line-strong";
   if (kind === "context_inject") return "border-amber-500/45";
   if (kind === "agent.done") return "border-emerald-600/40";
   return "border-line";
@@ -136,8 +136,8 @@ export function AgentActivityPanel({
               </li>
             ))}
             {loading ? (
-              <li className="flex items-center gap-snug border-l-2 border-violet-500/40 pl-base text-meta text-violet-200/80">
-                <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-pill bg-violet-400" />
+              <li className="flex items-center gap-snug border-l-2 border-accent/40 pl-base text-meta text-badge-accent">
+                <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-pill bg-accent" />
                 {loadingHint?.trim() || t("chat:running")}
               </li>
             ) : null}

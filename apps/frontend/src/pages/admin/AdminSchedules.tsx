@@ -413,7 +413,7 @@ export function AdminSchedules() {
       </div>
 
       {err ? (
-        <div className="mt-wide rounded-card border border-red-500/30 bg-red-500/10 p-soft text-sm text-red-100">
+        <div className="mt-wide rounded-card border border-danger/30 bg-danger-subtle p-soft text-sm text-badge-danger">
           {err}
         </div>
       ) : null}

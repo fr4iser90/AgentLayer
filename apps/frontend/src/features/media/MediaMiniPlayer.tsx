@@ -60,7 +60,7 @@ export function MediaMiniPlayer() {
 
   return (
     <div
-      className="shrink-0 border-t border-sky-500/30 bg-sky-950/50"
+      className="shrink-0 border-t border-accent/30 bg-accent-subtle"
       role="region"
       aria-label={
         hasTrack ? t("dashboard:mediaMiniPlayerRegion") : t("dashboard:mediaMiniPlayerRegionIdle")
@@ -71,7 +71,7 @@ export function MediaMiniPlayer() {
         <div
           className={
             embedExpanded
-              ? "border-b border-sky-500/20 bg-black/60 px-soft py-base"
+              ? "border-b border-accent/20 bg-black/60 px-soft py-base"
               : "fixed h-0 w-0 overflow-hidden opacity-0 pointer-events-none"
           }
           aria-hidden={!embedExpanded}
@@ -93,8 +93,8 @@ export function MediaMiniPlayer() {
             type="button"
             className={`shrink-0 rounded-tile px-base py-snug text-xs font-medium ${
               media.panelOpen
-                ? "bg-sky-600/50 text-ink-primary"
-                : "border border-sky-500/30 text-sky-100 hover:bg-sky-900/40"
+                ? "bg-accent text-ink-primary"
+                : "border border-accent/30 text-badge-accent hover:bg-accent-subtle"
             }`}
             onClick={() => media.setPanelOpen(!media.panelOpen)}
             aria-expanded={media.panelOpen}
@@ -122,7 +122,7 @@ export function MediaMiniPlayer() {
               step={0.01}
               value={media.volume}
               onChange={(e) => media.setVolume(Number(e.target.value))}
-              className="h-1.5 w-20 cursor-pointer accent-sky-400 sm:w-24"
+              className="h-1.5 w-20 cursor-pointer accent-accent sm:w-24"
               aria-label={t("dashboard:mediaMiniPlayerVolume")}
             />
           </label>
@@ -131,7 +131,7 @@ export function MediaMiniPlayer() {
             {isEmbed && media.embedUrl ? (
               <button
                 type="button"
-                className="rounded-tile border border-line px-base py-snug text-xs text-sky-100 hover:bg-white/10"
+                className="rounded-tile border border-line px-base py-snug text-xs text-badge-accent hover:bg-white/10"
                 onClick={() => setEmbedExpanded((open) => !open)}
                 aria-expanded={embedExpanded}
                 aria-label={
@@ -182,7 +182,7 @@ export function MediaMiniPlayer() {
             {dashboardHref ? (
               <Link
                 to={dashboardHref}
-                className="rounded-tile border border-line px-base py-tight text-meta text-sky-100 hover:bg-white/5"
+                className="rounded-tile border border-line px-base py-tight text-meta text-badge-accent hover:bg-white/5"
               >
                 {t("dashboard:mediaMiniPlayerOpenDashboard")}
               </Link>

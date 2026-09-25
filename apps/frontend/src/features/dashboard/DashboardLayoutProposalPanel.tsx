@@ -96,7 +96,7 @@ export function DashboardLayoutProposalPanel({
         {loading ? (
           <div className="px-wide py-deep text-sm text-ink-muted">{t("dashboard:layoutProposalsLoading")}</div>
         ) : errText && !proposalSet ? (
-          <div className="mx-wide my-wide rounded-card border border-red-500/40 bg-red-950/30 px-soft py-base text-sm text-red-200">
+          <div className="mx-wide my-wide rounded-card border border-danger/40 bg-danger-subtle px-soft py-base text-sm text-badge-danger">
             {errText}
           </div>
         ) : proposalSet ? (
@@ -112,7 +112,7 @@ export function DashboardLayoutProposalPanel({
                   }}
                   className={`shrink-0 rounded-card border px-soft py-base text-left text-xs transition ${
                     selectedId === p.id
-                      ? "border-emerald-500/60 bg-emerald-950/30 text-ink-primary"
+                      ? "border-success/60 bg-success-subtle text-ink-primary"
                       : "border-line bg-black/20 text-ink-secondary hover:bg-white/5"
                   }`}
                 >
@@ -146,7 +146,7 @@ export function DashboardLayoutProposalPanel({
             </div>
 
             {applyErr ? (
-              <div className="mx-wide mb-base rounded-tile border border-red-500/40 bg-red-950/30 px-soft py-base text-xs text-red-200">
+              <div className="mx-wide mb-base rounded-tile border border-danger/40 bg-danger-subtle px-soft py-base text-xs text-badge-danger">
                 {applyErr}
               </div>
             ) : null}
@@ -154,7 +154,7 @@ export function DashboardLayoutProposalPanel({
             <footer className="flex shrink-0 items-center justify-end gap-base border-t border-line px-wide py-soft">
               {confirmId === selectedId && selected ? (
                 <>
-                  <span className="mr-auto text-xs text-amber-200/90">
+                  <span className="mr-auto text-xs text-badge-warning">
                     {t("dashboard:layoutProposalsConfirm", { title: selected.title })}
                   </span>
                   <Button
@@ -170,7 +170,7 @@ export function DashboardLayoutProposalPanel({
                     type="button"
                     disabled={applyBusy}
                     onClick={() => void applyProposal(selected.id)}
-                    className="rounded-card bg-emerald-600 px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
+                    className="rounded-card bg-success px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-success-hover disabled:opacity-50"
                   >
                     {applyBusy ? t("dashboard:saving") : t("dashboard:layoutProposalsApply")}
                   </button>
@@ -180,7 +180,7 @@ export function DashboardLayoutProposalPanel({
                   type="button"
                   disabled={!selected || applyBusy}
                   onClick={() => selected && setConfirmId(selected.id)}
-                  className="rounded-card bg-emerald-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
+                  className="rounded-card bg-success px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-success-hover disabled:opacity-50"
                 >
                   {t("dashboard:layoutProposalsApply")}
                 </button>

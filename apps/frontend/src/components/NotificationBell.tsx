@@ -7,9 +7,9 @@ import { Tooltip } from "../ui/Tooltip";
 import { useClickOutside } from "../ui/useClickOutside";
 
 function severityDot(severity: string): string {
-  if (severity === "error" || severity === "action_required") return "bg-red-400";
-  if (severity === "warning") return "bg-amber-400";
-  return "bg-sky-400";
+  if (severity === "error" || severity === "action_required") return "bg-danger";
+  if (severity === "warning") return "bg-warning";
+  return "bg-accent";
 }
 
 function toAppPath(linkPath: string | null): string {
@@ -55,7 +55,7 @@ export function NotificationBell() {
       <Tooltip label={t("notifications:bellTitle")}>
       <button
           type="button"
-          className="relative flex h-9 w-9 items-center justify-center rounded-pill text-ink-primary outline-none ring-sky-500/40 hover:bg-white/10 focus-visible:ring-2"
+          className="relative flex h-9 w-9 items-center justify-center rounded-pill text-ink-primary outline-none ring-accent/40 hover:bg-white/10 focus-visible:ring-2"
           aria-expanded={open}
           aria-haspopup="menu"
           onClick={() => setOpen((v) => !v)}
@@ -78,7 +78,7 @@ export function NotificationBell() {
             {unread > 0 ? (
               <button
                 type="button"
-                className="text-xs text-sky-400 hover:text-sky-300"
+                className="text-xs text-accent hover:text-badge-accent"
                 onClick={() => void markAllRead()}
               >
                 {t("notifications:markAllRead")}
@@ -115,7 +115,7 @@ export function NotificationBell() {
                         {n.link_path ? (
                           <Link
                             to={toAppPath(n.link_path)}
-                            className="text-xs text-sky-400 hover:text-sky-300"
+                            className="text-xs text-accent hover:text-badge-accent"
                             onClick={() => {
                               if (!n.read) void markRead(n.id);
                               setOpen(false);
@@ -143,7 +143,7 @@ export function NotificationBell() {
           <div className="border-t border-line px-soft py-base">
             <Link
               to="/settings/notifications"
-              className="text-xs text-sky-400 hover:text-sky-300"
+              className="text-xs text-accent hover:text-badge-accent"
               onClick={() => setOpen(false)}
             >
               {t("notifications:settingsLink")}

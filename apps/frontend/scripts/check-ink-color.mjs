@@ -22,6 +22,7 @@
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import { join, relative, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { bareClassName, intentionalReason, unhitIntentionalKeys } from "./intentional-colours.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -144,6 +145,7 @@ export async function checkInkColor() {
 
   const findings = [];
   const current = {};
+  const hit = new Set();
 
   for await (const file of walk(SRC)) {
     const rel = relative(ROOT, file);
@@ -164,6 +166,14 @@ export async function checkInkColor() {
           const kind = classify(t[3]);
           if (!kind) continue;
           const key = `text-${t[3]}`;
+          // A justified raw label is not debt, so it must not enter `current`
+          // either: `--update` would write it back into the baseline, and a
+          // class listed as both "not yet" and "not ever" reads as the first.
+          // Keyed through the shared list (scripts/intentional-colours.mjs).
+          if (intentionalReason(rel, key)) {
+            hit.add(`${rel}::${bareClassName(key)}`);
+            continue;
+          }
           here.add(key);
           // One finding per colour per file, matching the baseline's model. The
           // tag-scoped version reported the same class once per occurrence, so a
@@ -178,7 +188,13 @@ export async function checkInkColor() {
     if (fresh.length) findings.push({ file: rel, issues: fresh });
   }
 
-  return { ok: findings.length === 0, findings, current };
+  return {
+    ok: findings.length === 0,
+    findings,
+    current,
+    intentional: hit.size,
+    stale: unhitIntentionalKeys(hit, (cls) => cls.startsWith("text-")),
+  };
 }
 
 async function* walk(dir) {
@@ -190,13 +206,22 @@ async function* walk(dir) {
 }
 
 async function main() {
-  const { ok, findings, current } = await checkInkColor();
+  const { ok, findings, current, intentional, stale } = await checkInkColor();
 
   if (process.argv.includes("--update")) {
     await writeFile(BASELINE, JSON.stringify(current, null, 2) + "\n", "utf8");
     const n = Object.values(current).reduce((a, v) => a + v.length, 0);
     console.log(`[ink-color] baseline re-recorded: ${n} tolerated class(es) in ${Object.keys(current).length} file(s).`);
     return;
+  }
+
+  // Before the drift report: a justification that stopped naming anything is a
+  // bigger lie than an unmigrated class, because it claims to have been decided.
+  if (stale.length) {
+    console.error(`[ink-color] FAILED - ${stale.length} begründete Ausnahme(n) treffen nichts mehr:`);
+    for (const k of stale) console.error(`  ${k}`);
+    console.error("[ink-color] Streiche sie aus scripts/intentional-colours.mjs, sonst lesen sie als Erlaubnis für etwas, das es nicht gibt.");
+    process.exit(1);
   }
 
   if (!ok) {
@@ -216,7 +241,9 @@ async function main() {
     console.error("[ink-color] If this is an intentional migration, re-record: node scripts/check-ink-color.mjs --update");
     process.exit(1);
   }
-  console.log("[ink-color] OK — no new raw text colours beyond the recorded baseline.");
+  console.log(
+    `[ink-color] OK — ${intentional} begründet rohe Textfarbe(n), keine neue rohe Textfarbe über der aufgezeichneten Baseline.`
+  );
 }
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];

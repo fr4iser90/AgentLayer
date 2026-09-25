@@ -194,7 +194,7 @@ function HeroBlockBody(props: {
   };
 
   const imageArea = (
-    <div className="relative isolate min-h-[200px] w-full overflow-hidden rounded-sheet border border-line bg-gradient-to-br from-sky-950/40 via-black/50 to-violet-950/30 aspect-[2.2/1] max-h-[min(420px,55vh)]">
+    <div className="relative isolate min-h-[200px] w-full overflow-hidden rounded-sheet border border-line bg-gradient-to-br from-accent/40 via-black/50 to-violet-950/30 aspect-[2.2/1] max-h-[min(420px,55vh)]">
       {hero.url ? (
         <>
           <div className="absolute inset-0">
@@ -248,9 +248,9 @@ function HeroBlockBody(props: {
         </label>
       </div>
       {!dashboardId ? (
-        <p className="mb-base text-meta text-amber-200/90">{t("dashboard:heroSaveBeforeUploadHint")}</p>
+        <p className="mb-base text-meta text-badge-warning">{t("dashboard:heroSaveBeforeUploadHint")}</p>
       ) : null}
-      {uploadErr ? <p className="mb-base text-xs text-red-400">{uploadErr}</p> : null}
+      {uploadErr ? <p className="mb-base text-xs text-danger">{uploadErr}</p> : null}
       {imageArea}
       <div className="mt-wide space-y-soft">
         <div>
@@ -333,7 +333,7 @@ function StatBlockBody(props: {
 
   const trendGlyph =
     stat.trend === "up" ? (
-      <span className="text-emerald-400" title={t("dashboard:trendUpTitle")}>
+      <span className="text-success" title={t("dashboard:trendUpTitle")}>
         ↑
       </span>
     ) : stat.trend === "down" ? (
@@ -488,7 +488,7 @@ function TimelineBlockBody(props: {
         {!readOnly ? (
           <button
             type="button"
-            className="rounded-tile bg-sky-600/80 px-soft py-snug text-xs font-medium text-ink-primary hover:bg-sky-500"
+            className="rounded-tile bg-accent px-soft py-snug text-xs font-medium text-ink-primary hover:bg-accent-hover"
             onClick={addEvent}
           >
             {t("dashboard:timelineAddEntry")}
@@ -502,15 +502,15 @@ function TimelineBlockBody(props: {
       ) : (
         <div className="relative pl-tight">
           <div
-            className="absolute bottom-2 left-[7px] top-2 w-px bg-gradient-to-b from-sky-500/50 via-white/15 to-violet-500/40"
+            className="absolute bottom-2 left-[7px] top-2 w-px bg-gradient-to-b from-accent/50 via-white/15 to-violet-500/40"
             aria-hidden
           />
           <ul className="space-y-0">
           {sorted.map((row, si) => (
             <li key={String(row.id ?? si)} className="relative flex gap-soft pb-broad last:pb-0">
-              <div className="relative z-lift mt-snug h-2.5 w-2.5 shrink-0 rounded-pill border-2 border-sky-500/80 bg-black shadow-[0_0_12px_rgba(56,189,248,0.35)]" />
+              <div className="relative z-lift mt-snug h-2.5 w-2.5 shrink-0 rounded-pill border-2 border-accent/80 bg-black shadow-[0_0_12px_rgba(56,189,248,0.35)]" />
               <div className="min-w-0 flex-1 rounded-card border border-line-subtle bg-black/20 px-soft py-base">
-                <p className="text-meta font-medium uppercase tracking-wide text-sky-400/90">
+                <p className="text-meta font-medium uppercase tracking-wide text-accent">
                   {formatEventDate(String(row.date ?? ""))}
                 </p>
                 {readOnly ? (
@@ -751,7 +751,7 @@ function BlockView(props: {
         </label>
         <textarea
           readOnly={readOnly}
-          className="min-h-[120px] w-full resize-y rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-sky-500/50 read-only:cursor-default read-only:opacity-90"
+          className="min-h-[120px] w-full resize-y rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-accent/50 read-only:cursor-default read-only:opacity-90"
           value={text}
           placeholder={block.props.placeholder || ""}
           onChange={(e) =>
@@ -919,13 +919,13 @@ function BlockView(props: {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={searchPlaceholder}
-                className="w-56 rounded-tile border border-line bg-field px-soft py-snug text-xs text-ink-primary outline-none focus:border-sky-500/50"
+                className="w-56 rounded-tile border border-line bg-field px-soft py-snug text-xs text-ink-primary outline-none focus:border-accent/50"
               />
             ) : null}
             {!structureLocked ? (
               <button
                 type="button"
-                className="rounded-tile bg-sky-600/80 px-soft py-snug text-xs font-medium text-ink-primary hover:bg-sky-500"
+                className="rounded-tile bg-accent px-soft py-snug text-xs font-medium text-ink-primary hover:bg-accent-hover"
                 onClick={addRow}
               >
                 {t("dashboard:tableAddRow")}
@@ -983,7 +983,7 @@ function BlockView(props: {
                         <Tooltip label={t("dashboard:details")}>
                         <button
                             type="button"
-                            className="rounded-tile px-base py-tight text-xs text-sky-200 hover:bg-white/5"
+                            className="rounded-tile px-base py-tight text-xs text-badge-accent hover:bg-white/5"
                             onClick={() => setDetailRowId(String(row.id ?? ""))}
                           >
                             ↗
@@ -1165,7 +1165,7 @@ function BlockView(props: {
             </button>
           )}
         </div>
-        {err ? <div className="mb-soft text-xs text-red-200/90">{err}</div> : null}
+        {err ? <div className="mb-soft text-xs text-badge-danger">{err}</div> : null}
         {!jobs ? (
           err ? null : (
             <div className="text-sm text-ink-muted">
@@ -1234,7 +1234,7 @@ function BlockView(props: {
   }
 
   return (
-    <p className="text-sm text-amber-200/90">
+    <p className="text-sm text-badge-warning">
       Unbekannter Block-Typ: {(block as UiBlock).type}
     </p>
   );

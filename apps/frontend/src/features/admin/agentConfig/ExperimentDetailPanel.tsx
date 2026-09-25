@@ -12,9 +12,9 @@ import {
 
 function verdictTone(verdict: string | undefined): string {
   const v = (verdict || "").toLowerCase();
-  if (v === "accept") return "text-emerald-300 bg-emerald-950/40 border-emerald-500/30";
+  if (v === "accept") return "text-badge-success bg-success-subtle border-success/30";
   if (v === "reject" || v === "regression_tool_calling") return "text-badge-danger bg-danger-subtle border-danger/30";
-  if (v === "mixed") return "text-amber-200 bg-amber-950/30 border-amber-500/30";
+  if (v === "mixed") return "text-badge-warning bg-warning-subtle border-warning/30";
   return "text-ink-muted bg-white/5 border-line";
 }
 
@@ -172,7 +172,7 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
             </header>
 
             {error ? (
-              <p className="mb-soft rounded-tile border border-red-500/40 bg-red-500/10 px-soft py-base text-sm text-red-200">
+              <p className="mb-soft rounded-tile border border-danger/40 bg-danger-subtle px-soft py-base text-sm text-badge-danger">
                 {error}
               </p>
             ) : null}
@@ -238,7 +238,7 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
                       onChange={(e) => setReviewSummary(e.target.value)}
                     />
                     {reviewError ? (
-                      <p className="mb-base text-xs text-red-300">{reviewError}</p>
+                      <p className="mb-base text-xs text-badge-danger">{reviewError}</p>
                     ) : null}
                     <button
                       type="button"

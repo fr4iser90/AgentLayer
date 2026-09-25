@@ -11,7 +11,7 @@ import {
 function ConfidenceBadge({ value }: { value: number }) {
   const pct = Math.round(value * 100);
   const color =
-    pct >= 80 ? "text-emerald-300" : pct >= 60 ? "text-amber-300" : "text-red-300";
+    pct >= 80 ? "text-badge-success" : pct >= 60 ? "text-badge-warning" : "text-badge-danger";
   return <span className={`text-meta font-medium ${color}`}>{pct}%</span>;
 }
 
@@ -25,11 +25,11 @@ export function ProposalCard({
   onSelect: (option: ProposalOption) => void;
 }) {
   return (
-    <div className="my-wide rounded-sheet border border-sky-800/40 bg-[#111827] shadow-lg">
-      <div className="border-b border-sky-800/30 px-wide py-soft">
+    <div className="my-wide rounded-sheet border border-accent/40 bg-[#111827] shadow-lg">
+      <div className="border-b border-accent/30 px-wide py-soft">
         <div className="flex items-center gap-base">
           <svg
-            className="h-4 w-4 text-sky-400"
+            className="h-4 w-4 text-accent"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -41,7 +41,7 @@ export function ProposalCard({
               d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
             />
           </svg>
-          <h3 className="text-sm font-semibold text-sky-100">{proposal.title}</h3>
+          <h3 className="text-sm font-semibold text-badge-accent">{proposal.title}</h3>
         </div>
       </div>
       <div className="p-soft">
@@ -54,8 +54,8 @@ export function ProposalCard({
                   type="button"
                   className={`w-full rounded-card border px-wide py-soft text-left transition-all ${
                     isSelected
-                      ? "border-sky-500 bg-sky-950/50 ring-1 ring-sky-500/50"
-                      : "border-line bg-black/20 hover:border-sky-700/50 hover:bg-white/5"
+                      ? "border-accent bg-accent-subtle ring-1 ring-accent/50"
+                      : "border-line bg-black/20 hover:border-accent/50 hover:bg-white/5"
                   }`}
                   onClick={() => onSelect(opt)}
                 >
@@ -64,7 +64,7 @@ export function ProposalCard({
                       <span
                         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-pill border text-meta font-bold ${
                           isSelected
-                            ? "border-sky-400 bg-sky-500 text-ink-on-fill"
+                            ? "border-accent bg-accent text-ink-on-fill"
                             : "border-line text-ink-muted"
                         }`}
                       >
@@ -116,7 +116,7 @@ function ProposalParseErrorBanner({ count }: { count: number }) {
   const { t } = useTranslation(["chat"]);
   return (
     <p
-      className="my-base rounded-card border border-amber-700/40 bg-amber-950/35 px-soft py-base text-xs text-amber-100/90"
+      className="my-base rounded-card border border-warning/40 bg-warning-subtle px-soft py-base text-xs text-badge-warning"
       role="status"
     >
       {t("chat:proposalParseError", { count })}

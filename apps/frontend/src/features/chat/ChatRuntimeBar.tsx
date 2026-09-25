@@ -201,11 +201,11 @@ export function ChatRuntimeBar({
         ) : !mcp.enabled ? (
           <span className="text-ink-muted">{t("workspace:disabled")}</span>
         ) : !mcp.import_ok ? (
-          <span className="text-amber-300/90" title={t("workspace:mcpPackageMissingTitle")}>
+          <span className="text-badge-warning" title={t("workspace:mcpPackageMissingTitle")}>
             {t("workspace:packageMissing")}
           </span>
         ) : mcp.config_error ? (
-          <span className="text-red-400/90" title={mcp.config_error}>
+          <span className="text-danger" title={mcp.config_error}>
             {t("workspace:configError")}
           </span>
         ) : servers.length === 0 ? (
@@ -215,7 +215,7 @@ export function ChatRuntimeBar({
             className="tabular-nums"
             title={servers.map((s) => `${s.id}: ${s.connected ? `${s.tool_count} tools` : s.error || "down"}`).join("\n")}
           >
-            <span className={connected > 0 ? "text-emerald-400/95" : "text-amber-300/90"}>{connected}</span>
+            <span className={connected > 0 ? "text-success" : "text-badge-warning"}>{connected}</span>
             <span className="text-ink-muted">/{servers.length}</span>
             <span className="ml-tight text-ink-muted">{t("workspace:servers")}</span>
           </span>
@@ -229,9 +229,9 @@ export function ChatRuntimeBar({
             <span
               className={`tabular-nums ${
                 contextWarn === "hard"
-                  ? "text-red-300/95"
+                  ? "text-badge-danger"
                   : contextWarn === "soft"
-                    ? "text-amber-300/90"
+                    ? "text-badge-warning"
                     : "text-ink-primary"
               }`}
               title={contextTitle}
@@ -241,7 +241,7 @@ export function ChatRuntimeBar({
                 <span className="ml-tight text-violet-300/85">{t("chat:contextCompacted")}</span>
               ) : null}
               {mergedMeta?.loop_compaction_applied ? (
-                <span className="ml-tight text-amber-300/85">{t("chat:contextLoopCompacted")}</span>
+                <span className="ml-tight text-badge-warning">{t("chat:contextLoopCompacted")}</span>
               ) : null}
               {mergedMeta?.messages_dropped ? (
                 <span className="ml-tight text-ink-muted">

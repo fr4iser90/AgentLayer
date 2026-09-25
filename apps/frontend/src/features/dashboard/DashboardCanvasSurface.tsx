@@ -439,7 +439,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
             <button
               key={definition.type}
               type="button"
-              className="rounded-card bg-sky-600 px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-sky-500"
+              className="rounded-card bg-accent px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-accent-hover"
               onClick={() => addBlock(definition.type)}
             >
               {t(definition.addLabelKey as "dashboard:addList")}
@@ -542,7 +542,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
                   "absolute cursor-auto overflow-hidden rounded-sheet border bg-card shadow-sm",
                   dragging ? "select-none" : "",
                   isSelected && editMode
-                    ? "border-sky-500/60 ring-1 ring-sky-500/30"
+                    ? "border-accent/60 ring-1 ring-accent/30"
                     : isHighlighted
                       ? "border-orange-500/50 ring-2 ring-orange-500/40"
                       : hasUnread
@@ -595,7 +595,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
                           <Tooltip label={t("dashboard:blockExpand")}>
                           <button
                               type="button"
-                              className="rounded-tile px-base py-hair text-xs text-sky-200 hover:bg-sky-950/50"
+                              className="rounded-tile px-base py-hair text-xs text-badge-accent hover:bg-accent-subtle"
                               onClick={() => {
                                 acknowledgeBlock(b.id);
                                 setExpandedBlockId(b.id);
@@ -612,8 +612,8 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
                               className={[
                                 "rounded-tile px-base py-hair text-xs",
                                 chatFocusedBlockId === b.id
-                                  ? "bg-emerald-900/60 text-emerald-100"
-                                  : "text-emerald-200 hover:bg-emerald-950/50",
+                                  ? "bg-success-subtle text-badge-success"
+                                  : "text-badge-success hover:bg-success-subtle",
                               ].join(" ")}
                               onClick={() => onPinBlockToChat(b.id)}
                             >
@@ -627,7 +627,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
                           <Tooltip label={t("dashboard:blockSettingsTitle")}>
                           <button
                               type="button"
-                              className="rounded-tile px-base py-hair text-xs text-amber-200 hover:bg-amber-950/50"
+                              className="rounded-tile px-base py-hair text-xs text-badge-warning hover:bg-warning-subtle"
                               onClick={() => setSettingsBlockId(b.id)}
                             >
                               <Settings aria-hidden className="h-3.5 w-3.5" />
@@ -681,7 +681,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
                   <button
                     type="button"
                     aria-label={t("dashboard:canvasResize")}
-                    className="absolute bottom-0 right-0 z-canvas h-3.5 w-3.5 cursor-se-resize select-none rounded-tl-tile bg-sky-500/80"
+                    className="absolute bottom-0 right-0 z-canvas h-3.5 w-3.5 cursor-se-resize select-none rounded-tl-tile bg-accent"
                     onPointerDown={(e) => {
                       if (e.button !== 0) return;
                       beginBlockDrag(e, "resize", b.id, rect);

@@ -31,19 +31,19 @@ const ReasoningPanel = memo(function ReasoningPanel({
   const defaultOpen = getAgentShowReasoning();
   return (
     <details className="mb-soft group" defaultOpen={defaultOpen}>
-      <summary className="inline-flex cursor-pointer list-none items-center gap-snug rounded-tile border border-sky-500/35 bg-sky-950/40 px-base py-tight text-meta font-medium text-sky-100/90 marker:content-none [&::-webkit-details-marker]:hidden hover:bg-sky-950/55">
+      <summary className="inline-flex cursor-pointer list-none items-center gap-snug rounded-tile border border-accent/35 bg-accent-subtle px-base py-tight text-meta font-medium text-badge-accent marker:content-none [&::-webkit-details-marker]:hidden hover:bg-accent-subtle">
         <span
           className={`relative flex h-1.5 w-1.5 shrink-0 ${running ? "animate-pulse" : ""}`}
           aria-hidden
         >
-          <span className="absolute inline-flex h-full w-full rounded-pill bg-sky-400 opacity-75" />
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-pill bg-sky-300" />
+          <span className="absolute inline-flex h-full w-full rounded-pill bg-accent opacity-75" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-pill bg-accent" />
         </span>
         {t("chat:thinkingBadge")}
-        <span className="text-meta font-normal text-sky-200/60 group-open:hidden">
+        <span className="text-meta font-normal text-badge-accent group-open:hidden">
           {t("chat:thinkingBadgeExpandHint")}
         </span>
-        <span className="hidden text-meta font-normal text-sky-200/60 group-open:inline">
+        <span className="hidden text-meta font-normal text-badge-accent group-open:inline">
           {t("chat:thinkingBadgeCollapseHint")}
         </span>
       </summary>

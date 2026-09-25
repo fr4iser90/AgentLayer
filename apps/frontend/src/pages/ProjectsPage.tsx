@@ -192,7 +192,7 @@ export function ProjectsPage() {
                       className={[
                         "rounded-tile px-base py-tight text-xs font-semibold uppercase tracking-wide transition-colors",
                         active
-                          ? "border-b-2 border-sky-500 text-sky-300"
+                          ? "border-b-2 border-accent text-badge-accent"
                           : "border-b-2 border-transparent text-ink-muted hover:text-neutral-200",
                       ].join(" ")}
                     >
@@ -235,7 +235,7 @@ export function ProjectsPage() {
                         className={[
                           "w-full rounded-card px-firm py-base text-left transition-colors",
                           active
-                            ? "border border-sky-500/40 bg-sky-950/30"
+                            ? "border border-accent/40 bg-accent-subtle"
                             : "border border-transparent hover:bg-white/5",
                         ].join(" ")}
                         onClick={() => selectWorkspace(w.id)}
@@ -356,7 +356,7 @@ export function ProjectsPage() {
                           {e.is_dir ? (
                             <button
                               type="button"
-                              className="flex w-full items-center gap-base rounded-tile px-base py-tight text-left text-xs text-sky-200 hover:bg-white/5"
+                              className="flex w-full items-center gap-base rounded-tile px-base py-tight text-left text-xs text-badge-accent hover:bg-white/5"
                               onClick={() => setBrowsePath(e.path)}
                             >
                               <span className="text-ink-muted">/</span>
@@ -383,7 +383,7 @@ export function ProjectsPage() {
                     </ul>
                   )}
                   {treeTruncated ? (
-                    <p className="mt-base px-base text-meta text-amber-300/90">
+                    <p className="mt-base px-base text-meta text-badge-warning">
                       {t("workspace:projectsTreeTruncated")}
                     </p>
                   ) : null}

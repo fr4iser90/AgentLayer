@@ -1177,13 +1177,13 @@ export function DashboardPage() {
                   <button
                     type="button"
                     onClick={() => confirmInstallCatalogRow(row)}
-                    className="flex h-full min-h-[148px] w-full flex-col rounded-sheet border border-line bg-card p-roomy text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
+                    className="flex h-full min-h-[148px] w-full flex-col rounded-sheet border border-line bg-card p-roomy text-left transition hover:border-accent/35 hover:bg-white/[0.03]"
                   >
                     <span className="text-base font-medium text-ink-primary">{row.label}</span>
                     {row.description ? (
                       <span className="mt-base text-sm leading-snug text-ink-muted">{row.description}</span>
                     ) : null}
-                    <span className="mt-auto pt-wide text-sm font-medium text-sky-400">{t("dashboard:install")}</span>
+                    <span className="mt-auto pt-wide text-sm font-medium text-accent">{t("dashboard:install")}</span>
                   </button>
                 </li>
               ))}
@@ -1191,7 +1191,7 @@ export function DashboardPage() {
           )}
 
           {error ? (
-            <div className="mt-broad rounded-card border border-red-500/40 bg-red-950/30 px-soft py-base text-sm text-red-200">
+            <div className="mt-broad rounded-card border border-danger/40 bg-danger-subtle px-soft py-base text-sm text-badge-danger">
               {error}
             </div>
           ) : null}
@@ -1316,7 +1316,7 @@ export function DashboardPage() {
   const overviewMain = (
     <div className="min-h-0 flex-1 overflow-y-auto p-wide md:p-broad">
       {error ? (
-        <div className="mb-wide rounded-card border border-red-500/40 bg-red-950/30 px-soft py-base text-sm text-red-200">
+        <div className="mb-wide rounded-card border border-danger/40 bg-danger-subtle px-soft py-base text-sm text-badge-danger">
           {error}
         </div>
       ) : null}
@@ -1339,7 +1339,7 @@ export function DashboardPage() {
         <button
           type="button"
           onClick={() => setNewWsModalOpen(true)}
-          className="flex flex-col rounded-sheet border border-line bg-card p-broad text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
+          className="flex flex-col rounded-sheet border border-line bg-card p-broad text-left transition hover:border-accent/35 hover:bg-white/[0.03]"
         >
           <span className="text-base font-semibold text-ink-primary">{t("dashboard:newDashboardTitle")}</span>
           <span className="mt-base text-sm text-ink-muted">{t("dashboard:newDashboardSubtitle")}</span>
@@ -1347,7 +1347,7 @@ export function DashboardPage() {
         <button
           type="button"
           onClick={() => openCatalog()}
-          className="flex flex-col rounded-sheet border border-line bg-card p-broad text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
+          className="flex flex-col rounded-sheet border border-line bg-card p-broad text-left transition hover:border-accent/35 hover:bg-white/[0.03]"
         >
           <span className="text-base font-semibold text-ink-primary">{t("dashboard:catalogTitle")}</span>
           <span className="mt-base text-sm text-ink-muted">{t("dashboard:catalogIntro")}</span>
@@ -1383,7 +1383,7 @@ export function DashboardPage() {
         <button
           type="button"
           onClick={() => setHubPanel("home")}
-          className="text-sm text-sky-400 hover:text-sky-300"
+          className="text-sm text-accent hover:text-badge-accent"
         >
           {t("dashboard:backToDashboards")}
         </button>
@@ -1396,7 +1396,7 @@ export function DashboardPage() {
             value={catalogQuery}
             onChange={(e) => setCatalogQuery(e.target.value)}
             placeholder={t("dashboard:filterByNamePlaceholder")}
-            className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-sky-500/50"
+            className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-accent/50"
           />
         </div>
         <div>
@@ -1435,7 +1435,7 @@ export function DashboardPage() {
                     <button
                       type="button"
                       disabled={installBusy || !row.has_schema}
-                      className="rounded-card bg-sky-600 px-soft py-snug text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+                      className="rounded-card bg-accent px-soft py-snug text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
                       onClick={() => confirmInstallCatalogRow(row)}
                     >
                       {t("dashboard:install")}
@@ -1485,7 +1485,7 @@ export function DashboardPage() {
               ].join(" ")}
             >
             {error ? (
-              <div className="mb-wide shrink-0 rounded-card border border-red-500/40 bg-red-950/30 px-soft py-base text-sm text-red-200">
+              <div className="mb-wide shrink-0 rounded-card border border-danger/40 bg-danger-subtle px-soft py-base text-sm text-badge-danger">
                 {error}
               </div>
             ) : null}
@@ -1500,7 +1500,7 @@ export function DashboardPage() {
                       className={[
                         "rounded-card border px-soft py-snug text-xs",
                         boardFocus
-                          ? "border-sky-500/50 bg-sky-950/40 text-sky-100"
+                          ? "border-accent/50 bg-accent-subtle text-badge-accent"
                           : "border-line text-ink-primary hover:bg-white/5",
                       ].join(" ")}
                       onClick={() => setBoardFocus((v) => !v)}
@@ -1521,7 +1521,7 @@ export function DashboardPage() {
                           className={[
                             "px-firm py-snug",
                             chatDock === mode
-                              ? "bg-sky-600 text-ink-on-fill"
+                              ? "bg-accent text-ink-on-fill"
                               : "text-ink-primary hover:bg-white/5",
                           ].join(" ")}
                           onClick={() => setChatDock(mode)}
@@ -1548,7 +1548,7 @@ export function DashboardPage() {
                     <label className="mb-tight block text-xs text-ink-muted">{t("dashboard:dashboardTitleLabel")}</label>
                     <input
                       readOnly={!canEditStructure}
-                      className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-sky-500/50 read-only:cursor-default read-only:opacity-90"
+                      className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-accent/50 read-only:cursor-default read-only:opacity-90"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                     />
@@ -1571,7 +1571,7 @@ export function DashboardPage() {
                               className={[
                                 "px-soft py-base text-sm",
                                 layoutModeOf(layoutDraft) === "grid"
-                                  ? "bg-sky-600 text-ink-on-fill"
+                                  ? "bg-accent text-ink-on-fill"
                                   : "bg-transparent text-ink-primary hover:bg-white/5",
                               ].join(" ")}
                               onClick={() =>
@@ -1585,7 +1585,7 @@ export function DashboardPage() {
                               className={[
                                 "px-soft py-base text-sm",
                                 layoutModeOf(layoutDraft) === "canvas"
-                                  ? "bg-sky-600 text-ink-on-fill"
+                                  ? "bg-accent text-ink-on-fill"
                                   : "bg-transparent text-ink-primary hover:bg-white/5",
                               ].join(" ")}
                               onClick={() =>
@@ -1610,7 +1610,7 @@ export function DashboardPage() {
                       <button
                         type="button"
                         disabled={saving}
-                        className="rounded-card bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+                        className="rounded-card bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
                         onClick={() => void save()}
                       >
                         {saving ? t("dashboard:saving") : t("admin:save")}
@@ -1652,7 +1652,7 @@ export function DashboardPage() {
                   </p>
                 ) : null}
                 {useMode ? (
-                  <p className="mb-wide rounded-card border border-sky-500/30 bg-sky-950/30 px-soft py-base text-xs text-sky-100">
+                  <p className="mb-wide rounded-card border border-accent/30 bg-accent-subtle px-soft py-base text-xs text-badge-accent">
                     {t("dashboard:useModeHint")}
                   </p>
                 ) : (
@@ -1696,7 +1696,7 @@ export function DashboardPage() {
                       ) : (
                         <button
                           type="button"
-                          className="rounded-card border border-sky-500/50 bg-sky-950/40 px-soft py-snug text-xs text-sky-100"
+                          className="rounded-card border border-accent/50 bg-accent-subtle px-soft py-snug text-xs text-badge-accent"
                           onClick={() => cancelLayoutEdit()}
                         >
                           {t("admin:cancel")}
@@ -1707,7 +1707,7 @@ export function DashboardPage() {
                       <button
                         type="button"
                         disabled={saving}
-                        className="rounded-card bg-sky-600 px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+                        className="rounded-card bg-accent px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
                         onClick={() => void save()}
                       >
                         {saving ? t("dashboard:saving") : t("admin:save")}
@@ -1803,7 +1803,7 @@ export function DashboardPage() {
           ) : dashboardReady && chatDock === "hidden" && isCanvasBoard ? (
             <button
               type="button"
-              className="fixed bottom-6 right-6 z-canvas rounded-card border border-sky-500/40 bg-sky-950/90 px-soft py-base text-xs font-medium text-sky-100 shadow-lg hover:bg-sky-900/90 lg:bottom-8 lg:right-8"
+              className="fixed bottom-6 right-6 z-canvas rounded-card border border-accent/40 bg-accent-subtle px-soft py-base text-xs font-medium text-badge-accent shadow-lg hover:bg-accent-subtle lg:bottom-8 lg:right-8"
               onClick={() => setChatDock("mini")}
             >
               {t("dashboard:chatDockShow")}
@@ -1820,7 +1820,7 @@ export function DashboardPage() {
     main = (
       <div className="min-h-0 flex-1 overflow-y-auto p-wide md:p-broad">
         {error ? (
-          <div className="mb-wide rounded-card border border-red-500/40 bg-red-950/30 px-soft py-base text-sm text-red-200">
+          <div className="mb-wide rounded-card border border-danger/40 bg-danger-subtle px-soft py-base text-sm text-badge-danger">
             {error}
           </div>
         ) : null}
@@ -1898,7 +1898,7 @@ export function DashboardPage() {
                   >
                     {t("dashboard:templateExport")}
                   </button>
-                  <label className="cursor-pointer rounded-card bg-sky-600 px-soft py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500">
+                  <label className="cursor-pointer rounded-card bg-accent px-soft py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover">
                     {t("dashboard:templateImport")}
                     <input
                       type="file"
@@ -1946,7 +1946,7 @@ export function DashboardPage() {
                   });
                 }}
                 placeholder={t("dashboard:agentPromptExtraPlaceholder")}
-                className="mt-tight w-full resize-y rounded-card border border-line bg-field px-soft py-base font-mono text-sm leading-relaxed text-ink-primary outline-none placeholder:text-white/25 focus:border-sky-500/50 read-only:cursor-default read-only:opacity-90"
+                className="mt-tight w-full resize-y rounded-card border border-line bg-field px-soft py-base font-mono text-sm leading-relaxed text-ink-primary outline-none placeholder:text-white/25 focus:border-accent/50 read-only:cursor-default read-only:opacity-90"
               />
               <p className="mt-base text-meta text-ink-muted">{t("dashboard:agentPromptExtraSavedHint")}</p>
               <p className="mt-soft text-meta text-ink-muted">{t("dashboard:agentPromptScrollHint")}</p>
@@ -1958,7 +1958,7 @@ export function DashboardPage() {
               </p>
               <p className="mt-base text-xs text-ink-muted">{t("dashboard:dashboardToolPrefsIntro")}</p>
               {toolsCatalogErr ? (
-                <p className="mt-base text-xs text-amber-300/90">
+                <p className="mt-base text-xs text-badge-warning">
                   {t("dashboard:dashboardToolCatalogErr", { err: toolsCatalogErr })}
                 </p>
               ) : null}
@@ -1974,7 +1974,7 @@ export function DashboardPage() {
                       {canEditContent ? (
                         <button
                           type="button"
-                          className="shrink-0 text-sky-300 hover:text-white"
+                          className="shrink-0 text-badge-accent hover:text-white"
                           aria-label={t("dashboard:dashboardToolRemoveAria", { name })}
                           onClick={() => removeToolFromDashboardAllowlist(name)}
                         >
@@ -1994,7 +1994,7 @@ export function DashboardPage() {
                     <select
                       id="ws-tool-pick"
                       disabled={pickableCatalogTools.length === 0}
-                      className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-sky-500/50 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-accent/50 disabled:cursor-not-allowed disabled:opacity-50"
                       defaultValue=""
                       onChange={(e) => {
                         const v = e.currentTarget.value;
@@ -2029,7 +2029,7 @@ export function DashboardPage() {
                           }
                         }}
                         placeholder={t("dashboard:shareToolNamePlaceholder")}
-                        className="min-w-0 flex-1 rounded-card border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary outline-none focus:border-sky-500/50"
+                        className="min-w-0 flex-1 rounded-card border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary outline-none focus:border-accent/50"
                       />
                       <button
                         type="button"
@@ -2057,7 +2057,7 @@ export function DashboardPage() {
                   {t("dashboard:membersTitle")}
                 </p>
                 <p className="mt-tight text-xs text-ink-muted">{t("dashboard:membersIntro")}</p>
-                {membersErr ? <p className="mt-base text-xs text-red-300">{membersErr}</p> : null}
+                {membersErr ? <p className="mt-base text-xs text-badge-danger">{membersErr}</p> : null}
                 <div className="mt-soft flex flex-wrap items-end gap-base">
                   <div className="min-w-[220px] flex-1">
                     <label className="mb-tight block text-meta text-ink-muted">
@@ -2068,7 +2068,7 @@ export function DashboardPage() {
                       value={memberEmail}
                       onChange={(e) => setMemberEmail(e.target.value)}
                       placeholder={t("dashboard:shareEmailPlaceholder")}
-                      className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-sky-500/50"
+                      className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-accent/50"
                     />
                   </div>
                   <div>
@@ -2088,7 +2088,7 @@ export function DashboardPage() {
                   <button
                     type="button"
                     disabled={membersBusy || !memberEmail.trim()}
-                    className="rounded-card bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+                    className="rounded-card bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
                     onClick={() => void addDashboardMember()}
                   >
                     {membersBusy ? "…" : t("dashboard:membersAdd")}
@@ -2129,8 +2129,8 @@ export function DashboardPage() {
                   <span className="text-white/85">{t("dashboard:blockSharingIntroPrefix")}</span>{" "}
                   {t("dashboard:blockSharingIntroBody")}
                 </p>
-                <p className="mt-base text-xs text-sky-200/80">{t("dashboard:blockSharingListHint")}</p>
-                {blockSharesErr ? <p className="mt-base text-xs text-red-300">{blockSharesErr}</p> : null}
+                <p className="mt-base text-xs text-badge-accent">{t("dashboard:blockSharingListHint")}</p>
+                {blockSharesErr ? <p className="mt-base text-xs text-badge-danger">{blockSharesErr}</p> : null}
                 <div className="mt-soft flex flex-wrap items-end gap-base">
                   <div className="min-w-[200px] flex-1">
                     <label className="mb-tight block text-meta text-ink-muted">
@@ -2141,7 +2141,7 @@ export function DashboardPage() {
                       value={blockShareEmail}
                       onChange={(e) => setBlockShareEmail(e.target.value)}
                       placeholder={t("dashboard:shareEmailPlaceholder")}
-                      className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-sky-500/50"
+                      className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-accent/50"
                     />
                   </div>
                   <div className="min-w-[140px]">
@@ -2153,7 +2153,7 @@ export function DashboardPage() {
                       onChange={(e) =>
                         setBlockSharePermission(e.target.value === "edit" ? "edit" : "view")
                       }
-                      className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-sky-500/50"
+                      className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-accent/50"
                     >
                       <option value="view">{t("dashboard:blockShareViewOnly")}</option>
                       <option value="edit">{t("dashboard:blockShareEdit")}</option>
@@ -2162,7 +2162,7 @@ export function DashboardPage() {
                   <button
                     type="button"
                     disabled={blockSharesBusy || !blockShareEmail.trim()}
-                    className="rounded-card bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+                    className="rounded-card bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
                     onClick={() => void addBlockShareGrant()}
                   >
                     {blockSharesBusy ? "…" : t("dashboard:shareSelectedBlocks")}
@@ -2236,17 +2236,17 @@ export function DashboardPage() {
                   {t("dashboard:publicShareTitle")}
                 </p>
                 <p className="mt-tight text-xs text-ink-muted">{t("dashboard:publicShareIntro")}</p>
-                {publicSharesErr ? <p className="mt-base text-xs text-red-300">{publicSharesErr}</p> : null}
+                {publicSharesErr ? <p className="mt-base text-xs text-badge-danger">{publicSharesErr}</p> : null}
                 {createdPublicLink ? (
-                  <div className="mt-soft rounded-card border border-emerald-500/30 bg-emerald-950/20 p-soft text-xs text-emerald-100">
+                  <div className="mt-soft rounded-card border border-success/30 bg-success-subtle p-soft text-xs text-badge-success">
                     <p className="font-medium">{t("dashboard:publicShareCreatedOnce")}</p>
-                    <p className="mt-base break-all font-mono text-meta text-emerald-50/90">
+                    <p className="mt-base break-all font-mono text-meta text-badge-success">
                       {window.location.origin}
                       {createdPublicLink}
                     </p>
                     <button
                       type="button"
-                      className="mt-base rounded-tile bg-emerald-700/80 px-soft py-snug text-xs font-medium text-ink-primary hover:bg-emerald-600"
+                      className="mt-base rounded-tile bg-success px-soft py-snug text-xs font-medium text-ink-primary hover:bg-success-hover"
                       onClick={() => void copyPublicShareUrl(createdPublicLink)}
                     >
                       {t("dashboard:publicShareCopyLink")}
@@ -2391,11 +2391,11 @@ export function DashboardPage() {
             )}
 
             {isPrimaryOwner ? (
-              <div className="rounded-sheet border border-red-500/30 bg-red-950/20 p-wide">
-                <p className="text-xs font-semibold uppercase tracking-wide text-red-200/80">
+              <div className="rounded-sheet border border-danger/30 bg-danger-subtle p-wide">
+                <p className="text-xs font-semibold uppercase tracking-wide text-badge-danger">
                   {t("dashboard:dangerZone")}
                 </p>
-                <p className="mt-base text-xs text-red-200/80">{t("dashboard:deletePermanent")}</p>
+                <p className="mt-base text-xs text-badge-danger">{t("dashboard:deletePermanent")}</p>
                 <Button
                   type="button"
                   variant="danger"

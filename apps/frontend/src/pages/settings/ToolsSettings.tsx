@@ -305,22 +305,22 @@ export function ToolsSettings() {
         <h1 className="text-lg font-semibold text-ink-primary">{t("settings:toolsTitle")}</h1>
         <p className="mt-base text-sm text-ink-muted">
           {t("settings:toolsIntro")}{" "}
-          <Link to="/settings/connections" className="text-sky-400 hover:text-sky-300 hover:underline">
+          <Link to="/settings/connections" className="text-accent hover:text-badge-accent hover:underline">
             {t("settings:toolsConnectionsLink")}
           </Link>
           .
         </p>
       </div>
 
-      {msg ? <p className="text-sm text-amber-400">{msg}</p> : null}
+      {msg ? <p className="text-sm text-warning">{msg}</p> : null}
       {loading ? <p className="text-sm text-ink-muted">{t("settings:toolsLoading")}</p> : null}
 
       {!loading && recommendations.length > 0 ? (
         <section
-          className="rounded-sheet border border-sky-500/25 bg-sky-500/5 px-wide py-soft"
+          className="rounded-sheet border border-accent/25 bg-accent-subtle px-wide py-soft"
           aria-label={t("settings:toolsSetupSuggestionsAria")}
         >
-          <p className="text-xs font-semibold uppercase tracking-wide text-sky-200/90">
+          <p className="text-xs font-semibold uppercase tracking-wide text-badge-accent">
             {t("settings:toolsSuggestedNextSteps")}
           </p>
           <ul className="mt-base space-y-base text-sm text-ink-primary">
@@ -329,7 +329,7 @@ export function ToolsSettings() {
                 <span>{r.body}</span>
                 <Link
                   to="/settings/connections"
-                  className="shrink-0 text-xs font-medium text-sky-400 hover:text-sky-300 hover:underline"
+                  className="shrink-0 text-xs font-medium text-accent hover:text-badge-accent hover:underline"
                 >
                   {t("settings:toolsOpenConnections")}
                 </Link>
@@ -371,7 +371,7 @@ export function ToolsSettings() {
                 aria-selected={tab === id}
                 onClick={() => setTab(id)}
                 className={`rounded-pill px-soft py-snug text-xs font-medium transition ${
-                  tab === id ? "bg-sky-600 text-ink-on-fill" : "bg-white/5 text-ink-muted hover:bg-white/10"
+                  tab === id ? "bg-accent text-ink-on-fill" : "bg-white/5 text-ink-muted hover:bg-white/10"
                 }`}
               >
                 {label}
@@ -477,7 +477,7 @@ export function ToolsSettings() {
                             {reqs.length ? (
                               <Link
                                 to="/settings/connections"
-                                className="rounded-tile bg-white/5 px-firm py-tight text-meta text-sky-400 hover:bg-white/10"
+                                className="rounded-tile bg-white/5 px-firm py-tight text-meta text-accent hover:bg-white/10"
                               >
                                 {t("settings:toolsConfigure")}
                               </Link>
@@ -485,7 +485,7 @@ export function ToolsSettings() {
                             <button
                               type="button"
                               disabled={!names.length}
-                              className="rounded-tile bg-white/5 px-firm py-tight text-meta text-amber-200/90 hover:bg-white/10 disabled:opacity-40"
+                              className="rounded-tile bg-white/5 px-firm py-tight text-meta text-badge-warning hover:bg-white/10 disabled:opacity-40"
                               onClick={() => {
                                 setPackageEnabledForChat(names, false);
                                 refreshToggles();
@@ -537,7 +537,7 @@ export function ToolsSettings() {
 
       <button
         type="button"
-        className="text-xs text-sky-400 hover:text-sky-300 hover:underline"
+        className="text-xs text-accent hover:text-badge-accent hover:underline"
         onClick={() => void load()}
       >
         {t("settings:toolsRefreshCatalog")}
@@ -601,11 +601,11 @@ function PackageDrawer({
       }
     >
           <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-200/80">{t("settings:toolsExamplePrompt")}</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-badge-accent">{t("settings:toolsExamplePrompt")}</h3>
             <p className="mt-tight text-sm text-ink-secondary">{example}</p>
           </section>
           <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-200/80">{t("settings:toolsFunctionsInPackage")}</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-badge-accent">{t("settings:toolsFunctionsInPackage")}</h3>
             <ul className="mt-base space-y-wide">
               {names.map((n) => {
                 const fn = fnIndex.get(n);
@@ -613,7 +613,7 @@ function PackageDrawer({
                 const params = summarizeParams(fn?.parameters);
                 return (
                   <li key={n} className="rounded-card border border-line bg-black/30 p-soft">
-                    <p className="font-mono text-sm font-medium text-sky-200">{n}</p>
+                    <p className="font-mono text-sm font-medium text-badge-accent">{n}</p>
                     <p className="mt-tight text-xs text-ink-muted">{desc}</p>
                     {params ? (
                       <pre className="mt-base max-h-40 overflow-auto rounded-tile border border-line-subtle bg-black/40 p-base text-meta text-ink-muted">

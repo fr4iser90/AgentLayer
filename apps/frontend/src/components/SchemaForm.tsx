@@ -38,7 +38,7 @@ export function SchemaForm({ properties, required = [], values, onChange }: Prop
             <label key={key} className="flex flex-col gap-tight">
               <span className="text-sm text-ink-secondary">
                 {label}
-                {req ? <span className="text-red-400"> *</span> : null}
+                {req ? <span className="text-danger"> *</span> : null}
               </span>
               {prop.description ? (
                 <span className="text-xs text-ink-muted">{prop.description}</span>
@@ -100,7 +100,7 @@ export function SchemaForm({ properties, required = [], values, onChange }: Prop
             <label key={key} className="flex flex-col gap-tight">
               <span className="text-sm text-ink-secondary">
                 {label}
-                {req ? <span className="text-red-400"> *</span> : null}
+                {req ? <span className="text-danger"> *</span> : null}
               </span>
               {prop.description ? (
                 <span className="text-xs text-ink-muted">{prop.description}</span>
@@ -132,7 +132,7 @@ export function SchemaForm({ properties, required = [], values, onChange }: Prop
           <label key={key} className="flex flex-col gap-tight">
             <span className="text-sm text-ink-secondary">
               {label}
-              {req ? <span className="text-red-400"> *</span> : null}
+              {req ? <span className="text-danger"> *</span> : null}
             </span>
             {prop.description ? (
               <span className="text-xs text-ink-muted">{prop.description}</span>

@@ -185,7 +185,7 @@ export function AgentSettings() {
       {loading ? <p className="text-sm text-ink-muted">{t("settings:agentLoading")}</p> : null}
       {msg ? (
         <p
-          className={`text-sm ${msg.includes("saved") ? "text-emerald-400" : "text-amber-400"}`}
+          className={`text-sm ${msg.includes("saved") ? "text-success" : "text-warning"}`}
         >
           {msg}
         </p>
@@ -215,7 +215,7 @@ export function AgentSettings() {
           {t("settings:personaHelp")}
         </p>
         {personaUnavailable ? (
-          <p className="mt-soft text-sm text-amber-400">
+          <p className="mt-soft text-sm text-warning">
             {t("settings:personaStorageUnavailable")}
           </p>
         ) : (
@@ -256,7 +256,7 @@ export function AgentSettings() {
           {t("settings:structuredProfileSubtitle")}
         </p>
         {profileUnavailable ? (
-          <p className="mt-soft text-sm text-amber-400">
+          <p className="mt-soft text-sm text-warning">
             {t("settings:profileStorageUnavailable", { table: "user_agent_profile" })}
           </p>
         ) : (
@@ -349,7 +349,7 @@ export function AgentSettings() {
               <button
                 type="button"
                 disabled={savingProfile}
-                className="rounded-tile bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+                className="rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
                 onClick={() => void saveProfile()}
               >
                 {savingProfile ? t("settings:saving") : t("settings:saveProfile")}
@@ -361,7 +361,7 @@ export function AgentSettings() {
 
       <button
         type="button"
-        className="text-xs text-sky-400 hover:text-sky-300 hover:underline"
+        className="text-xs text-accent hover:text-badge-accent hover:underline"
         onClick={() => void load()}
       >
         {t("settings:reloadFromServer")}

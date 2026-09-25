@@ -27,7 +27,7 @@ export function DocsPage() {
                 href={item.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-sky-400 hover:text-sky-300 hover:underline"
+                className="text-sm text-accent hover:text-badge-accent hover:underline"
               >
                 {t(`common:${item.labelKey}`)}
               </a>

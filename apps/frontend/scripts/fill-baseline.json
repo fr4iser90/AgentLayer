@@ -1,185 +1,32 @@
 {
-  "src/components/NotificationBell.tsx": [
-    "bg-amber-400",
-    "bg-red-400",
-    "bg-sky-400"
-  ],
   "src/components/SchemaForm.tsx": [
     "file:bg-neutral-700"
   ],
-  "src/features/admin/agentConfig/ExperimentDetailPanel.tsx": [
-    "bg-amber-950/30",
-    "bg-emerald-950/40",
-    "bg-red-500/10"
-  ],
   "src/features/admin/benchmarks/BenchmarkRunOverridePanel.tsx": [
-    "bg-amber-600/40",
-    "bg-amber-700",
-    "bg-amber-950/10",
-    "bg-amber-950/30",
-    "bg-blue-500/5",
-    "bg-red-500/10",
-    "hover:bg-amber-600"
-  ],
-  "src/features/admin/benchmarks/HarnessRunContextBar.tsx": [
-    "bg-sky-950/30",
-    "hover:bg-sky-950/50"
-  ],
-  "src/features/admin/operatorSettings/OperatorSettingsStickySave.tsx": [
-    "bg-sky-600",
-    "hover:bg-sky-500"
-  ],
-  "src/features/chat/AgentActivityPanel.tsx": [
-    "bg-violet-400"
+    "bg-blue-500/5"
   ],
   "src/features/chat/AssistantTurnBlock.tsx": [
-    "bg-sky-300",
-    "bg-sky-400",
-    "bg-sky-950/40",
-    "bg-violet-900/40",
-    "hover:bg-sky-950/55"
-  ],
-  "src/features/chat/ContextInjectionBadge.tsx": [
-    "bg-amber-300",
-    "bg-amber-400/80",
-    "bg-amber-950/35",
-    "hover:bg-amber-950/50"
-  ],
-  "src/features/chat/ContextInjectionGroup.tsx": [
-    "bg-amber-300",
-    "bg-amber-400/80",
-    "bg-amber-950/35",
-    "hover:bg-amber-950/50"
-  ],
-  "src/features/chat/ConversationGoalPanels.tsx": [
-    "bg-amber-950/25",
-    "bg-amber-950/30",
-    "bg-sky-950/25"
-  ],
-  "src/features/chat/MessageFeedbackButtons.tsx": [
-    "bg-emerald-900/50",
-    "bg-red-900/40"
+    "bg-violet-900/40"
   ],
   "src/features/chat/MessageTurnActivity.tsx": [
     "bg-violet-400"
   ],
-  "src/features/chat/ModelCatalogSelect.tsx": [
-    "bg-amber-500/15",
-    "bg-emerald-500/15",
-    "bg-sky-500/10",
-    "bg-sky-500/15",
-    "bg-violet-500/15"
-  ],
-  "src/features/chat/PermissionAskCard.tsx": [
-    "bg-amber-500/10",
-    "bg-amber-500/90"
-  ],
-  "src/features/chat/ProposalMessageBody.tsx": [
-    "bg-amber-950/35",
-    "bg-sky-500",
-    "bg-sky-950/50"
-  ],
-  "src/features/chat/RunCardBlock.tsx": [
-    "bg-amber-950/20",
-    "bg-sky-950/15",
-    "bg-violet-400",
-    "bg-violet-950/20"
-  ],
-  "src/features/chat/SecretRegisterCard.tsx": [
-    "bg-amber-700/80",
-    "bg-amber-950/20",
-    "hover:bg-amber-600/90"
-  ],
-  "src/features/chat/TurnNavigator.tsx": [
-    "bg-sky-950/40"
-  ],
   "src/features/dashboard/BlockExpandModal.tsx": [
     "bg-neutral-950/98"
-  ],
-  "src/features/dashboard/BlockSettingsModal.tsx": [
-    "bg-amber-950/20",
-    "bg-sky-950/20",
-    "hover:bg-sky-950/30"
   ],
   "src/features/dashboard/CardGridBlock.tsx": [
     "bg-violet-600/20",
     "hover:bg-slate-900"
   ],
   "src/features/dashboard/DashboardBlocks.tsx": [
-    "bg-sky-600/80",
     "bg-violet-600/80",
-    "hover:bg-sky-500",
     "hover:bg-violet-500"
   ],
   "src/features/dashboard/DashboardCanvasSurface.tsx": [
-    "bg-emerald-900/60",
-    "bg-sky-500/80",
-    "bg-sky-600",
-    "hover:bg-amber-950/50",
-    "hover:bg-emerald-950/50",
-    "hover:bg-sky-500",
-    "hover:bg-sky-950/50",
     "hover:bg-violet-950/50"
-  ],
-  "src/features/dashboard/DashboardEmbeddedChat.tsx": [
-    "bg-amber-950/20",
-    "bg-emerald-950/10",
-    "bg-emerald-950/20",
-    "bg-red-950/30",
-    "bg-sky-600",
-    "bg-sky-950/20",
-    "hover:bg-emerald-900/40",
-    "hover:bg-sky-500"
-  ],
-  "src/features/dashboard/DashboardEmbeddedThreadMenu.tsx": [
-    "bg-sky-950/40"
   ],
   "src/features/dashboard/DashboardGridInner.tsx": [
-    "bg-emerald-900/60",
-    "bg-sky-600",
-    "hover:bg-amber-950/50",
-    "hover:bg-emerald-950/50",
-    "hover:bg-sky-500",
-    "hover:bg-sky-950/50",
     "hover:bg-violet-950/50"
-  ],
-  "src/features/dashboard/DashboardLayoutProposalInline.tsx": [
-    "bg-emerald-600",
-    "bg-red-950/20",
-    "hover:bg-emerald-500"
-  ],
-  "src/features/dashboard/DashboardLayoutProposalPanel.tsx": [
-    "bg-emerald-600",
-    "bg-emerald-950/30",
-    "bg-red-950/30",
-    "hover:bg-emerald-500"
-  ],
-  "src/features/dashboard/DashboardOnboardingBanner.tsx": [
-    "bg-emerald-600/80",
-    "bg-emerald-900/30",
-    "bg-emerald-950/20",
-    "hover:bg-emerald-500",
-    "hover:bg-emerald-800/40"
-  ],
-  "src/features/dashboard/DashboardSidebarNav.tsx": [
-    "hover:bg-amber-950/30"
-  ],
-  "src/features/dashboard/EmbedBlock.tsx": [
-    "bg-amber-950/30",
-    "bg-red-950/20"
-  ],
-  "src/features/dashboard/FormulaCalcBlock.tsx": [
-    "bg-amber-500/10",
-    "bg-sky-600",
-    "hover:bg-sky-500"
-  ],
-  "src/features/dashboard/KanbanRichMarkdownBlocks.tsx": [
-    "bg-sky-600/80",
-    "hover:bg-sky-500"
-  ],
-  "src/features/dashboard/MediaPlayerBlock.tsx": [
-    "bg-sky-950/40",
-    "hover:bg-sky-900/40"
   ],
   "src/features/dashboard/ProjectRowDetailDrawer.tsx": [
     "bg-violet-600/80",
@@ -200,83 +47,26 @@
   "src/features/dashboard/gallery/GalleryPublicSection.tsx": [
     "bg-neutral-900"
   ],
-  "src/features/dashboard/media/MediaSharePanel.tsx": [
-    "bg-sky-950/40"
-  ],
-  "src/features/media/MediaMiniPlayer.tsx": [
-    "bg-sky-600/50",
-    "bg-sky-950/50",
-    "hover:bg-sky-900/40"
-  ],
-  "src/features/media/MediaMiniPlayerPanel.tsx": [
-    "bg-sky-600/40",
-    "bg-sky-600/50",
-    "bg-sky-700/60",
-    "bg-sky-800/50",
-    "bg-sky-950/80",
-    "hover:bg-sky-600/60"
-  ],
-  "src/features/voice/ChatComposerVoiceControls.tsx": [
-    "bg-amber-950/20"
-  ],
   "src/features/voice/VoiceHandsFreeBar.tsx": [
     "bg-violet-600",
     "bg-violet-950/30",
     "hover:bg-violet-500"
   ],
-  "src/features/workspace/CodingWorkspacePanels.tsx": [
-    "bg-amber-600/40"
-  ],
-  "src/features/workspace/WorkspaceMcpModal.tsx": [
-    "bg-amber-950/30",
-    "bg-sky-950/40",
-    "hover:bg-sky-900/50"
-  ],
   "src/features/workspace/WorkspaceRetrievalBar.tsx": [
-    "bg-amber-950/40",
-    "bg-emerald-950/50",
-    "bg-sky-950/40",
     "bg-violet-500/70",
     "bg-violet-950/40",
-    "hover:bg-amber-900/50",
-    "hover:bg-sky-900/50",
     "hover:bg-violet-900/50"
   ],
   "src/pages/ChatPage.tsx": [
-    "bg-amber-950/30",
-    "bg-amber-950/40",
-    "bg-amber-950/50",
-    "bg-emerald-950/25",
-    "bg-red-950/40",
-    "bg-sky-400",
-    "bg-sky-500/10",
-    "bg-sky-500/90",
-    "bg-sky-600",
-    "bg-sky-950/25",
-    "bg-sky-950/50",
     "bg-violet-950/15",
     "bg-violet-950/20",
     "bg-violet-950/40",
-    "hover:bg-amber-900/40",
-    "hover:bg-sky-500",
-    "hover:bg-sky-500/15",
     "hover:bg-violet-900/50"
   ],
   "src/pages/DashboardPage.tsx": [
-    "bg-emerald-700/80",
-    "bg-emerald-950/20",
-    "bg-red-950/20",
-    "bg-red-950/30",
-    "bg-sky-600",
-    "bg-sky-950/30",
-    "bg-sky-950/40",
-    "bg-sky-950/90",
     "bg-violet-600",
     "bg-violet-950/15",
     "bg-violet-950/25",
-    "hover:bg-emerald-600",
-    "hover:bg-sky-500",
-    "hover:bg-sky-900/90",
     "hover:bg-violet-500",
     "hover:bg-violet-900/35"
   ],
@@ -285,175 +75,42 @@
     "bg-violet-600",
     "hover:bg-violet-500"
   ],
-  "src/pages/LoginPage.tsx": [
-    "bg-sky-600",
-    "hover:bg-sky-500"
-  ],
-  "src/pages/MySchedulesPage.tsx": [
-    "bg-emerald-600/25",
-    "bg-red-500/10"
-  ],
-  "src/pages/ProjectsPage.tsx": [
-    "bg-sky-950/30"
-  ],
-  "src/pages/SetupWizardPage.tsx": [
-    "bg-sky-500/10",
-    "bg-sky-600",
-    "hover:bg-sky-500",
-    "hover:bg-sky-500/20"
-  ],
   "src/pages/StudioPage.tsx": [
-    "bg-emerald-950/80",
-    "bg-red-950/40",
     "hover:bg-neutral-200"
   ],
-  "src/pages/TasksPage.tsx": [
-    "bg-sky-500/15",
-    "hover:bg-emerald-950/40"
-  ],
   "src/pages/admin/AdminAgentConfig.tsx": [
-    "bg-blue-500/5",
-    "bg-emerald-700",
-    "bg-red-500/10",
-    "hover:bg-emerald-600"
-  ],
-  "src/pages/admin/AdminAgentSubmissions.tsx": [
-    "bg-emerald-600",
-    "bg-red-600",
-    "bg-sky-950/20",
-    "hover:bg-emerald-500",
-    "hover:bg-red-500"
-  ],
-  "src/pages/admin/AdminAgents.tsx": [
-    "bg-amber-900/60",
-    "bg-sky-600",
-    "bg-sky-950/20",
-    "hover:bg-sky-500"
+    "bg-blue-500/5"
   ],
   "src/pages/admin/AdminBenchmarks.tsx": [
-    "bg-amber-950/20",
-    "bg-emerald-500/10",
-    "bg-red-950/30",
-    "bg-sky-500/5",
-    "bg-sky-600",
-    "bg-sky-950/20",
-    "bg-sky-950/25",
-    "bg-sky-950/40",
     "bg-violet-500/15",
     "bg-violet-600",
     "bg-violet-950/10",
     "bg-violet-950/20",
     "bg-violet-950/50",
-    "hover:bg-emerald-500/10",
-    "hover:bg-sky-500",
-    "hover:bg-sky-950/10",
     "hover:bg-violet-500",
     "hover:bg-violet-500/10",
     "hover:bg-violet-950/20"
   ],
-  "src/pages/admin/AdminHarnessConfig.tsx": [
-    "bg-red-950/30",
-    "bg-sky-600",
-    "hover:bg-sky-500"
-  ],
   "src/pages/admin/AdminSchedules.tsx": [
-    "bg-red-500/10",
     "bg-violet-600/80",
     "hover:bg-violet-500"
   ],
   "src/pages/admin/AdminTools.tsx": [
-    "bg-emerald-700",
-    "bg-sky-600",
-    "bg-violet-900/50",
-    "hover:bg-emerald-600",
-    "hover:bg-sky-500"
+    "bg-violet-900/50"
   ],
   "src/pages/admin/AdminUsers.tsx": [
-    "bg-sky-600",
     "bg-violet-600",
-    "hover:bg-sky-500",
     "hover:bg-violet-500"
-  ],
-  "src/pages/admin/interfaces/AdminInterfacesLlmSection.tsx": [
-    "bg-amber-500",
-    "bg-amber-500/10",
-    "bg-amber-500/15",
-    "bg-emerald-500/10",
-    "bg-emerald-500/25",
-    "bg-sky-500",
-    "bg-sky-500/10",
-    "hover:bg-amber-400",
-    "hover:bg-sky-400",
-    "hover:bg-sky-500/20"
-  ],
-  "src/pages/admin/interfaces/AdminInterfacesMemorySection.tsx": [
-    "bg-amber-500",
-    "bg-amber-500/10",
-    "bg-sky-500/10",
-    "hover:bg-amber-400",
-    "hover:bg-sky-500/20"
-  ],
-  "src/pages/admin/interfaces/AdminInterfacesPlatformSection.tsx": [
-    "bg-amber-500",
-    "bg-amber-500/10",
-    "hover:bg-amber-400"
-  ],
-  "src/pages/org/OrgContentCms.tsx": [
-    "bg-emerald-600",
-    "bg-sky-600",
-    "hover:bg-amber-500/10",
-    "hover:bg-emerald-500",
-    "hover:bg-sky-500",
-    "hover:bg-sky-500/10"
-  ],
-  "src/pages/org/OrgKnowledgePublishSection.tsx": [
-    "bg-sky-600",
-    "hover:bg-sky-500"
-  ],
-  "src/pages/org/OrgSetupPage.tsx": [
-    "bg-sky-600",
-    "hover:bg-sky-500"
-  ],
-  "src/pages/org/OrgTeamPage.tsx": [
-    "bg-sky-600",
-    "hover:bg-sky-500"
   ],
   "src/pages/settings/AgentSettings.tsx": [
-    "bg-sky-600",
     "bg-violet-600",
-    "hover:bg-sky-500",
     "hover:bg-violet-500"
   ],
-  "src/pages/settings/ConnectionsSettings.tsx": [
-    "bg-sky-600",
-    "hover:bg-sky-500"
-  ],
   "src/pages/settings/FriendsSettings.tsx": [
-    "bg-emerald-600",
     "bg-neutral-700",
-    "bg-sky-600",
-    "hover:bg-emerald-500",
-    "hover:bg-neutral-600",
-    "hover:bg-sky-500"
-  ],
-  "src/pages/settings/NotificationsSettings.tsx": [
-    "bg-emerald-950/20",
-    "bg-red-950/30",
-    "bg-sky-600",
-    "hover:bg-sky-500"
+    "hover:bg-neutral-600"
   ],
   "src/pages/settings/SharesSettings.tsx": [
-    "bg-emerald-700",
-    "bg-neutral-700",
-    "peer-checked:bg-emerald-600"
-  ],
-  "src/pages/settings/ToolsSettings.tsx": [
-    "bg-sky-500/5",
-    "bg-sky-600"
-  ],
-  "src/pages/settings/VoiceSettings.tsx": [
-    "bg-amber-950/30",
-    "bg-sky-600",
-    "hover:bg-sky-500"
+    "bg-neutral-700"
   ]
 }

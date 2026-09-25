@@ -9,14 +9,14 @@ export function OperatorSettingsStickySave() {
       <div className="mx-auto flex max-w-page flex-wrap items-center justify-between gap-soft">
         <div className="min-w-0 flex-1 text-xs text-ink-muted">
           {saveMsg ? (
-            <span className={saveMsg.ok ? "text-emerald-400" : "text-red-400"}>{saveMsg.text}</span>
+            <span className={saveMsg.ok ? "text-success" : "text-danger"}>{saveMsg.text}</span>
           ) : (
             <span>{t("admin:operatorSaveHint")}</span>
           )}
         </div>
         <button
           type="button"
-          className="shrink-0 rounded-tile bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500"
+          className="shrink-0 rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover"
           onClick={() => void save()}
         >
           {t("admin:save")}

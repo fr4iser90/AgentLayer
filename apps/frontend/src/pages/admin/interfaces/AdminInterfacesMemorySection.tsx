@@ -80,20 +80,20 @@ export function AdminInterfacesMemorySection() {
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifMemEmbedTitle")}</h2>
         <p className="mt-base text-xs text-ink-muted">{t("admin:ifMemEmbedIntro")}</p>
         {pendingEmbeddingEnvProviders.length > 0 ? (
-          <div className="mt-wide rounded-card border border-amber-400/25 bg-amber-500/10 p-wide">
+          <div className="mt-wide rounded-card border border-warning/25 bg-warning-subtle p-wide">
             <div className="flex flex-col gap-soft sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h3 className="text-sm font-medium text-amber-100">
+                <h3 className="text-sm font-medium text-badge-warning">
                   {t("admin:envProviderFoundTitle", { count: pendingEmbeddingEnvProviders.length })}
                 </h3>
-                <p className="mt-tight text-xs text-amber-100/75">
+                <p className="mt-tight text-xs text-badge-warning">
                   {t("admin:envProviderFoundIntro", { prefix: pendingEmbeddingEnvPrefix })}
                 </p>
               </div>
               <button
                 type="button"
                 disabled={s.envOperatorImporting === "embedding"}
-                className="rounded-tile bg-amber-500 px-soft py-snug text-sm font-medium text-black hover:bg-amber-400 disabled:opacity-50"
+                className="rounded-tile bg-warning px-soft py-snug text-sm font-medium text-black hover:bg-warning-hover disabled:opacity-50"
                 onClick={() => void s.importOperatorEnvProviders("embedding")}
               >
                 {s.envOperatorImporting === "embedding" ? t("admin:envLlmImporting") : t("admin:envLlmImportButton")}
@@ -102,7 +102,7 @@ export function AdminInterfacesMemorySection() {
             <div className="mt-soft space-y-base">
               {pendingEmbeddingEnvProviders.map((p) => (
                 <details key={p.provider_id} className="rounded-tile border border-line bg-black/25 p-soft">
-                  <summary className="cursor-pointer text-xs text-amber-100">
+                  <summary className="cursor-pointer text-xs text-badge-warning">
                     <span className="font-mono">{p.provider_id}</span> · {p.label}
                     {p.already_in_db ? ` · ${t("admin:envLlmAlreadyInDb")}` : ""}
                   </summary>
@@ -118,21 +118,21 @@ export function AdminInterfacesMemorySection() {
                   </p>
                   <ul className="mt-base grid gap-tight sm:grid-cols-2">
                     {p.cleanup_keys.map((key) => (
-                      <li key={key} className="font-mono text-meta text-amber-100/70">{key}</li>
+                      <li key={key} className="font-mono text-meta text-badge-warning">{key}</li>
                     ))}
                   </ul>
                 </details>
               ))}
             </div>
             {s.envOperatorCleanupNotes.embedding ? (
-              <p className="mt-soft text-xs text-amber-100/75">{s.envOperatorCleanupNotes.embedding}</p>
+              <p className="mt-soft text-xs text-badge-warning">{s.envOperatorCleanupNotes.embedding}</p>
             ) : null}
           </div>
         ) : null}
         <div className="mt-wide flex flex-wrap gap-base">
           <button
             type="button"
-            className="rounded-tile border border-sky-500/40 bg-sky-500/10 px-soft py-snug text-sm text-sky-200 hover:bg-sky-500/20 disabled:opacity-40"
+            className="rounded-tile border border-accent/40 bg-accent-subtle px-soft py-snug text-sm text-badge-accent hover:bg-accent-subtle disabled:opacity-40"
             disabled={s.embeddingModelsLoading}
             onClick={() => void s.refreshEmbeddingCatalog()}
           >
@@ -142,7 +142,7 @@ export function AdminInterfacesMemorySection() {
         {s.ragEmbeddingStatusHint ? (
           <p
             className={`mt-base text-xs ${
-              embedModelsOk ? "text-emerald-400/90" : "text-amber-300/90"
+              embedModelsOk ? "text-success" : "text-badge-warning"
             }`}
           >
             {s.ragEmbeddingStatusHint}
@@ -159,7 +159,7 @@ export function AdminInterfacesMemorySection() {
               <div className="flex flex-wrap items-center justify-between gap-base">
                 <span className="text-xs font-medium text-ink-muted">{t("admin:ifMemEndpointN", { n: 1 })}</span>
                 {s.embeddingApiBaseSource === "env" ? (
-                  <span className="text-xs text-amber-300/90">{t("admin:ifMemBaseUrlFromEnv")}</span>
+                  <span className="text-xs text-badge-warning">{t("admin:ifMemBaseUrlFromEnv")}</span>
                 ) : s.embeddingApiBaseEffective ? (
                   <span className="font-mono text-xs text-ink-muted">{t("admin:ifMemActive")}</span>
                 ) : null}
@@ -225,7 +225,7 @@ export function AdminInterfacesMemorySection() {
               {t("admin:ifMemKeyLabel")}{" "}
               {s.embeddingApiKeyConfigured ? t("admin:ifMemKeyStored") : t("admin:ifMemKeyEmpty")}
               {s.embeddingApiKeySource === "env" ? (
-                <span className="text-amber-300/90"> {t("admin:ifMemFromEnv")}</span>
+                <span className="text-badge-warning"> {t("admin:ifMemFromEnv")}</span>
               ) : null}
             </p>
             <label className="mt-base block text-xs text-ink-muted" htmlFor="embedding-api-key">
@@ -307,27 +307,27 @@ export function AdminInterfacesMemorySection() {
             <div className="flex flex-wrap items-center justify-between gap-base">
               <span className="text-xs font-medium text-ink-muted">{t("admin:ifMemExtractorTitle")}</span>
               {s.extractorProviders.length > 0 ? (
-                <span className="font-mono text-xs text-emerald-300/90">{t("admin:ifMemConfigured")}</span>
+                <span className="font-mono text-xs text-badge-success">{t("admin:ifMemConfigured")}</span>
               ) : (
-                <span className="text-xs text-amber-300/90">{t("admin:ifMemNotConfigured")}</span>
+                <span className="text-xs text-badge-warning">{t("admin:ifMemNotConfigured")}</span>
               )}
             </div>
             <p className="mt-base text-xs text-ink-muted">{t("admin:ifMemExtractorIntro")}</p>
             {pendingExtractorEnvProviders.length > 0 ? (
-              <div className="mt-wide rounded-card border border-amber-400/25 bg-amber-500/10 p-wide">
+              <div className="mt-wide rounded-card border border-warning/25 bg-warning-subtle p-wide">
                 <div className="flex flex-col gap-soft sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <h3 className="text-sm font-medium text-amber-100">
+                    <h3 className="text-sm font-medium text-badge-warning">
                       {t("admin:envProviderFoundTitle", { count: pendingExtractorEnvProviders.length })}
                     </h3>
-                    <p className="mt-tight text-xs text-amber-100/75">
+                    <p className="mt-tight text-xs text-badge-warning">
                       {t("admin:envProviderFoundIntro", { prefix: pendingExtractorEnvPrefix })}
                     </p>
                   </div>
                   <button
                     type="button"
                     disabled={s.envOperatorImporting === "extractor"}
-                    className="rounded-tile bg-amber-500 px-soft py-snug text-sm font-medium text-black hover:bg-amber-400 disabled:opacity-50"
+                    className="rounded-tile bg-warning px-soft py-snug text-sm font-medium text-black hover:bg-warning-hover disabled:opacity-50"
                     onClick={() => void s.importOperatorEnvProviders("extractor")}
                   >
                     {s.envOperatorImporting === "extractor" ? t("admin:envLlmImporting") : t("admin:envLlmImportButton")}
@@ -336,7 +336,7 @@ export function AdminInterfacesMemorySection() {
                 <div className="mt-soft space-y-base">
                   {pendingExtractorEnvProviders.map((p) => (
                     <details key={p.provider_id} className="rounded-tile border border-line bg-black/25 p-soft">
-                      <summary className="cursor-pointer text-xs text-amber-100">
+                      <summary className="cursor-pointer text-xs text-badge-warning">
                         <span className="font-mono">{p.provider_id}</span> · {p.label}
                         {p.already_in_db ? ` · ${t("admin:envLlmAlreadyInDb")}` : ""}
                       </summary>
@@ -346,7 +346,7 @@ export function AdminInterfacesMemorySection() {
                       </p>
                       <ul className="mt-base grid gap-tight sm:grid-cols-2">
                         {p.cleanup_keys.map((key) => (
-                          <li key={key} className="font-mono text-meta text-amber-100/70">{key}</li>
+                          <li key={key} className="font-mono text-meta text-badge-warning">{key}</li>
                         ))}
                       </ul>
                     </details>
@@ -477,7 +477,7 @@ export function AdminInterfacesMemorySection() {
           </div>
         </div>
         {!s.embeddingApiBaseUrl.trim() && s.embeddingApiBaseSource !== "env" ? (
-          <p className="mt-wide text-xs text-amber-300/90">{t("admin:ifMemNoBaseUrl")}</p>
+          <p className="mt-wide text-xs text-badge-warning">{t("admin:ifMemNoBaseUrl")}</p>
         ) : null}
       </section>
 

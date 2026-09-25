@@ -478,7 +478,7 @@ export function SetupWizardPage() {
                     value={setupToken}
                     onChange={(ev) => setSetupToken(ev.target.value)}
                     required
-                    className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                    className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                   />
                 </label>
               ) : null}
@@ -527,14 +527,14 @@ export function SetupWizardPage() {
                 </label>
               </fieldset>
               {deploymentError ? (
-                <p className="text-sm text-red-400" role="alert">
+                <p className="text-sm text-danger" role="alert">
                   {deploymentError}
                 </p>
               ) : null}
               <button
                 type="submit"
                 disabled={deploymentPending}
-                className="rounded-card bg-sky-600 px-wide py-firm text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+                className="rounded-card bg-accent px-wide py-firm text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
               >
                 {deploymentPending ? t("setup:deploymentPending") : t("setup:continueBtn")}
               </button>
@@ -557,7 +557,7 @@ export function SetupWizardPage() {
                     value={setupToken}
                     onChange={(ev) => setSetupToken(ev.target.value)}
                     required
-                    className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                    className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                   />
                   <p className="text-xs text-ink-muted">
                     {setupStatus.setup_token_source === "env"
@@ -575,7 +575,7 @@ export function SetupWizardPage() {
                   value={email}
                   onChange={(ev) => setEmail(ev.target.value)}
                   required
-                  className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                 />
               </label>
               <label className="flex flex-col gap-snug text-sm">
@@ -588,7 +588,7 @@ export function SetupWizardPage() {
                   onChange={(ev) => setPassword(ev.target.value)}
                   required
                   minLength={8}
-                  className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                 />
               </label>
               <label className="flex flex-col gap-snug text-sm">
@@ -601,21 +601,21 @@ export function SetupWizardPage() {
                   onChange={(ev) => setPasswordConfirm(ev.target.value)}
                   required
                   minLength={8}
-                  className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                 />
               </label>
               <p className="text-xs text-ink-muted">
                 {t("setup:passwordHint")}
               </p>
               {adminError ? (
-                <p className="text-sm text-red-400" role="alert">
+                <p className="text-sm text-danger" role="alert">
                   {adminError}
                 </p>
               ) : null}
               <button
                 type="submit"
                 disabled={adminPending}
-                className="rounded-card bg-sky-600 px-wide py-firm text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+                className="rounded-card bg-accent px-wide py-firm text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
               >
                 {adminPending ? t("setup:adminPending") : t("setup:continueBtn")}
               </button>
@@ -632,7 +632,7 @@ export function SetupWizardPage() {
               <p className="mt-broad text-sm text-ink-muted">{t("setup:catalogLoading")}</p>
             ) : null}
             {catalogError ? (
-              <p className="mt-wide text-sm text-red-400" role="alert">
+              <p className="mt-wide text-sm text-danger" role="alert">
                 {catalogError}
               </p>
             ) : null}
@@ -651,7 +651,7 @@ export function SetupWizardPage() {
                           <span className="font-medium text-ink-primary">{p.label}</span>
                           <span
                             className={
-                              p.reachable ? "text-emerald-400" : "text-amber-400"
+                              p.reachable ? "text-success" : "text-warning"
                             }
                           >
                             {p.reachable ? t("setup:reachable") : t("setup:notReachable")}
@@ -667,7 +667,7 @@ export function SetupWizardPage() {
                             : ""}
                         </p>
                         {p.detail && !p.reachable ? (
-                          <p className="mt-tight text-xs text-amber-300/90">{p.detail}</p>
+                          <p className="mt-tight text-xs text-badge-warning">{p.detail}</p>
                         ) : null}
                       </li>
                     ))}
@@ -680,8 +680,8 @@ export function SetupWizardPage() {
                     <span
                       className={
                         catalog.embedding.configured && catalog.embedding.reachable
-                          ? "text-emerald-400"
-                          : "text-amber-400"
+                          ? "text-success"
+                          : "text-warning"
                       }
                     >
                       {!catalog.embedding.configured
@@ -695,7 +695,7 @@ export function SetupWizardPage() {
                     <p className="mt-base text-xs text-ink-muted">{catalog.embedding.status_line}</p>
                   ) : null}
                   {catalog.embedding.configured && catalog.embedding.detail && !catalog.embedding.reachable ? (
-                    <p className="mt-tight text-xs text-amber-300/90">{catalog.embedding.detail}</p>
+                    <p className="mt-tight text-xs text-badge-warning">{catalog.embedding.detail}</p>
                   ) : null}
                   {!catalog.embedding.configured &&
                   catalog.embedding.chat_embed_opt_in?.available ? (
@@ -709,7 +709,7 @@ export function SetupWizardPage() {
                         type="button"
                         disabled={chatEmbedPending || prefsPending}
                         onClick={() => void onEnableChatProviderEmbedding()}
-                        className="self-start rounded-card border border-sky-500/40 bg-sky-500/10 px-soft py-base text-sm text-sky-200 hover:bg-sky-500/20 disabled:opacity-50"
+                        className="self-start rounded-card border border-accent/40 bg-accent-subtle px-soft py-base text-sm text-badge-accent hover:bg-accent-subtle disabled:opacity-50"
                       >
                         {chatEmbedPending ? t("setup:chatEmbedPending") : t("setup:chatEmbedBtn")}
                       </button>
@@ -732,7 +732,7 @@ export function SetupWizardPage() {
                           setModelCoding(prov.chat_models[1] ?? prov.chat_models[0]);
                         }
                       }}
-                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                     >
                       <option value="">{t("setup:selectProvider")}</option>
                       {catalog.providers.map((p) => (
@@ -754,7 +754,7 @@ export function SetupWizardPage() {
                       value={modelAgent}
                       onChange={(ev) => setModelAgent(ev.target.value)}
                       disabled={!chatModels.length}
-                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
+                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
                     >
                       {chatModels.length === 0 ? (
                         <option value="">{t("setup:noChatModels")}</option>
@@ -774,7 +774,7 @@ export function SetupWizardPage() {
                       value={modelCoding}
                       onChange={(ev) => setModelCoding(ev.target.value)}
                       disabled={!chatModels.length}
-                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
+                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
                     >
                       {chatModels.map((m) => (
                         <option key={`c-${m}`} value={m}>
@@ -790,7 +790,7 @@ export function SetupWizardPage() {
                       value={modelDefault}
                       onChange={(ev) => setModelDefault(ev.target.value)}
                       disabled={!chatModels.length}
-                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
+                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
                     >
                       {chatModels.map((m) => (
                         <option key={`d-${m}`} value={m}>
@@ -810,7 +810,7 @@ export function SetupWizardPage() {
                         <select
                           value={ragEmbedding}
                           onChange={(ev) => setRagEmbedding(ev.target.value)}
-                          className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                          className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                         >
                           <option value="">{t("setup:optionalDash")}</option>
                           {embedOptions.map((m) => (
@@ -829,7 +829,7 @@ export function SetupWizardPage() {
                         {embedTestPending ? t("setup:embedTestPending") : t("setup:embedTestBtn")}
                       </button>
                       {embedTestOk ? (
-                        <p className="text-sm text-emerald-400" role="status">
+                        <p className="text-sm text-success" role="status">
                           {embedTestOk}
                         </p>
                       ) : null}
@@ -837,12 +837,12 @@ export function SetupWizardPage() {
                   ) : null}
 
                   {prefsError ? (
-                    <p className="text-sm text-red-400" role="alert">
+                    <p className="text-sm text-danger" role="alert">
                       {prefsError}
                     </p>
                   ) : null}
                   {prefsOk ? (
-                    <p className="text-sm text-emerald-400" role="status">
+                    <p className="text-sm text-success" role="status">
                       {prefsOk}
                     </p>
                   ) : null}
@@ -863,7 +863,7 @@ export function SetupWizardPage() {
                         !primaryProviderId ||
                         !selectedProvider?.reachable
                       }
-                      className="rounded-card bg-sky-600 px-wide py-firm text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+                      className="rounded-card bg-accent px-wide py-firm text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
                     >
                       {prefsPending ? t("setup:savePending") : t("setup:saveAndContinue")}
                     </button>
@@ -876,7 +876,7 @@ export function SetupWizardPage() {
               <button
                 type="button"
                 onClick={() => setShowManual((v) => !v)}
-                className="text-sm text-sky-400 hover:underline"
+                className="text-sm text-accent hover:underline"
               >
                 {showManual ? t("setup:showManualHide") : t("setup:showManualAdd")}
               </button>
@@ -887,7 +887,7 @@ export function SetupWizardPage() {
                     <select
                       value={preset}
                       onChange={(ev) => onPresetChange(ev.target.value as LlmPresetId)}
-                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                     >
                       {LLM_PRESETS.map((p) => (
                         <option key={p.id} value={p.id}>
@@ -908,7 +908,7 @@ export function SetupWizardPage() {
                         setLlmTestOk(null);
                       }}
                       required
-                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                     />
                   </label>
                   <label className="flex flex-col gap-snug text-sm">
@@ -925,7 +925,7 @@ export function SetupWizardPage() {
                       }}
                       autoComplete="off"
                       required={presetConfig.apiKeyRequired}
-                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                     />
                     <p className="text-xs text-ink-muted">{t(`setup:${presetConfig.apiKeyHintKey}`)}</p>
                   </label>
@@ -936,16 +936,16 @@ export function SetupWizardPage() {
                       value={modelDefaultManual}
                       onChange={(ev) => setModelDefaultManual(ev.target.value)}
                       placeholder={t(`setup:${presetConfig.modelPlaceholderKey}`)}
-                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                     />
                   </label>
                   {llmError ? (
-                    <p className="text-sm text-red-400" role="alert">
+                    <p className="text-sm text-danger" role="alert">
                       {llmError}
                     </p>
                   ) : null}
                   {llmTestOk ? (
-                    <p className="text-sm text-emerald-400" role="status">
+                    <p className="text-sm text-success" role="status">
                       {llmTestOk}
                     </p>
                   ) : null}
@@ -988,7 +988,7 @@ export function SetupWizardPage() {
             <div className="mt-deep flex flex-col gap-soft">
               <Link
                 to="/chat"
-                className="rounded-card bg-sky-600 px-wide py-firm text-center text-sm font-medium text-ink-on-fill hover:bg-sky-500"
+                className="rounded-card bg-accent px-wide py-firm text-center text-sm font-medium text-ink-on-fill hover:bg-accent-hover"
               >
                 {t("setup:goToChat")}
               </Link>
@@ -1003,7 +1003,7 @@ export function SetupWizardPage() {
         ) : null}
 
         <p className="mt-page text-center text-sm text-ink-muted">
-          <Link to="/login" className="text-sky-400 hover:underline">
+          <Link to="/login" className="text-accent hover:underline">
             {t("setup:backToLogin")}
           </Link>
         </p>

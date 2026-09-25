@@ -492,7 +492,7 @@ export function AdminTools() {
               {sec?.length ? (
                 <div>
                   <span className="text-ink-muted">{t("admin:toolsColSecrets")}</span>{" "}
-                  <span className="text-amber-200/90">{sec.join(", ")}</span>
+                  <span className="text-badge-warning">{sec.join(", ")}</span>
                 </div>
               ) : null}
               {p.families?.length ? (
@@ -617,7 +617,7 @@ export function AdminTools() {
             <button
               type="button"
               disabled={importBusy || (!importMarkdown.trim() && !(importFiles?.length))}
-              className="mt-wide rounded-tile bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+              className="mt-wide rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
               onClick={() => void analyzeImport()}
             >
               {importBusy ? t("admin:toolsImportAnalyzing") : t("admin:toolsImportAnalyze")}
@@ -674,7 +674,7 @@ export function AdminTools() {
         <button
           type="button"
           disabled={busy}
-          className="rounded-tile bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+          className="rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
           onClick={() => void loadAdmin()}
         >
           {t("admin:toolsRegistryRefresh")}
@@ -690,7 +690,7 @@ export function AdminTools() {
         <button
           type="button"
           disabled={busy || loading}
-          className="rounded-tile bg-emerald-700 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-emerald-600 disabled:opacity-50"
+          className="rounded-tile bg-success px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-success-hover disabled:opacity-50"
           onClick={() => void savePolicies()}
         >
           {t("admin:toolsRegistrySavePolicy")}
@@ -730,7 +730,7 @@ export function AdminTools() {
                     {blocks.map((block) => (
                       <div key={block.domain || "_"}>
                         {subdiv ? (
-                          <h3 className="mb-base border-l-2 border-sky-600/60 pl-base text-meta font-semibold uppercase tracking-wide text-sky-200/90">
+                          <h3 className="mb-base border-l-2 border-accent/60 pl-base text-meta font-semibold uppercase tracking-wide text-badge-accent">
                             {t("admin:toolsDomainHeader", {
                               domain: block.domain,
                               count: block.items.length,

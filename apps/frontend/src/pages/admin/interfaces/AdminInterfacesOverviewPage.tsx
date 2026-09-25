@@ -23,7 +23,7 @@ function StatusCard({
       <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">{title}</p>
       <p className="mt-base text-sm font-medium text-ink-primary">{status}</p>
       {detail ? <p className="mt-tight text-xs text-ink-muted">{detail}</p> : null}
-      <p className="mt-soft text-xs text-sky-400/90">{t("admin:configureCta")}</p>
+      <p className="mt-soft text-xs text-accent">{t("admin:configureCta")}</p>
     </Link>
   );
 }
@@ -50,7 +50,7 @@ export function AdminInterfacesOverviewPage() {
         <>
           {t("admin:interfacesOverviewDescriptionPrefix")}{" "}
           <span className="font-mono text-ink-secondary">{s.baseUrl}</span> — Bearer JWT or user API key.{" "}
-          <a href="/auth/policy" className="text-sky-400 hover:underline">
+          <a href="/auth/policy" className="text-accent hover:underline">
             {t("admin:authPolicyEndpoint")}
           </a>
         </>
@@ -123,11 +123,11 @@ export function AdminInterfacesOverviewPage() {
       </div>
       <p className="mt-broad text-xs text-ink-muted">
         {t("admin:persistedUserSchedules")}{" "}
-        <Link to="/admin/schedules" className="text-sky-400 hover:underline">
+        <Link to="/admin/schedules" className="text-accent hover:underline">
           {t("admin:adminToSchedules")}
         </Link>
         . {t("admin:pluginCronRegistry")}{" "}
-        <Link to="/admin/scheduled-jobs" className="text-sky-400 hover:underline">
+        <Link to="/admin/scheduled-jobs" className="text-accent hover:underline">
           {t("admin:adminToPluginCron")}
         </Link>
         .

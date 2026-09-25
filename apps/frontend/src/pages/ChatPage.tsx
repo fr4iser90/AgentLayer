@@ -844,7 +844,7 @@ export function ChatPage() {
       <Tooltip label={t("workspace:editMcpServersWorkspaceOnlyTitle")}>
       <button
           type="button"
-          className="ml-hair inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-tile border border-line-strong px-tight text-meta font-medium text-sky-300/95 hover:bg-white/10"
+          className="ml-hair inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-tile border border-line-strong px-tight text-meta font-medium text-badge-accent hover:bg-white/10"
           onClick={() => setShowWorkspaceMcpModal(true)}
         >
           +
@@ -3301,7 +3301,7 @@ export function ChatPage() {
             </p>
             <p className="mb-base px-base text-meta leading-snug text-ink-muted/80">
               {t("chat:sidebarHint")}{" "}
-              <span className="text-amber-200/90">{t("chat:sharedBadge")}</span>
+              <span className="text-badge-warning">{t("chat:sharedBadge")}</span>
             </p>
             <div className="flex flex-col gap-soft">
               {sidebarGroups.map((g) => (
@@ -3457,8 +3457,8 @@ export function ChatPage() {
             </p>
           ) : null}
           {composerHeaderCollapsed && workspaceScopeHint && selectedWorkspaceId ? (
-            <div className="mt-base flex flex-wrap items-center gap-base rounded-card border border-amber-600/40 bg-amber-950/30 px-soft py-base">
-              <p className="min-w-0 flex-1 text-meta leading-snug text-amber-100/95">{workspaceScopeHint}</p>
+            <div className="mt-base flex flex-wrap items-center gap-base rounded-card border border-warning/40 bg-warning-subtle px-soft py-base">
+              <p className="min-w-0 flex-1 text-meta leading-snug text-badge-warning">{workspaceScopeHint}</p>
               <button
                 type="button"
                 className="shrink-0 text-meta text-ink-muted hover:text-neutral-200"
@@ -3522,7 +3522,7 @@ export function ChatPage() {
                           className={[
                             "shrink-0 rounded-card border px-firm py-snug text-meta font-medium",
                             projectPanelOpen
-                              ? "border-sky-500/60 bg-sky-950/50 text-sky-100"
+                              ? "border-accent/60 bg-accent-subtle text-badge-accent"
                               : "border-line bg-black/30 text-ink-secondary hover:bg-white/10",
                           ].join(" ")}
                           disabled={!selectedWorkspaceId}
@@ -3573,8 +3573,8 @@ export function ChatPage() {
                 </div>
               ) : null}
               {workspaceScopeHint && selectedWorkspaceId ? (
-                <div className="flex flex-wrap items-center gap-base rounded-card border border-amber-600/40 bg-amber-950/30 px-soft py-base">
-                  <p className="min-w-0 flex-1 text-meta leading-snug text-amber-100/95">{workspaceScopeHint}</p>
+                <div className="flex flex-wrap items-center gap-base rounded-card border border-warning/40 bg-warning-subtle px-soft py-base">
+                  <p className="min-w-0 flex-1 text-meta leading-snug text-badge-warning">{workspaceScopeHint}</p>
                   <button
                     type="button"
                     className="shrink-0 text-meta text-ink-muted hover:text-neutral-200"
@@ -3645,7 +3645,7 @@ export function ChatPage() {
                           }`
                         : "/tasks"
                     }
-                    className="text-meta text-sky-400/90 hover:text-sky-300 hover:underline"
+                    className="text-meta text-accent hover:text-badge-accent hover:underline"
                   >
                     {t("chat:tasksLink")}
                     {activeTaskId ? t("chat:tasksBoundHint") : ""}
@@ -3704,7 +3704,7 @@ export function ChatPage() {
                 <label className="flex cursor-pointer items-center gap-base text-meta font-medium uppercase tracking-wide text-ink-muted">
                   <input
                     type="checkbox"
-                    className="rounded-tile border-line bg-field text-sky-500"
+                    className="rounded-tile border-line bg-field text-accent"
                     checked={agentStreamLlmUi}
                     disabled={mode === "chat"}
                     onChange={(e) => {
@@ -3749,7 +3749,7 @@ export function ChatPage() {
                   }
                 />
                 {modelsCatalogReady && modelsCatalogHint ? (
-                  <p className="mt-tight text-xs text-amber-300/90">{modelsCatalogHint}</p>
+                  <p className="mt-tight text-xs text-badge-warning">{modelsCatalogHint}</p>
                 ) : null}
               </div>
             </div>
@@ -3758,11 +3758,11 @@ export function ChatPage() {
         </div>
 
         {dashboardChatId ? (
-          <div className="shrink-0 border-b border-sky-900/40 bg-sky-950/25 px-broad py-base text-sm text-sky-100/90">
-            <span className="font-medium text-sky-200">{t("chat:dashboardContextLabel")}</span>
+          <div className="shrink-0 border-b border-accent/40 bg-accent-subtle px-broad py-base text-sm text-badge-accent">
+            <span className="font-medium text-badge-accent">{t("chat:dashboardContextLabel")}</span>
             {": "}
             {dashboardChatTitle ?? dashboardChatId}
-            <span className="ml-base text-xs text-sky-300/80">
+            <span className="ml-base text-xs text-badge-accent">
               {t("chat:dashboardContextHint")}
             </span>
           </div>
@@ -3770,10 +3770,10 @@ export function ChatPage() {
 
         {activeThread?.dashboardId && activeThread.shared ? (
           <div
-            className="shrink-0 border-b border-amber-900/45 bg-amber-950/40 px-broad py-firm text-sm text-amber-50/95"
+            className="shrink-0 border-b border-warning/45 bg-warning-subtle px-broad py-firm text-sm text-badge-warning"
             role="status"
           >
-            <span className="font-medium text-amber-200">{t("chat:sharedBannerTitle")}</span>
+            <span className="font-medium text-badge-warning">{t("chat:sharedBannerTitle")}</span>
             {" — "}
             {t("chat:sharedBannerBody")}
           </div>
@@ -3781,17 +3781,17 @@ export function ChatPage() {
 
         {activeThread?.dashboardId && activeThread.shared !== true ? (
           <div
-            className="shrink-0 border-b border-emerald-900/35 bg-emerald-950/25 px-broad py-base text-sm text-emerald-100/90"
+            className="shrink-0 border-b border-success/35 bg-success-subtle px-broad py-base text-sm text-badge-success"
             role="status"
           >
-            <span className="font-medium text-emerald-200">{t("chat:personalBannerTitle")}</span>
+            <span className="font-medium text-badge-success">{t("chat:personalBannerTitle")}</span>
             {" — "}
             {t("chat:personalBannerBody")}
           </div>
         ) : null}
 
         {error ? (
-          <div className="shrink-0 border-b border-red-900/50 bg-red-950/40 px-broad py-base text-sm text-red-300">
+          <div className="shrink-0 border-b border-danger/50 bg-danger-subtle px-broad py-base text-sm text-badge-danger">
             {error}
           </div>
         ) : null}
@@ -3956,9 +3956,9 @@ export function ChatPage() {
                   chatMessageHasVisibleContent(displayMessages[displayMessages.length - 1]!)
                 ) ? (
                   <li className="flex w-full justify-end">
-                    <div className="max-w-measure rounded-sheet border border-sky-900/50 bg-sky-950/25 px-wide py-soft text-sm text-sky-100/90 shadow-sm">
-                      <span className="mb-tight flex items-center gap-base text-meta font-medium uppercase tracking-wide text-sky-300/80">
-                        <span className="inline-flex h-2 w-2 animate-pulse rounded-pill bg-sky-400" />
+                    <div className="max-w-measure rounded-sheet border border-accent/50 bg-accent-subtle px-wide py-soft text-sm text-badge-accent shadow-sm">
+                      <span className="mb-tight flex items-center gap-base text-meta font-medium uppercase tracking-wide text-badge-accent">
+                        <span className="inline-flex h-2 w-2 animate-pulse rounded-pill bg-accent" />
                         {t("chat:roleAssistant")}
                       </span>
                       <p className="text-ink-secondary">{t("chat:generatingReply")}</p>
@@ -4010,11 +4010,11 @@ export function ChatPage() {
               </div>
             ) : null}
             {stepPaused ? (
-              <div className="mb-soft flex items-center justify-between gap-soft rounded-card border border-sky-500/40 bg-sky-500/10 px-wide py-firm text-sm text-ink-primary">
+              <div className="mb-soft flex items-center justify-between gap-soft rounded-card border border-accent/40 bg-accent-subtle px-wide py-firm text-sm text-ink-primary">
                 <span className="text-ink-muted">{t("chat:pausedStepModeHint")}</span>
                 <button
                   type="button"
-                  className="shrink-0 rounded-tile bg-sky-500/90 px-soft py-snug text-xs font-medium text-black"
+                  className="shrink-0 rounded-tile bg-accent px-soft py-snug text-xs font-medium text-black"
                   onClick={handleContinueStep}
                 >
                   {t("chat:continueStep")}
@@ -4095,7 +4095,7 @@ export function ChatPage() {
               aria-label={t("chat:composerAria")}
               className={`relative rounded-sheet border bg-[#141414] p-soft shadow-xl transition-colors ${
                 composerDragActive
-                  ? "border-sky-500/70 ring-2 ring-sky-500/25"
+                  ? "border-accent/70 ring-2 ring-accent/25"
                   : "border-line"
               }`}
               onDragEnter={(e) => {
@@ -4120,10 +4120,10 @@ export function ChatPage() {
             >
               {composerDragActive ? (
                 <div
-                  className="pointer-events-none absolute inset-0 z-lift flex items-center justify-center rounded-sheet bg-sky-950/50 backdrop-blur-[1px]"
+                  className="pointer-events-none absolute inset-0 z-lift flex items-center justify-center rounded-sheet bg-accent-subtle backdrop-blur-[1px]"
                   aria-hidden
                 >
-                  <p className="rounded-card border border-sky-500/40 bg-black/50 px-wide py-base text-sm font-medium text-sky-100">
+                  <p className="rounded-card border border-accent/40 bg-black/50 px-wide py-base text-sm font-medium text-badge-accent">
                     {t("chat:dropFilesToAttach")}
                   </p>
                 </div>
@@ -4137,7 +4137,7 @@ export function ChatPage() {
                 >
                   <div className="flex items-center gap-soft rounded-card border border-line bg-black/70 px-wide py-firm text-sm text-ink-primary">
                     <svg
-                      className="h-4 w-4 shrink-0 animate-spin text-sky-400"
+                      className="h-4 w-4 shrink-0 animate-spin text-accent"
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
@@ -4188,7 +4188,7 @@ export function ChatPage() {
                         <Tooltip label={t("chat:composerQueueSendNow")}>
                         <button
                             type="button"
-                            className="shrink-0 rounded-tile px-snug text-meta font-medium uppercase tracking-wide text-sky-300/90 hover:bg-sky-500/15 hover:text-sky-100"
+                            className="shrink-0 rounded-tile px-snug text-meta font-medium uppercase tracking-wide text-badge-accent hover:bg-accent-subtle hover:text-badge-accent"
                             aria-label={t("chat:composerQueueSendNow")}
                             onClick={() => onForceSendQueuedItem(item.id)}
                           >
@@ -4329,7 +4329,7 @@ export function ChatPage() {
                       <Tooltip label={t("chat:composerForceSendTitle", { modEnter: composerModEnter })}>
                       <button
                           type="button"
-                          className="inline-flex items-center rounded-card bg-sky-600 px-soft py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500"
+                          className="inline-flex items-center rounded-card bg-accent px-soft py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover"
                           onClick={() => onForceSend()}
                         >
                           {t("chat:composerForceSend")}
@@ -4339,7 +4339,7 @@ export function ChatPage() {
                     ) : null}
                     <button
                       type="button"
-                      className="rounded-card border border-amber-500/60 bg-amber-950/50 px-wide py-base text-sm font-medium text-amber-100 hover:bg-amber-900/40"
+                      className="rounded-card border border-warning/60 bg-warning-subtle px-wide py-base text-sm font-medium text-badge-warning hover:bg-warning-subtle"
                       onClick={() => onCancelInFlight()}
                     >
                       {t("admin:cancel")}
@@ -4350,7 +4350,7 @@ export function ChatPage() {
                   <button
                       type="button"
                       disabled={!canSend || voiceTranscribing}
-                      className="inline-flex items-center rounded-card bg-sky-600 px-soft py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-40"
+                      className="inline-flex items-center rounded-card bg-accent px-soft py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-40"
                       onClick={() => onSend()}
                     >
                       {t("chat:composerSend")}

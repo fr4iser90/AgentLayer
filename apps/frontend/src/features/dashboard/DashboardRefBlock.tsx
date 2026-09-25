@@ -82,9 +82,9 @@ export function DashboardRefBlockBody(props: {
   if (err) {
     return (
       <div className="space-y-base text-sm">
-        <p className="text-amber-300">{err}</p>
+        <p className="text-badge-warning">{err}</p>
         {publicShareToken ? null : (
-          <button type="button" className="text-sky-400 hover:underline" onClick={() => void load()}>
+          <button type="button" className="text-accent hover:underline" onClick={() => void load()}>
             {t("dashboard:refRetry")}
           </button>
         )}

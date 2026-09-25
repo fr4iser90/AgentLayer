@@ -122,7 +122,7 @@ export function EmbedBlockBody(props: {
             </div>
           </div>
           {st.url && !allowed ? (
-            <p className="rounded-card border border-amber-500/40 bg-amber-950/30 px-base py-snug text-xs text-amber-200">
+            <p className="rounded-card border border-warning/40 bg-warning-subtle px-base py-snug text-xs text-badge-warning">
               {t("dashboard:embedUrlNotAllowed")}{" "}
               {EMBED_ALLOWED_HOSTNAMES.slice(0, 4).join(", ")} …
             </p>
@@ -147,7 +147,7 @@ export function EmbedBlockBody(props: {
           />
         </div>
       ) : st.url && readOnly ? (
-        <p className="rounded-card border border-red-500/30 bg-red-950/20 px-soft py-wide text-sm text-red-200">
+        <p className="rounded-card border border-danger/30 bg-danger-subtle px-soft py-wide text-sm text-badge-danger">
           {t("dashboard:embedUnavailableReadOnly")}
         </p>
       ) : !st.url ? (

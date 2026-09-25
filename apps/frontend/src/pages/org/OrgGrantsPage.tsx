@@ -162,7 +162,7 @@ export function OrgGrantsPage() {
         </button>
       </div>
 
-      {message ? <p className="mt-wide text-sm text-emerald-300">{message}</p> : null}
+      {message ? <p className="mt-wide text-sm text-badge-success">{message}</p> : null}
       {error ? <p className="mt-wide text-sm text-danger">{error}</p> : null}
 
       {loading ? (
@@ -220,7 +220,7 @@ export function OrgGrantsPage() {
                   ) : row.error ? (
                     <span className="text-danger">{row.error}</span>
                   ) : row.visibility !== "tenant" ? (
-                    <span className="text-amber-300">{t("org:grantsInertWhilePrivate")}</span>
+                    <span className="text-badge-warning">{t("org:grantsInertWhilePrivate")}</span>
                   ) : (
                     <span className="text-ink-muted">{t("org:grantsUpToDate")}</span>
                   )}
@@ -232,7 +232,7 @@ export function OrgGrantsPage() {
       ) : null}
 
       {!loading && privateCount > 0 ? (
-        <p className="mt-wide text-xs text-amber-300/90">{t("org:grantsPrivateWarning")}</p>
+        <p className="mt-wide text-xs text-badge-warning">{t("org:grantsPrivateWarning")}</p>
       ) : null}
     </div>
   );

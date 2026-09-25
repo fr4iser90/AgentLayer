@@ -142,13 +142,13 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
   }
 
   return (
-    <section className="rounded-sheet border border-amber-500/20 bg-amber-950/10 p-wide">
+    <section className="rounded-sheet border border-warning/20 bg-warning-subtle p-wide">
       <div className="flex flex-wrap items-start justify-between gap-base">
         <div>
-          <h3 className="text-xs font-medium uppercase text-amber-200/90">
+          <h3 className="text-xs font-medium uppercase text-badge-warning">
             {t("admin:benchRunOverridesTitle")}
             {overrides.length > 0 ? (
-              <span className="ml-base rounded-tile bg-amber-600/40 px-snug py-hair text-meta text-amber-100">
+              <span className="ml-base rounded-tile bg-warning-subtle px-snug py-hair text-meta text-badge-warning">
                 {overrides.length}
               </span>
             ) : null}
@@ -159,14 +159,14 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
         </div>
         <Link
           to="/admin/agent-config"
-          className="shrink-0 text-meta text-sky-400 hover:underline"
+          className="shrink-0 text-meta text-accent hover:underline"
         >
           {t("admin:benchHarnessContextEdit")} →
         </Link>
       </div>
 
       {error ? (
-        <p className="mt-base rounded-tile border border-red-500/40 bg-red-500/10 px-base py-tight text-xs text-red-200">
+        <p className="mt-base rounded-tile border border-danger/40 bg-danger-subtle px-base py-tight text-xs text-badge-danger">
           {error}
         </p>
       ) : null}
@@ -193,12 +193,12 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
                     >
                       <span className="font-mono text-xs">{k.id}</span>
                       {overridden ? (
-                        <span className="ml-base text-meta uppercase text-amber-400/90">
+                        <span className="ml-base text-meta uppercase text-warning">
                           {t("admin:benchRunOverrideActive")}
                         </span>
                       ) : null}
                       <span
-                        className={`ml-base text-xs ${overridden ? "text-amber-200/90" : "opacity-70"}`}
+                        className={`ml-base text-xs ${overridden ? "text-badge-warning" : "opacity-70"}`}
                       >
                         {formatKnobValue(k, ov)}
                       </span>
@@ -227,9 +227,9 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
                 </div>
 
                 {hasOverride ? (
-                  <div className="rounded-tile border border-amber-500/30 bg-amber-950/30 p-base text-xs">
-                    <p className="font-medium text-amber-100/90">{t("admin:benchRunOverrideForRun")}</p>
-                    <p className="mt-tight font-mono text-amber-200">{formatKnobValue(selected, selectedOverride)}</p>
+                  <div className="rounded-tile border border-warning/30 bg-warning-subtle p-base text-xs">
+                    <p className="font-medium text-badge-warning">{t("admin:benchRunOverrideForRun")}</p>
+                    <p className="mt-tight font-mono text-badge-warning">{formatKnobValue(selected, selectedOverride)}</p>
                   </div>
                 ) : null}
 
@@ -250,7 +250,7 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
                   <button
                     type="button"
                     onClick={() => setOverrideForKnob(selected)}
-                    className="rounded-tile bg-amber-700 px-soft py-base text-sm text-ink-on-fill hover:bg-amber-600"
+                    className="rounded-tile bg-warning px-soft py-base text-sm text-ink-on-fill hover:bg-warning-hover"
                   >
                     {t("admin:benchRunOverrideSetBtn")}
                   </button>

@@ -98,7 +98,7 @@ function AddBlockToolbar(props: {
         <button
           key={definition.type}
           type="button"
-          className="dashboard-grid-no-drag rounded-card bg-sky-600 px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-sky-500"
+          className="dashboard-grid-no-drag rounded-card bg-accent px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-accent-hover"
           onClick={() => onAdd(definition.type)}
         >
           {t(definition.addLabelKey as "dashboard:addList")}
@@ -325,7 +325,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                 className={[
                   "relative overflow-hidden rounded-sheet border bg-card shadow-sm transition-colors",
                   isSelected && editMode
-                    ? "border-sky-500/60 ring-1 ring-sky-500/30"
+                    ? "border-accent/60 ring-1 ring-accent/30"
                     : isHighlighted
                       ? "border-orange-500/50 ring-2 ring-orange-500/40"
                       : hasUnread
@@ -349,7 +349,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                           <Tooltip label={t("dashboard:blockExpand")}>
                           <button
                               type="button"
-                              className="dashboard-grid-no-drag rounded-tile px-base py-hair text-xs text-sky-200 hover:bg-sky-950/50"
+                              className="dashboard-grid-no-drag rounded-tile px-base py-hair text-xs text-badge-accent hover:bg-accent-subtle"
                               aria-label={t("dashboard:blockExpand")}
                               onClick={() => {
                                 acknowledgeBlock(b.id);
@@ -367,8 +367,8 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                               className={[
                                 "dashboard-grid-no-drag rounded-tile px-base py-hair text-xs",
                                 chatFocusedBlockId === b.id
-                                  ? "bg-emerald-900/60 text-emerald-100"
-                                  : "text-emerald-200 hover:bg-emerald-950/50",
+                                  ? "bg-success-subtle text-badge-success"
+                                  : "text-badge-success hover:bg-success-subtle",
                               ].join(" ")}
                               onClick={() => onPinBlockToChat(b.id)}
                             >
@@ -382,7 +382,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                           <Tooltip label={t("dashboard:blockSettingsTitle")}>
                           <button
                               type="button"
-                              className="dashboard-grid-no-drag rounded-tile px-base py-hair text-xs text-amber-200 hover:bg-amber-950/50"
+                              className="dashboard-grid-no-drag rounded-tile px-base py-hair text-xs text-badge-warning hover:bg-warning-subtle"
                               aria-label={t("dashboard:blockSettingsTitle")}
                               onClick={() => setSettingsBlockId(b.id)}
                             >

@@ -67,7 +67,7 @@ export function MessageFeedbackButtons({
         className={[
           "rounded-tile px-snug py-hair text-sm transition-colors",
           rating === "up"
-            ? "bg-emerald-900/50 text-emerald-300"
+            ? "bg-success-subtle text-badge-success"
             : "text-ink-muted hover:bg-white/5 hover:text-neutral-300",
         ].join(" ")}
         onClick={() => void submit("up")}
@@ -82,7 +82,7 @@ export function MessageFeedbackButtons({
         className={[
           "rounded-tile px-snug py-hair text-sm transition-colors",
           rating === "down"
-            ? "bg-red-900/40 text-red-300"
+            ? "bg-danger-subtle text-badge-danger"
             : "text-ink-muted hover:bg-white/5 hover:text-neutral-300",
         ].join(" ")}
         onClick={() => void submit("down")}

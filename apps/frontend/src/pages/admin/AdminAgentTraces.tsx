@@ -74,7 +74,7 @@ export function AdminAgentTraces() {
           {t("admin:agentTracesRefresh")}
         </button>
       </div>
-      {error ? <p className="text-sm text-red-400">{error}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
       <div className="flex min-h-0 flex-1 gap-wide overflow-hidden">
         <div className="flex w-72 shrink-0 flex-col overflow-hidden rounded-sheet border border-line bg-card">
           <div className="border-b border-line-subtle px-soft py-base text-xs font-medium uppercase tracking-wide text-ink-muted">
@@ -137,8 +137,8 @@ export function AdminAgentTraces() {
                       key={String(inv.id)}
                       className="rounded-card border border-line-subtle bg-white/[0.02] px-soft py-base"
                     >
-                      <span className="font-medium text-sky-300">{String(inv.tool_name)}</span>
-                      <span className={inv.ok ? " text-emerald-400" : " text-red-400"}>
+                      <span className="font-medium text-badge-accent">{String(inv.tool_name)}</span>
+                      <span className={inv.ok ? " text-success" : " text-danger"}>
                         {inv.ok ? ` ${t("admin:agentTracesOk")}` : ` ${t("admin:agentTracesErr")}`}
                       </span>
                       <pre className="mt-tight max-h-24 overflow-auto text-meta text-ink-muted">

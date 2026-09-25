@@ -125,12 +125,12 @@ export function ShareWidgetBlockBody(props: { block: UiBlock }) {
         {preview?.projection_stale ? ` · ${t("dashboard:shareWidgetStale")}` : ""}
       </p>
       {err ? (
-        <p className="mt-soft text-sm text-amber-300">{err}</p>
+        <p className="mt-soft text-sm text-badge-warning">{err}</p>
       ) : (
         <pre className="mt-soft whitespace-pre-wrap text-sm text-ink-primary font-sans">{summary}</pre>
       )}
       {publicShareToken ? null : (
-        <button type="button" className="mt-base text-xs text-sky-400 hover:underline" onClick={() => void load()}>
+        <button type="button" className="mt-base text-xs text-accent hover:underline" onClick={() => void load()}>
           {t("dashboard:shareWidgetRefresh")}
         </button>
       )}
