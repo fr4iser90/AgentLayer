@@ -119,16 +119,16 @@ export default {
       // the embedded dashboard chat, the model picker above the chat input.
       docked: "30",
 
-      // App chrome that covers the page and stays under anything floating:
-      // the collapsible sidebar's mobile scrim.
-      chrome: "40",
-
       // Anchored popovers over the page: user menu, notification bell, nav
       // dropdown, model catalog select.
       menu: "50",
 
-      // A sheet with its own scrim — the settings and detail drawers, anchored
-      // right or bottom rather than centred.
+      // A sheet with its own scrim — the settings and detail drawers and the
+      // two navigation drawers that replace a desktop column on a phone, all
+      // anchored to an edge rather than centred. (`chrome` was here, at 40, for
+      // the collapsible sidebar's hand-rolled overlay; when that became a
+      // Drawer the level lost its only referent, and a level nobody can point
+      // at is the start of a second numbering system.)
       overlay: "80",
 
       // Dialog and lightbox: top of the app, containing everything inside it.

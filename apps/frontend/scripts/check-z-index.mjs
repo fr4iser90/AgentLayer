@@ -168,7 +168,7 @@ async function main() {
       if (issues.length > 8) console.error(`    … +${issues.length - 8} mehr`);
     }
     console.error(
-      "\n[z-index] Ebene wählen, nicht Zahl: z-lift · z-canvas · z-docked · z-chrome · z-menu · z-overlay · z-modal · z-tooltip"
+      "\n[z-index] Ebene wählen, nicht Zahl: z-lift · z-canvas · z-docked · z-menu · z-overlay · z-modal · z-tooltip"
     );
     console.error(
       "[z-index] Braucht die Stelle wirklich eine neue Ebene? Token in tailwind.config.js ergänzen — nicht hier ausnehmen."

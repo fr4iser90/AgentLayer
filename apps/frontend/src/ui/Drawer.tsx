@@ -9,6 +9,12 @@
  *
  * Escape and scrim tap close it; a leftward swipe closes the right-anchored
  * variant, because that is the gesture a phone user already tries.
+ *
+ * The collapsible sidebar's mobile drawer was the last overlay outside this
+ * file: it hand-rolled a scrim button and a peek-width panel and had none of
+ * the above — no dialog role, no Escape, no focus trap — while surviving a
+ * resize to desktop as a sheet over the column that had just reappeared. It is
+ * a `mobileOnly` `Drawer` now, which is what `mobileOnly` and `flush` exist for.
  */
 import { useCallback, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -17,10 +23,24 @@ import { useFocusTrap } from "./useFocusTrap";
 
 export type DrawerSide = "right" | "left" | "bottom";
 export type DrawerWidth = "drawer" | "drawerWide";
+export type DrawerSurface = "card" | "panel";
 
 const WIDTHS: Record<DrawerWidth, string> = {
   drawer: "md:max-w-drawer",
   drawerWide: "md:max-w-drawerWide",
+};
+
+// A drawer that floats content over the page paints a content container. A
+// drawer that stands in for chrome — the app rail, a page sidebar — paints the
+// surface of the region it replaces, so the same list does not change colour
+// when the breakpoint does. The primitive picks the class rather than letting
+// `className` override it: two `bg-*` utilities have the same specificity, and
+// Tailwind decides that by stylesheet order, not by the order they are written
+// on the element — an override that happens to win today loses next time the
+// palette is rebuilt.
+const SURFACES: Record<DrawerSurface, string> = {
+  card: "bg-card",
+  panel: "bg-panel",
 };
 
 const ANCHOR: Record<DrawerSide, string> = {
@@ -37,6 +57,22 @@ export interface DrawerProps {
   title: string;
   side?: DrawerSide;
   width?: DrawerWidth;
+  surface?: DrawerSurface;
+  /**
+   * Hide the sheet from `md` up. For a drawer that REPLACES a desktop region
+   * instead of adding a sheet over it: without it, resizing to desktop while
+   * the sheet is open leaves two navigations on screen, the hidden one still
+   * holding the focus trap. `mobileOnly` makes the desktop region win; the
+   * stale open state behind it is inert and Escape clears it.
+   */
+  mobileOnly?: boolean;
+  /**
+   * The content owns its padding and its scrolling. A prose body wants the
+   * drawer's padding and one scroll container; a sidebar list has a pinned
+   * header and its own scroll area, and wrapping it in a padded scrolling div
+   * gives it two scrollbars and scrolls the pinned part away.
+   */
+  flush?: boolean;
   children?: ReactNode;
   /**
    * Pinned content between the title row and the scrolling body — a tab strip,
@@ -47,6 +83,13 @@ export interface DrawerProps {
   headerExtra?: ReactNode;
   footer?: ReactNode;
   className?: string;
+  /**
+   * Accessible name of the close control. Defaults to the shared "Close panel";
+   * a caller whose panel is one of several on the page names it ("Close chat
+   * list"), because "panel" is unambiguous on screen and not out of a
+   * screen reader.
+   */
+  closeLabel?: string;
 }
 
 export function Drawer({
@@ -55,10 +98,14 @@ export function Drawer({
   title,
   side = "right",
   width = "drawer",
+  surface = "card",
+  mobileOnly = false,
+  flush = false,
   children,
   headerExtra,
   footer,
   className,
+  closeLabel,
 }: DrawerProps) {
   const { t } = useTranslation("common");
   const panelRef = useRef<HTMLDivElement>(null);
@@ -98,7 +145,9 @@ export function Drawer({
 
   return (
     <div
-      className="fixed inset-0 z-overlay bg-overlay"
+      className={["fixed inset-0 z-overlay bg-overlay", mobileOnly ? "md:hidden" : ""]
+        .filter(Boolean)
+        .join(" ")}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -112,7 +161,8 @@ export function Drawer({
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         className={[
-          "absolute flex max-h-full flex-col overflow-hidden bg-card shadow-overlay outline-none",
+          "absolute flex max-h-full flex-col overflow-hidden shadow-overlay outline-none",
+          SURFACES[surface],
           "border-line md:border",
           ANCHOR[side],
           WIDTHS[width],
@@ -128,7 +178,7 @@ export function Drawer({
           <h2 className="min-w-0 flex-1 text-title text-ink-primary">{title}</h2>
           <button
             type="button"
-            aria-label={t("drawer.close")}
+            aria-label={closeLabel ?? t("drawer.close")}
             onClick={onClose}
             className="shrink-0 rounded-tile p-tight text-ink-muted hover:bg-white/10 hover:text-ink-primary"
           >
@@ -138,7 +188,13 @@ export function Drawer({
         {headerExtra ? (
           <div className="shrink-0 px-roomy pb-soft">{headerExtra}</div>
         ) : null}
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-roomy py-soft">
+        <div
+          className={
+            flush
+              ? "flex min-h-0 flex-1 flex-col overflow-hidden"
+              : "min-h-0 flex-1 overflow-y-auto overscroll-contain px-roomy py-soft"
+          }
+        >
           {children}
         </div>
         {footer ? (
