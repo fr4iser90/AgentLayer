@@ -22,9 +22,18 @@
  *    `/admin/interfaces`, `/org` and `/settings` must appear as a leaf. This is
  *    the "every area visible, reachable in one click" rule — an area that exists
  *    but is not in the rail is only reachable by typing the URL.
+ * 4. **An exception must point at its way in.** Every route on the unnaviated
+ *    list carries `reachedVia`: the file that navigates there instead of the
+ *    rail. The note beside that list has always said "say how" and nothing ever
+ *    read it back, so an entry stayed a permission long after the sentence
+ *    behind it could have stopped being true. The guard now opens the named file
+ *    and looks for the navigation: route gone, leaf added, or a pointer that no
+ *    longer points anywhere, and the entry fails.
  *
  * Run with --update to re-record the unnaviated allowlist after adding a route
- * that is deliberately not in the rail.
+ * that is deliberately not in the rail. Recorded `reachedVia` values are carried
+ * over — an update that rewrote the file from scratch would quietly delete the
+ * reasons; a new entry gets a TODO that has to be answered before a run passes.
  */
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
@@ -165,6 +174,84 @@ export function findOrphans(routes, targets, unnaviated) {
   return orphans;
 }
 
+/**
+ * Does this source navigate to exactly `path`?
+ *
+ * `<Navigate to="/org/setup">`, `to="/org/setup"` and `navigate("/org/setup")`
+ * all count. A mention in prose does not: the sentence this replaces lived in a
+ * `note` field, where a reader could only nod at it. The closing quote is part
+ * of the match, so `/org/setup` cannot be satisfied by `/org/setup-something` —
+ * matching a prefix would let a rename keep an entry green.
+ */
+export function reachesPath(src, path) {
+  const needle = path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?:to=|navigate\\()\\s*\\{?\\s*["'\`]${needle}["'\`]`).test(src);
+}
+
+/** Baseline entries are `{ path, reachedVia }`; a bare string is the old shape. */
+export function unnaviatedPaths(entries) {
+  return entries.map((e) => (typeof e === "string" ? e : e?.path)).filter(Boolean);
+}
+
+/**
+ * Is every recorded exception still an exception that has a way in?
+ *
+ * `read` resolves a `reachedVia` path to file text, or `null` when the file is
+ * gone — injected so this stays a pure decision over data the caller fetched.
+ *
+ * Four ways an entry rots, checked in the order a reader would fix them: the
+ * route it excuses is no longer there; the route joined the rail, so the
+ * exception is not needed; no file is named; the file named no longer navigates
+ * there. The last one is the only kind no human would notice — the code still
+ * works, it just works somewhere else.
+ */
+export function auditUnnaviated(entries, routes, targets, read) {
+  const live = new Set(routes.filter((r) => !r.redirect).map((r) => r.path));
+  const navSet = new Set(targets.filter((t) => !t.external).map((t) => t.to));
+  const problems = [];
+  for (const entry of entries) {
+    const path = typeof entry === "string" ? entry : entry?.path;
+    if (!path) {
+      problems.push({ path: String(path ?? "?"), kind: "malformed" });
+      continue;
+    }
+    if (typeof entry !== "object") {
+      problems.push({ path, kind: "bare" });
+      continue;
+    }
+    if (!live.has(path)) {
+      problems.push({ path, kind: "gone" });
+      continue;
+    }
+    if (navSet.has(path)) {
+      problems.push({ path, kind: "in_rail" });
+      continue;
+    }
+    const via = entry.reachedVia;
+    if (!via || via.startsWith("TODO")) {
+      problems.push({ path, kind: "no_how", via: via ?? null });
+      continue;
+    }
+    const src = read(via);
+    if (src === null) {
+      problems.push({ path, kind: "no_file", via });
+      continue;
+    }
+    if (!reachesPath(src, path)) problems.push({ path, kind: "no_nav", via });
+  }
+  return problems;
+}
+
+const UNNAVIATED_WHY = {
+  malformed: "Eintrag ohne path — die Liste ist ein Objekt aus Pfad und Grund",
+  bare: "Eintrag nur als Pfad — seit der Regel fehlt der Grund, wo die Stelle ohne Rail erreichbar ist",
+  gone: "Route existiert nicht mehr — die Ausnahme entschuldigt nichts",
+  in_rail: "Route hat inzwischen ein Rail-Blatt — die Ausnahme ist überflüssig",
+  no_how: "Kein reachedVia — eine Ausnahme ohne Weg ist eine Erlaubnis ohne Argument",
+  no_file: "reachedVia zeigt auf eine Datei, die nicht existiert",
+  no_nav: "die genannte Datei navigiert nicht (mehr) auf diesen Pfad"
+};
+
 async function* walkLayout() {
   for (const entry of await readdir(LAYOUT, { withFileTypes: true })) {
     if (entry.isFile() && entry.name.endsWith(".tsx")) {
@@ -181,7 +268,7 @@ export async function checkNavDepth() {
   ]);
   const routes = collectRoutes(appSrc);
   const targets = collectNavTargets(modelSrc);
-  const unnaviated = baseline.unnaviated ?? [];
+  const entries = baseline.unnaviated ?? [];
 
   const nested = [];
   for await (const file of walkLayout()) {
@@ -194,9 +281,33 @@ export async function checkNavDepth() {
 
   const routeSet = new Set(routes.map((r) => r.path));
   const dead = targets.filter((t) => !t.external && !routeSet.has(t.to)).map((t) => t.to);
-  const orphans = findOrphans(routes, targets, unnaviated);
+  const orphans = findOrphans(routes, targets, unnaviatedPaths(entries));
 
-  return { nested, dead, orphans, routes: routes.length, leaves: targets.length };
+  const exceptions = await auditEntries(entries, routes, targets);
+
+  return {
+    nested,
+    dead,
+    orphans,
+    exceptions,
+    routes: routes.length,
+    leaves: targets.length,
+    recorded: entries.length
+  };
+}
+
+/**
+ * `auditUnnaviated` over the files on disk: a `reachedVia` that names nothing
+ * readable is `null` rather than a throw, so a deleted file reports as itself
+ * instead of hiding the other findings behind a stack trace.
+ */
+async function auditEntries(entries, routes, targets) {
+  const via = [...new Set(entries.map((e) => e && e.reachedVia).filter(Boolean))];
+  const texts = await Promise.all(
+    via.map((rel) => readFile(join(ROOT, rel), "utf8").catch(() => null))
+  );
+  const sourceOf = new Map(via.map((rel, i) => [rel, texts[i]]));
+  return auditUnnaviated(entries, routes, targets, (rel) => sourceOf.get(rel) ?? null);
 }
 
 async function update() {
@@ -205,24 +316,40 @@ async function update() {
   const routes = collectRoutes(appSrc);
   const targets = collectNavTargets(modelSrc);
   const navSet = new Set(targets.filter((t) => !t.external).map((t) => t.to));
+  const previous = await readFile(BASELINE, "utf8")
+    .then((t) => JSON.parse(t).unnaviated ?? [])
+    .catch(() => []);
   const keep = [];
   for (const route of routes) {
     if (route.redirect || route.path === "/" || navSet.has(route.path)) continue;
     const parent = route.path.slice(0, route.path.lastIndexOf("/"));
-    if (GUARDED_PREFIXES.includes(parent || "/")) keep.push(route.path);
+    if (!GUARDED_PREFIXES.includes(parent || "/")) continue;
+    const old = previous.find((e) => (typeof e === "string" ? e : e?.path) === route.path);
+    // Carried over verbatim, unanswered TODO and all: rewriting this file from
+    // the route tree alone is how a re-record would silently drop every reason
+    // on it. A new route gets the question, not an empty string — the audit
+    // fails on the TODO, so the answer cannot be skipped by forgetting it.
+    keep.push(
+      old && typeof old === "object"
+        ? old
+        : { path: route.path, reachedVia: "TODO — wie ist die Stelle ohne Rail erreichbar?" }
+    );
   }
+  keep.sort((a, b) => a.path.localeCompare(b.path));
   await writeFile(
     BASELINE,
     JSON.stringify(
       {
-        note: "Routes under a guarded prefix that are deliberately not in the rail. Each one is reachable some other way — say how, in the commit that adds it.",
-        unnaviated: keep.sort()
+        note: "Routes under a guarded prefix that are deliberately not in the rail. reachedVia names the file that navigates there instead — the guard opens it and looks, so the answer cannot go stale quietly.",
+        unnaviated: keep
       },
       null,
       2
     ) + "\n"
   );
-  console.log(`[nav-depth] recorded ${keep.length} unnaviated route(s): ${keep.join(", ")}`);
+  console.log(
+    `[nav-depth] recorded ${keep.length} unnaviated route(s): ${keep.map((k) => k.path).join(", ")}`
+  );
 }
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
@@ -234,7 +361,7 @@ if (isMain) {
     });
   } else {
     checkNavDepth()
-      .then(({ nested, dead, orphans, routes, leaves }) => {
+      .then(({ nested, dead, orphans, exceptions, routes, leaves, recorded }) => {
         let failed = false;
         if (nested.length) {
           failed = true;
@@ -255,9 +382,25 @@ if (isMain) {
           for (const o of orphans) console.error(`  ${o}`);
           console.error("Add a leaf to navModel.ts, or --update with a reason.");
         }
+        // A recorded exception is the one finding that cannot be seen from the
+        // route tree: the app still works, the reason beside it just stopped
+        // being true.
+        if (exceptions.length) {
+          failed = true;
+          console.error(
+            `[nav-depth] FAILED - ${exceptions.length} aufgezeichnete Rail-Ausnahme(n) ohne gültigen Weg:`
+          );
+          for (const e of exceptions)
+            console.error(
+              `  ${e.path}${e.via ? `  ${e.via}` : ""} — ${UNNAVIATED_WHY[e.kind]}`
+            );
+          console.error(
+            "[nav-depth] reachedVia auf die Datei setzen, die dorthin navigiert, oder den Eintrag löschen, wenn die Stelle jetzt im Rail liegt."
+          );
+        }
         if (failed) process.exit(1);
         console.log(
-          `[nav-depth] OK - ${routes} routes, ${leaves} rail leaves, one nav container`
+          `[nav-depth] OK - ${routes} routes, ${leaves} rail leaves, one nav container, ${recorded} Ausnahme(n) mit Weg`
         );
       })
       .catch((e) => {

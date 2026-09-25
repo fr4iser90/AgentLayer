@@ -1,6 +1,9 @@
 {
-  "note": "Routes under a guarded prefix that are deliberately not in the rail. Each one is reachable some other way — say how, in the commit that adds it.",
+  "note": "Routes under a guarded prefix that are deliberately not in the rail. reachedVia names the file that navigates there instead — the guard opens it and looks, so the answer cannot go stale quietly.",
   "unnaviated": [
-    "/org/setup"
+    {
+      "path": "/org/setup",
+      "reachedVia": "src/auth/RequireOrgAdmin.tsx"
+    }
   ]
 }

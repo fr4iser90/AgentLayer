@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  auditUnnaviated,
   collectNavTargets,
   collectRoutes,
   findOrphans,
-  scanLayoutNav
+  reachesPath,
+  scanLayoutNav,
+  unnaviatedPaths
 } from "../../scripts/check-nav-depth.mjs";
 
 /**
@@ -170,5 +173,95 @@ describe("nav guard finds areas nobody can reach", () => {
     expect(findOrphans(routes, [leaf("/admin"), leaf("/admin/tools")], ["/org/setup"])).toEqual([
       "/admin/interfaces/bridges"
     ]);
+  });
+});
+
+describe("nav guard makes an exception name its way in", () => {
+  // `/org/setup` sat on the unnaviated list as a bare path beside a note that
+  // said "say how". Nobody had to answer it, which is the same as not asking:
+  // the entry would have stayed green through the redirect being renamed, the
+  // page being deleted, or a rail leaf appearing. These are the four ways the
+  // sentence could rot, one test each.
+  const routes = [{ path: "/org/setup", redirect: false }];
+  const VIA = "src/auth/RequireOrgAdmin.tsx";
+  const entry = { path: "/org/setup", reachedVia: VIA };
+  const read = (rel: string) =>
+    rel === VIA
+      ? `return <Navigate to="/org/setup" replace state={{ from: location.pathname }} />;`
+      : null;
+  const kinds = (entries: unknown[], rs = routes, ts: { to: string; external: boolean }[] = []) =>
+    auditUnnaviated(entries, rs, ts, read).map((p) => p.kind);
+
+  it("accepts an entry whose file navigates there", () => {
+    expect(kinds([entry])).toEqual([]);
+  });
+
+  it("reads all three navigation shapes", () => {
+    expect(reachesPath(`to="/org/setup"`, "/org/setup")).toBe(true);
+    expect(reachesPath(`navigate("/org/setup")`, "/org/setup")).toBe(true);
+    expect(reachesPath("navigate(`/org/setup`)", "/org/setup")).toBe(true);
+  });
+
+  it("does not accept a mention that is not a navigation", () => {
+    // This is precisely what the old baseline entry was: the path, in prose.
+    expect(reachesPath("// /org/setup is reached from the guard", "/org/setup")).toBe(false);
+    expect(reachesPath(`const target = "/org/setup";`, "/org/setup")).toBe(false);
+  });
+
+  it("does not let a longer path satisfy a shorter one", () => {
+    // A rename to /org/setup-wizard must fail the old entry, not inherit it.
+    expect(reachesPath(`to="/org/setup-wizard"`, "/org/setup")).toBe(false);
+  });
+
+  it("treats a dot in the path as a dot", () => {
+    expect(reachesPath(`to="/a/b"`, "/a.b")).toBe(false);
+  });
+
+  it("fails an entry that names no file", () => {
+    expect(kinds([{ path: "/org/setup" }])).toEqual(["no_how"]);
+  });
+
+  it("fails an unanswered TODO left by --update", () => {
+    expect(kinds([{ path: "/org/setup", reachedVia: "TODO — wie ist die Stelle erreichbar?" }])).toEqual(
+      ["no_how"]
+    );
+  });
+
+  it("fails the shape the guard shipped with", () => {
+    expect(kinds(["/org/setup"])).toEqual(["bare"]);
+  });
+
+  it("fails an entry with no path at all", () => {
+    expect(kinds([{}])).toEqual(["malformed"]);
+  });
+
+  it("fails a pointer whose file is gone", () => {
+    expect(kinds([{ path: "/org/setup", reachedVia: "src/auth/RequireOrg.tsx" }])).toEqual([
+      "no_file"
+    ]);
+  });
+
+  it("fails a pointer that stopped navigating — the rot nothing else can see", () => {
+    // Same file, same route, the redirect now goes somewhere else. The app
+    // still works; only the reason beside the entry is false.
+    const moved = auditUnnaviated([entry], routes, [], () => `return <Navigate to="/org/team" />;`);
+    expect(moved.map((p) => p.kind)).toEqual(["no_nav"]);
+  });
+
+  it("fails an entry for a route that no longer exists", () => {
+    expect(kinds([entry], [])).toEqual(["gone"]);
+  });
+
+  it("fails an entry whose route joined the rail", () => {
+    expect(kinds([entry], routes, [{ to: "/org/setup", external: false }])).toEqual(["in_rail"]);
+  });
+
+  it("treats a redirect route as not needing an exception", () => {
+    expect(kinds([entry], [{ path: "/org/setup", redirect: true }])).toEqual(["gone"]);
+  });
+
+  it("reads paths out of both entry shapes", () => {
+    // The orphan rule still has to see the paths after the schema grew.
+    expect(unnaviatedPaths(["/org/setup", entry])).toEqual(["/org/setup", "/org/setup"]);
   });
 });
