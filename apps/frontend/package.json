@@ -19,7 +19,7 @@
     "probe:overflow": "node scripts/probe-overflow.mjs",
     "probe:tooltip": "node scripts/probe-tooltip.mjs",
     "probe:mono": "node scripts/probe-mono-load.mjs",
-    "build": "npm run test && npm run test:unit && npm run lint:type-scale && npm run lint:field-surface && npm run lint:surface-ladder && npm run lint:ink-color && npm run lint:border-token && npm run lint:radius && npm run lint:spacing && npm run lint:content-width && npm run lint:fill && npm run lint:z-index && npm run lint:icon-label && npm run lint:font-license && npm run lint:silent-catch && npm run lint:nav-depth && npm run lint:dialog && vite build",
+    "build": "npm run test && npm run test:unit && npm run lint:type-scale && npm run lint:field-surface && npm run lint:surface-ladder && npm run lint:ink-color && npm run lint:border-token && npm run lint:radius && npm run lint:spacing && npm run lint:content-width && npm run lint:fill && npm run lint:z-index && npm run lint:icon-label && npm run lint:font-license && npm run lint:silent-catch && npm run lint:nav-depth && npm run lint:dialog && npm run lint:click-outside && vite build",
     "preview": "vite preview",
     "lint:ink-color": "node scripts/check-ink-color.mjs",
     "lint:ink-color:update": "node scripts/check-ink-color.mjs --update",
@@ -47,7 +47,8 @@
     "lint:nav-depth:update": "node scripts/check-nav-depth.mjs --update",
     "lint:dialog": "node scripts/check-dialog-primitive.mjs",
     "lint:dialog:update": "node scripts/check-dialog-primitive.mjs --update",
-    "lint:dialog:explain": "node scripts/check-dialog-primitive.mjs --explain"
+    "lint:dialog:explain": "node scripts/check-dialog-primitive.mjs --explain",
+    "lint:click-outside": "node scripts/check-click-outside.mjs"
   },
   "dependencies": {
     "chart.js": "^4.5.1",
