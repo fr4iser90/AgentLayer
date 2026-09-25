@@ -17,8 +17,8 @@ type Props = {
 };
 
 function borderForKind(kind: string): string {
-  if (kind === "subagent_start") return "border-indigo-500/55";
-  if (kind === "subagent_done") return "border-indigo-400/45";
+  if (kind === "subagent_start") return "border-subagent/55";
+  if (kind === "subagent_done") return "border-subagent/45";
   if (kind === "tool_start") return "border-sky-500/50";
   if (kind === "tool_done") return "border-emerald-500/50";
   if (kind === "llm" || kind === "think") return "border-violet-500/45";
@@ -93,7 +93,7 @@ export function AgentActivityPanel({
           <label className="flex cursor-pointer items-center gap-snug text-meta text-ink-muted">
             <input
               type="checkbox"
-              className="rounded-tile border-line bg-field text-indigo-500"
+              className="rounded-tile border-line bg-field text-subagent"
               checked={showSubagents}
               onChange={(e) => onShowSubagentsChange?.(e.target.checked)}
             />
@@ -122,7 +122,7 @@ export function AgentActivityPanel({
                     {labelForKind(e.kind, t)}
                   </span>
                   {e.subagentAgentId ? (
-                    <span className="text-meta text-indigo-300/90">{e.subagentAgentId}</span>
+                    <span className="text-meta text-badge-subagent/90">{e.subagentAgentId}</span>
                   ) : null}
                   <span className="text-ink-secondary">{e.text}</span>
                   {e.durationMs != null && e.durationMs >= 0 ? (

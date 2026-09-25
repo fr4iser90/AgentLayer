@@ -30,7 +30,7 @@ export function VoiceHandsFreeBar({ active, listening, busy, onToggle, error }: 
             ? t("chat:voiceHandsFreeListening")
             : t("chat:voiceHandsFreeHint")}
       </span>
-      {error ? <span className="text-rose-300">{error}</span> : null}
+      {error ? <span className="text-danger">{error}</span> : null}
     </div>
   );
 }

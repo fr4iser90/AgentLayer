@@ -76,7 +76,7 @@ function DashboardNavRow(props: {
         <span className="block truncate font-medium leading-snug">
           {w.title || w.kind}
           {unread > 0 ? (
-            <span className="ml-tight inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-pill bg-orange-500 px-hair text-meta font-bold text-black align-middle">
+            <span className="ml-tight inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-pill bg-unread px-hair text-meta font-bold text-ink-on-fill align-middle">
               {unread > 9 ? "9+" : unread}
             </span>
           ) : null}

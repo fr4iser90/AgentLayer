@@ -93,7 +93,7 @@ export function AdminAgentTraces() {
                     onClick={() => setSelectedId(r.id)}
                     className={[
                       "w-full rounded-card px-base py-snug text-left",
-                      selectedId === r.id ? "bg-indigo-500/20 text-ink-primary" : "text-ink-secondary hover:bg-white/5",
+                      selectedId === r.id ? "bg-accent-subtle text-ink-primary" : "text-ink-secondary hover:bg-white/5",
                     ].join(" ")}
                   >
                     <span className="font-mono text-meta text-ink-muted">{r.id.slice(0, 8)}…</span>
@@ -118,7 +118,7 @@ export function AdminAgentTraces() {
                   <h2 className="mb-base text-xs font-semibold uppercase text-ink-muted">
                     {t("admin:agentTracesChildRuns")}
                   </h2>
-                  <ul className="space-y-tight font-mono text-xs text-indigo-200/90">
+                  <ul className="space-y-tight font-mono text-xs text-badge-accent/90">
                     {detail.child_runs.map((c) => (
                       <li key={c.id}>
                         {c.id} — {c.agent_id} ({c.status})

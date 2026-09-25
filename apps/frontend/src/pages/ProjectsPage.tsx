@@ -166,7 +166,7 @@ export function ProjectsPage() {
       </header>
 
       {error ? (
-        <p className="shrink-0 rounded-card border border-rose-500/30 bg-rose-950/30 px-soft py-base text-sm text-rose-200">
+        <p className="shrink-0 rounded-card border border-danger/30 bg-danger-subtle px-soft py-base text-sm text-badge-danger">
           {error}
         </p>
       ) : null}
@@ -344,7 +344,7 @@ export function ProjectsPage() {
                 </p>
                 <div className="min-h-0 flex-1 overflow-y-auto p-base">
                   {treeError ? (
-                    <p className="px-base py-base text-xs text-rose-300">{treeError}</p>
+                    <p className="px-base py-base text-xs text-danger">{treeError}</p>
                   ) : treeLoading ? (
                     <p className="px-base py-base text-xs text-ink-muted">{t("common:nav.loading")}</p>
                   ) : entries.length === 0 ? (

@@ -18,11 +18,21 @@
  * check-field-surface.mjs: a deny-list of `white|neutral|gray` waves the next
  * `border-slate-300` straight through.
  *
+ * The allowed token names are read from tailwind.config.js at runtime, not kept
+ * here. The copy this guard used to carry listed four `line-*` names and eight
+ * semantic ones, so the moment `unread`, `subagent` and `recording` were added
+ * to the palette the guard failed a correct migration (`border-recording/50` →
+ * "unknown border colour") while staying silent about a hairline that had no
+ * business existing. A guard with its own list of another file's names is
+ * guaranteed to disagree with it, and the disagreement always looks like the
+ * other file is wrong.
+ *
  * Run with --update to re-record the baseline after an intentional migration.
  */
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import { join, relative, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import config from "../tailwind.config.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -32,24 +42,47 @@ const BASELINE = join(__dirname, "border-baseline.json");
 const SCAN_EXT = [".tsx", ".jsx"];
 const SKIP = [/node_modules/, /\.test\./, /\.snap$/];
 
-// Border colours that may be used.
-const TOKEN = new Set([
-  "line",
-  "line-subtle",
-  "line-strong",
-  "line-focus",
-  "transparent",
-  "inherit",
-  "current",
-  "accent",
-  "accent-hover",
-  "success",
-  "success-hover",
-  "warning",
-  "warning-hover",
-  "danger",
-  "danger-hover",
-]);
+// Border colours that may be used: every colour in the config, flattened one
+// level (`line` plus `line-subtle`, `ink` plus `ink-on-fill`), plus the three
+// keywords Tailwind resolves itself.
+const TOKEN = new Set(["transparent", "inherit", "current"]);
+for (const [name, value] of Object.entries(config.theme.extend.colors)) {
+  if (typeof value === "string") TOKEN.add(name);
+  else for (const sub of Object.keys(value)) TOKEN.add(sub === "DEFAULT" ? name : `${name}-${sub}`);
+}
+
+// Deliberately raw, with the reason stated where the check reads it.
+//
+// These are catalogue keys: the colour indexes a set of peer kinds rather than
+// describing a status, so mapping them onto a semantic token would delete the
+// distinction the surface exists to draw. They live here instead of in
+// border-baseline.json because a baseline entry says "we have not got to this
+// yet" while these say "there is nothing to get to", and only the second kind
+// of sentence can be checked for still being true — an entry whose class has
+// left the tree fails the run (see `stale` in checkBorderToken).
+const INTENTIONAL = {
+  // 12 activity kinds and 4 run-card kinds are distinguished by hue alone.
+  // Four semantic tokens cannot carry 12 distinctions; collapsing `scan_queue`
+  // onto `warning` would make it identical to `permission` two rows away.
+  "src/features/chat/AgentActivityPanel.tsx": {
+    "border-orange-500/45":
+      "Katalog-Farbe für deferred_wait/scan_queue; abgrenzbar von warning (permission) und sky (tool_start)",
+  },
+  // A canvas block can be selected (sky ring), highlighted (orange ring) and
+  // unread (unread border) at the same time. `unread` is already taken by the
+  // third state in the same expression, `accent` by the first. Only the border
+  // is listed: this guard reads `border-*`, the companion `ring-orange-500/40`
+  // is not in its scope and would read as a stale justification forever.
+  "src/features/dashboard/DashboardCanvasSurface.tsx": {
+    "border-orange-500/50": "Hervorhebungs-Ring, dritter Zustand neben selected (accent) und unread",
+  },
+  "src/features/dashboard/DashboardGridInner.tsx": {
+    "border-orange-500/50": "Hervorhebungs-Ring, dritter Zustand neben selected (accent) und unread",
+  },
+};
+const INTENTIONAL_KEYS = new Set(
+  Object.entries(INTENTIONAL).flatMap(([file, byCls]) => Object.keys(byCls).map((cls) => `${file}::${cls}`))
+);
 
 // Grey/white hairlines: never acceptable in new code, they are what the
 // codemod replaced.
@@ -131,6 +164,7 @@ export async function checkBorderToken() {
   const baseline = JSON.parse(await readFile(BASELINE, "utf8"));
   const tolerated = new Set(baseline.classes ?? []);
   const violations = [];
+  const hit = new Set();
   let checked = 0;
 
   for await (const file of walk(SRC)) {
@@ -143,11 +177,19 @@ export async function checkBorderToken() {
         checked += 1;
       }
       const key = `${rel}::${finding.cls}`;
+      if (INTENTIONAL_KEYS.has(key)) {
+        hit.add(key);
+        continue;
+      }
       if (tolerated.has(key)) continue;
       violations.push({ file: rel, ...finding });
     }
   }
-  return { violations, checked, tolerated: tolerated.size };
+  // A justification that no longer names anything in the tree is not a
+  // justification, it is a comment somebody forgot to delete. Failing on it
+  // keeps the allow-list from becoming the thing the baseline was.
+  const stale = [...INTENTIONAL_KEYS].filter((k) => !hit.has(k));
+  return { violations, checked, tolerated: tolerated.size, intentional: hit.size, stale };
 }
 
 async function update() {
@@ -158,7 +200,11 @@ async function update() {
     for (const m of src.matchAll(BORDER_CLASS)) {
       const cls = m[2];
       if (GEOMETRY.has(colourStem(cls)) || TOKEN.has(colourStem(cls))) continue;
-      classes[`${rel}::${cls}`] = true;
+      const key = `${rel}::${cls}`;
+      // A justified class must not also sit in the baseline: two records of the
+      // same decision, one of them silent, is how the drift came back before.
+      if (INTENTIONAL_KEYS.has(key)) continue;
+      classes[key] = true;
     }
   }
   const keys = Object.keys(classes).sort();
@@ -175,7 +221,13 @@ if (isMain) {
     update().catch((e) => { console.error(e); process.exit(1); });
   } else {
     checkBorderToken()
-      .then(({ violations, checked, tolerated }) => {
+      .then(({ violations, checked, tolerated, intentional, stale }) => {
+        if (stale.length) {
+          console.error(`[border-token] FAILED - ${stale.length} begründete Ausnahme(n) treffen nichts mehr:`);
+          for (const k of stale) console.error(`  ${k}`);
+          console.error("[border-token] Die Klasse ist nicht mehr im Baum. Streiche die Begründung, sonst liest sie als Erlaubnis für etwas, das es nicht gibt.");
+          process.exit(1);
+        }
         if (violations.length) {
           console.error(`[border-token] FAILED - ${violations.length} new off-token border class(es):`);
           for (const v of violations.slice(0, 25)) {
@@ -185,7 +237,7 @@ if (isMain) {
           process.exit(1);
         }
         console.log(
-          `[border-token] OK - ${checked} border colour classes checked, ${tolerated} baselined, no new drift`
+          `[border-token] OK - ${checked} border colour classes checked, ${tolerated} baselined, ${intentional} begründet roh, no new drift`
         );
       })
       .catch((e) => { console.error(e); process.exit(1); });

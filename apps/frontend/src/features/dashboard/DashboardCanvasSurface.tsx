@@ -546,7 +546,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
                     : isHighlighted
                       ? "border-orange-500/50 ring-2 ring-orange-500/40"
                       : hasUnread
-                        ? "border-orange-500/25"
+                        ? "border-unread/25"
                         : "border-line",
                 ].join(" ")}
                 style={{

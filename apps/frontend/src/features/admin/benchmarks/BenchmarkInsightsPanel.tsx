@@ -19,7 +19,7 @@ function passRateTone(rate: number): string {
   const pct = Math.round(rate * 100);
   if (pct >= 90) return "text-emerald-300";
   if (pct >= 60) return "text-amber-200";
-  return "text-rose-300";
+  return "text-danger";
 }
 
 function PatternBars({
@@ -44,7 +44,7 @@ function PatternBars({
           </div>
           <div className="h-2 overflow-hidden rounded-tile bg-white/5">
             <div
-              className="h-full rounded-tile bg-rose-500/70"
+              className="h-full rounded-tile bg-danger/70"
               style={{ width: `${Math.max(8, (count / max) * 100)}%` }}
             />
           </div>
@@ -88,7 +88,7 @@ function AnalysisSummary({
       </div>
       <div className="rounded-card border border-line bg-black/20 p-soft">
         <p className="text-meta uppercase text-ink-muted">{t("admin:agentConfigAnalysisWeakScenarios")}</p>
-        <p className="mt-tight text-xl font-semibold text-rose-300">{weak}</p>
+        <p className="mt-tight text-xl font-semibold text-danger">{weak}</p>
       </div>
     </div>
   );
@@ -228,7 +228,7 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
             type="button"
             onClick={() => void onCompare()}
             disabled={!compareA || !compareB || compareA === compareB || loading}
-            className="rounded-tile bg-indigo-700/80 px-soft py-snug text-xs text-ink-primary hover:bg-indigo-600 disabled:opacity-50"
+            className="rounded-tile bg-accent/80 px-soft py-snug text-xs text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
           >
             {t("admin:agentConfigAnalysisCompareBtn")}
           </button>

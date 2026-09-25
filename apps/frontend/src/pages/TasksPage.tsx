@@ -44,7 +44,7 @@ function TaskList({
           className={[
             "rounded-card border px-soft py-firm",
             activeTaskId === task.id
-              ? "border-indigo-500/50 bg-indigo-950/30"
+              ? "border-accent/50 bg-accent-subtle"
               : "border-line bg-card",
           ].join(" ")}
         >
@@ -187,7 +187,7 @@ export function TasksPage() {
         </div>
 
         {conversationId ? (
-          <div className="mt-wide rounded-card border border-indigo-500/35 bg-indigo-950/25 px-wide py-soft text-sm text-indigo-100/90">
+          <div className="mt-wide rounded-card border border-accent/35 bg-accent-subtle px-wide py-soft text-sm text-badge-accent/90">
             {t_0("tasks:bindingToChat", { id: `${conversationId.slice(0, 8)}…` })}
             {activeTaskId ? (
               <button
@@ -218,7 +218,7 @@ export function TasksPage() {
             />
             <button
               type="button"
-              className="shrink-0 rounded-card border border-indigo-500/40 bg-indigo-500/15 px-wide py-base text-sm text-indigo-200"
+              className="shrink-0 rounded-card border border-accent/40 bg-accent-subtle px-wide py-base text-sm text-badge-accent"
               onClick={() => {
                 const g = globalGoal.trim();
                 if (!g) return;

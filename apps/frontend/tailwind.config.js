@@ -38,6 +38,22 @@ const ACCENT = "#4C8DFF";
 const SUCCESS = "#3FB950";
 const WARNING = "#D29922";
 const DANGER = "#F85149";
+
+// Three states the palette used to paint by hand. Each is a meaning, not a hue,
+// and each was colliding with a token that meant something else:
+//   `unread`    — a thing nobody has read yet. Orange, which `ToolsSettings`
+//                 had already reserved in a comment while painting
+//                 `toolsRiskHigh` in the same orange.
+//   `subagent`  — a delegated agent. The mascot's `volt` violet (#A78BFA), the
+//                 app's existing agent identity, so a delegated run reads as
+//                 the same kind of thing the chat face already is.
+//   `recording` — a live capture. Rose. It sat on `danger`, which taught users
+//                 to ignore red; recording is not an error.
+// Ratios below are computed, not copied: DEFAULT against the card it sits on,
+// and against `ink-on-fill` for solid fills.
+const UNREAD = "#F0883E"; // 6.30:1 on card · 7.87:1 under ink-on-fill
+const SUBAGENT = "#A78BFA"; // 5.86:1 on card · 7.32:1 under ink-on-fill
+const RECORDING = "#FB7185"; // 5.92:1 on card · 7.40:1 under ink-on-fill
 // Dark ink for text sitting on a saturated fill. White fails on all four fills
 // (2.52–3.35:1); this passes at 5.94–7.89:1.
 const ON_FILL = "#08090B";
@@ -183,15 +199,32 @@ export default {
           hover: "#FF6B63",
           subtle: "rgba(248, 81, 73, 0.16)",
         },
+        unread: {
+          DEFAULT: UNREAD,
+          subtle: "rgba(240, 136, 62, 0.15)",
+        },
+        subagent: {
+          DEFAULT: SUBAGENT,
+          subtle: "rgba(167, 139, 250, 0.15)",
+        },
+        recording: {
+          DEFAULT: RECORDING,
+          subtle: "rgba(251, 113, 133, 0.15)",
+        },
 
         // Badge label tones. The raw semantic colours fail on their own 15-16%
         // tint (accent 4.03:1, danger 3.98:1), so badge text is lifted to
-        // 6.63-8.19:1 against the composited chip.
+        // 6.63-8.19:1 against the composited chip. The last three are the same
+        // 45% lift, landing at 7.35-7.58:1 on card — the same band as the four
+        // above, measured the same way.
         badge: {
           accent: "#9DC3FF",
           success: "#7EE78F",
           warning: "#F5C86E",
           danger: "#FF9C95",
+          unread: "#F7BE95",
+          subagent: "#CFBFFC",
+          recording: "#FDB1BC",
         },
 
         // --- compatibility aliases (do not use in new code) ---

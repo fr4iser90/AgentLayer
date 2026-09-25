@@ -96,7 +96,7 @@ export function VoiceMicButton({
           disabled={disabled || busy}
           className={`relative rounded-card border p-base transition-colors disabled:opacity-40 ${
             recording
-              ? "border-rose-500/70 bg-rose-950/50 text-rose-100 shadow-[0_0_12px_rgba(244,63,94,0.25)]"
+              ? "border-recording/70 bg-recording-subtle text-badge-recording shadow-[0_0_12px_rgba(244,63,94,0.25)]"
               : "border-line bg-black/20 text-ink-muted hover:bg-white/5 hover:text-neutral-200"
           }`}
           aria-label={recording ? `${resolvedAria} — ${t("chat:voiceMicRec")}` : resolvedAria}
@@ -116,16 +116,16 @@ export function VoiceMicButton({
           {recording ? (
             <>
               <span
-                className="pointer-events-none absolute -inset-0.5 animate-pulse rounded-card border border-rose-400/50"
+                className="pointer-events-none absolute -inset-0.5 animate-pulse rounded-card border border-recording/50"
                 aria-hidden
               />
               <span
-                className="pointer-events-none absolute -right-1 -top-1 z-lift flex items-center gap-hair rounded-tile border border-rose-400/60 bg-rose-950 px-tight py-px text-meta font-bold uppercase leading-none tracking-wide text-rose-100 shadow-sm"
+                className="pointer-events-none absolute -right-1 -top-1 z-lift flex items-center gap-hair rounded-tile border border-recording/60 bg-recording px-tight py-px text-meta font-bold uppercase leading-none tracking-wide text-ink-on-fill shadow-sm"
                 aria-live="polite"
               >
                 <span className="relative flex h-1.5 w-1.5 shrink-0">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-pill bg-rose-400 opacity-80" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-pill bg-rose-400" />
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-pill bg-recording opacity-80" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-pill bg-recording" />
                 </span>
                 {t("chat:voiceMicRec")}
               </span>

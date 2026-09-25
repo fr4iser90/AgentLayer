@@ -636,7 +636,7 @@ export function AdminAgents() {
                         </p>
                         <p className="mt-tight text-xs text-ink-secondary">
                           {t("admin:agentsDirectAccess")}:{" "}
-                          <span className={detail?.governance?.access.direct_allowed ? "text-emerald-300" : "text-rose-300"}>
+                          <span className={detail?.governance?.access.direct_allowed ? "text-emerald-300" : "text-danger"}>
                             {detail?.governance?.access.direct_allowed ? t("admin:agentsAllowed") : t("admin:agentsDenied")}
                           </span>{" "}
                           <span className="text-ink-muted">
@@ -645,7 +645,7 @@ export function AdminAgents() {
                         </p>
                         <p className="mt-tight text-xs text-ink-secondary">
                           {t("admin:agentsDelegateAccess")}:{" "}
-                          <span className={detail?.governance?.access.delegate_allowed ? "text-emerald-300" : "text-rose-300"}>
+                          <span className={detail?.governance?.access.delegate_allowed ? "text-emerald-300" : "text-danger"}>
                             {detail?.governance?.access.delegate_allowed ? t("admin:agentsAllowed") : t("admin:agentsDenied")}
                           </span>{" "}
                           <span className="text-ink-muted">
