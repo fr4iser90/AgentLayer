@@ -100,6 +100,17 @@ type AuthPayload = {
   user: AuthUser;
 };
 
+/**
+ * Why a sign-in did not go through.
+ *
+ * `LoginPage` returned `auth:invalidCredentials` for every `!ok` — wrong
+ * password, network down, a 500 from the backend, a rate limit. Telling someone
+ * their password is wrong when the server is unreachable sends them back to the
+ * password field, which is the one place the problem is not.
+ */
+export type LoginFailure = "credentials" | "rateLimited" | "unreachable" | "server";
+export type LoginResult = { ok: true } | { ok: false; reason: LoginFailure };
+
 export type AuthContextValue = {
   accessToken: string | null;
   user: AuthUser | null;
@@ -107,7 +118,7 @@ export type AuthContextValue = {
   setupStatus: SetupStatus | null;
   refreshSetupStatus: () => Promise<SetupStatus | null>;
   refresh: () => Promise<string | null>;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<LoginResult>;
   completeSetup: (
     email: string,
     password: string,
@@ -211,27 +222,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   refreshRef.current = refresh;
 
-  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
-    const r = await fetch("/auth/login", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.trim(), password }),
-    });
-    if (!r.ok) {
-      setAccessToken(null);
-      setUser(null);
-      return false;
-    }
-    const d = (await r.json()) as AuthPayload;
-    applyAuthPayload(d, setAccessToken, setUser);
-    const profile = await fetchUserProfile(d.access_token);
-    if (profile) {
-      setUser((prev) => (prev ? { ...prev, ...profile } : prev));
-    }
-    scheduleProactiveRefresh(d.access_token);
-    return true;
-  }, [scheduleProactiveRefresh]);
+  const login = useCallback(
+    async (email: string, password: string): Promise<LoginResult> => {
+      let r: Response;
+      try {
+        r = await fetch("/auth/login", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim(), password }),
+        });
+      } catch {
+        // No response at all: the backend is down or the request never left.
+        return { ok: false, reason: "unreachable" };
+      }
+      if (!r.ok) {
+        setAccessToken(null);
+        setUser(null);
+        if (r.status === 429) return { ok: false, reason: "rateLimited" };
+        if (r.status === 401 || r.status === 400 || r.status === 422) {
+          return { ok: false, reason: "credentials" };
+        }
+        return { ok: false, reason: "server" };
+      }
+      let d: AuthPayload;
+      try {
+        d = (await r.json()) as AuthPayload;
+      } catch {
+        return { ok: false, reason: "server" };
+      }
+      applyAuthPayload(d, setAccessToken, setUser);
+      const profile = await fetchUserProfile(d.access_token);
+      if (profile) {
+        setUser((prev) => (prev ? { ...prev, ...profile } : prev));
+      }
+      scheduleProactiveRefresh(d.access_token);
+      return { ok: true };
+    },
+    [scheduleProactiveRefresh]
+  );
 
   const completeSetup = useCallback(
     async (

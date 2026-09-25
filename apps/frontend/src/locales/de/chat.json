@@ -283,5 +283,12 @@
   "runCardRunId": "Run {{id}}…",
   "runCardOpenTrace": "Run-Trace in Admin öffnen",
   "storageWarnTitle": "Chat-Speicher fast voll",
-  "storageWarnBody": "Diese Conversation nutzt {{pct}}% des Limits von {{limitMb}} MB. Starte bald einen neuen Chat."
+  "storageWarnBody": "Diese Conversation nutzt {{pct}}% des Limits von {{limitMb}} MB. Starte bald einen neuen Chat.",
+  "saveFailedTitle": "Nachricht nicht gespeichert",
+  "saveFailedBody": "Sie steht im Verlauf, aber der Server hat sie nicht. Ein Neuladen würde sie entfernen.",
+  "saveRetry": "Erneut versuchen",
+  "delegatePrefSaveFailedTitle": "Einstellung nicht gespeichert",
+  "delegatePrefSaveFailedBody": "Der Schalter zeigt den neuen Wert, der Server hat ihn nicht übernommen.",
+  "slowHintRunning": "Der Agent arbeitet noch — längere Runs sind normal.",
+  "slowHintLong": "Dieser Run läuft seit über einer Minute. Der Agent arbeitet noch."
 }

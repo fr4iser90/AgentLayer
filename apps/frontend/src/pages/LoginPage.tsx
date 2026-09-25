@@ -35,10 +35,21 @@ export function LoginPage() {
     e.preventDefault();
     setPending(true);
     setError(null);
-    const ok = await login(email.trim(), password);
+    const result = await login(email.trim(), password);
     setPending(false);
-    if (!ok) {
-      setError(t("auth:invalidCredentials"));
+    if (!result.ok) {
+      // Four different failures, four different next actions. Sending someone
+      // back to the password field when the backend is down is the one this
+      // used to produce for all of them.
+      setError(
+        result.reason === "credentials"
+          ? t("auth:invalidCredentials")
+          : result.reason === "rateLimited"
+            ? t("auth:loginRateLimited")
+            : result.reason === "unreachable"
+              ? t("auth:loginUnreachable")
+              : t("auth:loginServerError")
+      );
       return;
     }
     // Landing path runs in useEffect once ``user`` (incl. allowed_nav) is set.

@@ -25,6 +25,7 @@ import {
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, Check, Info, X } from "lucide-react";
+import { registerToastApi } from "./toastBus";
 
 export type ToastTone = "info" | "success" | "warning" | "danger";
 
@@ -214,6 +215,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     }),
     [push, dismiss]
   );
+
+  // Publish the api to non-React callers (lib/api.ts, the chat save path).
+  useEffect(() => registerToastApi(api), [api]);
 
   const banners = items.filter((item) => item.banner);
   const stack = items.filter((item) => !item.banner);

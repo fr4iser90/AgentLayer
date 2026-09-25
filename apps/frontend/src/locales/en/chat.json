@@ -283,5 +283,12 @@
   "runCardRunId": "Run {{id}}…",
   "runCardOpenTrace": "Open run trace in admin",
   "storageWarnTitle": "Chat storage almost full",
-  "storageWarnBody": "This conversation is using {{pct}}% of the {{limitMb}} MB limit. Consider starting a new chat soon."
+  "storageWarnBody": "This conversation is using {{pct}}% of the {{limitMb}} MB limit. Consider starting a new chat soon.",
+  "saveFailedTitle": "Message not saved",
+  "saveFailedBody": "It is in the transcript, but the server never received it. Reloading would remove it.",
+  "saveRetry": "Try again",
+  "delegatePrefSaveFailedTitle": "Setting not saved",
+  "delegatePrefSaveFailedBody": "The switch shows the new value, but the server did not accept it.",
+  "slowHintRunning": "The agent is still working — long runs are normal.",
+  "slowHintLong": "This run has been going for over a minute. The agent is still working."
 }

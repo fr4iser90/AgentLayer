@@ -1,6 +1,55 @@
+import i18n from "i18next";
 import type { AuthContextValue } from "../auth/AuthContext";
 import { accessTokenNeedsRefresh } from "../auth/tokenRefresh";
+import { toast } from "../ui/toastBus";
 import { detectUserTimezone, USER_TIMEZONE_HEADER } from "./userTimezone";
+
+/**
+ * How long to wait for response HEADERS before giving up. Not a whole-request
+ * budget: the timer is cleared the moment headers arrive, so a streamed agent
+ * turn keeps its socket open for as long as it needs.
+ */
+const HEADER_TIMEOUT_MS = 30_000;
+
+const SESSION_KEY = "session:expired";
+const NETWORK_KEY = "session:unreachable";
+
+/**
+ * The app had no global 401 handling: `apiFetch` retried once and, if the
+ * refresh failed, handed the 401 back to callers that mostly never inspect the
+ * status. The user stayed on the page with a dead token, clicking things that
+ * quietly did nothing.
+ *
+ * Only reached when the caller actually held a token, so the anonymous public
+ * share reader — which handles its own 401 explicitly — is not told its session
+ * expired when it never had one.
+ */
+function reportSessionExpired(): void {
+  toast.once(SESSION_KEY, () => ({
+    title: i18n.t("common:session.expiredTitle"),
+    body: i18n.t("common:session.expiredBody"),
+    tone: "danger",
+    durationMs: null,
+    banner: true,
+    action: {
+      label: i18n.t("common:session.signIn"),
+      onClick: () => {
+        window.location.assign("/app/login");
+      },
+    },
+  }));
+}
+
+function reportUnreachable(): void {
+  toast.once(NETWORK_KEY, () => ({
+    title: i18n.t("common:session.networkTitle"),
+    body: i18n.t("common:session.networkBody", {
+      seconds: Math.round(HEADER_TIMEOUT_MS / 1000),
+    }),
+    tone: "warning",
+    durationMs: null,
+  }));
+}
 
 export type AgentDefinition = {
   id: string;
@@ -353,8 +402,50 @@ export async function apiFetch(
     if (typeof window !== "undefined" && !headers.has(USER_TIMEZONE_HEADER)) {
       headers.set(USER_TIMEZONE_HEADER, detectUserTimezone());
     }
-    return fetch(url, { ...init, credentials: "include", headers });
+
+    // A header timeout, not a request timeout. `fetch` resolves as soon as the
+    // response headers arrive, and the timer is cleared at that point — so a
+    // streaming chat turn that runs for minutes is untouched, while a server
+    // that never answers stops hanging. A blanket timeout here would abort
+    // long turns and the callers read an AbortError as "the user cancelled",
+    // turning a dead backend into a silently missing answer.
+    const controller = new AbortController();
+    let timedOut = false;
+    const outer = init?.signal;
+    const onOuter = () => controller.abort();
+    if (outer) {
+      if (outer.aborted) controller.abort();
+      else outer.addEventListener("abort", onOuter, { once: true });
+    }
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, HEADER_TIMEOUT_MS);
+
+    try {
+      return await fetch(url, {
+        ...init,
+        credentials: "include",
+        headers,
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (timedOut) {
+        reportUnreachable();
+        throw new Error(i18n.t("common:session.networkTitle"));
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer);
+      if (outer) outer.removeEventListener("abort", onOuter);
+    }
   };
+
+  // Whether the caller had a token at all decides what a 401 means. An
+  // anonymous reader of a public share link getting 401 is that endpoint
+  // asking for a sign-in, which it handles itself; a token that came back 401
+  // after a refresh is a session the user has to be told about.
+  const hadToken = Boolean(auth.accessToken);
 
   let token = await bearerForRequest(auth);
   let res = await run(token);
@@ -364,6 +455,13 @@ export async function apiFetch(
       token = next;
       res = await run(next);
     }
+    if (res.status === 401 && hadToken) reportSessionExpired();
+  }
+  // Any answer that is not a 401 means whatever raised those notices has
+  // passed: signing in again, or the server coming back.
+  if (res.status !== 401) {
+    toast.settle(SESSION_KEY);
+    toast.settle(NETWORK_KEY);
   }
   return res;
 }

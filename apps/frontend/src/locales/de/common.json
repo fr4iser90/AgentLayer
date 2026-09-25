@@ -86,5 +86,13 @@
   },
   "drawer": {
     "close": "Bereich schließen"
+  },
+  "session": {
+    "expiredTitle": "Sitzung abgelaufen",
+    "expiredBody": "Melde dich erneut an, um weiterzuarbeiten.",
+    "signIn": "Anmelden",
+    "networkTitle": "Server nicht erreichbar",
+    "networkBody": "Die Anfrage lief nach {{seconds}} s ab. Prüfe die Verbindung.",
+    "retry": "Erneut versuchen"
   }
 }
