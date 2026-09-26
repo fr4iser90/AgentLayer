@@ -8,6 +8,7 @@ import { Button } from "../../ui/Button";
 import { Modal } from "../../ui/Modal";
 import { Checkbox } from "../../ui/Checkbox";
 import { TextInput } from "../../ui/Field";
+import { SkeletonRows } from "../../ui/Skeleton";
 
 export type GithubRepoRow = {
   full_name: string;
@@ -51,6 +52,29 @@ async function runTool(
   } catch {
     return { ok: false, error: "invalid tool response" };
   }
+}
+
+/**
+ * The placeholder for the repository list.
+ *
+ * `58` is the pitch of one row of that list: `py-base` (8 + 8) around a
+ * `text-sm` name (20) and a `text-xs` description (16), the 1 px border on each
+ * side, and the `space-y-tight` gap the list puts between rows.
+ *
+ * Ten rows rather than "as many as fit", because the panel is `max-h-full` and
+ * centred: it is sized by its content, so a placeholder that is taller than the
+ * result makes the dialog shrink when the list lands and moves the header and
+ * the filter row in the other direction. Ten rows is what the body shows on a
+ * short laptop viewport — the smallest common case — so the dialog either stays
+ * put or grows, never collapses.
+ */
+function ImportListSkeleton({ label }: { label: string }) {
+  return (
+    <div role="status">
+      <span className="sr-only">{label}</span>
+      <SkeletonRows rows={10} rowHeight={58} columns={["14px", "58%", "52px"]} />
+    </div>
+  );
 }
 
 export function ProjectsImportModal({
@@ -293,7 +317,7 @@ export function ProjectsImportModal({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-roomy py-soft">
           {loading ? (
-            <p className="text-sm text-ink-muted">{t("dashboard:loading")}</p>
+            <ImportListSkeleton label={t("dashboard:loading")} />
           ) : error && repos.length === 0 ? (
             <div className="space-y-base text-sm">
               <p className="text-badge-danger">{error}</p>
