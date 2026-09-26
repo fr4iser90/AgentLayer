@@ -15,6 +15,7 @@ import { Modal } from "../ui/Modal";
 import { Badge, type BadgeTone } from "../ui/Badge";
 import { Select, TextArea, TextInput } from "../ui/Field";
 import { Checkbox } from "../ui/Checkbox";
+import { SkeletonRows } from "../ui/Skeleton";
 
 type SchedulerJobRow = {
   id: string;
@@ -718,7 +719,17 @@ export function MySchedulesPage() {
             </p>
           ) : null}
 
-          <div className="mt-soft grid min-h-0 gap-soft md:grid-cols-2">
+          {/*
+            The panel is `max-h-full` inside a centred overlay, so its height
+            follows its content: while the runs are in flight the dialog is a
+            few lines tall and every later state — the list landing, a run
+            being selected — grows it and pulls the whole dialog back to the
+            middle. `md:h-[min(58vh,34rem)]` gives the two panes a frame that
+            the request cannot change, and turns their `overflow-auto` into a
+            real scroller instead of a grower. The row placeholder below covers
+            the stacked layout, where no frame is set.
+          */}
+          <div className="mt-soft grid min-h-0 gap-soft md:h-[min(58vh,34rem)] md:grid-cols-2">
               <div className="min-h-0 overflow-auto rounded-card border border-line">
                 <table className="min-w-full text-left text-xs">
                   <thead className="sticky top-0 bg-raised text-ink-muted">
@@ -730,9 +741,16 @@ export function MySchedulesPage() {
                   </thead>
                   <tbody className="divide-y divide-line">
                     {runsLoading ? (
+                      // 36 px is one real row: `py-base` (8+8) around the tallest
+                      // cell content, which is the status `Badge` (py-hair 4 + the
+                      // 16 px `text-label` line). Eight of them is what the pane
+                      // shows at the frame height — the request asks for 25, and
+                      // reserving all 25 would leave a metre of grey bars on a job
+                      // that ran twice.
                       <tr>
-                        <td className="px-base py-soft text-ink-muted" colSpan={3}>
-                          {t("settings:schedulesRunsLoading")}
+                        <td className="p-0" colSpan={3}>
+                          <span className="sr-only">{t("settings:schedulesRunsLoading")}</span>
+                          <SkeletonRows rows={8} rowHeight={36} columns={["22%", "52%", "12%"]} />
                         </td>
                       </tr>
                     ) : !runs?.length ? (
