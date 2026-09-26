@@ -61,6 +61,7 @@ import {
 import { ModelCatalogSelect } from "../chat/ModelCatalogSelect";
 import { Button } from "../../ui/Button";
 import { Tooltip } from "../../ui/Tooltip";
+import { Checkbox } from "../../ui/Checkbox";
 import { TextArea } from "../../ui/Field";
 
 type Msg = { role: "user" | "assistant"; content: string };
@@ -1133,9 +1134,8 @@ export function DashboardEmbeddedChat({
                       className="inline-flex cursor-pointer items-center gap-snug rounded-tile border border-line bg-black/25 px-base py-tight text-meta text-ink-secondary"
                       title={t("dashboard:pinFilesToBoardHint")}
                     >
-                      <input
-                        type="checkbox"
-                        className="rounded-tile border-line-strong"
+                      <Checkbox
+                        className="border-line-strong"
                         checked={pinFilesToBoard}
                         onChange={(e) => setPinFilesToBoard(e.target.checked)}
                       />

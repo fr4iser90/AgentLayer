@@ -6,6 +6,7 @@ import type { AuthContextValue } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { Button } from "../../ui/Button";
 import { Modal } from "../../ui/Modal";
+import { Checkbox } from "../../ui/Checkbox";
 import { TextInput } from "../../ui/Field";
 
 export type GithubRepoRow = {
@@ -266,16 +267,14 @@ export function ProjectsImportModal({
             className="min-w-[200px] flex-1 outline-none"
           />
           <label className="flex items-center gap-base text-xs text-ink-primary">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={skipExisting}
               onChange={(e) => setSkipExisting(e.target.checked)}
             />
             {t("dashboard:importSkipExisting")}
           </label>
           <label className="flex items-center gap-base text-xs text-ink-primary">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={createWorkspaces}
               onChange={(e) => setCreateWorkspaces(e.target.checked)}
             />
@@ -283,8 +282,7 @@ export function ProjectsImportModal({
           </label>
           {createWorkspaces && hasOrgSurface(user) ? (
             <label className="flex items-center gap-base text-xs text-ink-primary">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={shareWithCompany}
                 onChange={(e) => setShareWithCompany(e.target.checked)}
               />
@@ -310,8 +308,7 @@ export function ProjectsImportModal({
                   key={r.full_name}
                   className="flex items-start gap-base rounded-card border border-line-subtle px-soft py-base hover:bg-white/[0.03]"
                 >
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     className="mt-tight"
                     checked={!!selected[r.full_name]}
                     onChange={(e) =>

@@ -8,6 +8,7 @@ import {
   type VoicePrefs,
   type VoiceStatus,
 } from "./voiceApi";
+import { Checkbox } from "../../ui/Checkbox";
 import { Select } from "../../ui/Field";
 
 type Props = {
@@ -78,9 +79,7 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
         }`}
         title={ttsOk ? t("chat:voiceComposerReadAloudHint") : t("chat:voiceComposerTtsOff")}
       >
-        <input
-          type="checkbox"
-          className="rounded-tile border-line bg-field text-accent"
+        <Checkbox
           checked={voiceStatus.prefs.output_enabled}
           disabled={!ttsOk || saving}
           onChange={(e) => void patchPrefs({ output_enabled: e.target.checked })}
@@ -96,9 +95,7 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
         }`}
         title={sttOk ? t("chat:voiceComposerInputHint") : t("chat:voiceComposerSttOff")}
       >
-        <input
-          type="checkbox"
-          className="rounded-tile border-line bg-field text-accent"
+        <Checkbox
           checked={voiceStatus.prefs.input_enabled}
           disabled={!sttOk || saving}
           onChange={(e) => void patchPrefs({ input_enabled: e.target.checked })}
