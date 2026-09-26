@@ -19,7 +19,7 @@
     "probe:overflow": "node scripts/probe-overflow.mjs",
     "probe:tooltip": "node scripts/probe-tooltip.mjs",
     "probe:mono": "node scripts/probe-mono-load.mjs",
-    "build": "npm run test && npm run test:unit && npm run lint:type-scale && npm run lint:field-surface && npm run lint:surface-ladder && npm run lint:ink-color && npm run lint:border-token && npm run lint:radius && npm run lint:spacing && npm run lint:content-width && npm run lint:fill && npm run lint:z-index && npm run lint:icon-label && npm run lint:font-license && npm run lint:silent-catch && npm run lint:nav-depth && npm run lint:dialog && npm run lint:click-outside && npm run lint:control-primitive && npm run lint:primitive-coverage && vite build",
+    "build": "npm run test && npm run test:unit && npm run lint:type-scale && npm run lint:field-surface && npm run lint:surface-ladder && npm run lint:ink-color && npm run lint:border-token && npm run lint:radius && npm run lint:spacing && npm run lint:content-width && npm run lint:fill && npm run lint:z-index && npm run lint:icon-label && npm run lint:font-license && npm run lint:silent-catch && npm run lint:nav-depth && npm run lint:dialog && npm run lint:click-outside && npm run lint:control-primitive && npm run lint:primitive-coverage && npm run lint:loading-placeholder && vite build",
     "preview": "vite preview",
     "lint:ink-color": "node scripts/check-ink-color.mjs",
     "lint:ink-color:update": "node scripts/check-ink-color.mjs --update",
@@ -52,7 +52,10 @@
     "lint:control-primitive": "node scripts/check-control-primitive.mjs",
     "lint:control-primitive:update": "node scripts/check-control-primitive.mjs --update",
     "lint:primitive-coverage": "node scripts/check-primitive-coverage.mjs",
-    "lint:primitive-coverage:report": "node scripts/check-primitive-coverage.mjs --report"
+    "lint:primitive-coverage:report": "node scripts/check-primitive-coverage.mjs --report",
+    "lint:loading-placeholder": "node scripts/check-loading-placeholder.mjs",
+    "lint:loading-placeholder:update": "node scripts/check-loading-placeholder.mjs --update",
+    "lint:loading-placeholder:explain": "node scripts/check-loading-placeholder.mjs --explain"
   },
   "dependencies": {
     "chart.js": "^4.5.1",
