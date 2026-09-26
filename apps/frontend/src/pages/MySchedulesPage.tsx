@@ -16,6 +16,7 @@ import { Badge, type BadgeTone } from "../ui/Badge";
 import { Select, TextArea, TextInput } from "../ui/Field";
 import { Checkbox } from "../ui/Checkbox";
 import { SkeletonRows } from "../ui/Skeleton";
+import { Table, type TableColumn } from "../ui/Table";
 
 type SchedulerJobRow = {
   id: string;
@@ -357,6 +358,97 @@ export function MySchedulesPage() {
     await refresh();
   };
 
+  // Built inside the component because the headers and two of the cells read
+  // `t`, and the target column reads the catalog the page fetches separately.
+  const jobColumns: Array<TableColumn<SchedulerJobRow>> = [
+    {
+      key: "enabled",
+      header: t("settings:schedulesEnabledHeader"),
+      width: "7rem",
+      render: (j) => (
+        <span className={`inline-flex items-center rounded-pill border px-base py-hair text-xs ${pill(j.enabled)}`}>
+          {j.enabled ? t("settings:schedulesEnabled") : t("settings:schedulesDisabled")}
+        </span>
+      ),
+    },
+    {
+      key: "target",
+      header: t("settings:schedulesTargetHeader"),
+      render: (j) => labelForExecutionTarget(j.execution_target, targetCatalog),
+    },
+    {
+      key: "title",
+      header: t("settings:schedulesTitleHeader"),
+      render: (j) => <span className="text-ink-primary">{j.title || "—"}</span>,
+    },
+    {
+      key: "interval",
+      header: t("settings:schedulesIntervalHeader"),
+      render: (j) => t("settings:schedulesIntervalMinutes", { minutes: j.interval_minutes }),
+    },
+    {
+      key: "dashboard",
+      header: t("settings:schedulesDashboardHeader"),
+      render: (j) => (
+        <span className="font-mono text-ink-muted">
+          {j.dashboard_id || t("settings:schedulesDashboardGlobal")}
+        </span>
+      ),
+    },
+    {
+      key: "last_run",
+      header: t("settings:schedulesLastRunHeader"),
+      render: (j) => formatDateTimeLocal(j.last_run_at),
+    },
+    {
+      key: "created",
+      header: t("settings:schedulesCreatedHeader"),
+      render: (j) => formatDateTimeLocal(j.created_at),
+    },
+    {
+      key: "actions",
+      header: t("settings:schedulesActionsHeader"),
+      render: (j) => (
+        <div className="flex items-center gap-base">
+          <Button
+            size="sm"
+            type="button"
+            className="px-base py-tight text-xs hover:bg-white/5"
+            onClick={() => void toggleEnabled(j.id, !j.enabled)}
+          >
+            {j.enabled ? t("admin:schedulesDisable") : t("admin:schedulesEnable")}
+          </Button>
+          {executionTargetRequiresWorkspace(j.execution_target, targetCatalog) ? (
+            <Button
+              size="sm"
+              type="button"
+              className="px-base py-tight text-xs hover:bg-white/5"
+              onClick={() => void openRuns(j)}
+            >
+              {t("settings:schedulesRuns")}
+            </Button>
+          ) : null}
+          <Button
+            size="sm"
+            type="button"
+            className="px-base py-tight text-xs hover:bg-white/5"
+            onClick={() => openEdit(j)}
+          >
+            {t("admin:schedulesEdit")}
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            size="sm"
+            onClick={() => void hardDelete(j.id)}
+          >
+            {t("admin:schedulesDelete")}
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="mx-auto max-w-pageWide px-broad py-page">
       <div className="flex items-start justify-between gap-wide">
@@ -389,97 +481,17 @@ export function MySchedulesPage() {
 
       {err ? <div className="mt-wide rounded-card border border-danger/30 bg-danger-subtle p-soft text-sm text-badge-danger">{err}</div> : null}
 
-      <div className="mt-broad overflow-x-auto rounded-sheet border border-line">
-        <table className="min-w-full text-left text-sm">
-          <thead className="bg-white/5 text-xs uppercase tracking-wide text-ink-muted">
-            <tr>
-              <th className="px-soft py-soft">{t("settings:schedulesEnabledHeader")}</th>
-              <th className="px-soft py-soft">{t("settings:schedulesTargetHeader")}</th>
-              <th className="px-soft py-soft">{t("settings:schedulesTitleHeader")}</th>
-              <th className="px-soft py-soft">{t("settings:schedulesIntervalHeader")}</th>
-              <th className="px-soft py-soft">{t("settings:schedulesDashboardHeader")}</th>
-              <th className="px-soft py-soft">{t("settings:schedulesLastRunHeader")}</th>
-              <th className="px-soft py-soft">{t("settings:schedulesCreatedHeader")}</th>
-              <th className="px-soft py-soft">{t("settings:schedulesActionsHeader")}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {jobs === null ? (
-              <tr>
-                <td className="px-soft py-wide text-ink-muted" colSpan={8}>
-                  {loading ? t("settings:schedulesLoading") : t("settings:schedulesNoData")}
-                </td>
-              </tr>
-            ) : jobs.length === 0 ? (
-              <tr>
-                <td className="px-soft py-wide text-ink-muted" colSpan={8}>
-                  {t("settings:schedulesNoneYet")}
-                </td>
-              </tr>
-            ) : (
-              jobs.map((j) => (
-                <tr key={j.id} className="hover:bg-white/2">
-                  <td className="px-soft py-soft">
-                    <span className={`inline-flex items-center rounded-pill border px-base py-hair text-xs ${pill(j.enabled)}`}>
-                      {j.enabled ? t("settings:schedulesEnabled") : t("settings:schedulesDisabled")}
-                    </span>
-                  </td>
-                  <td className="px-soft py-soft text-xs text-ink-primary">
-                    {labelForExecutionTarget(j.execution_target, targetCatalog)}
-                  </td>
-                  <td className="px-soft py-soft text-ink-primary">{j.title || "—"}</td>
-                  <td className="px-soft py-soft text-ink-primary">
-                    {t("settings:schedulesIntervalMinutes", { minutes: j.interval_minutes })}
-                  </td>
-                  <td className="px-soft py-soft font-mono text-xs text-ink-muted">
-                    {j.dashboard_id || t("settings:schedulesDashboardGlobal")}
-                  </td>
-                  <td className="px-soft py-soft text-xs text-ink-muted">{formatDateTimeLocal(j.last_run_at)}</td>
-                  <td className="px-soft py-soft text-xs text-ink-muted">{formatDateTimeLocal(j.created_at)}</td>
-                  <td className="px-soft py-soft">
-                    <div className="flex items-center gap-base">
-                      <Button
-                        size="sm"
-                        type="button"
-                        className="px-base py-tight text-xs hover:bg-white/5"
-                        onClick={() => void toggleEnabled(j.id, !j.enabled)}
-                      >
-                        {j.enabled ? t("admin:schedulesDisable") : t("admin:schedulesEnable")}
-                      </Button>
-                      {executionTargetRequiresWorkspace(j.execution_target, targetCatalog) ? (
-                        <Button
-                          size="sm"
-                          type="button"
-                          className="px-base py-tight text-xs hover:bg-white/5"
-                          onClick={() => void openRuns(j)}
-                        >
-                          {t("settings:schedulesRuns")}
-                        </Button>
-                      ) : null}
-                      <Button
-                        size="sm"
-                        type="button"
-                        className="px-base py-tight text-xs hover:bg-white/5"
-                        onClick={() => openEdit(j)}
-                      >
-                        {t("admin:schedulesEdit")}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="danger"
-                        size="sm"
-                        onClick={() => void hardDelete(j.id)}
-                      >
-                        {t("admin:schedulesDelete")}
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      {/* No `rowHeight`: the tallest cell is the `h-7` action Button, so a job row is
+          28 + `py-base` (8+8) = 44 px — the height the skeleton already uses for the
+          `normal` density, which is why the list does not jump when the jobs land. */}
+      <Table
+        className="mt-broad rounded-sheet border border-line"
+        columns={jobColumns}
+        rows={jobs ?? []}
+        rowKey={(j) => j.id}
+        loading={jobs === null && !err}
+        empty={jobs === null ? t("settings:schedulesNoData") : t("settings:schedulesNoneYet")}
+      />
 
       {createOpen ? (
         <Modal
