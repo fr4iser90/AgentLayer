@@ -4,6 +4,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { hasOrgSurface } from "../../auth/deploymentMode";
 import type { AuthContextValue } from "../../auth/AuthContext";
 import { apiFetch, type WorkspaceApiRecord } from "../../lib/api";
+import { Checkbox } from "../../ui/Checkbox";
 import { Select } from "../../ui/Field";
 import { Button } from "../../ui/Button";
 
@@ -138,8 +139,7 @@ export function ProjectWorkspaceControls({
             <>
               {hasOrgSurface(user) ? (
                 <label className="mb-base flex items-start gap-base text-meta text-ink-muted">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     className="mt-hair"
                     checked={shareWithCompany}
                     onChange={(e) => setShareWithCompany(e.target.checked)}

@@ -15,6 +15,7 @@ import {
 import { Button } from "../../ui/Button";
 import { Modal } from "../../ui/Modal";
 import { Radio } from "../../ui/Radio";
+import { Checkbox } from "../../ui/Checkbox";
 import { Select, TextArea, TextInput } from "../../ui/Field";
 
 type Props = {
@@ -301,8 +302,7 @@ export function WorkspaceMcpModal({
                 />
               </label>
               <label className="flex items-center gap-base sm:col-span-2 text-xs text-ink-secondary">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={useWorkspaceCwd}
                   onChange={(e) => setUseWorkspaceCwd(e.target.checked)}
                 />

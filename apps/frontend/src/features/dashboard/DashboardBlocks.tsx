@@ -29,6 +29,7 @@ import {
 } from "../../lib/schedulerExecutionTarget";
 import { Tooltip } from "../../ui/Tooltip";
 import { Badge, type BadgeTone } from "../../ui/Badge";
+import { Checkbox } from "../../ui/Checkbox";
 import { Select, TextArea, TextInput } from "../../ui/Field";
 
 type Row = Record<string, unknown>;
@@ -1257,10 +1258,8 @@ function CellInput(props: {
   const { col, value, readOnly = false, onChange } = props;
   if (col.kind === "checkbox") {
     return (
-      <input
-        type="checkbox"
+      <Checkbox
         disabled={readOnly}
-        className="h-4 w-4 rounded-tile border-line disabled:cursor-not-allowed disabled:opacity-60"
         checked={Boolean(value)}
         onChange={(e) => onChange(e.target.checked)}
       />

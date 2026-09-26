@@ -17,6 +17,7 @@ import {
 import type { UiBlock } from "./types";
 import { Button } from "../../ui/Button";
 import { Drawer } from "../../ui/Drawer";
+import { Checkbox } from "../../ui/Checkbox";
 import { Select, TextInput } from "../../ui/Field";
 
 type TabId = "general" | "data" | "share" | "display";
@@ -353,8 +354,7 @@ export function BlockSettingsModal({
                     {columnFields.map((field) => (
                       <li key={field}>
                         <label className="flex cursor-pointer items-center gap-snug rounded-tile border border-line bg-black/30 px-base py-tight text-xs">
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             checked={cardFields.includes(field)}
                             onChange={() => toggleCardField(field)}
                           />
@@ -456,8 +456,7 @@ export function BlockSettingsModal({
                 </div>
               ) : null}
               <label className="flex items-start gap-base">
-                <input
-                  type="checkbox"
+                <Checkbox
                   className="mt-hair"
                   checked={fillGrid}
                   onChange={(e) => setFillGrid(e.target.checked)}
@@ -485,16 +484,14 @@ export function BlockSettingsModal({
                     />
                   </label>
                   <label className="flex items-center gap-base">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={enableSearch}
                       onChange={(e) => setEnableSearch(e.target.checked)}
                     />
                     <span>{t("dashboard:blockSettingsEnableSearch")}</span>
                   </label>
                   <label className="flex items-center gap-base">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={enableRowDetail}
                       onChange={(e) => setEnableRowDetail(e.target.checked)}
                     />
@@ -505,16 +502,14 @@ export function BlockSettingsModal({
               {block.type === "table" ? (
                 <>
                   <label className="flex items-center gap-base">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={enableSearch}
                       onChange={(e) => setEnableSearch(e.target.checked)}
                     />
                     <span>{t("dashboard:blockSettingsEnableSearch")}</span>
                   </label>
                   <label className="flex items-center gap-base">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={enableRowDetail}
                       onChange={(e) => setEnableRowDetail(e.target.checked)}
                     />

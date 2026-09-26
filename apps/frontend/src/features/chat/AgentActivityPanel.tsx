@@ -1,6 +1,7 @@
 import type { TFunction } from "i18next";
 import type { AgentTimelineEntry } from "./chatThreadStorage";
 import { useTranslation } from "react-i18next";
+import { Checkbox } from "../../ui/Checkbox";
 
 type Props = {
   entries: AgentTimelineEntry[];
@@ -91,9 +92,7 @@ export function AgentActivityPanel({
         </span>
         {showSubagentToggle ? (
           <label className="flex cursor-pointer items-center gap-snug text-meta text-ink-muted">
-            <input
-              type="checkbox"
-              className="rounded-tile border-line bg-field text-subagent"
+            <Checkbox
               checked={showSubagents}
               onChange={(e) => onShowSubagentsChange?.(e.target.checked)}
             />
