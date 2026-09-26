@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { OrgKnowledgePublishSection } from "./OrgKnowledgePublishSection";
+import { Checkbox } from "../../ui/Checkbox";
 import { TextInput } from "../../ui/Field";
 import { Button } from "../../ui/Button";
 
@@ -150,9 +151,8 @@ export function OrgSetupPage() {
       {wizardStep === 2 ? (
         <div className="mt-deep space-y-broad">
           <label className="flex cursor-pointer items-start gap-base text-sm text-ink-primary">
-            <input
-              type="checkbox"
-              className="mt-tight rounded-tile border-line"
+            <Checkbox
+              className="mt-tight"
               checked={disclaimerAccepted}
               onChange={(e) => setDisclaimerAccepted(e.target.checked)}
             />
@@ -163,9 +163,7 @@ export function OrgSetupPage() {
             <p className="text-sm font-medium text-ink-primary">{t("org:setupContentStep")}</p>
             <p className="mt-tight text-xs text-ink-muted">{t("org:setupContentHint")}</p>
             <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-              <input
-                type="checkbox"
-                className="rounded-tile border-line"
+              <Checkbox
                 checked={startEmpty}
                 onChange={(e) => {
                   setStartEmpty(e.target.checked);

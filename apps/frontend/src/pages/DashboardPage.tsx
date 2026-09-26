@@ -50,6 +50,7 @@ import type {
 import { layoutModeOf, parseUiLayout, withLayoutMode } from "../features/dashboard/layoutMode";
 import { Tooltip } from "../ui/Tooltip";
 import { Select, TextArea, TextInput } from "../ui/Field";
+import { Checkbox } from "../ui/Checkbox";
 
 function asUiLayout(raw: unknown): UiLayout | null {
   return parseUiLayout(raw);
@@ -2216,14 +2217,12 @@ export function DashboardPage() {
                       if (!id) return null;
                       return (
                         <li key={id} className="flex items-center gap-base">
-                          <input
+                          <Checkbox
                             id={`bshare-${id}`}
-                            type="checkbox"
                             checked={!!blockSharePick[id]}
                             onChange={(e) =>
                               setBlockSharePick((prev) => ({ ...prev, [id]: e.target.checked }))
                             }
-                            className="rounded-tile border-line"
                           />
                           <label htmlFor={`bshare-${id}`} className="cursor-pointer text-ink-primary">
                             <span className="text-ink-muted">{b.type}</span> · {label}
@@ -2355,14 +2354,12 @@ export function DashboardPage() {
                       if (!id) return null;
                       return (
                         <li key={`ps-${id}`} className="flex items-center gap-base">
-                          <input
+                          <Checkbox
                             id={`pshare-${id}`}
-                            type="checkbox"
                             checked={!!publicSharePick[id]}
                             onChange={(e) =>
                               setPublicSharePick((prev) => ({ ...prev, [id]: e.target.checked }))
                             }
-                            className="rounded-tile border-line"
                           />
                           <label htmlFor={`pshare-${id}`} className="cursor-pointer text-ink-primary">
                             <span className="text-ink-muted">{b.type}</span> · {label}

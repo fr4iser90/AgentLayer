@@ -14,6 +14,7 @@ import { Button } from "../ui/Button";
 import { Modal } from "../ui/Modal";
 import { Badge, type BadgeTone } from "../ui/Badge";
 import { Select, TextArea, TextInput } from "../ui/Field";
+import { Checkbox } from "../ui/Checkbox";
 
 type SchedulerJobRow = {
   id: string;
@@ -627,9 +628,7 @@ export function MySchedulesPage() {
                 />
               </label>
               <label className="flex items-center gap-base text-xs text-ink-muted">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded-tile border-line"
+                <Checkbox
                   checked={createEnabled}
                   onChange={(e) => setCreateEnabled(e.target.checked)}
                 />

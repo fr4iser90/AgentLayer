@@ -185,6 +185,7 @@ import { Button } from "../ui/Button";
 import { Tooltip } from "../ui/Tooltip";
 import { Badge } from "../ui/Badge";
 import { Select, TextInput } from "../ui/Field";
+import { Checkbox } from "../ui/Checkbox";
 /** `?dashboard=<uuid>` — validated; server re-checks access. */
 function parseDashboardQueryParam(raw: string | null): string | null {
   if (!raw || !raw.trim()) return null;
@@ -3595,9 +3596,7 @@ export function ChatPage() {
               {!activeThread?.shared && activeThreadId ? (
                 <div className="mt-base rounded-card border border-violet-500/25 bg-violet-950/15 px-soft py-base">
                   <label className="flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-                    <input
-                      type="checkbox"
-                      className="rounded-tile border-line"
+                    <Checkbox
                       checked={!!activeThread?.delegateAutoRespondEnabled}
                       onChange={(e) => {
                         const enabled = e.target.checked;
@@ -3709,9 +3708,7 @@ export function ChatPage() {
               </div>
               <div className="w-full">
                 <label className="flex cursor-pointer items-center gap-base text-meta font-medium uppercase tracking-wide text-ink-muted">
-                  <input
-                    type="checkbox"
-                    className="rounded-tile border-line bg-field text-accent"
+                  <Checkbox
                     checked={agentStreamLlmUi}
                     disabled={mode === "chat"}
                     onChange={(e) => {
