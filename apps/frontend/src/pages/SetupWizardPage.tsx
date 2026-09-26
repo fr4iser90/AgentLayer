@@ -9,6 +9,7 @@ import {
   LLM_PRESETS,
   type LlmPresetId,
 } from "../setup/llmPresets";
+import { Radio } from "../ui/Radio";
 import { Select, TextInput } from "../ui/Field";
 import { Button } from "../ui/Button";
 
@@ -485,8 +486,7 @@ export function SetupWizardPage() {
               ) : null}
               <fieldset className="space-y-soft">
                 <label className="flex cursor-pointer items-start gap-soft rounded-card border border-line p-wide">
-                  <input
-                    type="radio"
+                  <Radio
                     name="deployment_mode"
                     value="single_user"
                     checked={deploymentMode === "single_user"}
@@ -499,8 +499,7 @@ export function SetupWizardPage() {
                   </span>
                 </label>
                 <label className="flex cursor-pointer items-start gap-soft rounded-card border border-line p-wide">
-                  <input
-                    type="radio"
+                  <Radio
                     name="deployment_mode"
                     value="agent_system"
                     checked={deploymentMode === "agent_system"}
@@ -513,8 +512,7 @@ export function SetupWizardPage() {
                   </span>
                 </label>
                 <label className="flex cursor-pointer items-start gap-soft rounded-card border border-line p-wide">
-                  <input
-                    type="radio"
+                  <Radio
                     name="deployment_mode"
                     value="multi_tenant"
                     checked={deploymentMode === "multi_tenant"}
