@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { Checkbox } from "../../ui/Checkbox";
 import { Select, TextArea } from "../../ui/Field";
 import { Button } from "../../ui/Button";
 import { cardClasses } from "../../ui/Card";
@@ -202,8 +203,7 @@ function ConfigEditor({
             ] as const
           ).map(([key, label]) => (
             <label key={key} className="flex cursor-pointer items-center gap-base">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={config.escalation[key]}
                 onChange={(e) =>
                   onChange({
@@ -245,8 +245,7 @@ function ConfigEditor({
           />
         </div>
         <label className="mt-soft flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={config.communication.ask_before_major_changes}
             onChange={(e) =>
               onChange({
@@ -320,8 +319,7 @@ function ConfigEditor({
             ] as const
           ).map(([key, label]) => (
             <label key={key} className="flex cursor-pointer items-center gap-base">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={config.engineering[key]}
                 onChange={(e) =>
                   onChange({
@@ -347,8 +345,7 @@ function ConfigEditor({
             ] as const
           ).map(([key, label]) => (
             <label key={key} className="flex cursor-pointer items-center gap-base">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={config.autonomy[key]}
                 onChange={(e) =>
                   onChange({

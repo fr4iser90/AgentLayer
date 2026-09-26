@@ -7,6 +7,7 @@ import { isPackageEnabledForChat, setPackageEnabledForChat } from "../../feature
 import { Badge } from "../../ui/Badge";
 import { Button, buttonClass } from "../../ui/Button";
 import { Drawer } from "../../ui/Drawer";
+import { Checkbox } from "../../ui/Checkbox";
 import { TextInput } from "../../ui/Field";
 
 type ToolPackageUi = {
@@ -506,9 +507,7 @@ export function ToolsSettings() {
                           </div>
                           <div className="flex flex-wrap items-center gap-soft border-t border-line-subtle pt-soft">
                             <label className="flex cursor-pointer items-center gap-base text-xs text-ink-primary">
-                              <input
-                                type="checkbox"
-                                className="h-4 w-4 rounded-tile border-line bg-field"
+                              <Checkbox
                                 checked={enabled}
                                 disabled={!names.length}
                                 onChange={(e) => {

@@ -7,6 +7,7 @@ import {
   type VoicePrefs,
   type VoiceStatus,
 } from "../../features/voice/voiceApi";
+import { Checkbox } from "../../ui/Checkbox";
 import { Select, TextInput } from "../../ui/Field";
 import { Button } from "../../ui/Button";
 
@@ -78,24 +79,21 @@ export function VoiceSettings() {
 
       <div className="mt-broad space-y-wide rounded-sheet border border-line bg-card p-roomy">
         <label className="flex items-center gap-base text-sm text-ink-primary">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={prefs.input_enabled}
             onChange={(e) => setPrefs((p) => ({ ...p, input_enabled: e.target.checked }))}
           />
           {t("settings:voiceInputEnabled")}
         </label>
         <label className="flex items-center gap-base text-sm text-ink-primary">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={prefs.output_enabled}
             onChange={(e) => setPrefs((p) => ({ ...p, output_enabled: e.target.checked }))}
           />
           {t("settings:voiceOutputEnabled")}
         </label>
         <label className="flex items-center gap-base text-sm text-ink-primary">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={prefs.edit_transcript_before_send}
             onChange={(e) =>
               setPrefs((p) => ({ ...p, edit_transcript_before_send: e.target.checked }))
