@@ -13,6 +13,8 @@ import {
 import { Button } from "../../ui/Button";
 import { Modal } from "../../ui/Modal";
 import { Badge, type BadgeTone } from "../../ui/Badge";
+import { EmptyState } from "../../ui/EmptyState";
+import { Table, type TableColumn } from "../../ui/Table";
 
 type SchedulerJobRow = {
   id: string;
@@ -312,6 +314,97 @@ export function AdminSchedules() {
     await refresh();
   };
 
+  // Column definitions live next to the state they render from: every cell
+  // needs the translation function and the row handlers, so a module-level
+  // table of columns would have to be handed all of them anyway.
+  const jobColumns: Array<TableColumn<SchedulerJobRow>> = [
+    {
+      key: "enabled",
+      header: t("admin:schedulesEnabledFilter"),
+      render: (j) => (
+        <>
+          <Badge tone={pill(j.enabled)}>
+            {j.enabled
+              ? t("admin:schedulesEnabledLabel")
+              : t("admin:schedulesDisabledLabel")}
+          </Badge>
+          {j.deleted_at ? (
+            <Badge tone="neutral" className="ml-base">
+              {t("admin:schedulesArchivedLabel")}
+            </Badge>
+          ) : null}
+        </>
+      ),
+    },
+    {
+      key: "target",
+      header: t("admin:schedulesTarget"),
+      render: (j) => (
+        <span className="text-xs text-ink-primary">
+          {labelForExecutionTarget(j.execution_target, targetCatalog)}
+        </span>
+      ),
+    },
+    {
+      key: "title",
+      header: t("admin:schedulesColTitle"),
+      render: (j) => <span className="text-ink-primary">{j.title || "—"}</span>,
+    },
+    {
+      key: "interval",
+      header: t("admin:schedulesColInterval"),
+      render: (j) => (
+        <span className="text-ink-muted">{j.interval_minutes} min</span>
+      ),
+    },
+    {
+      key: "dashboard",
+      header: t("admin:schedulesDashboardId"),
+      render: (j) => (
+        <span className="font-mono text-meta text-ink-muted">
+          {j.dashboard_id || "global"}
+        </span>
+      ),
+    },
+    {
+      key: "lastRun",
+      header: t("admin:schedulesColLastRun"),
+      render: (j) => (
+        <span className="text-ink-muted">{formatDateTimeLocal(j.last_run_at)}</span>
+      ),
+    },
+    {
+      key: "created",
+      header: t("admin:created"),
+      render: (j) => (
+        <span className="text-ink-muted">{formatDateTimeLocal(j.created_at)}</span>
+      ),
+    },
+    {
+      key: "actions",
+      header: t("dashboard:actions"),
+      render: (j) => (
+        <div className="flex flex-wrap items-center gap-base">
+          <Button size="sm" onClick={() => void toggleEnabled(j.id, !j.enabled)}>
+            {j.enabled ? t("admin:schedulesDisable") : t("admin:schedulesEnable")}
+          </Button>
+          <Button size="sm" onClick={() => openEdit(j)}>
+            {t("admin:schedulesEdit")}
+          </Button>
+          <Button size="sm" onClick={() => void archiveJob(j.id, !j.deleted_at)}>
+            {j.deleted_at
+              ? t("admin:schedulesUnarchive")
+              : t("admin:schedulesArchive")}
+          </Button>
+          <Button size="sm" variant="danger" onClick={() => void hardDelete(j.id)}>
+            {t("admin:schedulesDelete")}
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
+
   return (
     <div className="mx-auto max-w-pageWide px-broad py-page">
       <div className="flex items-start justify-between gap-wide">
@@ -418,94 +511,23 @@ export function AdminSchedules() {
         </div>
       ) : null}
 
-      <div className="mt-broad overflow-x-auto rounded-sheet border border-line">
-        <table className="w-full min-w-[840px] border-collapse text-left text-sm">
-          <thead className="bg-black/30">
-            <tr className="border-b border-line text-ink-muted">
-              <th className="px-soft py-base font-medium">{t("admin:schedulesEnabledFilter")}</th>
-              <th className="px-soft py-base font-medium">{t("admin:schedulesTarget")}</th>
-              <th className="px-soft py-base font-medium">{t("admin:schedulesColTitle")}</th>
-              <th className="px-soft py-base font-medium">{t("admin:schedulesColInterval")}</th>
-              <th className="px-soft py-base font-medium">{t("admin:schedulesDashboardId")}</th>
-              <th className="px-soft py-base font-medium">{t("admin:schedulesColLastRun")}</th>
-              <th className="px-soft py-base font-medium">{t("admin:created")}</th>
-              <th className="px-soft py-base font-medium">{t("dashboard:actions")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {!jobs ? (
-              <tr>
-                <td colSpan={8} className="px-soft py-page text-center text-ink-muted">
-                  {loading ? t("admin:loading") : t("admin:schedulesNoDataYet")}
-                </td>
-              </tr>
-            ) : jobs.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="px-soft py-page text-center text-ink-muted">
-                  {t("admin:schedulesNone")}
-                </td>
-              </tr>
-            ) : (
-              jobs.map((j) => (
-                <tr key={j.id} className="border-b border-line-subtle">
-                  <td className="px-soft py-base">
-                    <Badge tone={pill(j.enabled)}>
-                      {j.enabled ? t("admin:schedulesEnabledLabel") : t("admin:schedulesDisabledLabel")}
-                    </Badge>
-                    {j.deleted_at ? (
-                      <Badge tone="neutral" className="ml-base">
-                        {t("admin:schedulesArchivedLabel")}
-                      </Badge>
-                    ) : null}
-                  </td>
-                  <td className="px-soft py-base text-xs text-ink-primary">
-                    {labelForExecutionTarget(j.execution_target, targetCatalog)}
-                  </td>
-                  <td className="px-soft py-base text-ink-primary">{j.title || "—"}</td>
-                  <td className="px-soft py-base text-ink-muted">{j.interval_minutes} min</td>
-                  <td className="px-soft py-base font-mono text-meta text-ink-muted">
-                    {j.dashboard_id || "global"}
-                  </td>
-                  <td className="px-soft py-base text-ink-muted">{formatDateTimeLocal(j.last_run_at)}</td>
-                  <td className="px-soft py-base text-ink-muted">{formatDateTimeLocal(j.created_at)}</td>
-                  <td className="px-soft py-base">
-                    <div className="flex flex-wrap items-center gap-base">
-                      <button
-                        type="button"
-                        className="rounded-tile border border-line px-base py-tight text-xs text-ink-primary hover:bg-white/5"
-                        onClick={() => void toggleEnabled(j.id, !j.enabled)}
-                      >
-                        {j.enabled ? t("admin:schedulesDisable") : t("admin:schedulesEnable")}
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-tile border border-line px-base py-tight text-xs text-ink-primary hover:bg-white/5"
-                        onClick={() => openEdit(j)}
-                      >
-                        {t("admin:schedulesEdit")}
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-tile border border-line px-base py-tight text-xs text-ink-primary hover:bg-white/5"
-                        onClick={() => void archiveJob(j.id, !j.deleted_at)}
-                      >
-                        {j.deleted_at ? t("admin:schedulesUnarchive") : t("admin:schedulesArchive")}
-                      </button>
-                      <Button
-                        type="button"
-                        variant="danger"
-                        size="sm"
-                        onClick={() => void hardDelete(j.id)}
-                      >
-                        {t("admin:schedulesDelete")}
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      <div className="mt-broad rounded-sheet border border-line">
+        <Table
+          minWidth="840px"
+          columns={jobColumns}
+          rows={jobs ?? []}
+          rowKey={(j) => j.id}
+          loading={loading && !jobs}
+          empty={
+            <EmptyState
+              pose={jobs ? "noResults" : "waiting"}
+              title={
+                jobs ? t("admin:schedulesNone") : t("admin:schedulesNoDataYet")
+              }
+              animated={false}
+            />
+          }
+        />
       </div>
 
       {createOpen ? (
