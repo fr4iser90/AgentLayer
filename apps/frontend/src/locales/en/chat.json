@@ -110,6 +110,7 @@
   "emptyStarterContinue": "Continue when the agent pauses between steps",
   "permissionAskTitle": "{{tool}} wants to run",
   "permissionAskRound": "round {{round}}",
+  "permissionAskIntro": "The agent wants to run this tool and needs your permission first.",
   "permissionAllowOnce": "Allow once",
   "permissionAllowAlways": "Always allow",
   "permissionReject": "Reject",

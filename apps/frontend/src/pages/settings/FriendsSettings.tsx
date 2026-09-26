@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CircleCheck } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
@@ -6,6 +6,7 @@ import { apiFetch } from "../../lib/api";
 import { Button } from "../../ui/Button";
 import { EmptyState } from "../../ui/EmptyState";
 import { TextArea, TextInput } from "../../ui/Field";
+import { TabPanel, Tabs } from "../../ui/Tabs";
 
 type FriendRequest = {
   id: number;
@@ -51,6 +52,7 @@ export function FriendsSettings() {
   const [confirmedFriends, setConfirmedFriends] = useState<ConfirmedFriend[]>([]);
   const [knownPeople, setKnownPeople] = useState<KnownPerson[]>([]);
 
+  const tabsGroup = useId();
   const [activeTab, setActiveTab] = useState<"friends" | "manual">("friends");
   const [showAddForm, setShowAddForm] = useState(false);
   const [showSendRequestForm, setShowSendRequestForm] = useState(false);
@@ -241,40 +243,29 @@ export function FriendsSettings() {
         <p className="mt-base text-sm text-ink-muted">{t("settings:friendsSystemSubtitle")}</p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-wide border-b border-line pb-tight">
-        <button
-          type="button"
-          onClick={() => setActiveTab("friends")}
-          className={`px-soft py-base text-sm font-medium transition-colors ${
-            activeTab === "friends"
-              ? "text-ink-primary border-b-2 border-accent"
-              : "text-ink-muted hover:text-white"
-          }`}
-        >
-          {incomingRequests.length > 0
-            ? t("settings:friendsTabFriendsCount", { count: incomingRequests.length })
-            : t("settings:friendsTabFriends")}
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("manual")}
-          className={`px-soft py-base text-sm font-medium transition-colors ${
-            activeTab === "manual"
-              ? "text-ink-primary border-b-2 border-accent"
-              : "text-ink-muted hover:text-white"
-          }`}
-        >
-          {t("settings:friendsTabManual")}
-        </button>
-      </div>
+      <Tabs
+        groupId={tabsGroup}
+        ariaLabel={t("settings:friendsTabsAria")}
+        value={activeTab}
+        onChange={(id) => setActiveTab(id === "manual" ? "manual" : "friends")}
+        items={[
+          {
+            id: "friends",
+            label:
+              incomingRequests.length > 0
+                ? t("settings:friendsTabFriendsCount", { count: incomingRequests.length })
+                : t("settings:friendsTabFriends"),
+          },
+          { id: "manual", label: t("settings:friendsTabManual") },
+        ]}
+      />
 
       {loading ? (
         <p className="text-sm text-ink-muted">{t("settings:agentLoading")}</p>
       ) : err ? (
         <p className="text-sm text-warning">{err}</p>
       ) : activeTab === "friends" ? (
-        <div className="space-y-broad">
+        <TabPanel id="friends" group={tabsGroup} className="space-y-broad">
           {/* Incoming Requests */}
           {incomingRequests.length > 0 && (
             <div className="rounded-sheet border border-line bg-card overflow-hidden">
@@ -437,9 +428,9 @@ export function FriendsSettings() {
               />
             </div>
           )}
-        </div>
+        </TabPanel>
       ) : (
-        <div className="space-y-broad">
+        <TabPanel id="manual" group={tabsGroup} className="space-y-broad">
           <p className="text-sm text-ink-muted">
             {t("settings:friendsManualIntro")}
           </p>
@@ -602,7 +593,7 @@ export function FriendsSettings() {
               {t("settings:friendsAddNewPerson")}
             </Button>
           )}
-        </div>
+        </TabPanel>
       )}
     </div>
   );

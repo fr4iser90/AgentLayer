@@ -21,10 +21,17 @@ export interface TabsProps {
   onChange: (id: string) => void;
   ariaLabel: string;
   className?: string;
+  /**
+   * id shared with the `TabPanel`s this strip drives. Without it the strip
+   * cannot name panels it has never seen, so it omits `aria-controls` rather
+   * than pointing at an element that is not there.
+   */
+  groupId?: string;
 }
 
-export function Tabs({ items, value, onChange, ariaLabel, className }: TabsProps) {
-  const group = useId();
+export function Tabs({ items, value, onChange, ariaLabel, className, groupId }: TabsProps) {
+  const autoGroup = useId();
+  const group = groupId ?? autoGroup;
   const refs = useRef(new Map<string, HTMLButtonElement>());
 
   const move = (from: string, delta: number) => {
@@ -83,7 +90,7 @@ export function Tabs({ items, value, onChange, ariaLabel, className }: TabsProps
             role="tab"
             id={`${group}-${item.id}`}
             aria-selected={selected}
-            aria-controls={`${group}-panel-${item.id}`}
+            aria-controls={groupId ? `${group}-panel-${item.id}` : undefined}
             tabIndex={selected ? 0 : -1}
             disabled={item.disabled}
             onClick={() => onChange(item.id)}
@@ -104,7 +111,7 @@ export function Tabs({ items, value, onChange, ariaLabel, className }: TabsProps
   );
 }
 
-/** Pair a content region with a `Tabs` so `aria-controls` resolves. */
+/** Pair a content region with a `Tabs` strip that was given the same `group`. */
 export function TabPanel({
   id,
   group,
@@ -120,6 +127,7 @@ export function TabPanel({
     <div
       role="tabpanel"
       id={`${group}-panel-${id}`}
+      aria-labelledby={`${group}-${id}`}
       tabIndex={0}
       className={className}
     >

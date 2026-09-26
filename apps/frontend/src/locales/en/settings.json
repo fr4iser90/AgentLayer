@@ -238,6 +238,7 @@
   "friendsTabFriends": "Real friends",
   "friendsTabFriendsCount": "Real friends ({{count}})",
   "friendsTabManual": "Manual entries",
+  "friendsTabsAria": "Friends sections",
   "friendsAcceptBtn": "Accept",
   "friendsDeclineBtn": "Decline",
   "toolsNoParamSchema": "No parameter schema in catalog.",

@@ -238,6 +238,7 @@
   "friendsTabFriends": "Echte Freunde",
   "friendsTabFriendsCount": "Echte Freunde ({{count}})",
   "friendsTabManual": "Manuelle Einträge",
+  "friendsTabsAria": "Freunde-Bereiche",
   "friendsAcceptBtn": "Akzeptieren",
   "friendsDeclineBtn": "Ablehnen",
   "toolsNoParamSchema": "Kein Parameter-Schema im Katalog.",

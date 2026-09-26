@@ -5,6 +5,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { Select, TextArea } from "../../ui/Field";
 import { Button } from "../../ui/Button";
+import { cardClasses } from "../../ui/Card";
 
 type Level = "low" | "medium" | "high";
 type PrimaryGoal = "security" | "stability" | "maintainability" | "speed";
@@ -520,7 +521,7 @@ export function DelegateSettings() {
 
       {msg ? <p className="mt-wide text-sm text-ink-secondary">{msg}</p> : null}
 
-      <section className="mt-deep rounded-card border border-line bg-card p-wide">
+      <section className={cardClasses("card", "wide", "mt-deep")}>
         <h2 className="text-sm font-medium text-ink-primary">{t("settings:delegateGlobalTitle")}</h2>
         <ConfigEditor config={globalConfig} onChange={setGlobalConfig} idPrefix="global" />
         <label className="mt-wide block text-sm text-ink-primary" htmlFor="delegate-notes">
@@ -545,7 +546,7 @@ export function DelegateSettings() {
         </Button>
       </section>
 
-      <section className="mt-deep rounded-card border border-line bg-card p-wide">
+      <section className={cardClasses("card", "wide", "mt-deep")}>
         <h2 className="text-sm font-medium text-ink-primary">{t("settings:delegateWorkspaceTitle")}</h2>
         <p className="mt-tight text-xs text-ink-muted">{t("settings:delegateWorkspaceHelp")}</p>
         {workspaces.length === 0 ? (
