@@ -103,6 +103,7 @@
   "sharesSubtitle": "Manage who has access to your data and what others have shared with you.",
   "sharesTabOutgoing": "Shared by Me",
   "sharesTabIncoming": "Shared with Me",
+  "sharesTabsAria": "Shares sections",
   "sharesLoadFailed": "Could not load shares",
   "friendSharesLoadFailed": "Could not load friend shares",
   "shareUpdateFailed": "Could not update share",

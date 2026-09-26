@@ -91,7 +91,7 @@
     "input": 1
   },
   "src/pages/ProjectsPage.tsx": {
-    "button": 2
+    "button": 1
   },
   "src/pages/StudioPage.tsx": {
     "button": 2
@@ -132,7 +132,6 @@
     "input": 1
   },
   "src/pages/settings/SharesSettings.tsx": {
-    "button": 2,
     "input": 4
   },
   "src/pages/settings/ToolsSettings.tsx": {

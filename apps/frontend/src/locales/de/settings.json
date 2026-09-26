@@ -103,6 +103,7 @@
   "sharesSubtitle": "Verwalte, wer Zugriff auf deine Daten hat und was andere mit dir geteilt haben.",
   "sharesTabOutgoing": "Von mir geteilt",
   "sharesTabIncoming": "Mit mir geteilt",
+  "sharesTabsAria": "Freigabe-Bereiche",
   "sharesLoadFailed": "Shares konnten nicht geladen werden",
   "friendSharesLoadFailed": "Shares des Freundes konnten nicht geladen werden",
   "shareUpdateFailed": "Share konnte nicht aktualisiert werden",

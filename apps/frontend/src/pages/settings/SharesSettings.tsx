@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { Link as LinkIcon } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { useTranslation } from "react-i18next";
 import { Select, TextInput } from "../../ui/Field";
 import { Button } from "../../ui/Button";
+import { TabPanel, Tabs } from "../../ui/Tabs";
 
 type ShareItem = {
   resource_type: string;
@@ -130,6 +131,7 @@ export default function SharesSettings() {
   const [outgoing, setOutgoing] = useState<ShareItem[]>([]);
   const [incoming, setIncoming] = useState<ShareItem[]>([]);
   const [activeTab, setActiveTab] = useState<"outgoing" | "incoming">("outgoing");
+  const tabsGroup = useId();
   const [selectedFriend, setSelectedFriend] = useState<ShareItem | null>(null);
   const [friendShares, setFriendShares] = useState<FriendShares | null>(null);
   const [policyDraft, setPolicyDraft] = useState<Record<string, SharePolicy>>({});
@@ -448,43 +450,26 @@ export default function SharesSettings() {
         <p className="mt-base text-sm text-ink-muted">{t("settings:sharesSubtitle")}</p>
       </div>
 
-      <div className="flex gap-wide border-b border-line pb-tight">
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab("outgoing");
-            setSelectedFriend(null);
-          }}
-          className={`px-soft py-base text-sm font-medium transition-colors ${
-            activeTab === "outgoing"
-              ? "text-ink-primary border-b-2 border-accent"
-              : "text-ink-muted hover:text-white"
-          }`}
-        >
-          {t("settings:sharesTabOutgoing")}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab("incoming");
-            setSelectedFriend(null);
-          }}
-          className={`px-soft py-base text-sm font-medium transition-colors ${
-            activeTab === "incoming"
-              ? "text-ink-primary border-b-2 border-accent"
-              : "text-ink-muted hover:text-white"
-          }`}
-        >
-          {t("settings:sharesTabIncoming")}
-        </button>
-      </div>
+      <Tabs
+        groupId={tabsGroup}
+        ariaLabel={t("settings:sharesTabsAria")}
+        value={activeTab}
+        onChange={(id) => {
+          setActiveTab(id === "incoming" ? "incoming" : "outgoing");
+          setSelectedFriend(null);
+        }}
+        items={[
+          { id: "outgoing", label: t("settings:sharesTabOutgoing") },
+          { id: "incoming", label: t("settings:sharesTabIncoming") },
+        ]}
+      />
 
       {loading ? (
         <p className="text-sm text-ink-muted">{t("settings:sharesLoading")}</p>
       ) : err ? (
         <p className="text-sm text-warning">{err}</p>
       ) : activeTab === "outgoing" ? (
-        <div className="space-y-broad">
+        <TabPanel id="outgoing" group={tabsGroup} className="space-y-broad">
           {Object.entries(groupByUser(outgoing)).map(([userId, shares]) => {
             const friend = shares[0];
             const resourceNames = shares
@@ -519,9 +504,9 @@ export default function SharesSettings() {
               {t("settings:sharesNoneOutgoing")}
             </div>
           )}
-        </div>
+        </TabPanel>
       ) : (
-        <div className="space-y-broad">
+        <TabPanel id="incoming" group={tabsGroup} className="space-y-broad">
           {Object.entries(groupByUser(incoming)).map(([userId, shares]) => {
             const friend = shares[0];
             const resourceNames = shares
@@ -550,7 +535,7 @@ export default function SharesSettings() {
               {t("settings:sharesNoneIncoming")}
             </div>
           )}
-        </div>
+        </TabPanel>
       )}
 
       {!loading && (

@@ -7,6 +7,7 @@ import { apiFetch, type WorkspaceApiRecord, type WorkspaceListScope } from "../l
 import { deleteWorkspaceApi, fetchWorkspacesApi, isAgentlayerSelfWorkspace } from "../lib/workspacesApi";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
+import { Tabs } from "../ui/Tabs";
 
 type FsEntry = {
   name: string;
@@ -175,32 +176,16 @@ export function ProjectsPage() {
         <section className="flex min-h-0 flex-col rounded-sheet border border-line bg-card">
           <div className="flex items-center justify-between gap-base border-b border-line px-soft py-base">
             {hasOrgSurface(auth.user) ? (
-              <div
-                role="tablist"
-                aria-label={t("workspace:projectsScopeAria")}
-                className="flex items-center gap-tight"
-              >
-                {SCOPE_TABS.map((tab) => {
-                  const active = scope === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={active}
-                      onClick={() => switchScope(tab.id)}
-                      className={[
-                        "rounded-tile px-base py-tight text-xs font-semibold uppercase tracking-wide transition-colors",
-                        active
-                          ? "border-b-2 border-accent text-badge-accent"
-                          : "border-b-2 border-transparent text-ink-muted hover:text-neutral-200",
-                      ].join(" ")}
-                    >
-                      {t(tab.labelKey)}
-                    </button>
-                  );
-                })}
-              </div>
+              // `border-b-0`: this row already carries the divider the list sits
+              // under, so the strip's own underline would draw a second hairline
+              // eight pixels below it.
+              <Tabs
+                ariaLabel={t("workspace:projectsScopeAria")}
+                className="border-b-0"
+                value={scope}
+                onChange={(id) => switchScope(id === "company" ? "company" : "mine")}
+                items={SCOPE_TABS.map((tab) => ({ id: tab.id, label: t(tab.labelKey) }))}
+              />
             ) : (
               <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                 {t("workspace:projectsListTitle")}
