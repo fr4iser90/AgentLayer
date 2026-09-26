@@ -80,6 +80,7 @@ import { Tooltip } from "../../ui/Tooltip";
 import { Badge } from "../../ui/Badge";
 import { Modal } from "../../ui/Modal";
 import { Select, TextInput } from "../../ui/Field";
+import { Tabs } from "../../ui/Tabs";
 
 const benchCheckboxClass =
   "h-4 w-4 shrink-0 rounded-tile border-2 border-accent/70 bg-black/60 text-accent accent-accent focus:ring-2 focus:ring-accent/70 focus:ring-offset-0";
@@ -1789,35 +1790,17 @@ export function AdminBenchmarks() {
         </p>
       </div>
 
-      <div className="flex shrink-0 gap-base">
-        <button
-          type="button"
-          onClick={() => setTab("run")}
-          className={`rounded-card px-soft py-snug text-sm ${
-            tab === "run" ? "bg-white/15 text-ink-primary" : "text-ink-muted hover:bg-white/5"
-          }`}
-        >
-          {t("admin:benchTabRun")}
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("history")}
-          className={`rounded-card px-soft py-snug text-sm ${
-            tab === "history" ? "bg-white/15 text-ink-primary" : "text-ink-muted hover:bg-white/5"
-          }`}
-        >
-          {t("admin:benchTabHistory")}
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("stats")}
-          className={`rounded-card px-soft py-snug text-sm ${
-            tab === "stats" ? "bg-white/15 text-ink-primary" : "text-ink-muted hover:bg-white/5"
-          }`}
-        >
-          {t("admin:benchTabStats")}
-        </button>
-      </div>
+      <Tabs
+        className="shrink-0"
+        ariaLabel={t("admin:benchTabsAria")}
+        value={tab}
+        onChange={(id) => setTab(id === "history" || id === "stats" ? id : "run")}
+        items={[
+          { id: "run", label: t("admin:benchTabRun") },
+          { id: "history", label: t("admin:benchTabHistory") },
+          { id: "stats", label: t("admin:benchTabStats") },
+        ]}
+      />
 
       {error ? <p className="text-sm text-danger">{error}</p> : null}
 
