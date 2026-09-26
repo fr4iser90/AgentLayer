@@ -15,6 +15,7 @@ import {
 } from "../../features/admin/harness/harnessApi";
 import { Button } from "../../ui/Button";
 import { Select, TextArea, TextInput } from "../../ui/Field";
+import { Table, type TableColumn } from "../../ui/Table";
 
 const emptyOverrideForm = (): HarnessConfigFields & {
   catalog_owned_by: string;
@@ -186,6 +187,66 @@ export function AdminHarnessConfig() {
     }
   }
 
+  // Built inside the component so the headers read this hook's `t` instead of
+  // taking a translator the caller has to hand over.
+  const overrideColumns: Array<TableColumn<HarnessModelOverride>> = [
+    {
+      key: "provider",
+      header: t("admin:harnessColProvider"),
+      render: (row) => <span className="font-mono">{row.catalog_owned_by}</span>,
+    },
+    {
+      key: "model",
+      header: t("admin:harnessColModel"),
+      render: (row) => (
+        <span className="font-mono">
+          {row.model || <span className="text-ink-muted">*</span>}
+        </span>
+      ),
+    },
+    {
+      key: "preset",
+      header: t("admin:benchHarnessPreset"),
+      render: (row) => row.harness_preset,
+    },
+    {
+      key: "max_tool_rounds",
+      header: t("admin:benchMaxToolRounds"),
+      render: (row) => row.max_tool_rounds_override ?? "—",
+    },
+    {
+      key: "scenario_timeout",
+      header: t("admin:benchScenarioTimeout"),
+      render: (row) => row.scenario_timeout_sec ?? "—",
+    },
+    {
+      key: "actions",
+      header: "",
+      align: "right",
+      render: (row) => (
+        <>
+          <Button
+            variant="ghost"
+            type="button"
+            className="text-accent hover:underline"
+            onClick={() => startEdit(row)}
+          >
+            {t("admin:harnessEdit")}
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            size="sm"
+            className="ml-soft"
+            onClick={() => void onDeleteOverride(row.id)}
+          >
+            {t("admin:harnessDelete")}
+          </Button>
+        </>
+      ),
+    },
+  ];
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <header className="shrink-0 border-b border-line px-wide py-soft">
@@ -276,56 +337,13 @@ export function AdminHarnessConfig() {
               <h2 className="text-sm font-medium text-ink-primary">{t("admin:harnessOverridesTitle")}</h2>
               <p className="mt-tight text-xs text-ink-muted">{t("admin:harnessOverridesHint")}</p>
 
-              {overrides.length ? (
-                <div className="mt-wide overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead className="text-xs text-ink-muted">
-                      <tr>
-                        <th className="pb-base pr-soft">{t("admin:harnessColProvider")}</th>
-                        <th className="pb-base pr-soft">{t("admin:harnessColModel")}</th>
-                        <th className="pb-base pr-soft">{t("admin:benchHarnessPreset")}</th>
-                        <th className="pb-base pr-soft">{t("admin:benchMaxToolRounds")}</th>
-                        <th className="pb-base pr-soft">{t("admin:benchScenarioTimeout")}</th>
-                        <th className="pb-base" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {overrides.map((row) => (
-                        <tr key={row.id} className="border-t border-line-subtle">
-                          <td className="py-base pr-soft font-mono text-xs">{row.catalog_owned_by}</td>
-                          <td className="py-base pr-soft font-mono text-xs">
-                            {row.model || <span className="text-ink-muted">*</span>}
-                          </td>
-                          <td className="py-base pr-soft">{row.harness_preset}</td>
-                          <td className="py-base pr-soft">{row.max_tool_rounds_override ?? "—"}</td>
-                          <td className="py-base pr-soft">{row.scenario_timeout_sec ?? "—"}</td>
-                          <td className="py-base text-right">
-                            <Button
-                              variant="ghost"
-                              type="button"
-                              className="text-accent hover:underline"
-                              onClick={() => startEdit(row)}
-                            >
-                              {t("admin:harnessEdit")}
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="danger"
-                              size="sm"
-                              className="ml-soft"
-                              onClick={() => void onDeleteOverride(row.id)}
-                            >
-                              {t("admin:harnessDelete")}
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="mt-wide text-sm text-ink-muted">{t("admin:harnessNoOverrides")}</p>
-              )}
+              <Table
+                className="mt-wide"
+                columns={overrideColumns}
+                rows={overrides}
+                rowKey={(row) => row.id}
+                empty={t("admin:harnessNoOverrides")}
+              />
 
               <div className="mt-broad border-t border-line pt-wide">
                 <h3 className="text-sm text-ink-primary">
