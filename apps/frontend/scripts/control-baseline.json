@@ -148,15 +148,9 @@
     "input": 2
   },
   "src/pages/settings/AgentSettings.tsx": {
-    "input": 13
+    "input": 9
   },
   "src/pages/settings/ConnectionsSettings.tsx": {
-    "input": 1
-  },
-  "src/pages/settings/DelegateSettings.tsx": {
-    "input": 4
-  },
-  "src/pages/settings/NotificationsSettings.tsx": {
     "input": 1
   },
   "src/pages/settings/SharesSettings.tsx": {
@@ -164,10 +158,6 @@
     "input": 4
   },
   "src/pages/settings/ToolsSettings.tsx": {
-    "button": 1,
-    "input": 1
-  },
-  "src/pages/settings/VoiceSettings.tsx": {
-    "input": 3
+    "button": 1
   }
 }

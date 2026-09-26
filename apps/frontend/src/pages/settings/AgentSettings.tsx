@@ -8,6 +8,7 @@ import {
   getAgentShowReasoning,
   setAgentShowReasoning,
 } from "../../features/settings/agentReasoningPrefs";
+import { Checkbox } from "../../ui/Checkbox";
 import { Button } from "../../ui/Button";
 
 type PersonaResp = {
@@ -196,9 +197,7 @@ export function AgentSettings() {
         <h2 className="text-sm font-medium text-ink-primary">{t("settings:showReasoningTitle")}</h2>
         <p className="mt-tight text-xs text-ink-muted">{t("settings:showReasoningHelp")}</p>
         <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-          <input
-            type="checkbox"
-            className="h-4 w-4 rounded-tile border-line bg-field"
+          <Checkbox
             checked={showReasoning}
             onChange={(e) => {
               const on = e.target.checked;
@@ -231,9 +230,7 @@ export function AgentSettings() {
               />
             </label>
             <label className="mt-soft flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded-tile border-line bg-field"
+              <Checkbox
                 checked={injectPersona}
                 onChange={(e) => setInjectPersona(e.target.checked)}
               />
@@ -331,18 +328,14 @@ export function AgentSettings() {
               <input className={input} value={organization} onChange={(e) => setOrganization(e.target.value)} />
             </label>
             <label className="flex cursor-pointer items-center gap-base text-sm text-ink-primary sm:col-span-2">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded-tile border-line bg-field"
+              <Checkbox
                 checked={injectStructured}
                 onChange={(e) => setInjectStructured(e.target.checked)}
               />
               {t("settings:injectStructuredProfile")}
             </label>
             <label className="flex cursor-pointer items-center gap-base text-sm text-ink-primary sm:col-span-2">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded-tile border-line bg-field"
+              <Checkbox
                 checked={proactiveMode}
                 onChange={(e) => setProactiveMode(e.target.checked)}
               />

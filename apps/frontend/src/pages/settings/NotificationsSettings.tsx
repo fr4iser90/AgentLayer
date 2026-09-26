@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { Checkbox } from "../../ui/Checkbox";
 import { Button } from "../../ui/Button";
 
 type Prefs = {
@@ -39,8 +40,7 @@ function Toggle(props: {
         props.disabled ? "cursor-not-allowed opacity-50" : "hover:bg-white/[0.03]",
       ].join(" ")}
     >
-      <input
-        type="checkbox"
+      <Checkbox
         className="mt-tight"
         checked={props.checked}
         disabled={props.disabled}
