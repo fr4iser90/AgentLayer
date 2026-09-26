@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { Badge, type BadgeTone } from "../../ui/Badge";
+import { Checkbox } from "../../ui/Checkbox";
 import { Select, TextArea, TextInput } from "../../ui/Field";
 import { Button } from "../../ui/Button";
 
@@ -515,8 +516,7 @@ export function AdminTools() {
             </div>
           </div>
           <label className="flex shrink-0 cursor-pointer items-center gap-base whitespace-nowrap text-meta text-ink-primary">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={pol.enabled}
               onChange={(e) => updatePolicy(pid, { enabled: e.target.checked })}
             />

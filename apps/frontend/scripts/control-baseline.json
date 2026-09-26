@@ -132,14 +132,8 @@
     "button": 7,
     "input": 5
   },
-  "src/pages/admin/AdminSchedules.tsx": {
-    "input": 3
-  },
   "src/pages/admin/AdminTools.tsx": {
-    "input": 2
-  },
-  "src/pages/admin/AdminUsers.tsx": {
-    "input": 5
+    "input": 1
   },
   "src/pages/admin/interfaces/AdminInterfacesLlmSection.tsx": {
     "button": 1

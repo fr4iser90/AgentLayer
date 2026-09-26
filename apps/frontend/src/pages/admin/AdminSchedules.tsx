@@ -15,6 +15,7 @@ import { Modal } from "../../ui/Modal";
 import { Badge, type BadgeTone } from "../../ui/Badge";
 import { EmptyState } from "../../ui/EmptyState";
 import { Table, type TableColumn } from "../../ui/Table";
+import { Checkbox } from "../../ui/Checkbox";
 import { Select, TextArea, TextInput } from "../../ui/Field";
 
 type SchedulerJobRow = {
@@ -477,9 +478,7 @@ export function AdminSchedules() {
         </div>
         {scope === "dashboard" ? (
           <label className="mt-soft flex items-center gap-base text-xs text-ink-muted">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded-tile border-line"
+            <Checkbox
               checked={includeGlobal}
               onChange={(e) => setIncludeGlobal(e.target.checked)}
             />
@@ -488,9 +487,7 @@ export function AdminSchedules() {
         ) : null}
         <div className="mt-soft flex items-center justify-between gap-soft">
           <label className="flex items-center gap-base text-xs text-ink-muted">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded-tile border-line"
+            <Checkbox
               checked={includeArchived}
               onChange={(e) => setIncludeArchived(e.target.checked)}
             />
@@ -678,9 +675,7 @@ export function AdminSchedules() {
                 />
               </label>
               <label className="flex items-center gap-base text-xs text-ink-muted">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded-tile border-line"
+                <Checkbox
                   checked={createEnabled}
                   onChange={(e) => setCreateEnabled(e.target.checked)}
                 />

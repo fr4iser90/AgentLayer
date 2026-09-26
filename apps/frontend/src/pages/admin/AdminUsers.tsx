@@ -10,6 +10,7 @@ import {
   visibleColSpan as computeVisibleColSpan,
 } from "./accessGating";
 import { Badge } from "../../ui/Badge";
+import { Checkbox } from "../../ui/Checkbox";
 import { Select, TextInput } from "../../ui/Field";
 import { Button } from "../../ui/Button";
 
@@ -776,18 +777,14 @@ export function AdminUsers() {
                         </Select>
                       </td>
                       <td className="px-wide py-soft">
-                        <input
-                          type="checkbox"
-                          className="rounded-tile border-line"
+                        <Checkbox
                           checked={r.workspace_self_allowed ?? false}
                           disabled={saving || !targetEditable}
                           onChange={(e) => void patchWorkspaceSelfAllowed(r.id, e.target.checked)}
                         />
                       </td>
                       <td className="px-wide py-soft">
-                        <input
-                          type="checkbox"
-                          className="rounded-tile border-line"
+                        <Checkbox
                           checked={r.schedules_allowed ?? false}
                           disabled={saving || !targetEditable}
                           title={t("admin:usersSchedulesHint")}
@@ -795,9 +792,7 @@ export function AdminUsers() {
                         />
                       </td>
                       <td className="px-wide py-soft">
-                        <input
-                          type="checkbox"
-                          className="rounded-tile border-line"
+                        <Checkbox
                           checked={r.dashboards_allowed ?? false}
                           disabled={saving || !targetEditable}
                           title={t("admin:usersDashboardsHint")}
@@ -834,9 +829,7 @@ export function AdminUsers() {
                                 key={a.id}
                                 className="flex items-center gap-snug text-xs text-ink-secondary"
                               >
-                                <input
-                                  type="checkbox"
-                                  className="rounded-tile border-line"
+                                <Checkbox
                                   checked={userAllowedAgents[r.id]?.has(a.id) ?? false}
                                   disabled={
                                     saving ||
@@ -921,9 +914,7 @@ export function AdminUsers() {
             </Select>
           </label>
           <label className="flex items-center gap-base text-xs text-ink-muted sm:mb-base">
-            <input
-              type="checkbox"
-              className="rounded-tile border-line"
+            <Checkbox
               checked={seedDemoContent}
               disabled={!newTenantTemplateId}
               onChange={(e) => setSeedDemoContent(e.target.checked)}
