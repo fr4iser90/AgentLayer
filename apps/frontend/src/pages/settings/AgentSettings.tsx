@@ -8,6 +8,7 @@ import {
   getAgentShowReasoning,
   setAgentShowReasoning,
 } from "../../features/settings/agentReasoningPrefs";
+import { Button } from "../../ui/Button";
 
 type PersonaResp = {
   ok?: boolean;
@@ -238,14 +239,16 @@ export function AgentSettings() {
               />
               {t("settings:personaInjectLabel")}
             </label>
-            <button
+            <Button
+              variant="ghost"
+              size="lg"
               type="button"
               disabled={savingPersona}
-              className="mt-wide rounded-tile bg-violet-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-violet-500 disabled:opacity-50"
+              className="mt-wide bg-violet-600 px-wide py-base text-sm hover:bg-violet-500"
               onClick={() => void savePersona()}
             >
               {savingPersona ? t("settings:saving") : t("settings:savePersona")}
-            </button>
+            </Button>
           </>
         )}
       </section>
@@ -346,26 +349,30 @@ export function AgentSettings() {
               {t("settings:proactiveMode")}
             </label>
             <div className="sm:col-span-2">
-              <button
+              <Button
+                variant="primary"
+                size="lg"
                 type="button"
                 disabled={savingProfile}
-                className="rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+                className="px-wide py-base text-sm"
                 onClick={() => void saveProfile()}
               >
                 {savingProfile ? t("settings:saving") : t("settings:saveProfile")}
-              </button>
+              </Button>
             </div>
           </div>
         )}
       </section>
 
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         type="button"
         className="text-xs text-accent hover:text-badge-accent hover:underline"
         onClick={() => void load()}
       >
         {t("settings:reloadFromServer")}
-      </button>
+      </Button>
     </div>
   );
 }

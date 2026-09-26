@@ -5,6 +5,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { Button } from "../../ui/Button";
 import { Badge } from "../../ui/Badge";
+import { TextArea, TextInput } from "../../ui/Field";
 
 type SecretField = {
   name: string;
@@ -318,9 +319,10 @@ export function ConnectionsSettings() {
         <label className="mt-wide block text-xs text-ink-muted" htmlFor="discord-user-id">
           {t("settings:connectionsDiscordIdLabel")}
         </label>
-        <input
+        <TextInput
+          mono
           id="discord-user-id"
-          className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+          className="mt-tight max-w-controlWide"
           value={discordUserId}
           onChange={(e) => setDiscordUserId(e.target.value.replace(/\D/g, ""))}
           autoComplete="off"
@@ -329,18 +331,21 @@ export function ConnectionsSettings() {
           spellCheck={false}
         />
         <div className="mt-wide flex flex-wrap gap-base">
-          <button
+          <Button
+            variant="primary"
+            size="lg"
             type="button"
             disabled={discordSaving}
-            className="rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+            className="px-wide py-base text-sm"
             onClick={() => void saveDiscordLink()}
           >
             {discordSaving ? t("settings:saving") : t("settings:connectionsSaveDiscord")}
-          </button>
-          <button
+          </Button>
+          <Button
+            size="lg"
             type="button"
             disabled={discordSaving || !discordUserId}
-            className="rounded-tile border border-line-strong bg-white/5 px-wide py-base text-sm text-ink-primary hover:bg-white/10 disabled:opacity-40"
+            className="bg-white/5 px-wide py-base text-sm hover:bg-white/10"
             onClick={() => {
               setDiscordUserId("");
               void (async () => {
@@ -367,7 +372,7 @@ export function ConnectionsSettings() {
             }}
           >
             {t("settings:connectionsClearDiscord")}
-          </button>
+          </Button>
         </div>
       </section>
 
@@ -377,9 +382,10 @@ export function ConnectionsSettings() {
         <label className="mt-wide block text-xs text-ink-muted" htmlFor="telegram-user-id">
           {t("settings:connectionsTelegramIdLabel")}
         </label>
-        <input
+        <TextInput
+          mono
           id="telegram-user-id"
-          className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+          className="mt-tight max-w-controlWide"
           value={telegramUserId}
           onChange={(e) => setTelegramUserId(e.target.value.replace(/\D/g, ""))}
           autoComplete="off"
@@ -388,18 +394,21 @@ export function ConnectionsSettings() {
           spellCheck={false}
         />
         <div className="mt-wide flex flex-wrap gap-base">
-          <button
+          <Button
+            variant="primary"
+            size="lg"
             type="button"
             disabled={telegramSaving}
-            className="rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+            className="px-wide py-base text-sm"
             onClick={() => void saveTelegramLink()}
           >
             {telegramSaving ? t("settings:saving") : t("settings:connectionsSaveTelegram")}
-          </button>
-          <button
+          </Button>
+          <Button
+            size="lg"
             type="button"
             disabled={telegramSaving || !telegramUserId}
-            className="rounded-tile border border-line-strong bg-white/5 px-wide py-base text-sm text-ink-primary hover:bg-white/10 disabled:opacity-40"
+            className="bg-white/5 px-wide py-base text-sm hover:bg-white/10"
             onClick={() => {
               setTelegramUserId("");
               void (async () => {
@@ -426,7 +435,7 @@ export function ConnectionsSettings() {
             }}
           >
             {t("settings:connectionsClear")}
-          </button>
+          </Button>
         </div>
       </section>
 
@@ -462,10 +471,12 @@ export function ConnectionsSettings() {
               const open = activeKey === key;
               return (
                 <li key={key} className="overflow-hidden">
-                  <button
+                  <Button
+                    variant="plain"
+                    block
                     type="button"
                     onClick={() => toggleKey(key)}
-                    className="flex w-full flex-col gap-base px-wide py-wide text-left transition hover:bg-white/[0.03] sm:flex-row sm:items-center sm:justify-between"
+                    className="w-full flex-col gap-base px-wide py-wide transition hover:bg-white/[0.03] sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-base">
@@ -490,7 +501,7 @@ export function ConnectionsSettings() {
                       </Badge>
                       <span className="text-xs text-ink-muted">{open ? "▲" : "▼"}</span>
                     </div>
-                  </button>
+                  </Button>
 
                   {open ? (
                     <div className="space-y-wide border-t border-line-subtle bg-black/20 px-wide py-wide">
@@ -546,8 +557,9 @@ export function ConnectionsSettings() {
                       ) : (
                         <label className="block text-xs text-ink-muted">
                           {t("settings:connectionsSecretLabel")}
-                          <textarea
-                            className="mt-tight min-h-[7rem] w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary placeholder:text-neutral-600"
+                          <TextArea
+                            mono
+                            className="mt-tight min-h-[7rem] text-xs"
                             placeholder={t("settings:connectionsSecretJsonPlaceholder")}
                             value={rawJson}
                             onChange={(e) => setRawJson(e.target.value)}
@@ -557,14 +569,16 @@ export function ConnectionsSettings() {
                         </label>
                       )}
 
-                      <button
+                      <Button
+                        variant="primary"
+                        size="lg"
                         type="button"
                         disabled={saving || secretsUnavailable}
-                        className="rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-40"
+                        className="px-wide py-base text-sm"
                         onClick={() => void saveSecret()}
                       >
                         {saving ? t("settings:saving") : t("admin:save")}
-                      </button>
+                      </Button>
                     </div>
                   ) : null}
                 </li>
@@ -583,20 +597,23 @@ export function ConnectionsSettings() {
               const open = activeKey === k;
               return (
                 <li key={k}>
-                  <button
+                  <Button
+                    variant="plain"
+                    block
                     type="button"
                     onClick={() => toggleKey(k)}
-                    className="flex w-full items-center justify-between px-soft py-soft text-left text-sm hover:bg-white/[0.03]"
+                    className="w-full items-center justify-between px-soft py-soft text-sm hover:bg-white/[0.03]"
                   >
                     <span className="font-mono text-ink-primary">{k}</span>
                     <span className="text-xs text-ink-muted">{open ? "▲" : "▼"}</span>
-                  </button>
+                  </Button>
                   {open ? (
                     <div className="space-y-soft border-t border-line-subtle px-soft py-soft">
                       <label className="block text-xs text-ink-muted">
                         {t("settings:connectionsSecretLabel")}
-                        <textarea
-                          className="mt-tight min-h-[6rem] w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary"
+                        <TextArea
+                          mono
+                          className="mt-tight min-h-[6rem] text-xs"
                           value={rawJson}
                           onChange={(e) => setRawJson(e.target.value)}
                           disabled={secretsUnavailable}
@@ -604,14 +621,16 @@ export function ConnectionsSettings() {
                         />
                       </label>
                       <div className="flex flex-wrap gap-base">
-                        <button
+                        <Button
+                          variant="primary"
+                          size="sm"
                           type="button"
                           disabled={saving || secretsUnavailable}
-                          className="rounded-tile bg-accent px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-40"
+                          className="px-soft py-snug text-xs"
                           onClick={() => void saveSecret()}
                         >
                           {saving ? t("settings:saving") : t("admin:save")}
-                        </button>
+                        </Button>
                         <Button
                           type="button"
                           variant="danger"
@@ -640,13 +659,15 @@ export function ConnectionsSettings() {
         .
       </p>
 
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         type="button"
         className="text-xs text-accent hover:text-badge-accent hover:underline"
         onClick={() => void load()}
       >
         {t("settings:profileRefresh")}
-      </button>
+      </Button>
     </div>
   );
 }

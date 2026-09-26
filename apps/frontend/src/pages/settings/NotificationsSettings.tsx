@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { Button } from "../../ui/Button";
 
 type Prefs = {
   telegram_enabled: boolean;
@@ -223,21 +224,24 @@ export function NotificationsSettings() {
       </section>
 
       <div className="flex gap-base">
-        <button
+        <Button
+          variant="primary"
+          size="lg"
           type="button"
           disabled={saving}
-          className="rounded-card bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+          className="px-wide py-base text-sm"
           onClick={() => void save()}
         >
           {saving ? t("settings:notificationsSaving") : t("settings:notificationsSave")}
-        </button>
-        <button
+        </Button>
+        <Button
+          size="lg"
           type="button"
-          className="rounded-card border border-line px-wide py-base text-sm text-ink-primary hover:bg-white/5"
+          className="px-wide py-base text-sm hover:bg-white/5"
           onClick={() => void load()}
         >
           {t("settings:reloadFromServer")}
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import type { UiMessage } from "./chatThreadStorage";
 import { parseContentParts } from "./messageFormat";
 import { Tooltip } from "../../ui/Tooltip";
+import { Button } from "../../ui/Button";
 
 type Part = { type?: string; text?: string; image_url?: { url?: string } };
 
@@ -58,23 +59,25 @@ export function UserMessageBubble({ message, timeLabel, showRetry, onCopy, onRet
         </span>
         <div className="flex shrink-0 items-center gap-tight opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
           <Tooltip label={t("chat:messageCopyTitle")}>
-          <button
+          <Button
+            variant="ghost"
               type="button"
               onClick={onCopy}
-              className="rounded-tile px-base py-hair text-meta font-medium uppercase tracking-wide text-badge-accent hover:bg-white/10 hover:text-badge-accent"
-            >
+              className="px-base py-hair text-meta uppercase tracking-wide text-badge-accent hover:bg-white/10 hover:text-badge-accent"
+          >
               {t("chat:messageCopy")}
-            </button>
+            </Button>
           </Tooltip>
           {showRetry ? (
             <Tooltip label={t("chat:messageRetryTitle")}>
-            <button
+            <Button
+              variant="ghost"
                 type="button"
                 onClick={onRetry}
-                className="rounded-tile px-base py-hair text-meta font-medium uppercase tracking-wide text-violet-200/80 hover:bg-white/10 hover:text-violet-100"
-              >
+                className="px-base py-hair text-meta uppercase tracking-wide text-violet-200/80 hover:bg-white/10 hover:text-violet-100"
+            >
                 {t("chat:messageRetry")}
-              </button>
+              </Button>
             </Tooltip>
           ) : null}
         </div>

@@ -5,6 +5,7 @@ import {
   listDashboardBoardFiles,
   type BoardFileMeta,
 } from "./gallery/galleryUpload";
+import { Button } from "../../ui/Button";
 
 /** Settings panel: list persistent board files (Board-Dateien). */
 export function DashboardBoardFilesPanel(props: { dashboardId: string }) {
@@ -38,14 +39,14 @@ export function DashboardBoardFilesPanel(props: { dashboardId: string }) {
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
           {t("dashboard:boardFilesLibrary")}
         </p>
-        <button
+        <Button
           type="button"
           disabled={busy}
-          className="rounded-tile border border-line px-base py-tight text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
+          className="px-base py-tight text-meta text-ink-secondary hover:bg-white/5"
           onClick={() => void reload()}
         >
           {t("dashboard:boardFilesRefresh")}
-        </button>
+        </Button>
       </div>
       <p className="mt-tight text-xs text-ink-muted">{t("dashboard:boardFilesLibraryHint")}</p>
       {err ? <p className="mt-base text-xs text-danger">{err}</p> : null}

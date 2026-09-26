@@ -1,3 +1,4 @@
+import { Select, TextArea, TextInput } from "../ui/Field";
 /**
  * Subset JSON-schema form for image generation presets (string, integer, number, enum).
  * File fields (format byte) use file → base64 (raw) for inpaint uploads.
@@ -73,8 +74,7 @@ export function SchemaForm({ properties, required = [], values, onChange }: Prop
               {prop.description ? (
                 <span className="text-xs text-ink-muted">{prop.description}</span>
               ) : null}
-              <select
-                className="rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              <Select
                 value={(values[key] as string) ?? ""}
                 onChange={(e) => onChange(key, e.target.value === "" ? undefined : e.target.value)}
               >
@@ -83,7 +83,7 @@ export function SchemaForm({ properties, required = [], values, onChange }: Prop
                     {opt === "" ? "(workflow default)" : opt}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
           );
         }
@@ -105,9 +105,8 @@ export function SchemaForm({ properties, required = [], values, onChange }: Prop
               {prop.description ? (
                 <span className="text-xs text-ink-muted">{prop.description}</span>
               ) : null}
-              <input
+              <TextInput
                 type="number"
-                className="rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
                 min={prop.minimum}
                 max={prop.maximum}
                 value={numVal === "" ? "" : numVal}
@@ -138,16 +137,15 @@ export function SchemaForm({ properties, required = [], values, onChange }: Prop
               <span className="text-xs text-ink-muted">{prop.description}</span>
             ) : null}
             {multiline ? (
-              <textarea
-                className="min-h-[88px] rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              <TextArea
+                className="min-h-[88px]"
                 value={strVal}
                 placeholder={prop.default !== undefined ? String(prop.default) : undefined}
                 onChange={(e) => onChange(key, e.target.value)}
               />
             ) : (
-              <input
+              <TextInput
                 type="text"
-                className="rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
                 value={strVal}
                 onChange={(e) => onChange(key, e.target.value)}
               />

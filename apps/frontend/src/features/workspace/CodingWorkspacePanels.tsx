@@ -4,6 +4,7 @@ import { File, Folder } from "lucide-react";
 import type { AuthContextValue } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { Tooltip } from "../../ui/Tooltip";
+import { Button } from "../../ui/Button";
 
 type FsEntry = { name: string; path: string; is_dir: boolean; is_symlink: boolean };
 
@@ -325,13 +326,15 @@ export function CodingWorkspacePanels({
       {variant === "chat" && onMobileClose ? (
         <div className="flex shrink-0 items-center justify-between gap-base border-b border-line px-soft py-base md:hidden">
           <p className="min-w-0 truncate text-sm font-medium text-ink-primary">{t("workspace:projectFilesTitle")}</p>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             type="button"
-            className="shrink-0 rounded-tile px-base py-tight text-xs text-ink-muted hover:bg-white/5 hover:text-neutral-200"
+            className="shrink-0 px-base py-tight text-xs text-ink-muted hover:bg-white/5 hover:text-neutral-200"
             onClick={onMobileClose}
           >
             {t("dashboard:close")}
-          </button>
+          </Button>
         </div>
       ) : null}
       <div className="flex min-h-0 w-full flex-1 flex-col border-line lg:w-52 lg:shrink-0 lg:border-r">
@@ -348,9 +351,10 @@ export function CodingWorkspacePanels({
                 Workspace files
               </p>
               <div className="mt-tight flex flex-wrap items-center gap-tight text-meta text-ink-muted">
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
-                  className="rounded-tile px-snug py-hair hover:bg-white/10 disabled:opacity-40"
+                  className="px-snug py-hair hover:bg-white/10"
                   onClick={() => {
                     setBrowsePath("");
                     setSelectedFile(null);
@@ -361,16 +365,17 @@ export function CodingWorkspacePanels({
                   disabled={!browsePath && !selectedFile}
                 >
                   root
-                </button>
+                </Button>
                 {crumbs.map((seg, i) => {
                   const prefix = crumbs.slice(0, i + 1).join("/");
                   return (
                     <span key={prefix} className="flex items-center gap-tight">
                       <span className="text-white/20">/</span>
                       <Tooltip label={prefix}>
-                      <button
+                      <Button
+                        variant="ghost"
                           type="button"
-                          className="max-w-chip truncate rounded-tile px-snug py-hair hover:bg-white/10"
+                          className="max-w-chip truncate px-snug py-hair hover:bg-white/10"
                           onClick={() => {
                             setBrowsePath(prefix);
                             setSelectedFile(null);
@@ -378,31 +383,31 @@ export function CodingWorkspacePanels({
                             setFileMeta(null);
                             setFileError(null);
                           }}
-                        >
+                      >
                           {seg}
-                        </button>
+                        </Button>
                       </Tooltip>
                     </span>
                   );
                 })}
               </div>
               <div className="mt-tight flex items-center gap-base">
-                <button
+                <Button
                   type="button"
-                  className="rounded-tile border border-line px-base py-hair text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
+                  className="px-base py-hair text-meta text-ink-secondary hover:bg-white/5"
                   onClick={goUp}
                   disabled={!browsePath}
                 >
                   {t("dashboard:up")}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  className="rounded-tile border border-line px-base py-hair text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
+                  className="px-base py-hair text-meta text-ink-secondary hover:bg-white/5"
                   onClick={() => void loadList()}
                   disabled={listLoading}
                 >
                   {listLoading ? "…" : t("dashboard:refresh")}
-                </button>
+                </Button>
               </div>
             </>
           ) : (
@@ -414,14 +419,14 @@ export function CodingWorkspacePanels({
                 {changesSummary?.branch ? `branch: ${changesSummary.branch}` : t("dashboard:workingTree")}
               </p>
               <div className="mt-tight">
-                <button
+                <Button
                   type="button"
-                  className="rounded-tile border border-line px-base py-hair text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
+                  className="px-base py-hair text-meta text-ink-secondary hover:bg-white/5"
                   onClick={() => void loadChangesSummary()}
                   disabled={changesLoading}
                 >
                   {changesLoading ? "…" : t("dashboard:refresh")}
-                </button>
+                </Button>
               </div>
             </>
           )}
@@ -544,7 +549,8 @@ export function CodingWorkspacePanels({
             <p className="text-xs text-ink-muted">{t("dashboard:noChangesToReview")}</p>
           )}
           {panelTab === "changes" && selectedChangePath ? (
-            <button
+            <Button
+              variant="ghost"
               type="button"
               className="mt-soft text-meta text-accent hover:underline"
               onClick={() => {
@@ -556,7 +562,7 @@ export function CodingWorkspacePanels({
               }}
             >
               Open current file in Files
-            </button>
+            </Button>
           ) : null}
         </div>
       </div>

@@ -7,6 +7,7 @@ import {
   fetchAdminRunTrace,
   type RunTrace,
 } from "../../lib/runTracesApi";
+import { Button } from "../../ui/Button";
 
 export function AdminAgentTraces() {
   const { t } = useTranslation(["admin"]);
@@ -66,13 +67,13 @@ export function AdminAgentTraces() {
             {t("admin:agentTracesSubtitle")}
           </p>
         </div>
-        <button
+        <Button
           type="button"
           onClick={() => void loadRuns()}
-          className="rounded-card border border-line bg-white/5 px-soft py-snug text-sm text-ink-primary hover:bg-white/10"
+          className="bg-white/5 px-soft py-snug text-sm hover:bg-white/10"
         >
           {t("admin:agentTracesRefresh")}
-        </button>
+        </Button>
       </div>
       {error ? <p className="text-sm text-danger">{error}</p> : null}
       <div className="flex min-h-0 flex-1 gap-wide overflow-hidden">

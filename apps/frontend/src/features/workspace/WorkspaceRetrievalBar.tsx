@@ -11,6 +11,7 @@ import {
 } from "../../lib/api";
 import type { IndexActivityEvent } from "../chat/indexActivity";
 import { Tooltip } from "../../ui/Tooltip";
+import { Select } from "../../ui/Field";
 
 type Props = {
   auth: Pick<AuthContextValue, "accessToken" | "refresh">;
@@ -329,9 +330,9 @@ export function WorkspaceRetrievalBar({
           <label className="text-meta text-ink-muted" htmlFor={`idx-write-${workspace.id}`}>
             Index on write
           </label>
-          <select
+          <Select
             id={`idx-write-${workspace.id}`}
-            className="rounded-tile border border-line-strong bg-field px-snug py-hair text-meta text-ink-primary"
+            className="text-meta"
             disabled={busy !== null}
             value={workspace.index_on_write ?? ""}
             title={`Effective: ${indexOnWriteEffective}`}
@@ -344,7 +345,7 @@ export function WorkspaceRetrievalBar({
             <option value="debounced">debounced</option>
             <option value="immediate">immediate</option>
             <option value="off">off</option>
-          </select>
+          </Select>
         </div>
       ) : null}
 

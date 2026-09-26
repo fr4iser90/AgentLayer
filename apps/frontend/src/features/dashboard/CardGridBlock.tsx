@@ -6,6 +6,7 @@ import { getPath } from "./dashboardDataPaths";
 import { Badge, type BadgeTone } from "../../ui/Badge";
 import { ProjectRowDetailDrawer } from "./ProjectRowDetailDrawer";
 import type { ColumnDef, UiBlock } from "./types";
+import { TextInput } from "../../ui/Field";
 
 type Row = Record<string, unknown>;
 
@@ -128,11 +129,11 @@ export function CardGridBlockBody(props: {
           {sectionTitle}
         </span>
         {searchEnabled ? (
-          <input
+          <TextInput
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={searchPlaceholder}
-            className="w-full min-w-[12rem] max-w-control rounded-tile border border-line bg-field px-soft py-snug text-xs text-ink-primary outline-none focus:border-accent/50 sm:w-56"
+            className="min-w-[12rem] max-w-control text-xs outline-none sm:w-56"
           />
         ) : null}
       </div>

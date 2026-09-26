@@ -6,6 +6,8 @@ import {
 } from "../../../features/admin/operatorSettings/operatorSettingsTypes";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
+import { Select, TextInput } from "../../../ui/Field";
+import { Button } from "../../../ui/Button";
 
 function ProviderModelSelect({
   id,
@@ -27,9 +29,9 @@ function ProviderModelSelect({
   const current = value.trim();
   const options = current && !models.includes(current) ? [current, ...models] : models;
   return (
-    <select
+    <Select
       id={id}
-      className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary disabled:opacity-50"
+      className="mt-tight"
       value={current}
       disabled={loading || options.length === 0}
       onChange={(e) => onChange(e.target.value)}
@@ -40,7 +42,7 @@ function ProviderModelSelect({
           {model}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
@@ -108,16 +110,16 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-soft block text-xs text-ink-muted" htmlFor="agent-mode">
               {t("admin:ifPlatformAgentModeOverride")}
             </label>
-            <select
+            <Select
               id="agent-mode"
-              className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              className="mt-tight max-w-controlWide"
               value={s.agentMode}
               onChange={(e) => s.setAgentMode(e.target.value as "env" | "sandbox" | "host")}
             >
               <option value="env">{t("admin:ifPlatformAgentModeUseEnv")}</option>
               <option value="sandbox">{t("admin:ifPlatformAgentModeSandbox")}</option>
               <option value="host">{t("admin:ifPlatformAgentModeHost")}</option>
-            </select>
+            </Select>
           </section>
           <section className="mt-deep rounded-sheet border border-line bg-card p-roomy">
             <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifPlatformDashboardUploadsTitle")}</h2>
@@ -133,12 +135,13 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-wide block text-xs text-ink-muted" htmlFor="wu-mb">
               {t("admin:ifPlatformUploadMaxMb")}
             </label>
-            <input
+            <TextInput
+              mono
               id="wu-mb"
               type="number"
               min={1}
               max={512}
-              className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight max-w-control"
               value={s.uploadMaxMb}
               onChange={(e) => s.setUploadMaxMb(e.target.value)}
               placeholder={t("admin:ifPlatformUploadMbPlaceholder")}
@@ -146,9 +149,10 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-wide block text-xs text-ink-muted" htmlFor="wu-mime">
               {t("admin:ifPlatformUploadMime")}
             </label>
-            <input
+            <TextInput
+              mono
               id="wu-mime"
-              className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight"
               value={s.uploadMime}
               onChange={(e) => s.setUploadMime(e.target.value)}
               placeholder={t("admin:ifPlatformMimePlaceholder")}
@@ -197,12 +201,13 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-wide block text-xs text-ink-muted" htmlFor="media-quota-mb">
               {t("admin:ifPlatformMediaDefaultQuotaMb")}
             </label>
-            <input
+            <TextInput
+              mono
               id="media-quota-mb"
               type="number"
               min={1}
               max={50000}
-              className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight max-w-control"
               value={s.mediaDefaultQuotaMb}
               onChange={(e) => s.setMediaDefaultQuotaMb(e.target.value)}
               placeholder={t("admin:ifPlatformMediaQuotaPlaceholder")}
@@ -210,12 +215,13 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-wide block text-xs text-ink-muted" htmlFor="media-upload-mb">
               {t("admin:ifPlatformMediaUploadMaxMb")}
             </label>
-            <input
+            <TextInput
+              mono
               id="media-upload-mb"
               type="number"
               min={1}
               max={512}
-              className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight max-w-control"
               value={s.mediaUploadMaxMb}
               onChange={(e) => s.setMediaUploadMaxMb(e.target.value)}
               placeholder={t("admin:ifPlatformUploadMbPlaceholder")}
@@ -223,9 +229,10 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-wide block text-xs text-ink-muted" htmlFor="media-mime">
               {t("admin:ifPlatformMediaUploadMime")}
             </label>
-            <input
+            <TextInput
+              mono
               id="media-mime"
-              className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight"
               value={s.mediaUploadMime}
               onChange={(e) => s.setMediaUploadMime(e.target.value)}
               placeholder={t("admin:ifPlatformMimePlaceholder")}
@@ -233,9 +240,10 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-wide block text-xs text-ink-muted" htmlFor="media-embed-hosts">
               {t("admin:ifPlatformMediaEmbedHosts")}
             </label>
-            <input
+            <TextInput
+              mono
               id="media-embed-hosts"
-              className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight"
               value={s.mediaEmbedHosts}
               onChange={(e) => s.setMediaEmbedHosts(e.target.value)}
               placeholder={t("admin:ifPlatformMediaEmbedHostsPlaceholder")}
@@ -248,36 +256,39 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-wide block text-xs text-ink-muted" htmlFor="chat-max-mb">
               {t("admin:ifPlatformChatMaxConversationMb")}
             </label>
-            <input
+            <TextInput
+              mono
               id="chat-max-mb"
               type="number"
               min={1}
               max={50000}
-              className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight max-w-control"
               value={s.chatMaxConversationMb}
               onChange={(e) => s.setChatMaxConversationMb(e.target.value)}
             />
             <label className="mt-wide block text-xs text-ink-muted" htmlFor="chat-max-personal">
               {t("admin:ifPlatformChatMaxPersonalSessions")}
             </label>
-            <input
+            <TextInput
+              mono
               id="chat-max-personal"
               type="number"
               min={1}
               max={10000}
-              className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight max-w-control"
               value={s.chatMaxPersonalSessions}
               onChange={(e) => s.setChatMaxPersonalSessions(e.target.value)}
             />
             <label className="mt-wide block text-xs text-ink-muted" htmlFor="chat-max-dashboard">
               {t("admin:ifPlatformChatMaxDashboardSessions")}
             </label>
-            <input
+            <TextInput
+              mono
               id="chat-max-dashboard"
               type="number"
               min={1}
               max={10000}
-              className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight max-w-control"
               value={s.chatMaxDashboardSessions}
               onChange={(e) => s.setChatMaxDashboardSessions(e.target.value)}
             />
@@ -307,14 +318,16 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
                             {t("admin:envProviderFoundIntro", { prefix })}
                           </p>
                         </div>
-                        <button
+                        <Button
+                          variant="primary"
+                          tone="warning"
                           type="button"
                           disabled={s.envOperatorImporting === kind}
-                          className="rounded-tile bg-warning px-soft py-snug text-sm font-medium text-black hover:bg-warning-hover disabled:opacity-50"
+                          className="px-soft py-snug text-sm text-black"
                           onClick={() => void s.importOperatorEnvProviders(kind)}
                         >
                           {s.envOperatorImporting === kind ? t("admin:envLlmImporting") : t("admin:envLlmImportButton")}
-                        </button>
+                        </Button>
                       </div>
                       <div className="mt-soft space-y-base">
                         {providers.map((p) => (
@@ -366,9 +379,9 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
                   <label className="block text-xs text-ink-muted" htmlFor="voice-stt-provider-id">
                     {t("admin:ifPlatformVoiceSttProvider")}
                   </label>
-                  <select
+                  <Select
                     id="voice-stt-provider-id"
-                    className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+                    className="mt-tight"
                     value={s.voiceSttProviderId || s.voiceSttProviderIdEffective || ""}
                     onChange={(e) => s.setVoiceSttProviderId(e.target.value)}
                     disabled={s.voiceSttProviders.length === 0}
@@ -379,7 +392,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
                         {p.label} ({p.provider_id})
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   {s.voiceSttApiBaseEffective ? (
                     <p className="mt-tight font-mono text-meta text-ink-muted">{s.voiceSttApiBaseEffective}</p>
                   ) : null}
@@ -388,9 +401,9 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
                   <label className="block text-xs text-ink-muted" htmlFor="voice-tts-provider-id">
                     {t("admin:ifPlatformVoiceTtsProvider")}
                   </label>
-                  <select
+                  <Select
                     id="voice-tts-provider-id"
-                    className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+                    className="mt-tight"
                     value={s.voiceTtsProviderId || s.voiceTtsProviderIdEffective || ""}
                     onChange={(e) => s.setVoiceTtsProviderId(e.target.value)}
                     disabled={s.voiceTtsProviders.length === 0}
@@ -401,7 +414,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
                         {p.label} ({p.provider_id})
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   {s.voiceTtsApiBaseEffective ? (
                     <p className="mt-tight font-mono text-meta text-ink-muted">{s.voiceTtsApiBaseEffective}</p>
                   ) : null}
@@ -411,9 +424,10 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               <label className="mt-base block text-xs text-ink-muted" htmlFor="voice-api-base">
                 {t("admin:ifPlatformVoiceApiBase")}
               </label>
-              <input
+              <TextInput
+                mono
                 id="voice-api-base"
-                className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary disabled:opacity-50"
+                className="mt-tight"
                 value={
                   s.voiceApiBaseSource === "env"
                     ? (s.voiceApiBaseEffective ?? "")
@@ -450,10 +464,11 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               <label className="mt-base block text-xs text-ink-muted" htmlFor="voice-api-key">
                 {t("admin:ifPlatformVoiceApiKey")}
               </label>
-              <input
+              <TextInput
+                mono
                 id="voice-api-key"
                 type="password"
-                className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary disabled:opacity-50"
+                className="mt-tight max-w-controlWide"
                 value={s.voiceApiKey}
                 onChange={(e) => s.setVoiceApiKey(e.target.value)}
                 placeholder={t("admin:ifPlatformVoiceApiKeyPlaceholder")}
@@ -489,8 +504,9 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             </div>
             <label className="mt-wide block text-xs text-ink-muted">
               {t("admin:ifPlatformVoiceTtsVoice")}
-              <input
-                className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              <TextInput
+                mono
+                className="mt-tight max-w-control"
                 value={s.voiceTtsVoice}
                 onChange={(e) => s.setVoiceTtsVoice(e.target.value)}
               />
@@ -541,9 +557,9 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-wide block text-xs text-ink-muted" htmlFor="surface-preset">
               {t("admin:ifPlatformSurfacePreset")}
             </label>
-            <select
+            <Select
               id="surface-preset"
-              className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              className="mt-tight max-w-controlWide"
               value={s.surfacePreset}
               onChange={(e) => {
                 const preset = e.target.value as "WEB_ONLY" | "WEB_AND_TUI" | "TUI_ONLY";
@@ -563,7 +579,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               <option value="WEB_AND_TUI">{t("admin:ifPlatformSurfaceWebAndTui")}</option>
               <option value="WEB_ONLY">{t("admin:ifPlatformSurfaceWebOnly")}</option>
               <option value="TUI_ONLY">{t("admin:ifPlatformSurfaceTuiOnly")}</option>
-            </select>
+            </Select>
             <label className="mt-soft flex cursor-pointer items-center gap-base text-sm text-ink-primary">
               <input
                 type="checkbox"
@@ -597,9 +613,9 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-wide block text-xs text-ink-muted" htmlFor="api-key-ws-modes">
               {t("admin:ifPlatformApiKeyWorkspaceModes")}
             </label>
-            <select
+            <Select
               id="api-key-ws-modes"
-              className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              className="mt-tight max-w-controlWide"
               value={s.apiKeyWorkspaceModes}
               onChange={(e) =>
                 s.setApiKeyWorkspaceModes(e.target.value as "server" | "client" | "both")
@@ -609,7 +625,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               <option value="both">{t("admin:ifPlatformApiKeyModesBoth")}</option>
               <option value="server">{t("admin:ifPlatformApiKeyModesServer")}</option>
               <option value="client">{t("admin:ifPlatformApiKeyModesClient")}</option>
-            </select>
+            </Select>
             <p className="mt-base text-xs text-ink-muted">{t("admin:ifPlatformApiKeyModesHint")}</p>
             <label className="mt-soft flex cursor-pointer items-center gap-base text-sm text-ink-primary">
               <input
@@ -626,16 +642,16 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-wide block text-xs text-ink-muted" htmlFor="ws-index-consent-max">
               {t("admin:ifPlatformIndexConsentMax")}
             </label>
-            <select
+            <Select
               id="ws-index-consent-max"
-              className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              className="mt-tight max-w-controlWide"
               value={s.workspaceIndexConsentMax}
               onChange={(e) => s.setWorkspaceIndexConsentMax(e.target.value)}
             >
               <option value="text">{t("admin:ifPlatformIndexConsentText")}</option>
               <option value="symbols">{t("admin:ifPlatformIndexConsentSymbols")}</option>
               <option value="none">{t("admin:ifPlatformIndexConsentNone")}</option>
-            </select>
+            </Select>
             <p className="mt-base text-xs text-ink-muted">{t("admin:ifPlatformIndexConsentHint")}</p>
           </section>
           ) : null}
@@ -657,16 +673,16 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-wide block text-xs text-ink-muted" htmlFor="ws-index-on-write-default">
               Default index-on-write (new workspaces inherit via null override)
             </label>
-            <select
+            <Select
               id="ws-index-on-write-default"
-              className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              className="mt-tight max-w-controlWide"
               value={s.workspaceIndexOnWriteDefault}
               onChange={(e) => s.setWorkspaceIndexOnWriteDefault(e.target.value)}
             >
               <option value="debounced">debounced (recommended)</option>
               <option value="immediate">immediate</option>
               <option value="off">off</option>
-            </select>
+            </Select>
             <label className="mt-soft flex cursor-pointer items-center gap-base text-sm text-ink-primary">
               <input
                 type="checkbox"

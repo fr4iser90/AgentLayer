@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "../../ui/Button";
 
 import { getPath, setPath } from "./dashboardDataPaths";
+import { Select, TextArea, TextInput } from "../../ui/Field";
 
 function newKanbanId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -129,25 +130,29 @@ export function KanbanBlockBody(props: {
         <div className="mb-soft flex flex-wrap items-center justify-between gap-base">
           <h3 className="text-sm font-medium text-ink-primary">{sectionTitle}</h3>
           {!readOnly ? (
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               type="button"
-              className="rounded-tile bg-accent px-soft py-snug text-xs font-medium text-ink-primary hover:bg-accent-hover"
+              className="px-soft py-snug text-xs"
               onClick={addColumn}
             >
               {t("dashboard:kanbanAddColumn")}
-            </button>
+            </Button>
           ) : null}
         </div>
       ) : (
         !readOnly ? (
           <div className="mb-soft flex justify-end">
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               type="button"
-              className="rounded-tile bg-accent px-soft py-snug text-xs font-medium text-ink-primary hover:bg-accent-hover"
+              className="px-soft py-snug text-xs"
               onClick={addColumn}
             >
               {t("dashboard:kanbanAddColumn")}
-            </button>
+            </Button>
           </div>
         ) : null
       )}
@@ -166,9 +171,9 @@ export function KanbanBlockBody(props: {
               {readOnly ? (
                 <span className="flex-1 truncate text-sm font-medium text-ink-primary">{col.title}</span>
               ) : (
-                <input
+                <TextInput
                   type="text"
-                  className="dashboard-grid-no-drag min-w-0 flex-1 rounded-tile border border-line bg-field px-base py-tight text-sm text-ink-primary"
+                  className="dashboard-grid-no-drag min-w-0 flex-1"
                   value={col.title}
                   onChange={(e) => updateColTitle(ci, e.target.value)}
                 />
@@ -196,16 +201,16 @@ export function KanbanBlockBody(props: {
                     <p className="text-sm text-ink-primary">{card.title || t("dashboard:kanbanCardTitleEmpty")}</p>
                   ) : (
                     <>
-                      <input
+                      <TextInput
                         type="text"
                         placeholder={t("dashboard:kanbanCardPlaceholder")}
-                        className="dashboard-grid-no-drag mb-base w-full rounded-tile border border-line bg-field px-base py-tight text-sm text-ink-primary"
+                        className="dashboard-grid-no-drag mb-base"
                         value={card.title}
                         onChange={(e) => updateCardTitle(ci, card.id, e.target.value)}
                       />
                       <div className="flex flex-wrap items-center gap-base">
-                        <select
-                          className="dashboard-grid-no-drag max-w-full flex-1 rounded-tile border border-line bg-field px-tight py-hair text-meta text-ink-primary"
+                        <Select
+                          className="dashboard-grid-no-drag max-w-full flex-1 text-meta"
                           value={ci}
                           onChange={(e) => moveCard(ci, card.id, Number(e.target.value))}
                           title={t("dashboard:kanbanMoveColumn")}
@@ -215,7 +220,7 @@ export function KanbanBlockBody(props: {
                               → {c.title || t("dashboard:kanbanColumnFallback", { index: ti + 1 })}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                         <Button
                           type="button"
                           variant="danger"
@@ -231,13 +236,14 @@ export function KanbanBlockBody(props: {
               ))}
             </div>
             {!readOnly ? (
-              <button
+              <Button
+                size="sm"
                 type="button"
-                className="dashboard-grid-no-drag mt-base rounded-tile border border-dashed border-line-strong py-snug text-xs text-ink-muted hover:border-accent/40 hover:text-badge-accent"
+                className="dashboard-grid-no-drag mt-base border-dashed py-snug text-xs text-ink-muted hover:text-badge-accent"
                 onClick={() => addCard(ci)}
               >
                 {t("dashboard:kanbanAddCard")}
-              </button>
+              </Button>
             ) : null}
           </div>
         ))}
@@ -340,8 +346,9 @@ export function RichMarkdownBlockBody(props: {
       <div className="grid gap-soft lg:grid-cols-2">
         <div>
           <label className="mb-tight block text-meta uppercase text-ink-muted">{t("dashboard:markdownLabel")}</label>
-          <textarea
-            className="dashboard-grid-no-drag min-h-[220px] w-full resize-y rounded-card border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary outline-none focus:border-accent/50"
+          <TextArea
+            mono
+            className="dashboard-grid-no-drag min-h-[220px] resize-y outline-none"
             placeholder={placeholder}
             value={text}
             onChange={(e) => setData((d) => setPath(d, dp, e.target.value))}

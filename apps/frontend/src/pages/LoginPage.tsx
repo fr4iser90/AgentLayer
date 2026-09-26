@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { SETUP_WIZARD_ACTIVE_KEY, useAuth } from "../auth/AuthContext";
 import { defaultLandingPath } from "../auth/tenantSurface";
+import { TextInput } from "../ui/Field";
+import { Button } from "../ui/Button";
 
 export function LoginPage() {
   const { t } = useTranslation(["auth"]);
@@ -73,26 +75,24 @@ export function LoginPage() {
         <form onSubmit={onSubmit} className="mt-deep flex flex-col gap-wide">
           <label className="flex flex-col gap-snug text-sm">
             <span className="text-ink-muted">{t("auth:emailLabel")}</span>
-            <input
+            <TextInput
               type="email"
               name="email"
               autoComplete="username"
               value={email}
               onChange={(ev) => setEmail(ev.target.value)}
               required
-              className="rounded-card border border-line bg-field px-soft py-base text-ink-primary placeholder:text-field-placeholder focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             />
           </label>
           <label className="flex flex-col gap-snug text-sm">
             <span className="text-ink-muted">{t("auth:passwordLabel")}</span>
-            <input
+            <TextInput
               type="password"
               name="password"
               autoComplete="current-password"
               value={password}
               onChange={(ev) => setPassword(ev.target.value)}
               required
-              className="rounded-card border border-line bg-field px-soft py-base text-ink-primary placeholder:text-field-placeholder focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             />
           </label>
           {error ? (
@@ -100,13 +100,15 @@ export function LoginPage() {
               {error}
             </p>
           ) : null}
-          <button
+          <Button
+            variant="primary"
+            size="lg"
             type="submit"
             disabled={pending || loading}
-            className="rounded-card bg-accent px-wide py-firm text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+            className="px-wide py-firm text-sm"
           >
             {pending ? t("auth:signingIn") : t("auth:signIn")}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { GalleryImage } from "../GalleryImage";
 import type { GalleryPhoto } from "./galleryLayout";
+import { Button } from "../../../ui/Button";
 
 export function GalleryLightbox(props: {
   photos: GalleryPhoto[];
@@ -47,13 +48,13 @@ export function GalleryLightbox(props: {
       aria-modal="true"
       aria-label={t("dashboard:galleryLightboxLabel")}
     >
-      <button
+      <Button
         type="button"
-        className="absolute right-3 top-3 z-lift rounded-card bg-white/10 px-soft py-snug text-sm text-ink-primary hover:bg-white/20 sm:right-4 sm:top-4"
+        className="absolute right-3 top-3 z-lift bg-white/10 px-soft py-snug text-sm hover:bg-white/20 sm:right-4 sm:top-4"
         onClick={onClose}
       >
         {t("dashboard:galleryLightboxClose")}
-      </button>
+      </Button>
 
       <div
         className="flex min-h-0 flex-1 items-center justify-center px-base py-14 sm:px-16"
@@ -72,9 +73,9 @@ export function GalleryLightbox(props: {
       </div>
 
       {hasPrev ? (
-        <button
+        <Button
           type="button"
-          className="absolute left-2 top-1/2 z-lift -translate-y-1/2 rounded-pill bg-white/10 p-base text-ink-primary hover:bg-white/20 sm:left-4"
+          className="absolute left-2 top-1/2 z-lift -translate-y-1/2 bg-white/10 p-base hover:bg-white/20 sm:left-4"
           onClick={(e) => {
             e.stopPropagation();
             goPrev();
@@ -82,13 +83,13 @@ export function GalleryLightbox(props: {
           aria-label={t("dashboard:galleryLightboxPrev")}
         >
           ‹
-        </button>
+        </Button>
       ) : null}
 
       {hasNext ? (
-        <button
+        <Button
           type="button"
-          className="absolute right-2 top-1/2 z-lift -translate-y-1/2 rounded-pill bg-white/10 p-base text-ink-primary hover:bg-white/20 sm:right-4"
+          className="absolute right-2 top-1/2 z-lift -translate-y-1/2 bg-white/10 p-base hover:bg-white/20 sm:right-4"
           onClick={(e) => {
             e.stopPropagation();
             goNext();
@@ -96,7 +97,7 @@ export function GalleryLightbox(props: {
           aria-label={t("dashboard:galleryLightboxNext")}
         >
           ›
-        </button>
+        </Button>
       ) : null}
 
       <footer className="shrink-0 border-t border-line px-wide py-soft text-center sm:px-broad">

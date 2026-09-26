@@ -61,6 +61,7 @@ import {
 import { ModelCatalogSelect } from "../chat/ModelCatalogSelect";
 import { Button } from "../../ui/Button";
 import { Tooltip } from "../../ui/Tooltip";
+import { TextArea } from "../../ui/Field";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type GalleryTarget = { blockId: string; dataPath: string; title: string };
@@ -922,10 +923,12 @@ export function DashboardEmbeddedChat({
 
   return (
     <div className="flex h-full min-h-0 flex-col rounded-sheet border border-line bg-card">
-      <button
+      <Button
+        variant="plain"
+        block
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full shrink-0 items-center justify-between gap-base px-soft py-firm text-left text-sm font-medium text-ink-primary hover:bg-white/5 lg:py-base"
+        className="w-full shrink-0 items-center justify-between gap-base px-soft py-firm text-sm text-ink-primary hover:bg-white/5 lg:py-base"
       >
         <span>
           {t("dashboard:assistant")}
@@ -934,7 +937,7 @@ export function DashboardEmbeddedChat({
           </span>
         </span>
         <span className="text-ink-muted">{open ? "▼" : "▶"}</span>
-      </button>
+      </Button>
       {open ? (
         <div className="flex min-h-0 flex-1 flex-col border-t border-line">
           {!initLoading && !initErr && !(noSharedChatYet && !thread) ? (
@@ -956,36 +959,37 @@ export function DashboardEmbeddedChat({
                 )}
                 <span className="shrink-0 text-meta text-white/25">·</span>
                 <Tooltip label={t("dashboard:embeddedChatSessionToggleHint")}>
-                <button
+                <Button
+                  variant="ghost"
                     type="button"
                     className="min-w-0 truncate text-meta text-ink-muted hover:text-white"
                     onClick={() => setSessionOpenPersisted((o) => !o)}
-                  >
+                >
                     {compactModelLabel}
-                  </button>
+                  </Button>
                 </Tooltip>
               </div>
               {!readOnly ? (
                 <Tooltip label={t("dashboard:embeddedChatNewThreadHint")}>
-                <button
+                <Button
                     type="button"
                     disabled={sendLoading || newChatBusy}
-                    className="shrink-0 rounded-tile border border-line px-base py-hair text-meta text-ink-primary hover:bg-white/5 disabled:opacity-40"
+                    className="shrink-0 px-base py-hair text-meta hover:bg-white/5"
                     onClick={() => void startNewDashboardChat()}
-                  >
+                >
                     {newChatBusy ? t("dashboard:loading") : t("dashboard:embeddedChatNewThread")}
-                  </button>
+                  </Button>
                 </Tooltip>
               ) : null}
               <Tooltip label={t("dashboard:embeddedChatSessionToggleHint")}>
-              <button
+              <Button
                   type="button"
-                  className="shrink-0 rounded-tile border border-line px-base py-hair text-meta text-ink-secondary hover:bg-white/5"
+                  className="shrink-0 px-base py-hair text-meta text-ink-secondary hover:bg-white/5"
                   aria-expanded={sessionOpen}
                   onClick={() => setSessionOpenPersisted((o) => !o)}
-                >
+              >
                   {sessionOpen ? t("dashboard:embeddedChatSessionHide") : t("dashboard:embeddedChatSessionShow")}
-                </button>
+                </Button>
               </Tooltip>
             </div>
           ) : null}
@@ -1139,19 +1143,19 @@ export function DashboardEmbeddedChat({
                     </label>
                     <div className="relative">
                       <Tooltip label={t("dashboard:boardFilesLibraryHint")}>
-                      <button
+                      <Button
                           type="button"
                           disabled={sendLoading || boardFilesBusy}
-                          className="rounded-tile border border-line bg-black/25 px-base py-tight text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
+                          className="bg-black/25 px-base py-tight text-meta text-ink-secondary hover:bg-white/5"
                           onClick={() => {
                             const next = !boardLibraryOpen;
                             setBoardLibraryOpen(next);
                             if (next) void refreshBoardFiles();
                           }}
-                        >
+                      >
                           {t("dashboard:boardFilesLibrary")}
                           {boardFiles.length > 0 ? ` (${boardFiles.length})` : ""}
-                        </button>
+                        </Button>
                       </Tooltip>
                       {boardLibraryOpen ? (
                         <div className="absolute bottom-full left-0 z-docked mb-tight max-h-48 w-64 overflow-y-auto rounded-tile border border-line bg-raised p-tight shadow-lg">
@@ -1165,9 +1169,11 @@ export function DashboardEmbeddedChat({
                             <ul className="space-y-hair">
                               {boardFiles.map((f) => (
                                 <li key={f.id}>
-                                  <button
+                                  <Button
+                                    variant="plain"
+                                    block
                                     type="button"
-                                    className="flex w-full flex-col rounded-tile px-base py-tight text-left hover:bg-white/5"
+                                    className="w-full flex-col rounded-tile px-base py-tight hover:bg-white/5"
                                     onClick={() => pickBoardLibraryFile(f.id)}
                                   >
                                     <span className="truncate text-meta text-ink-primary">
@@ -1176,7 +1182,7 @@ export function DashboardEmbeddedChat({
                                     <span className="truncate text-meta text-ink-muted">
                                       {f.content_type || "file"} · {f.file_ref || f.gallery_ref}
                                     </span>
-                                  </button>
+                                  </Button>
                                 </li>
                               ))}
                             </ul>
@@ -1194,14 +1200,15 @@ export function DashboardEmbeddedChat({
                     </span>
                     {onClearFocusedBlock ? (
                       <Tooltip label={t("dashboard:chatFocusedBlockClear")}>
-                      <button
+                      <Button
+                        variant="ghost"
                           type="button"
-                          className="shrink-0 rounded-tile px-tight text-badge-success hover:bg-success-subtle hover:text-white"
+                          className="shrink-0 px-tight text-badge-success hover:text-white"
                           onClick={onClearFocusedBlock}
                           aria-label={t("dashboard:chatFocusedBlockClear")}
-                        >
+                      >
                           ×
-                        </button>
+                        </Button>
                       </Tooltip>
                     ) : null}
                   </div>
@@ -1217,31 +1224,33 @@ export function DashboardEmbeddedChat({
                           {a.name}
                           {a.kind === "unsupported" ? t("dashboard:attachmentSkip") : ""}
                         </span>
-                        <button
+                        <Button
+                          variant="ghost"
                           type="button"
                           className="text-ink-muted hover:text-white"
                           aria-label={t("dashboard:remove")}
                           onClick={() => setPendingAttachments((p) => p.filter((_, i) => i !== idx))}
                         >
                           ×
-                        </button>
+                        </Button>
                       </li>
                     ))}
                   </ul>
                 ) : null}
                 <div className="flex items-end gap-base rounded-card border border-line bg-black/30 p-base">
                   <Tooltip label={t("dashboard:attachTitle")}>
-                  <button
+                  <Button
                       type="button"
                       disabled={readOnly || sendLoading}
-                      className="shrink-0 rounded-card border border-line px-firm py-base text-ink-muted hover:bg-white/5 hover:text-white disabled:opacity-40"
+                      className="shrink-0 px-firm py-base text-ink-muted hover:bg-white/5 hover:text-white"
                       aria-label={t("dashboard:attach")}
                       onClick={() => fileInputRef.current?.click()}
-                    >
+                  >
                       +
-                    </button>
+                    </Button>
                   </Tooltip>
-                  <textarea
+                  <TextArea
+                    bare
                     ref={draftTextareaRef}
                     value={draft}
                     rows={1}
@@ -1253,7 +1262,7 @@ export function DashboardEmbeddedChat({
                       }
                     }}
                     placeholder={t("dashboard:messagePlaceholder")}
-                    className="min-h-[40px] min-w-0 flex-1 resize-none bg-transparent py-snug text-sm leading-snug text-ink-primary outline-none placeholder:text-ink-muted"
+                    className="min-h-[40px] min-w-0 flex-1 resize-none leading-snug outline-none"
                     disabled={readOnly || sendLoading}
                   />
                   {sendLoading ? (
@@ -1267,14 +1276,15 @@ export function DashboardEmbeddedChat({
                       {t("admin:cancel")}
                     </Button>
                   ) : null}
-                  <button
+                  <Button
+                    variant="primary"
                     type="button"
                     disabled={!canSend}
                     onClick={() => void send()}
-                    className="shrink-0 rounded-card bg-accent px-soft py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+                    className="shrink-0 px-soft py-base text-sm"
                   >
                     {t("dashboard:send")}
-                  </button>
+                  </Button>
                 </div>
                 {!readOnly ? (
                   <p className="mt-tight text-meta text-ink-muted">{t("dashboard:embeddedChatComposerHint")}</p>

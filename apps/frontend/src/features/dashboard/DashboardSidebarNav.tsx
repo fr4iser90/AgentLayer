@@ -12,6 +12,8 @@ import {
   hubForSelectedId,
 } from "./dashboardHubNav";
 import { Tooltip } from "../../ui/Tooltip";
+import { TextInput } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 const LS_FAV_KEY = "dashboard_nav_favorites_v1";
 
@@ -292,8 +294,8 @@ export function DashboardSidebarNav(props: {
     <div className="flex min-h-0 flex-1 flex-col" onKeyDown={onKeyDown}>
       {showSearch ? (
         <div className="shrink-0 border-b border-line px-base py-base">
-          <input
-            className="dashboard-grid-no-drag w-full rounded-tile border border-line bg-field px-firm py-snug text-xs text-ink-primary outline-none focus:border-accent/50"
+          <TextInput
+            className="dashboard-grid-no-drag text-xs outline-none"
             placeholder={t("dashboard:searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -355,16 +357,18 @@ export function DashboardSidebarNav(props: {
               const collapsed = collapsedHubs.has(h.id);
               return (
                 <section key={h.id}>
-                  <button
+                  <Button
+                    variant="plain"
+                    block
                     type="button"
-                    className="flex w-full items-center gap-tight rounded-tile px-snug py-tight text-left text-meta font-semibold uppercase tracking-wide text-white/45 hover:bg-white/5 hover:text-white/70"
+                    className="w-full items-center gap-tight rounded-tile px-snug py-tight text-meta font-semibold uppercase tracking-wide text-white/45 hover:bg-white/5 hover:text-white/70"
                     onClick={() => toggleHub(h.id)}
                     aria-expanded={!collapsed}
                   >
                     <span className="w-3 shrink-0 text-white/30">{collapsed ? "▸" : "▾"}</span>
                     <span className="min-w-0 flex-1 truncate">{h.label}</span>
                     <span className="shrink-0 text-white/25">({items.length})</span>
-                  </button>
+                  </Button>
                   {!collapsed ? (
                     <ul className="mt-hair space-y-hair">
                       {items.map((w) => {

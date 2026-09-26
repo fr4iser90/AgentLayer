@@ -9,6 +9,8 @@ import {
   type BenchmarkAnalysisPayload,
   type BenchmarkCohortRow,
 } from "./benchmarksApi";
+import { Select } from "../../../ui/Field";
+import { Button } from "../../../ui/Button";
 
 function formatPassRate(rate: number | null | undefined): string {
   if (rate == null || Number.isNaN(rate)) return "—";
@@ -173,10 +175,10 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
       <div className="flex flex-wrap items-end gap-soft">
         <label className="block text-xs">
           <span className="text-ink-muted">{t("admin:agentConfigAnalysisCohortFilter")}</span>
-          <select
+          <Select
             value={cohortFilter}
             onChange={(e) => setCohortFilter(e.target.value)}
-            className="mt-tight block min-w-[160px] rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+            className="mt-tight block min-w-[160px]"
           >
             <option value="">{t("admin:agentConfigAnalysisAllCohorts")}</option>
             {cohorts.map((c) => (
@@ -184,25 +186,26 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
                 {c.cohort_label} ({c.run_count})
               </option>
             ))}
-          </select>
+          </Select>
         </label>
-        <button
+        <Button
+          size="sm"
           type="button"
           onClick={() => void loadAnalysis()}
           disabled={loading}
-          className="rounded-tile border border-line-strong bg-black/30 px-soft py-snug text-xs text-ink-primary hover:bg-white/10 disabled:opacity-50"
+          className="bg-black/30 px-soft py-snug text-xs hover:bg-white/10"
         >
           {loading ? t("admin:loading") : t("admin:agentConfigAnalysisRefresh")}
-        </button>
+        </Button>
       </div>
 
       <section className="rounded-sheet border border-line bg-card p-wide">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:agentConfigAnalysisCompare")}</h2>
         <div className="mt-soft flex flex-wrap items-end gap-base">
-          <select
+          <Select
             value={compareA}
             onChange={(e) => setCompareA(e.target.value)}
-            className="rounded-tile border border-line bg-field px-base py-snug text-xs text-ink-primary"
+            className="text-xs"
           >
             <option value="">{t("admin:agentConfigAnalysisCohortA")}</option>
             {cohorts.map((c) => (
@@ -210,12 +213,12 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
                 {c.cohort_label}
               </option>
             ))}
-          </select>
+          </Select>
           <span className="text-xs text-ink-muted">vs</span>
-          <select
+          <Select
             value={compareB}
             onChange={(e) => setCompareB(e.target.value)}
-            className="rounded-tile border border-line bg-field px-base py-snug text-xs text-ink-primary"
+            className="text-xs"
           >
             <option value="">{t("admin:agentConfigAnalysisCohortB")}</option>
             {cohorts.map((c) => (
@@ -223,15 +226,17 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
                 {c.cohort_label}
               </option>
             ))}
-          </select>
-          <button
+          </Select>
+          <Button
+            variant="primary"
+            size="sm"
             type="button"
             onClick={() => void onCompare()}
             disabled={!compareA || !compareB || compareA === compareB || loading}
-            className="rounded-tile bg-accent/80 px-soft py-snug text-xs text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+            className="bg-accent/80 px-soft py-snug text-xs"
           >
             {t("admin:agentConfigAnalysisCompareBtn")}
-          </button>
+          </Button>
         </div>
         {compareResult ? (
           <div className="mt-soft grid gap-soft md:grid-cols-2">

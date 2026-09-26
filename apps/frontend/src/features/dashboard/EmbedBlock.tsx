@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getPath, setPath } from "./dashboardDataPaths";
+import { TextInput } from "../../ui/Field";
 
 /**
  * HTTPS hostnames allowed for iframe `src`. Only these may load — no arbitrary URLs.
@@ -85,9 +86,8 @@ export function EmbedBlockBody(props: {
             <label className="mb-tight block text-meta uppercase text-ink-muted">
               {t("dashboard:embedTitleOptionalLabel")}
             </label>
-            <input
+            <TextInput
               type="text"
-              className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
               placeholder={sectionTitle}
               value={st.title}
               onChange={(e) => patch({ title: e.target.value })}
@@ -97,9 +97,10 @@ export function EmbedBlockBody(props: {
             <label className="mb-tight block text-meta uppercase text-ink-muted">
               {t("dashboard:embedUrlLabel")}
             </label>
-            <input
+            <TextInput
+              mono
               type="url"
-              className="w-full rounded-card border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary"
+              className="text-xs"
               placeholder={t("dashboard:embedUrlPlaceholder")}
               value={st.url}
               onChange={(e) => patch({ url: e.target.value })}
@@ -110,12 +111,12 @@ export function EmbedBlockBody(props: {
               <label className="mb-tight block text-meta uppercase text-ink-muted">
                 {t("dashboard:embedHeightLabel")}
               </label>
-              <input
+              <TextInput
                 type="number"
                 min={120}
                 max={2000}
                 step={20}
-                className="w-28 rounded-card border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                className="w-28"
                 value={st.height}
                 onChange={(e) => patch({ height: Number(e.target.value) || 480 })}
               />

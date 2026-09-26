@@ -11,6 +11,8 @@ import { useOperatorSettings } from "../../../features/admin/operatorSettings/Op
 import { useAuth } from "../../../auth/AuthContext";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Select, TextInput } from "../../../ui/Field";
+import { Button } from "../../../ui/Button";
 
 function bridgeModelSelectValue(model: string, provider: string, rows: ModelRow[]): string {
   const m = model.trim();
@@ -63,9 +65,10 @@ export function AdminInterfacesBridgesSection() {
         <label className="mt-wide block text-xs text-ink-muted" htmlFor="discord-id">
           {t("admin:ifBridgeDiscordAppIdLabel")}
         </label>
-        <input
+        <TextInput
+          mono
           id="discord-id"
-          className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+          className="mt-tight"
           value={s.discordAppId}
           onChange={(e) => s.setDiscordAppId(e.target.value)}
           autoComplete="off"
@@ -90,11 +93,12 @@ export function AdminInterfacesBridgesSection() {
         <label className="mt-soft block text-xs text-ink-muted" htmlFor="d-token">
           {t("admin:discordBotTokenLabel")}
         </label>
-        <input
+        <TextInput
+          mono
           id="d-token"
           type="password"
           autoComplete="off"
-          className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+          className="mt-tight"
           value={s.discordToken}
           onChange={(e) => s.setDiscordToken(e.target.value)}
           placeholder={s.tokenConfigured ? t("admin:tokenReplacePlaceholder") : t("admin:pasteTokenPlaceholder")}
@@ -103,9 +107,10 @@ export function AdminInterfacesBridgesSection() {
           {t("admin:messagePrefixLabel")} <strong className="text-ink-secondary">{t("admin:empty")}</strong>{" "}
           {t("admin:messagePrefixEmptyHint")}
         </label>
-        <input
+        <TextInput
+          mono
           id="prefix"
-          className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+          className="mt-tight max-w-controlWide"
           value={s.triggerPrefix}
           onChange={(e) => s.setTriggerPrefix(e.target.value)}
           placeholder={t("admin:messagePrefixPlaceholder")}
@@ -130,14 +135,14 @@ export function AdminInterfacesBridgesSection() {
             }}
           />
         </div>
-        <button
+        <Button
           type="button"
-          className="mt-soft rounded-tile border border-line-strong bg-white/5 px-soft py-snug text-sm text-ink-primary hover:bg-white/10 disabled:opacity-40"
+          className="mt-soft bg-white/5 px-soft py-snug text-sm hover:bg-white/10"
           disabled={!s.tokenConfigured}
           onClick={() => void s.clearDiscordToken()}
         >
           {t("admin:clearDiscordToken")}
-        </button>
+        </Button>
       </section>
 
       <section className="mt-broad rounded-sheet border border-line bg-card p-roomy">
@@ -146,9 +151,10 @@ export function AdminInterfacesBridgesSection() {
         <label className="mt-wide block text-xs text-ink-muted" htmlFor="telegram-app-hint">
           {t("admin:ifBridgeTelegramUsernameOptional")}
         </label>
-        <input
+        <TextInput
+          mono
           id="telegram-app-hint"
-          className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+          className="mt-tight"
           value={s.telegramAppId}
           onChange={(e) => s.setTelegramAppId(e.target.value)}
           autoComplete="off"
@@ -173,11 +179,12 @@ export function AdminInterfacesBridgesSection() {
         <label className="mt-soft block text-xs text-ink-muted" htmlFor="tg-token">
           {t("admin:telegramBotTokenLabel")}
         </label>
-        <input
+        <TextInput
+          mono
           id="tg-token"
           type="password"
           autoComplete="off"
-          className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+          className="mt-tight"
           value={s.telegramToken}
           onChange={(e) => s.setTelegramToken(e.target.value)}
           placeholder={s.tgTokenConfigured ? t("admin:tokenReplacePlaceholder") : t("admin:pasteTokenPlaceholder")}
@@ -186,9 +193,10 @@ export function AdminInterfacesBridgesSection() {
           {t("admin:messagePrefixLabel")} <strong className="text-ink-secondary">{t("admin:empty")}</strong>{" "}
           {t("admin:messagePrefixEmptyHintTelegram")}
         </label>
-        <input
+        <TextInput
+          mono
           id="tg-prefix"
-          className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+          className="mt-tight max-w-controlWide"
           value={s.tgTriggerPrefix}
           onChange={(e) => s.setTgTriggerPrefix(e.target.value)}
           placeholder={t("admin:messagePrefixPlaceholder")}
@@ -213,20 +221,20 @@ export function AdminInterfacesBridgesSection() {
             }}
           />
         </div>
-        <button
+        <Button
           type="button"
-          className="mt-soft rounded-tile border border-line-strong bg-white/5 px-soft py-snug text-sm text-ink-primary hover:bg-white/10 disabled:opacity-40"
+          className="mt-soft bg-white/5 px-soft py-snug text-sm hover:bg-white/10"
           disabled={!s.tgTokenConfigured}
           onClick={() => void s.clearTelegramToken()}
         >
           {t("admin:clearTelegramToken")}
-        </button>
+        </Button>
         <label className="mt-broad block text-xs text-ink-muted" htmlFor="http-client-log-level">
           {t("admin:ifBridgeHttpClientLogLabel")}
         </label>
-        <select
+        <Select
           id="http-client-log-level"
-          className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+          className="mt-tight max-w-control"
           value={s.httpClientLogLevel}
           onChange={(e) => s.setHttpClientLogLevel(e.target.value)}
         >
@@ -234,7 +242,7 @@ export function AdminInterfacesBridgesSection() {
           <option value="INFO">{t("admin:httpClientLogInfo")}</option>
           <option value="DEBUG">{t("admin:ifBridgeHttpLogDebug")}</option>
           <option value="ERROR">{t("admin:ifBridgeHttpLogError")}</option>
-        </select>
+        </Select>
       </section>
     </>
   );

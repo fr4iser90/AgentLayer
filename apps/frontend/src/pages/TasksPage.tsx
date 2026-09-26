@@ -10,6 +10,8 @@ import {
   setConversationActiveTask,
   type Task,
 } from "../lib/tasksApi";
+import { Select, TextInput } from "../ui/Field";
+import { Button } from "../ui/Button";
 
 type WorkspaceRow = { id: string; name: string };
 
@@ -56,21 +58,21 @@ function TaskList({
               <p className="mt-hair text-sm text-ink-primary">{task.goal}</p>
             </div>
             <div className="flex shrink-0 flex-col gap-tight">
-              <button
+              <Button
                 type="button"
-                className="rounded-tile border border-line px-base py-tight text-meta text-ink-secondary hover:bg-white/5"
+                className="px-base py-tight text-meta text-ink-secondary hover:bg-white/5"
                 onClick={() => onBind(task.id)}
               >
                 {activeTaskId === task.id ? t("tasks:boundToChat") : t("tasks:bindToChat")}
-              </button>
+              </Button>
               {task.status !== "done" ? (
-                <button
+                <Button
                   type="button"
-                  className="rounded-tile border border-success/30 px-base py-tight text-meta text-badge-success hover:bg-success-subtle"
+                  className="border-success/30 px-base py-tight text-meta text-badge-success"
                   onClick={() => onDone(task.id)}
                 >
                   {t("tasks:markDone")}
-                </button>
+                </Button>
               ) : null}
             </div>
           </div>
@@ -190,13 +192,15 @@ export function TasksPage() {
           <div className="mt-wide rounded-card border border-accent/35 bg-accent-subtle px-wide py-soft text-sm text-badge-accent/90">
             {t_0("tasks:bindingToChat", { id: `${conversationId.slice(0, 8)}…` })}
             {activeTaskId ? (
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 type="button"
                 className="ml-soft text-xs text-ink-muted underline hover:text-neutral-300"
                 onClick={() => void clearBind()}
               >
                 {t_0("tasks:clearBinding")}
-              </button>
+              </Button>
             ) : null}
           </div>
         ) : null}
@@ -209,16 +213,18 @@ export function TasksPage() {
           </h2>
           <p className="mt-tight text-xs text-ink-muted">{t_0("tasks:globalTasksHint")}</p>
           <div className="mt-soft flex gap-base">
-            <input
+            <TextInput
               type="text"
               value={globalGoal}
               onChange={(e) => setGlobalGoal(e.target.value)}
               placeholder={t_0("tasks:newGlobalGoalPlaceholder")}
-              className="min-w-0 flex-1 rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              className="min-w-0 flex-1"
             />
-            <button
+            <Button
+              variant="primary"
+              size="lg"
               type="button"
-              className="shrink-0 rounded-card border border-accent/40 bg-accent-subtle px-wide py-base text-sm text-badge-accent"
+              className="shrink-0 border-accent/40 px-wide py-base text-sm text-badge-accent"
               onClick={() => {
                 const g = globalGoal.trim();
                 if (!g) return;
@@ -231,7 +237,7 @@ export function TasksPage() {
               }}
             >
               {t_0("tasks:add")}
-            </button>
+            </Button>
           </div>
           <div className="mt-wide">
             {loading ? (
@@ -256,8 +262,8 @@ export function TasksPage() {
           <p className="mt-tight text-xs text-ink-muted">{t_0("tasks:projectTasksHint")}</p>
           <label className="mt-soft block text-xs text-ink-muted">
             {t_0("tasks:workspaceLabel")}
-            <select
-              className="mt-tight block w-full max-w-controlWide rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
+            <Select
+              className="mt-tight block max-w-controlWide"
               value={selectedWorkspaceId ?? ""}
               onChange={(e) => onWorkspaceChange(e.target.value)}
             >
@@ -267,12 +273,12 @@ export function TasksPage() {
                   {w.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           {selectedWorkspaceId ? (
             <>
               <div className="mt-soft flex gap-base">
-                <input
+                <TextInput
                   type="text"
                   value={projectGoal}
                   onChange={(e) => setProjectGoal(e.target.value)}
@@ -281,11 +287,13 @@ export function TasksPage() {
                       ? t_0("tasks:newProjectTaskFor", { name: selectedWorkspace.name })
                       : t_0("tasks:newProjectTask")
                   }
-                  className="min-w-0 flex-1 rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
+                  className="min-w-0 flex-1"
                 />
-                <button
+                <Button
+                  variant="primary"
+                  size="lg"
                   type="button"
-                  className="shrink-0 rounded-card border border-accent/40 bg-accent-subtle px-wide py-base text-sm text-badge-accent"
+                  className="shrink-0 border-accent/40 px-wide py-base text-sm text-badge-accent"
                   onClick={() => {
                     const g = projectGoal.trim();
                     if (!g || !selectedWorkspaceId) return;
@@ -303,7 +311,7 @@ export function TasksPage() {
                   }}
                 >
                   {t_0("tasks:add")}
-                </button>
+                </Button>
               </div>
               <div className="mt-wide">
                 {loading ? (

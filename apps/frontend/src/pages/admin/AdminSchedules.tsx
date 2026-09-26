@@ -15,6 +15,7 @@ import { Modal } from "../../ui/Modal";
 import { Badge, type BadgeTone } from "../../ui/Badge";
 import { EmptyState } from "../../ui/EmptyState";
 import { Table, type TableColumn } from "../../ui/Table";
+import { Select, TextArea, TextInput } from "../../ui/Field";
 
 type SchedulerJobRow = {
   id: string;
@@ -412,34 +413,34 @@ export function AdminSchedules() {
           <h1 className="text-2xl font-semibold text-ink-primary">{t("admin:schedulesTitle")}</h1>
           <p className="mt-base text-sm text-ink-muted">{t("admin:schedulesIntro")}</p>
         </div>
-        <button
+        <Button
           type="button"
-          className="rounded-tile border border-line px-soft py-base text-sm text-ink-primary hover:bg-white/5"
+          className="px-soft py-base text-sm hover:bg-white/5"
           onClick={() => void refresh()}
           disabled={loading}
         >
           {loading ? t("admin:loading") : t("admin:schedulesRefresh")}
-        </button>
+        </Button>
       </div>
 
       <div className="mt-broad rounded-sheet border border-line bg-card p-wide">
         <div className="grid gap-soft md:grid-cols-5">
           <label className="text-xs text-ink-muted">
             {t("admin:schedulesScope")}
-            <select
-              className="mt-tight w-full rounded-tile border border-line bg-field px-base py-tight text-sm text-ink-primary"
+            <Select
+              className="mt-tight"
               value={scope}
               onChange={(e) => setScope(e.target.value as any)}
             >
               <option value="all">{t("admin:schedulesScopeAll")}</option>
               <option value="global_only">{t("admin:schedulesScopeGlobalOnly")}</option>
               <option value="dashboard">{t("admin:schedulesScopeDashboard")}</option>
-            </select>
+            </Select>
           </label>
           <label className="text-xs text-ink-muted md:col-span-2">
             {t("admin:schedulesDashboardId")}
-            <input
-              className="mt-tight w-full rounded-tile border border-line bg-field px-base py-tight text-sm text-ink-primary"
+            <TextInput
+              className="mt-tight"
               value={dashboardId}
               onChange={(e) => setDashboardId(e.target.value)}
               placeholder={t("admin:optional")}
@@ -448,8 +449,8 @@ export function AdminSchedules() {
           </label>
           <label className="text-xs text-ink-muted">
             {t("admin:schedulesTarget")}
-            <select
-              className="mt-tight w-full rounded-tile border border-line bg-field px-base py-tight text-sm text-ink-primary"
+            <Select
+              className="mt-tight"
               value={target}
               onChange={(e) => setTarget(e.target.value as any)}
             >
@@ -459,19 +460,19 @@ export function AdminSchedules() {
                   {o.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <label className="text-xs text-ink-muted">
             {t("admin:schedulesEnabledFilter")}
-            <select
-              className="mt-tight w-full rounded-tile border border-line bg-field px-base py-tight text-sm text-ink-primary"
+            <Select
+              className="mt-tight"
               value={enabled}
               onChange={(e) => setEnabled(e.target.value as any)}
             >
               <option value="all">{t("admin:schedulesScopeAll")}</option>
               <option value="true">{t("admin:schedulesEnabledFilterEnabled")}</option>
               <option value="false">{t("admin:schedulesEnabledFilterDisabled")}</option>
-            </select>
+            </Select>
           </label>
         </div>
         {scope === "dashboard" ? (
@@ -495,13 +496,14 @@ export function AdminSchedules() {
             />
             {t("admin:schedulesShowArchived")}
           </label>
-          <button
+          <Button
+            variant="ghost"
             type="button"
-            className="rounded-tile bg-violet-600/80 px-soft py-base text-sm font-medium text-ink-primary hover:bg-violet-500"
+            className="bg-violet-600/80 px-soft py-base text-sm hover:bg-violet-500"
             onClick={() => setCreateOpen(true)}
           >
             {t("admin:schedulesCreate")}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -565,8 +567,8 @@ export function AdminSchedules() {
           <div className="mt-soft grid gap-soft md:grid-cols-2">
               <label className="text-xs text-ink-muted md:col-span-2">
                 {t("admin:schedulesPresetOptional")}
-                <select
-                  className="mt-tight w-full rounded-tile border border-line bg-field px-base py-tight text-sm text-ink-primary"
+                <Select
+                  className="mt-tight"
                   value={createPresetId}
                   onChange={(e) => {
                     const pid = e.target.value;
@@ -580,7 +582,7 @@ export function AdminSchedules() {
                       {p.label}
                     </option>
                   ))}
-                </select>
+                </Select>
                 {createPresetId && (presets || []).find((p) => p.id === createPresetId)?.description ? (
                   <div className="mt-tight text-meta text-ink-muted">
                     {(presets || []).find((p) => p.id === createPresetId)?.description}
@@ -589,8 +591,8 @@ export function AdminSchedules() {
               </label>
               <label className="text-xs text-ink-muted">
                 Target
-                <select
-                  className="mt-tight w-full rounded-tile border border-line bg-field px-base py-tight text-sm text-ink-primary"
+                <Select
+                  className="mt-tight"
                   value={createTarget}
                   onChange={(e) =>
                     setCreateTarget(normalizeExecutionTargetInput(e.target.value, targetCatalog))
@@ -601,13 +603,13 @@ export function AdminSchedules() {
                       {o.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               {createNeedsWorkspace ? (
                 <label className="text-xs text-ink-muted md:col-span-2">
                   {t("admin:schedulesWorkspaceRequired")}
-                  <select
-                    className="mt-tight w-full rounded-tile border border-line bg-field px-base py-tight text-sm text-ink-primary disabled:opacity-60"
+                  <Select
+                    className="mt-tight"
                     value={createWorkspaceId}
                     onChange={(e) => setCreateWorkspaceId(e.target.value)}
                     disabled={workspacesLoading}
@@ -624,7 +626,7 @@ export function AdminSchedules() {
                         {w.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   {createWorkspaceId ? (
                     <div className="mt-tight break-all font-mono text-meta text-ink-muted">
                       {createWorkspaceId}
@@ -639,9 +641,9 @@ export function AdminSchedules() {
               ) : null}
               <label className="text-xs text-ink-muted">
                 Interval (minutes)
-                <input
+                <TextInput
                   type="number"
-                  className="mt-tight w-full rounded-tile border border-line bg-field px-base py-tight text-sm text-ink-primary"
+                  className="mt-tight"
                   value={createInterval}
                   onChange={(e) => setCreateInterval(Number(e.target.value))}
                   min={5}
@@ -650,8 +652,8 @@ export function AdminSchedules() {
               </label>
               <label className="text-xs text-ink-muted md:col-span-2">
                 Title
-                <input
-                  className="mt-tight w-full rounded-tile border border-line bg-field px-base py-tight text-sm text-ink-primary"
+                <TextInput
+                  className="mt-tight"
                   value={createTitle}
                   onChange={(e) => setCreateTitle(e.target.value)}
                   placeholder={t("admin:optional")}
@@ -659,8 +661,8 @@ export function AdminSchedules() {
               </label>
               <label className="text-xs text-ink-muted md:col-span-2">
                 {t("admin:schedulesDashboardIdOptional")}
-                <input
-                  className="mt-tight w-full rounded-tile border border-line bg-field px-base py-tight text-sm text-ink-primary"
+                <TextInput
+                  className="mt-tight"
                   value={createDashboardId}
                   onChange={(e) => setCreateDashboardId(e.target.value)}
                   placeholder={t("admin:optional")}
@@ -668,8 +670,8 @@ export function AdminSchedules() {
               </label>
               <label className="text-xs text-ink-muted md:col-span-2">
                 <span>{t("admin:instructionsPlaceholder")}</span>
-                <textarea
-                  className="mt-tight min-h-[120px] w-full resize-y rounded-tile border border-line bg-field px-base py-base text-sm text-ink-primary"
+                <TextArea
+                  className="mt-tight min-h-[120px] resize-y"
                   value={createInstructions}
                   onChange={(e) => setCreateInstructions(e.target.value)}
                   placeholder={t("admin:instructionsPlaceholder")}
@@ -720,17 +722,17 @@ export function AdminSchedules() {
           <div className="mt-soft grid gap-soft">
               <label className="text-xs text-ink-muted">
                 Title
-                <input
-                  className="mt-tight w-full rounded-tile border border-line bg-field px-base py-tight text-sm text-ink-primary"
+                <TextInput
+                  className="mt-tight"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                 />
               </label>
               <label className="text-xs text-ink-muted">
                 Interval (minutes)
-                <input
+                <TextInput
                   type="number"
-                  className="mt-tight w-full rounded-tile border border-line bg-field px-base py-tight text-sm text-ink-primary"
+                  className="mt-tight"
                   value={editInterval}
                   onChange={(e) => setEditInterval(Number(e.target.value))}
                   min={5}
@@ -739,8 +741,8 @@ export function AdminSchedules() {
               </label>
               <label className="text-xs text-ink-muted">
                 Instructions
-                <textarea
-                  className="mt-tight min-h-[140px] w-full resize-y rounded-tile border border-line bg-field px-base py-base text-sm text-ink-primary"
+                <TextArea
+                  className="mt-tight min-h-[140px] resize-y"
                   value={editInstructions}
                   onChange={(e) => setEditInstructions(e.target.value)}
                 />

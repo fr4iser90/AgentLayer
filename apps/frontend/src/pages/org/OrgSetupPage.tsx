@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { OrgKnowledgePublishSection } from "./OrgKnowledgePublishSection";
+import { TextInput } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 type TenantResponse = {
   tenant?: {
@@ -116,9 +118,8 @@ export function OrgSetupPage() {
           <label className="block text-xs text-ink-muted" htmlFor="org-name">
             {t("org:setupOrgName")}
           </label>
-          <input
+          <TextInput
             id="org-name"
-            className="w-full rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
@@ -126,22 +127,23 @@ export function OrgSetupPage() {
           <label className="block text-xs text-ink-muted" htmlFor="org-vertical">
             {t("org:setupVerticalProfile")}
           </label>
-          <input
+          <TextInput
             id="org-vertical"
-            className="w-full rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
             value={verticalProfile}
             onChange={(e) => setVerticalProfile(e.target.value)}
             required
           />
           <p className="text-meta text-ink-muted">{t("org:setupVerticalProfileHint")}</p>
           {err ? <p className="text-sm text-danger">{err}</p> : null}
-          <button
+          <Button
+            variant="primary"
+            size="lg"
             type="submit"
             disabled={busy}
-            className="rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+            className="px-wide py-base text-sm"
           >
             {t("org:setupContinue")}
-          </button>
+          </Button>
         </form>
       ) : null}
 
@@ -180,14 +182,16 @@ export function OrgSetupPage() {
           </div>
 
           {err ? <p className="text-sm text-danger">{err}</p> : null}
-          <button
+          <Button
+            variant="primary"
+            size="lg"
             type="button"
             disabled={busy}
-            className="rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+            className="px-wide py-base text-sm"
             onClick={() => void finishSetup()}
           >
             {busy ? t("org:setupFinishing") : t("org:setupFinish")}
-          </button>
+          </Button>
         </div>
       ) : null}
     </div>

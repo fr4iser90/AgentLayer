@@ -9,6 +9,8 @@ import {
   LLM_PRESETS,
   type LlmPresetId,
 } from "../setup/llmPresets";
+import { Select, TextInput } from "../ui/Field";
+import { Button } from "../ui/Button";
 
 type SetupCatalogProvider = {
   provider_id: string;
@@ -471,14 +473,13 @@ export function SetupWizardPage() {
               {setupStatus?.setup_token_required ? (
                 <label className="flex flex-col gap-snug text-sm">
                   <span className="text-ink-muted">{t("setup:setupToken")}</span>
-                  <input
+                  <TextInput
                     type="password"
                     name="setup_token"
                     autoComplete="off"
                     value={setupToken}
                     onChange={(ev) => setSetupToken(ev.target.value)}
                     required
-                    className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                   />
                 </label>
               ) : null}
@@ -531,13 +532,15 @@ export function SetupWizardPage() {
                   {deploymentError}
                 </p>
               ) : null}
-              <button
+              <Button
+                variant="primary"
+                size="lg"
                 type="submit"
                 disabled={deploymentPending}
-                className="rounded-card bg-accent px-wide py-firm text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+                className="px-wide py-firm text-sm"
               >
                 {deploymentPending ? t("setup:deploymentPending") : t("setup:continueBtn")}
-              </button>
+              </Button>
             </form>
           </>
         ) : null}
@@ -550,14 +553,13 @@ export function SetupWizardPage() {
               {setupStatus?.setup_token_required ? (
                 <label className="flex flex-col gap-snug text-sm">
                   <span className="text-ink-muted">{t("setup:setupToken")}</span>
-                  <input
+                  <TextInput
                     type="password"
                     name="setup_token"
                     autoComplete="off"
                     value={setupToken}
                     onChange={(ev) => setSetupToken(ev.target.value)}
                     required
-                    className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                   />
                   <p className="text-xs text-ink-muted">
                     {setupStatus.setup_token_source === "env"
@@ -568,19 +570,18 @@ export function SetupWizardPage() {
               ) : null}
               <label className="flex flex-col gap-snug text-sm">
                 <span className="text-ink-muted">{t("setup:email")}</span>
-                <input
+                <TextInput
                   type="email"
                   name="email"
                   autoComplete="username"
                   value={email}
                   onChange={(ev) => setEmail(ev.target.value)}
                   required
-                  className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                 />
               </label>
               <label className="flex flex-col gap-snug text-sm">
                 <span className="text-ink-muted">{t("setup:password")}</span>
-                <input
+                <TextInput
                   type="password"
                   name="password"
                   autoComplete="new-password"
@@ -588,12 +589,11 @@ export function SetupWizardPage() {
                   onChange={(ev) => setPassword(ev.target.value)}
                   required
                   minLength={8}
-                  className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                 />
               </label>
               <label className="flex flex-col gap-snug text-sm">
                 <span className="text-ink-muted">{t("setup:passwordConfirm")}</span>
-                <input
+                <TextInput
                   type="password"
                   name="password_confirm"
                   autoComplete="new-password"
@@ -601,7 +601,6 @@ export function SetupWizardPage() {
                   onChange={(ev) => setPasswordConfirm(ev.target.value)}
                   required
                   minLength={8}
-                  className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                 />
               </label>
               <p className="text-xs text-ink-muted">
@@ -612,13 +611,15 @@ export function SetupWizardPage() {
                   {adminError}
                 </p>
               ) : null}
-              <button
+              <Button
+                variant="primary"
+                size="lg"
                 type="submit"
                 disabled={adminPending}
-                className="rounded-card bg-accent px-wide py-firm text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+                className="px-wide py-firm text-sm"
               >
                 {adminPending ? t("setup:adminPending") : t("setup:continueBtn")}
-              </button>
+              </Button>
             </form>
           </>
         ) : null}
@@ -705,14 +706,15 @@ export function SetupWizardPage() {
                           model: catalog.embedding.chat_embed_opt_in.suggested_model ?? "—",
                         })}
                       </p>
-                      <button
+                      <Button
+                        variant="primary"
                         type="button"
                         disabled={chatEmbedPending || prefsPending}
                         onClick={() => void onEnableChatProviderEmbedding()}
-                        className="self-start rounded-card border border-accent/40 bg-accent-subtle px-soft py-base text-sm text-badge-accent hover:bg-accent-subtle disabled:opacity-50"
+                        className="self-start border-accent/40 px-soft py-base text-sm text-badge-accent"
                       >
                         {chatEmbedPending ? t("setup:chatEmbedPending") : t("setup:chatEmbedBtn")}
-                      </button>
+                      </Button>
                     </div>
                   ) : null}
                 </section>
@@ -720,7 +722,7 @@ export function SetupWizardPage() {
                 <form onSubmit={onSavePreferences} className="flex flex-col gap-wide">
                   <label className="flex flex-col gap-snug text-sm">
                     <span className="text-ink-muted">{t("setup:preferredProvider")}</span>
-                    <select
+                    <Select
                       value={primaryProviderId}
                       onChange={(ev) => {
                         const id = ev.target.value;
@@ -732,7 +734,6 @@ export function SetupWizardPage() {
                           setModelCoding(prov.chat_models[1] ?? prov.chat_models[0]);
                         }
                       }}
-                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                     >
                       <option value="">{t("setup:selectProvider")}</option>
                       {catalog.providers.map((p) => (
@@ -745,16 +746,15 @@ export function SetupWizardPage() {
                           {p.reachable ? "" : t("setup:offlineSuffix")}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </label>
 
                   <label className="flex flex-col gap-snug text-sm">
                     <span className="text-ink-muted">{t("setup:modelAgent")}</span>
-                    <select
+                    <Select
                       value={modelAgent}
                       onChange={(ev) => setModelAgent(ev.target.value)}
                       disabled={!chatModels.length}
-                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
                     >
                       {chatModels.length === 0 ? (
                         <option value="">{t("setup:noChatModels")}</option>
@@ -765,39 +765,37 @@ export function SetupWizardPage() {
                           </option>
                         ))
                       )}
-                    </select>
+                    </Select>
                   </label>
 
                   <label className="flex flex-col gap-snug text-sm">
                     <span className="text-ink-muted">{t("setup:modelCoding")}</span>
-                    <select
+                    <Select
                       value={modelCoding}
                       onChange={(ev) => setModelCoding(ev.target.value)}
                       disabled={!chatModels.length}
-                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
                     >
                       {chatModels.map((m) => (
                         <option key={`c-${m}`} value={m}>
                           {m}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </label>
 
                   <label className="flex flex-col gap-snug text-sm">
                     <span className="text-ink-muted">{t("setup:modelDefault")}</span>
-                    <select
+                    <Select
                       value={modelDefault}
                       onChange={(ev) => setModelDefault(ev.target.value)}
                       disabled={!chatModels.length}
-                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
                     >
                       {chatModels.map((m) => (
                         <option key={`d-${m}`} value={m}>
                           {m}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </label>
 
                   {embedOptions.length > 0 || catalog.embedding.configured ? (
@@ -807,10 +805,9 @@ export function SetupWizardPage() {
                           {t("setup:ragEmbedding")}
                           {!catalog.embedding.configured ? t("setup:ragEmbeddingAfterEnable") : ""}
                         </span>
-                        <select
+                        <Select
                           value={ragEmbedding}
                           onChange={(ev) => setRagEmbedding(ev.target.value)}
-                          className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                         >
                           <option value="">{t("setup:optionalDash")}</option>
                           {embedOptions.map((m) => (
@@ -818,16 +815,16 @@ export function SetupWizardPage() {
                               {m}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </label>
-                      <button
+                      <Button
                         type="button"
                         disabled={embedTestPending || !ragEmbedding.trim()}
                         onClick={() => void onTestEmbedding()}
-                        className="self-start rounded-card border border-line px-soft py-base text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
+                        className="self-start px-soft py-base text-sm hover:bg-white/5"
                       >
                         {embedTestPending ? t("setup:embedTestPending") : t("setup:embedTestBtn")}
-                      </button>
+                      </Button>
                       {embedTestOk ? (
                         <p className="text-sm text-success" role="status">
                           {embedTestOk}
@@ -848,58 +845,61 @@ export function SetupWizardPage() {
                   ) : null}
 
                   <div className="flex flex-wrap gap-soft">
-                    <button
+                    <Button
+                      size="lg"
                       type="button"
                       disabled={catalogLoading}
                       onClick={() => void loadCatalog()}
-                      className="rounded-card border border-line px-wide py-firm text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
+                      className="px-wide py-firm text-sm hover:bg-white/5"
                     >
                       {t("setup:refresh")}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="lg"
                       type="submit"
                       disabled={
                         prefsPending ||
                         !primaryProviderId ||
                         !selectedProvider?.reachable
                       }
-                      className="rounded-card bg-accent px-wide py-firm text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+                      className="px-wide py-firm text-sm"
                     >
                       {prefsPending ? t("setup:savePending") : t("setup:saveAndContinue")}
-                    </button>
+                    </Button>
                   </div>
                 </form>
               </div>
             ) : null}
 
             <div className="mt-deep border-t border-line pt-broad">
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 onClick={() => setShowManual((v) => !v)}
                 className="text-sm text-accent hover:underline"
               >
                 {showManual ? t("setup:showManualHide") : t("setup:showManualAdd")}
-              </button>
+              </Button>
               {showManual ? (
                 <form onSubmit={onLlmSave} className="mt-wide flex flex-col gap-wide">
                   <label className="flex flex-col gap-snug text-sm">
                     <span className="text-ink-muted">{t("setup:preset")}</span>
-                    <select
+                    <Select
                       value={preset}
                       onChange={(ev) => onPresetChange(ev.target.value as LlmPresetId)}
-                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                     >
                       {LLM_PRESETS.map((p) => (
                         <option key={p.id} value={p.id}>
                           {t(`setup:${p.labelKey}`)}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                     <p className="text-xs text-ink-muted">{t(`setup:${presetConfig.helpKey}`)}</p>
                   </label>
                   <label className="flex flex-col gap-snug text-sm">
                     <span className="text-ink-muted">{t("setup:baseUrl")}</span>
-                    <input
+                    <TextInput
                       type="url"
                       value={baseUrl}
                       onChange={(ev) => {
@@ -908,7 +908,6 @@ export function SetupWizardPage() {
                         setLlmTestOk(null);
                       }}
                       required
-                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                     />
                   </label>
                   <label className="flex flex-col gap-snug text-sm">
@@ -916,7 +915,7 @@ export function SetupWizardPage() {
                       {t("setup:apiKey")}
                       {presetConfig.apiKeyRequired ? t("setup:apiKeyRequired") : t("setup:apiKeyOptional")}
                     </span>
-                    <input
+                    <TextInput
                       type="password"
                       value={apiKey}
                       onChange={(ev) => {
@@ -925,18 +924,16 @@ export function SetupWizardPage() {
                       }}
                       autoComplete="off"
                       required={presetConfig.apiKeyRequired}
-                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                     />
                     <p className="text-xs text-ink-muted">{t(`setup:${presetConfig.apiKeyHintKey}`)}</p>
                   </label>
                   <label className="flex flex-col gap-snug text-sm">
                     <span className="text-ink-muted">{t("setup:defaultModelOptional")}</span>
-                    <input
+                    <TextInput
                       type="text"
                       value={modelDefaultManual}
                       onChange={(ev) => setModelDefaultManual(ev.target.value)}
                       placeholder={t(`setup:${presetConfig.modelPlaceholderKey}`)}
-                      className="rounded-card border border-line bg-field px-soft py-base text-ink-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                     />
                   </label>
                   {llmError ? (
@@ -950,34 +947,38 @@ export function SetupWizardPage() {
                     </p>
                   ) : null}
                   <div className="flex flex-wrap gap-soft">
-                    <button
+                    <Button
+                      size="lg"
                       type="button"
                       disabled={llmPending}
                       onClick={(ev) => void onLlmTest(ev as unknown as FormEvent)}
-                      className="rounded-card border border-line px-wide py-firm text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
+                      className="px-wide py-firm text-sm hover:bg-white/5"
                     >
                       {t("setup:testConnection")}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      size="lg"
                       type="submit"
                       disabled={llmPending}
-                      className="rounded-card border border-line px-wide py-firm text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
+                      className="px-wide py-firm text-sm hover:bg-white/5"
                     >
                       {t("setup:saveEndpoint")}
-                    </button>
+                    </Button>
                   </div>
                 </form>
               ) : null}
             </div>
 
-            <button
+            <Button
+              variant="plain"
+              block
               type="button"
               disabled={prefsPending}
               onClick={() => void onSkipProfiles()}
-              className="mt-broad text-left text-sm text-ink-muted hover:text-white disabled:opacity-50"
+              className="mt-broad text-sm text-ink-muted hover:text-white"
             >
               {t("setup:skipProfiles")}
-            </button>
+            </Button>
           </>
         ) : null}
 

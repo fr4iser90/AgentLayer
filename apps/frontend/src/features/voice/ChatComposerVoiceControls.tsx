@@ -8,6 +8,7 @@ import {
   type VoicePrefs,
   type VoiceStatus,
 } from "./voiceApi";
+import { Select } from "../../ui/Field";
 
 type Props = {
   auth: AuthContextValue;
@@ -113,8 +114,8 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
         voiceStatus.prefs.mode_web === "toggle") ? (
         <label className="block text-meta text-ink-muted">
           {t("chat:voiceComposerMicMode")}
-          <select
-            className="mt-tight w-full rounded-card border border-line bg-field px-firm py-snug text-sm text-ink-primary"
+          <Select
+            className="mt-tight"
             value={
               voiceStatus.prefs.mode_web === "toggle" ? "toggle" : "push_to_talk"
             }
@@ -128,7 +129,7 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
           >
             <option value="push_to_talk">{t("chat:voiceComposerMicHold")}</option>
             <option value="toggle">{t("chat:voiceComposerMicToggle")}</option>
-          </select>
+          </Select>
           <span className="mt-tight block leading-snug">{t("chat:voiceComposerMicModeHint")}</span>
         </label>
       ) : null}

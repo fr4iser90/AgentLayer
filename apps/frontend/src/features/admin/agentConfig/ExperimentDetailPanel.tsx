@@ -9,6 +9,8 @@ import {
   type BenchmarkExperimentReport,
   type BenchmarkReview,
 } from "../benchmarks/benchmarksApi";
+import { TextArea } from "../../../ui/Field";
+import { Button } from "../../../ui/Button";
 
 function verdictTone(verdict: string | undefined): string {
   const v = (verdict || "").toLowerCase();
@@ -231,8 +233,8 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
                   </h3>
                   <div className="mb-wide rounded-card border border-line bg-black/20 p-soft">
                     <p className="mb-base text-xs text-ink-muted">{t("admin:agentConfigReviewSubmitHint")}</p>
-                    <textarea
-                      className="mb-base min-h-[72px] w-full rounded-tile border border-line bg-field p-base text-sm text-ink-primary"
+                    <TextArea
+                      className="mb-base min-h-[72px]"
                       placeholder={t("admin:agentConfigReviewSummaryPlaceholder")}
                       value={reviewSummary}
                       onChange={(e) => setReviewSummary(e.target.value)}
@@ -240,14 +242,16 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
                     {reviewError ? (
                       <p className="mb-base text-xs text-badge-danger">{reviewError}</p>
                     ) : null}
-                    <button
+                    <Button
+                      variant="primary"
+                      size="sm"
                       type="button"
                       disabled={reviewBusy || runIds.length === 0}
                       onClick={() => void onSubmitReview()}
-                      className="rounded-tile bg-accent px-soft py-snug text-xs text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+                      className="px-soft py-snug text-xs"
                     >
                       {reviewBusy ? t("admin:agentConfigReviewSubmitting") : t("admin:agentConfigReviewSubmit")}
-                    </button>
+                    </Button>
                     {runIds.length === 0 ? (
                       <p className="mt-base text-meta text-ink-muted">{t("admin:agentConfigReviewNeedsRuns")}</p>
                     ) : null}

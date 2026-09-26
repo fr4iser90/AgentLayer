@@ -16,6 +16,7 @@ import {
 } from "./galleryLayout";
 import { GALLERY_IMAGE_ACCEPT, uploadDashboardGalleryFile } from "./galleryUpload";
 import type { UiBlock } from "../types";
+import { TextInput } from "../../../ui/Field";
 
 type Row = Record<string, unknown>;
 
@@ -149,13 +150,15 @@ export function GalleryBlockBody(props: {
                 onChange={onPickMultiple}
               />
             </label>
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               type="button"
-              className="dashboard-grid-no-drag rounded-tile bg-violet-600/80 px-soft py-snug text-xs font-medium text-ink-primary hover:bg-violet-500"
+              className="dashboard-grid-no-drag bg-violet-600/80 px-soft py-snug text-xs hover:bg-violet-500"
               onClick={addPhoto}
             >
               {t("dashboard:photosAdd")}
-            </button>
+            </Button>
           </div>
         ) : null}
       </div>
@@ -284,14 +287,16 @@ function GalleryPhotoCard(props: {
       }`}
     >
       {url ? (
-        <button
+        <Button
+          variant="plain"
+          block
           type="button"
-          className="block h-full w-full text-left"
+          className="block h-full w-full"
           onClick={onOpenLightbox}
           aria-label={t("dashboard:galleryOpenLightbox")}
         >
           <GalleryImage url={url} alt={caption} />
-        </button>
+        </Button>
       ) : (
         <div className="flex h-full min-h-[80px] items-center justify-center text-xs text-ink-muted">
           {readOnly ? t("dashboard:noImage") : t("dashboard:urlOrUpload")}
@@ -358,17 +363,17 @@ function GalleryPhotoCard(props: {
           </label>
         </div>
         {uploadErr ? <p className="text-meta text-danger">{uploadErr}</p> : null}
-        <input
+        <TextInput
           type="url"
           placeholder={t("dashboard:fileUrlPlaceholder")}
-          className="dashboard-grid-no-drag w-full rounded-tile border border-line bg-field px-base py-snug text-xs text-ink-primary placeholder:text-white/25"
+          className="dashboard-grid-no-drag text-xs"
           value={url}
           onChange={(e) => updatePhoto(ri, "url", e.target.value)}
         />
-        <input
+        <TextInput
           type="text"
           placeholder={t("dashboard:captionPlaceholder")}
-          className="dashboard-grid-no-drag w-full rounded-tile border border-line bg-field px-base py-snug text-xs text-ink-primary"
+          className="dashboard-grid-no-drag text-xs"
           value={caption}
           onChange={(e) => updatePhoto(ri, "caption", e.target.value)}
         />

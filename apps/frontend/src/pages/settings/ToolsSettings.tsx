@@ -7,6 +7,7 @@ import { isPackageEnabledForChat, setPackageEnabledForChat } from "../../feature
 import { Badge } from "../../ui/Badge";
 import { Button, buttonClass } from "../../ui/Button";
 import { Drawer } from "../../ui/Drawer";
+import { TextInput } from "../../ui/Field";
 
 type ToolPackageUi = {
   category: string;
@@ -343,12 +344,12 @@ export function ToolsSettings() {
         <div className="flex flex-col gap-wide sm:flex-row sm:items-center sm:justify-between">
           <label className="block max-w-controlWide flex-1 text-sm text-ink-muted">
             {t("settings:toolsSearchLabel")}
-            <input
+            <TextInput
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("settings:toolsSearchPlaceholder")}
-              className="mt-tight w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary placeholder:text-neutral-600"
+              className="mt-tight"
             />
           </label>
           <div
@@ -387,10 +388,12 @@ export function ToolsSettings() {
           const stats = categoryAnalytics(g.items, services);
           return (
             <section key={g.cat} className="overflow-hidden rounded-sheet border border-line bg-card">
-              <button
+              <Button
+                variant="plain"
+                block
                 type="button"
                 onClick={() => toggleCat(g.cat)}
-                className="flex w-full items-center justify-between gap-soft px-wide py-soft text-left transition hover:bg-white/[0.04]"
+                className="w-full items-center justify-between gap-soft px-wide py-soft transition hover:bg-white/[0.04]"
               >
                 <div>
                   <h2 className="text-sm font-semibold text-ink-primary">{g.label}</h2>
@@ -404,7 +407,7 @@ export function ToolsSettings() {
                   </p>
                 </div>
                 <span className="text-ink-muted">{open ? "▲" : "▼"}</span>
-              </button>
+              </Button>
               {open ? (
                 <div className="border-t border-line-subtle px-soft pb-wide pt-base">
                   <div className="grid gap-soft sm:grid-cols-2">
@@ -482,24 +485,24 @@ export function ToolsSettings() {
                                 {t("settings:toolsConfigure")}
                               </Link>
                             ) : null}
-                            <button
+                            <Button
                               type="button"
                               disabled={!names.length}
-                              className="rounded-tile bg-white/5 px-firm py-tight text-meta text-badge-warning hover:bg-white/10 disabled:opacity-40"
+                              className="bg-white/5 px-firm py-tight text-meta text-badge-warning hover:bg-white/10"
                               onClick={() => {
                                 setPackageEnabledForChat(names, false);
                                 refreshToggles();
                               }}
                             >
                               {t("settings:toolsDisable")}
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               type="button"
-                              className="rounded-tile border border-line-strong px-firm py-tight text-meta text-ink-primary hover:bg-white/10"
+                              className="px-firm py-tight text-meta hover:bg-white/10"
                               onClick={() => setDrawerPkg(m)}
                             >
                               {t("settings:toolsDetails")}
-                            </button>
+                            </Button>
                           </div>
                           <div className="flex flex-wrap items-center gap-soft border-t border-line-subtle pt-soft">
                             <label className="flex cursor-pointer items-center gap-base text-xs text-ink-primary">
@@ -535,13 +538,15 @@ export function ToolsSettings() {
         <p className="text-sm text-ink-muted">{t("settings:toolsNoMatchFilter")}</p>
       ) : null}
 
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         type="button"
         className="text-xs text-accent hover:text-badge-accent hover:underline"
         onClick={() => void load()}
       >
         {t("settings:toolsRefreshCatalog")}
-      </button>
+      </Button>
 
       {drawerPkg ? (
         <PackageDrawer

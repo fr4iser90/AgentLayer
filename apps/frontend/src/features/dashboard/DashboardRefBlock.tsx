@@ -5,6 +5,7 @@ import { apiFetch } from "../../lib/api";
 import type { UiBlock } from "./types";
 import { DashboardBlockTile } from "./DashboardBlocks";
 import { useDashboardPublicShare } from "./DashboardPublicShareContext";
+import { Button } from "../../ui/Button";
 
 type RenderPayload = {
   block: UiBlock;
@@ -84,9 +85,9 @@ export function DashboardRefBlockBody(props: {
       <div className="space-y-base text-sm">
         <p className="text-badge-warning">{err}</p>
         {publicShareToken ? null : (
-          <button type="button" className="text-accent hover:underline" onClick={() => void load()}>
+          <Button variant="ghost" type="button" className="text-accent hover:underline" onClick={() => void load()}>
             {t("dashboard:refRetry")}
-          </button>
+          </Button>
         )}
       </div>
     );

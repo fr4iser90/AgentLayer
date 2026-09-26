@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { hasOrgSurface } from "../../auth/deploymentMode";
 import { apiFetch } from "../../lib/api";
+import { Select, TextArea, TextInput } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 type AgentRow = {
   id: string;
@@ -375,9 +377,9 @@ export function AdminAgents() {
           <label className="sr-only" htmlFor="agents-import-source-type">
             {t("admin:agentsImportSourceType")}
           </label>
-          <select
+          <Select
             id="agents-import-source-type"
-            className="w-full rounded-tile border border-line bg-field px-base py-snug text-xs text-ink-primary sm:w-56"
+            className="text-xs sm:w-56"
             value={importSourceType}
             onChange={(e) => setImportSourceType(e.target.value)}
           >
@@ -388,14 +390,15 @@ export function AdminAgents() {
             <option value="crewai_agent">{t("admin:agentsImportCrewAI")}</option>
             <option value="autogen_agent">{t("admin:agentsImportAutoGen")}</option>
             <option value="generic_agent">{t("admin:agentsImportGeneric")}</option>
-          </select>
+          </Select>
         </div>
 
         <div className="mt-wide grid gap-soft lg:grid-cols-2">
           <label className="flex flex-col gap-tight text-xs text-ink-muted">
             <span>{t("admin:agentsImportPaste")}</span>
-            <textarea
-              className="min-h-40 rounded-tile border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary placeholder:text-neutral-500"
+            <TextArea
+              mono
+              className="min-h-40 text-xs"
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
               placeholder={t("admin:agentsImportPastePlaceholder")}
@@ -418,14 +421,16 @@ export function AdminAgents() {
               <li>{t("admin:toolsImportZipSafety")}</li>
               <li>{t("admin:agentsImportAnalyzeOnly")}</li>
             </ul>
-            <button
+            <Button
+              variant="primary"
+              size="lg"
               type="button"
               disabled={importBusy || (!importText.trim() && !(importFiles?.length))}
-              className="mt-wide rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+              className="mt-wide px-wide py-base text-sm"
               onClick={() => void analyzeImport()}
             >
               {importBusy ? t("admin:agentsImportAnalyzing") : t("admin:agentsImportAnalyze")}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -513,13 +518,15 @@ export function AdminAgents() {
       </section>
 
       <div className="mt-wide flex flex-wrap gap-base">
-        <button
+        <Button
+          variant="primary"
+          size="lg"
           type="button"
-          className="rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover"
+          className="px-wide py-base text-sm"
           onClick={() => void loadList()}
         >
           {t("admin:agentsRefresh")}
-        </button>
+        </Button>
         <Link
           to="/admin/tools"
           className="rounded-tile bg-white/10 px-wide py-base text-sm font-medium text-ink-primary hover:bg-white/15"
@@ -608,16 +615,16 @@ export function AdminAgents() {
 
               <div className="mt-wide flex flex-wrap items-center gap-base">
                 <label className="text-xs text-ink-muted">{t("admin:agentsEffectivePreview")}</label>
-                <select
-                  className="rounded-tile border border-line bg-field px-base py-tight text-xs text-ink-primary"
+                <Select
+                  className="text-xs"
                   value={previewRole}
                   onChange={(e) => setPreviewRole(e.target.value as "admin" | "user")}
                 >
                   <option value="admin">{t("admin:toolsMinRoleAdmin")}</option>
                   <option value="user">{t("admin:toolsMinRoleUser")}</option>
-                </select>
-                <input
-                  className="w-72 rounded-tile border border-line bg-field px-base py-tight text-xs text-ink-primary placeholder:text-neutral-500"
+                </Select>
+                <TextInput
+                  className="w-72 text-xs"
                   value={previewUserId}
                   onChange={(e) => setPreviewUserId(e.target.value)}
                   placeholder={t("admin:agentsPreviewUserIdPlaceholder")}
@@ -670,8 +677,8 @@ export function AdminAgents() {
                     <div className="mt-wide grid gap-base md:grid-cols-5">
                       <label className="text-xs text-ink-muted">
                         {t("admin:agentsPolicyScope")}
-                        <select
-                          className="mt-tight w-full rounded-tile border border-line bg-field px-base py-tight text-xs text-ink-primary"
+                        <Select
+                          className="mt-tight text-xs"
                           value={policyScope}
                           onChange={(e) => setPolicyScope(e.target.value as "global" | "tenant" | "user")}
                         >
@@ -680,13 +687,13 @@ export function AdminAgents() {
                             <option value="tenant">{t("admin:agentsScopeTenant")}</option>
                           ) : null}
                           <option value="user">{t("admin:agentsScopeUser")}</option>
-                        </select>
+                        </Select>
                       </label>
                       {showTenantScope ? (
                         <label className="text-xs text-ink-muted">
                           {t("admin:agentsTenantId")}
-                          <input
-                            className="mt-tight w-full rounded-tile border border-line bg-field px-base py-tight text-xs text-ink-primary placeholder:text-neutral-500"
+                          <TextInput
+                            className="mt-tight text-xs"
                             value={policyTenantId}
                             onChange={(e) => setPolicyTenantId(e.target.value)}
                             placeholder={t("admin:agentsTenantIdPlaceholder")}
@@ -695,8 +702,8 @@ export function AdminAgents() {
                       ) : null}
                       <label className="text-xs text-ink-muted">
                         {t("admin:agentsUserId")}
-                        <input
-                          className="mt-tight w-full rounded-tile border border-line bg-field px-base py-tight text-xs text-ink-primary placeholder:text-neutral-500"
+                        <TextInput
+                          className="mt-tight text-xs"
                           value={policyUserId}
                           onChange={(e) => setPolicyUserId(e.target.value)}
                           placeholder={t("admin:agentsUserIdPlaceholder")}
@@ -704,46 +711,49 @@ export function AdminAgents() {
                       </label>
                       <label className="text-xs text-ink-muted">
                         {t("admin:agentsDirectAccess")}
-                        <select
-                          className="mt-tight w-full rounded-tile border border-line bg-field px-base py-tight text-xs text-ink-primary"
+                        <Select
+                          className="mt-tight text-xs"
                           value={directState}
                           onChange={(e) => setDirectState(e.target.value as "inherit" | "allow" | "deny")}
                         >
                           <option value="inherit">{t("admin:agentsInherit")}</option>
                           <option value="allow">{t("admin:agentsAllow")}</option>
                           <option value="deny">{t("admin:agentsDeny")}</option>
-                        </select>
+                        </Select>
                       </label>
                       <label className="text-xs text-ink-muted">
                         {t("admin:agentsDelegateAccess")}
-                        <select
-                          className="mt-tight w-full rounded-tile border border-line bg-field px-base py-tight text-xs text-ink-primary"
+                        <Select
+                          className="mt-tight text-xs"
                           value={delegateState}
                           onChange={(e) => setDelegateState(e.target.value as "inherit" | "allow" | "deny")}
                         >
                           <option value="inherit">{t("admin:agentsInherit")}</option>
                           <option value="allow">{t("admin:agentsAllow")}</option>
                           <option value="deny">{t("admin:agentsDeny")}</option>
-                        </select>
+                        </Select>
                       </label>
                     </div>
                     <div className="mt-soft flex flex-wrap items-center gap-base">
-                      <button
+                      <Button
+                        variant="primary"
+                        size="sm"
                         type="button"
                         disabled={policyBusy}
-                        className="rounded-tile bg-accent px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+                        className="px-soft py-snug text-xs"
                         onClick={() => void saveAccessPolicy()}
                       >
                         {t("admin:agentsSavePolicy")}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        size="sm"
                         type="button"
                         disabled={policyBusy}
-                        className="rounded-tile bg-white/10 px-soft py-snug text-xs font-medium text-ink-primary hover:bg-white/15 disabled:opacity-50"
+                        className="bg-white/10 px-soft py-snug text-xs hover:bg-white/15"
                         onClick={() => void deleteAccessPolicy()}
                       >
                         {t("admin:agentsDeletePolicy")}
-                      </button>
+                      </Button>
                       {policyMsg ? <span className="text-xs text-ink-muted">{policyMsg}</span> : null}
                     </div>
                     <div className="mt-soft">
@@ -782,8 +792,9 @@ export function AdminAgents() {
                           : ""}
                       </p>
                     </div>
-                    <textarea
-                      className="mt-soft min-h-52 w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary placeholder:text-neutral-500"
+                    <TextArea
+                      mono
+                      className="mt-soft min-h-52 text-xs"
                       value={promptText}
                       onChange={(e) => setPromptText(e.target.value)}
                       maxLength={12000}
@@ -794,14 +805,16 @@ export function AdminAgents() {
                         {t("admin:agentsTokens")}
                       </p>
                       <div className="flex flex-wrap items-center gap-base">
-                        <button
+                        <Button
+                          variant="primary"
+                          size="sm"
                           type="button"
                           disabled={promptBusy || !promptText.trim()}
-                          className="rounded-tile bg-accent px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+                          className="px-soft py-snug text-xs"
                           onClick={() => void savePromptDraft()}
                         >
                           {t("admin:agentsSavePromptDraft")}
-                        </button>
+                        </Button>
                         {promptMsg ? <span className="text-xs text-ink-muted">{promptMsg}</span> : null}
                       </div>
                     </div>
@@ -827,14 +840,15 @@ export function AdminAgents() {
                                   {v.published_at ? ` · ${t("admin:agentsPublishedAt")} ${v.published_at}` : ""}
                                 </p>
                               </div>
-                              <button
+                              <Button
+                                size="sm"
                                 type="button"
                                 disabled={promptBusy || v.status === "published"}
-                                className="rounded-tile bg-white/10 px-soft py-snug text-xs font-medium text-ink-primary hover:bg-white/15 disabled:opacity-50"
+                                className="bg-white/10 px-soft py-snug text-xs hover:bg-white/15"
                                 onClick={() => void publishPromptVersion(v.id)}
                               >
                                 {t("admin:agentsPublishPrompt")}
-                              </button>
+                              </Button>
                             </div>
                           ))
                         )}

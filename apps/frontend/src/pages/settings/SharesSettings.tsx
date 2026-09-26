@@ -3,6 +3,8 @@ import { Link as LinkIcon } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { useTranslation } from "react-i18next";
+import { Select, TextInput } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 type ShareItem = {
   resource_type: string;
@@ -593,7 +595,7 @@ export default function SharesSettings() {
                     </div>
                     {row.available_kinds.length > 0 ? (
                       <div className="flex items-center gap-base">
-                        <select
+                        <Select
                           value={draft}
                           disabled={publishing}
                           aria-label={t("settings:sharesPublishedKind", {
@@ -602,22 +604,23 @@ export default function SharesSettings() {
                           onChange={(e) =>
                             setKindDraft((prev) => ({ ...prev, [key]: e.target.value }))
                           }
-                          className="rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
                         >
                           {row.available_kinds.map((kind) => (
                             <option key={kind} value={kind}>
                               {kind}
                             </option>
                           ))}
-                        </select>
-                        <button
+                        </Select>
+                        <Button
+                          variant="primary"
+                          tone="success"
                           type="button"
                           disabled={publishing || unchanged || !draft}
                           onClick={() => void publishKind(row)}
-                          className="rounded-tile bg-success px-soft py-snug text-sm text-ink-on-fill disabled:opacity-50"
+                          className="px-soft py-snug text-sm"
                         >
                           {t("settings:sharesPublishButton")}
-                        </button>
+                        </Button>
                       </div>
                     ) : (
                       <span className="text-xs text-ink-muted">
@@ -682,14 +685,15 @@ export default function SharesSettings() {
                             ),
                           )}
                           <div className="sm:col-span-2">
-                            <button
+                            <Button
+                              variant="ghost"
                               type="button"
                               disabled={saving}
                               onClick={() => void savePolicy(resourceId)}
-                              className="text-sm text-accent hover:text-badge-accent disabled:opacity-50"
+                              className="text-sm text-accent hover:text-badge-accent"
                             >
                               {t("settings:sharesSavePolicy")}
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       )}
@@ -701,10 +705,10 @@ export default function SharesSettings() {
                     <span className="text-ink-muted">
                       {t("settings:sharesSelectResourceType")}
                     </span>
-                    <select
+                    <Select
                       value={newResourceType}
                       onChange={(e) => setNewResourceType(e.target.value)}
-                      className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-ink-primary text-sm"
+                      className="mt-tight"
                     >
                       <option value="" disabled>
                         {t("settings:sharesSelectTypePlaceholder")}
@@ -714,23 +718,25 @@ export default function SharesSettings() {
                           {r.name}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </label>
                   {needsIdentifier && (
                     <label className="block text-sm flex-1 min-w-[12rem]">
                       <span className="text-ink-muted">
                         {t("settings:sharesIdentifier")}
                       </span>
-                      <input
+                      <TextInput
                         type="text"
                         value={newResourceIdentifier}
                         placeholder={t("settings:sharesIdentifierPlaceholder")}
                         onChange={(e) => setNewResourceIdentifier(e.target.value)}
-                        className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-ink-primary text-sm"
+                        className="mt-tight"
                       />
                     </label>
                   )}
-                  <button
+                  <Button
+                    variant="primary"
+                    tone="success"
                     type="button"
                     disabled={saving || !canAddResource}
                     onClick={() => {
@@ -743,10 +749,10 @@ export default function SharesSettings() {
                       setNewResourceType("");
                       setNewResourceIdentifier("");
                     }}
-                    className="rounded-tile bg-success px-soft py-snug text-sm text-ink-on-fill disabled:opacity-50"
+                    className="px-soft py-snug text-sm"
                   >
                     {t("settings:sharesAddResource")}
-                  </button>
+                  </Button>
                   {catalog.length === 0 && (
                     <p className="w-full text-sm text-ink-muted">
                       {t("settings:sharesNoTypesRegistered")}

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { blockExpandTitle } from "./blockRegistry";
 import { DashboardBlockTile } from "./DashboardBlocks";
 import type { UiBlock } from "./types";
+import { Button } from "../../ui/Button";
 
 export function BlockExpandModal(props: {
   block: UiBlock;
@@ -40,13 +41,13 @@ export function BlockExpandModal(props: {
     >
       <header className="flex shrink-0 items-center justify-between gap-soft border-b border-line px-wide py-soft sm:px-broad">
         <h2 className="min-w-0 truncate text-sm font-medium text-ink-primary sm:text-base">{title}</h2>
-        <button
+        <Button
           type="button"
-          className="shrink-0 rounded-card bg-white/10 px-soft py-snug text-sm text-ink-primary hover:bg-white/20"
+          className="shrink-0 bg-white/10 px-soft py-snug text-sm hover:bg-white/20"
           onClick={onClose}
         >
           {t("dashboard:blockExpandClose")}
-        </button>
+        </Button>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-wide sm:p-broad">
         <div className="mx-auto max-w-pageWide rounded-sheet border border-line bg-card p-soft sm:p-wide">

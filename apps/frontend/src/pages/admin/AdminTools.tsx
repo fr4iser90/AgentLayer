@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { Badge, type BadgeTone } from "../../ui/Badge";
+import { Select, TextArea, TextInput } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 type ToolMeta = {
   id?: string;
@@ -524,8 +526,8 @@ export function AdminTools() {
         <div className="mt-soft grid grid-cols-1 gap-soft border-t border-line pt-soft sm:grid-cols-2">
           <label className="flex min-w-0 flex-col gap-tight text-meta text-ink-muted">
             <span className="text-ink-muted">{t("admin:toolsPolicyMinRole")}</span>
-            <select
-              className="w-full rounded-tile border border-line bg-field px-base py-snug text-xs text-ink-primary"
+            <Select
+              className="text-xs"
               value={pol.min_role}
               onChange={(e) =>
                 updatePolicy(pid, { min_role: e.target.value === "admin" ? "admin" : "user" })
@@ -533,15 +535,16 @@ export function AdminTools() {
             >
               <option value="user">{t("admin:toolsMinRoleUser")}</option>
               <option value="admin">{t("admin:toolsMinRoleAdmin")}</option>
-            </select>
+            </Select>
           </label>
           <label className="flex min-w-0 flex-col gap-tight text-meta text-ink-muted">
             <span className="text-ink-muted">
               {t("admin:toolsPolicyTenantIds")} (<span className="font-mono">tenants.id</span>)
             </span>
-            <input
+            <TextInput
+              mono
               type="text"
-              className="w-full rounded-tile border border-line bg-field px-base py-snug font-mono text-xs text-ink-primary placeholder:text-neutral-500"
+              className="text-xs"
               placeholder={t("admin:toolsPolicyTenantIdsPlaceholder")}
               value={tenantInputByPkg[pid] ?? ""}
               onChange={(e) => {
@@ -574,9 +577,9 @@ export function AdminTools() {
           <label className="sr-only" htmlFor="tools-import-source-type">
             {t("admin:toolsImportSourceType")}
           </label>
-          <select
+          <Select
             id="tools-import-source-type"
-            className="w-full rounded-tile border border-line bg-field px-base py-snug text-xs text-ink-primary sm:w-56"
+            className="text-xs sm:w-56"
             value={importSourceType}
             onChange={(e) => setImportSourceType(e.target.value)}
           >
@@ -585,13 +588,14 @@ export function AdminTools() {
             <option value="cursor_skill">{t("admin:toolsImportCursor")}</option>
             <option value="claude_command">{t("admin:toolsImportClaude")}</option>
             <option value="generic_markdown">{t("admin:toolsImportGeneric")}</option>
-          </select>
+          </Select>
         </div>
         <div className="mt-wide grid gap-soft lg:grid-cols-2">
           <label className="flex flex-col gap-tight text-xs text-ink-muted">
             <span>{t("admin:toolsImportPaste")}</span>
-            <textarea
-              className="min-h-40 rounded-tile border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary placeholder:text-neutral-500"
+            <TextArea
+              mono
+              className="min-h-40 text-xs"
               value={importMarkdown}
               onChange={(e) => setImportMarkdown(e.target.value)}
               placeholder={t("admin:toolsImportPastePlaceholder")}
@@ -614,14 +618,16 @@ export function AdminTools() {
               <li>{t("admin:toolsImportZipSafety")}</li>
               <li>{t("admin:toolsImportAnalyzeOnly")}</li>
             </ul>
-            <button
+            <Button
+              variant="primary"
+              size="lg"
               type="button"
               disabled={importBusy || (!importMarkdown.trim() && !(importFiles?.length))}
-              className="mt-wide rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+              className="mt-wide px-wide py-base text-sm"
               onClick={() => void analyzeImport()}
             >
               {importBusy ? t("admin:toolsImportAnalyzing") : t("admin:toolsImportAnalyze")}
-            </button>
+            </Button>
           </div>
         </div>
         {importMsg ? <p className="mt-soft text-sm text-ink-muted">{importMsg}</p> : null}
@@ -671,30 +677,36 @@ export function AdminTools() {
       </section>
 
       <div className="mt-wide flex flex-wrap gap-base">
-        <button
+        <Button
+          variant="primary"
+          size="lg"
           type="button"
           disabled={busy}
-          className="rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+          className="px-wide py-base text-sm"
           onClick={() => void loadAdmin()}
         >
           {t("admin:toolsRegistryRefresh")}
-        </button>
-        <button
+        </Button>
+        <Button
+          size="lg"
           type="button"
           disabled={busy}
-          className="rounded-tile bg-white/10 px-wide py-base text-sm font-medium text-ink-primary hover:bg-white/15 disabled:opacity-50"
+          className="bg-white/10 px-wide py-base text-sm hover:bg-white/15"
           onClick={() => void reloadRegistry()}
         >
           {t("admin:toolsRegistryReload")}
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="primary"
+          tone="success"
+          size="lg"
           type="button"
           disabled={busy || loading}
-          className="rounded-tile bg-success px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-success-hover disabled:opacity-50"
+          className="px-wide py-base text-sm"
           onClick={() => void savePolicies()}
         >
           {t("admin:toolsRegistrySavePolicy")}
-        </button>
+        </Button>
       </div>
 
       {msg ? <p className="mt-soft text-sm text-ink-muted">{msg}</p> : null}

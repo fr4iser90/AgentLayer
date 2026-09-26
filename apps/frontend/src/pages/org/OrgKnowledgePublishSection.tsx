@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { hasOrgSurface } from "../../auth/deploymentMode";
 import { apiFetch } from "../../lib/api";
+import { TextArea, TextInput } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 type ContentResponse = {
   content?: { id?: string };
@@ -105,9 +107,9 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
         <label className="block text-xs text-ink-muted" htmlFor="org-knowledge-title">
           {t("org:knowledgeTitleLabel")}
         </label>
-        <input
+        <TextInput
           id="org-knowledge-title"
-          className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+          className="mt-tight"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder={t("org:knowledgeTitlePlaceholder")}
@@ -118,9 +120,10 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
       <label className="mt-wide block text-xs text-ink-muted" htmlFor="org-knowledge-text">
         {t("org:knowledgeTextLabel")}
       </label>
-      <textarea
+      <TextArea
+        mono
         id="org-knowledge-text"
-        className="mt-tight min-h-48 w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+        className="mt-tight min-h-48"
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={t("org:knowledgeTextPlaceholder")}
@@ -134,21 +137,23 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
           className="hidden"
           onChange={(e) => onFileSelected(e.target.files?.[0])}
         />
-        <button
+        <Button
           type="button"
-          className="rounded-tile border border-line px-soft py-snug text-sm text-ink-primary hover:bg-white/5"
+          className="px-soft py-snug text-sm hover:bg-white/5"
           onClick={() => fileInputRef.current?.click()}
         >
           {t("org:knowledgeFileButton")}
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="primary"
+          size="lg"
           type="button"
           disabled={busy}
-          className="rounded-tile bg-accent px-wide py-snug text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+          className="px-wide py-snug text-sm"
           onClick={() => void publish()}
         >
           {busy ? t("org:knowledgePublishing") : t("org:cmsPublish")}
-        </button>
+        </Button>
       </div>
 
       {msg ? <p className="mt-soft text-sm text-success">{msg}</p> : null}

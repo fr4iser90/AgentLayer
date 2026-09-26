@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { Select, TextArea } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 type Level = "low" | "medium" | "high";
 type PrimaryGoal = "security" | "stability" | "maintainability" | "speed";
@@ -140,16 +142,16 @@ function LevelSelect({
   return (
     <label className="block text-sm" htmlFor={id}>
       <span className="text-ink-muted">{label}</span>
-      <select
+      <Select
         id={id}
-        className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+        className="mt-tight max-w-control"
         value={value}
         onChange={(e) => onChange(e.target.value as Level)}
       >
         <option value="low">low</option>
         <option value="medium">medium</option>
         <option value="high">high</option>
-      </select>
+      </Select>
     </label>
   );
 }
@@ -264,9 +266,9 @@ function ConfigEditor({
         <label className="mt-soft block text-sm text-ink-muted" htmlFor={`${idPrefix}-primary-goal`}>
           {t("settings:delegatePrimaryGoal")}
         </label>
-        <select
+        <Select
           id={`${idPrefix}-primary-goal`}
-          className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+          className="mt-tight max-w-control"
           value={config.engineering.primary_goal}
           onChange={(e) =>
             onChange({
@@ -283,10 +285,11 @@ function ConfigEditor({
               {tok}
             </option>
           ))}
-        </select>
+        </Select>
         <p className="mt-soft text-xs text-ink-muted">{t("settings:delegatePrioritiesHelp")}</p>
-        <textarea
-          className="mt-tight min-h-[72px] w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary"
+        <TextArea
+          mono
+          className="mt-tight min-h-[72px] max-w-controlWide text-xs"
           value={prioritiesText}
           onChange={(e) => {
             const priorities = e.target.value
@@ -362,8 +365,8 @@ function ConfigEditor({
       <section>
         <h3 className="text-sm font-medium text-ink-primary">{t("settings:delegateSectionGoals")}</h3>
         <p className="mt-tight text-xs text-ink-muted">{t("settings:delegateGoalsHelp")}</p>
-        <textarea
-          className="mt-base min-h-[100px] w-full max-w-measure rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+        <TextArea
+          className="mt-base min-h-[100px] max-w-measure"
           value={goalsText}
           onChange={(e) =>
             onChange({
@@ -523,21 +526,23 @@ export function DelegateSettings() {
         <label className="mt-wide block text-sm text-ink-primary" htmlFor="delegate-notes">
           {t("settings:delegateNotesLabel")}
         </label>
-        <textarea
+        <TextArea
           id="delegate-notes"
-          className="mt-tight min-h-[72px] w-full max-w-measure rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+          className="mt-tight min-h-[72px] max-w-measure"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder={t("settings:delegateNotesPlaceholder")}
         />
-        <button
+        <Button
+          variant="primary"
+          size="lg"
           type="button"
-          className="mt-wide rounded-tile bg-accent px-wide py-base text-sm text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+          className="mt-wide px-wide py-base text-sm"
           disabled={savingGlobal || unavailable}
           onClick={() => void saveGlobal()}
         >
           {savingGlobal ? t("settings:saving") : t("settings:delegateSaveGlobal")}
-        </button>
+        </Button>
       </section>
 
       <section className="mt-deep rounded-card border border-line bg-card p-wide">
@@ -550,9 +555,9 @@ export function DelegateSettings() {
             <label className="mt-soft block text-sm text-ink-muted" htmlFor="delegate-ws">
               {t("settings:delegateWorkspacePick")}
             </label>
-            <select
+            <Select
               id="delegate-ws"
-              className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              className="mt-tight max-w-controlWide"
               value={workspaceId}
               onChange={(e) => setWorkspaceId(e.target.value)}
             >
@@ -561,7 +566,7 @@ export function DelegateSettings() {
                   {w.name}
                 </option>
               ))}
-            </select>
+            </Select>
             {selectedWorkspace ? (
               <p className="mt-tight text-xs text-ink-muted">{selectedWorkspace.name}</p>
             ) : null}
@@ -572,14 +577,16 @@ export function DelegateSettings() {
                 idPrefix="ws"
               />
             </div>
-            <button
+            <Button
+              variant="primary"
+              size="lg"
               type="button"
-              className="mt-wide rounded-tile bg-accent px-wide py-base text-sm text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+              className="mt-wide px-wide py-base text-sm"
               disabled={savingWorkspace || unavailable || !workspaceId}
               onClick={() => void saveWorkspace()}
             >
               {savingWorkspace ? t("settings:saving") : t("settings:delegateSaveWorkspace")}
-            </button>
+            </Button>
           </>
         )}
       </section>

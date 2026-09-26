@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { Select, TextInput } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 type Department = { id: string; slug: string; name: string };
 type ProfessionRole = { id: string; slug: string; name: string; role_kind: string };
@@ -115,14 +117,12 @@ export function OrgTeamPage() {
         </ul>
 
         <div className="mt-wide grid gap-soft sm:grid-cols-3">
-          <input
-            className="rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+          <TextInput
             placeholder={t("org:teamUserIdPlaceholder")}
             value={assignUserId}
             onChange={(e) => setAssignUserId(e.target.value)}
           />
-          <select
-            className="rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+          <Select
             value={assignRoleId}
             onChange={(e) => setAssignRoleId(e.target.value)}
           >
@@ -132,9 +132,8 @@ export function OrgTeamPage() {
                 {r.name}
               </option>
             ))}
-          </select>
-          <select
-            className="rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+          </Select>
+          <Select
             value={assignDeptId}
             onChange={(e) => setAssignDeptId(e.target.value)}
           >
@@ -144,15 +143,17 @@ export function OrgTeamPage() {
                 {d.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
-        <button
+        <Button
+          variant="primary"
+          size="lg"
           type="button"
-          className="mt-soft rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover"
+          className="mt-soft px-wide py-base text-sm"
           onClick={() => void saveAssignment()}
         >
           {t("org:teamSaveAssignment")}
-        </button>
+        </Button>
       </section>
 
       <section className="mt-broad rounded-sheet border border-line bg-card p-roomy">
