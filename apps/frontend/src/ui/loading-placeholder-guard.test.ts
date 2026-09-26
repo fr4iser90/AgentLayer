@@ -47,6 +47,28 @@ describe("scanLoadingPlaceholders", () => {
     ).toEqual([]);
   });
 
+  it("counts a list that reaches the screen through the Table primitive", () => {
+    // Moving a hand-rolled table onto `ui/Table` deletes the word `table` from
+    // the loaded arm and leaves the rows that arrive exactly as tall. If only
+    // the tag counted, every adoption would clear a violation it never fixed.
+    expect(
+      hits(`
+        function P() {
+          return loading ? <p className="text-xs">{t("a:loading")}</p> : <Table columns={cols} rows={rows} rowKey={(r) => r.id} />;
+        }
+      `)
+    ).toHaveLength(1);
+    // A component that renders no list stays out of reach: its height lives
+    // inside it and the guard does not guess.
+    expect(
+      hits(`
+        function P() {
+          return loading ? <p className="text-xs">{t("a:loading")}</p> : <EmptyState hint={t("a:none")} />;
+        }
+      `)
+    ).toEqual([]);
+  });
+
   it("leaves a decision that is not a loading state alone", () => {
     expect(
       hits(`
