@@ -6,6 +6,7 @@ import type {
 } from "../../lib/api";
 import { useTranslation } from "react-i18next";
 import { Badge } from "../../ui/Badge";
+import { StatusDot } from "../../ui/StatusDot";
 
 type Props = {
   runtime: ChatRuntimePayload | null;
@@ -215,9 +216,10 @@ export function ChatRuntimeBar({
             className="tabular-nums"
             title={servers.map((s) => `${s.id}: ${s.connected ? `${s.tool_count} tools` : s.error || "down"}`).join("\n")}
           >
-            <span className={connected > 0 ? "text-success" : "text-badge-warning"}>{connected}</span>
-            <span className="text-ink-muted">/{servers.length}</span>
-            <span className="ml-tight text-ink-muted">{t("workspace:servers")}</span>
+            <StatusDot
+              state={connected === servers.length ? "ok" : connected > 0 ? "degraded" : "down"}
+              label={`${connected}/${servers.length} ${t("workspace:servers")}`}
+            />
           </span>
         )}
         {showContext ? (

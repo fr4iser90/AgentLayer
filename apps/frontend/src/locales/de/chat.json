@@ -110,6 +110,7 @@
   "emptyStarterContinue": "Bei Pausen zwischen Schritten auf Weiter tippen",
   "permissionAskTitle": "{{tool}} möchte ausführen",
   "permissionAskRound": "Runde {{round}}",
+  "permissionAskIntro": "Der Agent möchte dieses Werkzeug ausführen und braucht vorher deine Erlaubnis.",
   "permissionAllowOnce": "Einmal erlauben",
   "permissionAllowAlways": "Immer erlauben",
   "permissionReject": "Ablehnen",

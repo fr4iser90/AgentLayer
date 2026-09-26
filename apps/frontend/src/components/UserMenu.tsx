@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
-import { Mascot, pickCharacter } from "../ui/Mascot";
+import { Avatar } from "../ui/Avatar";
 import { Menu } from "../ui/Menu";
 import { Tooltip } from "../ui/Tooltip";
 import { useClickOutside } from "../ui/useClickOutside";
@@ -42,7 +42,7 @@ export function UserMenu() {
           aria-haspopup="menu"
           onClick={() => setOpen((v) => !v)}
       >
-          <Mascot character={pickCharacter(email)} state={open ? "happy" : "idle"} size={30} ariaLabel={null} />
+          <Avatar kind="user" seed={email} state={open ? "happy" : "idle"} size="md" label={email || t("userMenu.account")} />
         </Button>
       </Tooltip>
       {open ? (
