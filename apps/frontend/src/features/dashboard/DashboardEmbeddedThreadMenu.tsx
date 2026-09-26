@@ -1,6 +1,7 @@
 import { useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ChatThread } from "../chat/chatThreadStorage";
+import { Listbox } from "../../ui/Listbox";
 import { Tooltip } from "../../ui/Tooltip";
 import { useClickOutside } from "../../ui/useClickOutside";
 
@@ -62,49 +63,21 @@ export function DashboardEmbeddedThreadMenu({
         </button>
       </Tooltip>
       {open ? (
-        <ul
+        <Listbox
           id={menuId}
-          role="listbox"
-          className="absolute left-0 top-full z-docked mt-tight max-h-[min(240px,40vh)] w-[min(280px,calc(100vw-2rem))] overflow-y-auto rounded-card border border-line bg-[#141414] py-tight shadow-xl"
-        >
-          {!readOnly ? (
-            <li role="option" aria-selected={!activeThreadId}>
-              <button
-                type="button"
-                className={[
-                  "w-full px-soft py-base text-left text-xs hover:bg-white/5",
-                  !activeThreadId ? "bg-accent-subtle text-badge-accent" : "text-ink-primary",
-                ].join(" ")}
-                onClick={() => {
-                  onSelect("");
-                  setOpen(false);
-                }}
-              >
-                {draftLabel}
-              </button>
-            </li>
-          ) : null}
-          {threads.map((row) => {
-            const selected = activeThreadId === row.id;
-            return (
-              <li key={row.id} role="option" aria-selected={selected}>
-                <button
-                  type="button"
-                  className={[
-                    "w-full px-soft py-base text-left text-xs hover:bg-white/5",
-                    selected ? "bg-accent-subtle text-badge-accent" : "text-ink-primary",
-                  ].join(" ")}
-                  onClick={() => {
-                    onSelect(row.id);
-                    setOpen(false);
-                  }}
-                >
-                  <span className="line-clamp-2">{formatLabel(row, labels)}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+          ariaLabel={triggerLabel}
+          className="absolute left-0 top-full z-docked mt-tight w-[min(280px,calc(100vw-2rem))]"
+          value={activeThreadId ?? ""}
+          onSelect={(next) => onSelect(next)}
+          onClose={() => setOpen(false)}
+          options={[
+            // The draft is an entry in the list, not a special row above it: it
+            // is one of the things you can be looking at, and it is selected
+            // exactly when no thread is.
+            ...(readOnly ? [] : [{ value: "", label: draftLabel }]),
+            ...threads.map((row) => ({ value: row.id, label: formatLabel(row, labels) })),
+          ]}
+        />
       ) : null}
     </div>
   );

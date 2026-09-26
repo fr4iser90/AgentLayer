@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { Mascot, pickCharacter } from "../ui/Mascot";
+import { Menu } from "../ui/Menu";
 import { Tooltip } from "../ui/Tooltip";
 import { useClickOutside } from "../ui/useClickOutside";
 
@@ -42,27 +43,27 @@ export function UserMenu() {
         </button>
       </Tooltip>
       {open ? (
-        <div
-          role="menu"
-          className="absolute right-0 z-menu mt-tight min-w-[12rem] rounded-card border border-line bg-[#1a1a1a] py-tight shadow-xl"
-        >
-          {email ? (
-            <p className="truncate border-b border-line px-soft py-base text-xs text-ink-muted" title={email}>
-              {email}
-            </p>
-          ) : null}
-          <button
-            type="button"
-            role="menuitem"
-            className="w-full px-soft py-base text-left text-sm text-ink-muted hover:bg-white/10 hover:text-neutral-200"
-            onClick={() => {
-              setOpen(false);
-              void logout();
-            }}
-          >
-            {t("userMenu.signOut")}
-          </button>
-        </div>
+        <Menu
+          onClose={() => setOpen(false)}
+          header={
+            email ? (
+              <p
+                className="truncate border-b border-line px-soft py-base text-label text-ink-muted"
+                title={email}
+              >
+                {email}
+              </p>
+            ) : null
+          }
+          items={[
+            {
+              id: "sign-out",
+              label: t("userMenu.signOut"),
+              tone: "danger",
+              onSelect: () => void logout(),
+            },
+          ]}
+        />
       ) : null}
     </div>
   );
