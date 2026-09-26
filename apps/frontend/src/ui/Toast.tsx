@@ -26,6 +26,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, Check, Info, X } from "lucide-react";
 import { registerToastApi } from "./toastBus";
+import { Button } from "./Button";
 
 export type ToastTone = "info" | "success" | "warning" | "danger";
 
@@ -253,25 +254,28 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                         ) : null}
                       </div>
                       {item.action ? (
-                        <button
-                          type="button"
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          tone="accent"
+                          className="shrink-0"
                           onClick={() => {
                             item.action?.onClick();
                             dismiss(item.id);
                           }}
-                          className="shrink-0 rounded-tile px-base py-tight text-label font-medium text-badge-accent hover:bg-accent-subtle"
                         >
                           {item.action.label}
-                        </button>
+                        </Button>
                       ) : null}
-                      <button
-                        type="button"
+                      <Button
+                        size="sm"
+                        variant="ghost"
                         aria-label={t("toast.dismiss")}
+                        className="shrink-0"
                         onClick={() => dismiss(item.id)}
-                        className="shrink-0 rounded-tile p-tight text-ink-muted hover:bg-white/10 hover:text-ink-primary"
                       >
                         <X size={14} aria-hidden />
-                      </button>
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -304,25 +308,28 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                       ) : null}
                     </div>
                     {item.action ? (
-                      <button
-                        type="button"
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        tone="accent"
+                        className="shrink-0"
                         onClick={() => {
                           item.action?.onClick();
                           dismiss(item.id);
                         }}
-                        className="shrink-0 rounded-tile px-base py-tight text-label font-medium text-badge-accent hover:bg-accent-subtle"
                       >
                         {item.action.label}
-                      </button>
+                      </Button>
                     ) : null}
-                    <button
-                      type="button"
+                    <Button
+                      size="sm"
+                      variant="ghost"
                       aria-label={t("toast.dismiss")}
+                      className="shrink-0"
                       onClick={() => dismiss(item.id)}
-                      className="shrink-0 rounded-tile p-tight text-ink-muted hover:bg-white/10 hover:text-ink-primary"
                     >
                       <X size={14} aria-hidden />
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
