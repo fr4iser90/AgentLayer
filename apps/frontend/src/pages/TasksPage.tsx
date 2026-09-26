@@ -11,6 +11,7 @@ import {
   type Task,
 } from "../lib/tasksApi";
 import { Select, TextInput } from "../ui/Field";
+import { SkeletonRows } from "../ui/Skeleton";
 import { Button } from "../ui/Button";
 
 type WorkspaceRow = { id: string; name: string };
@@ -79,6 +80,28 @@ function TaskList({
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * The placeholder for a list that has not arrived.
+ *
+ * `98` is one `TaskList` row plus the `space-y-base` gap the list puts between
+ * rows: the row is `py-firm` (20) around a two-line text column (14 + 2 + 20)
+ * and two stacked `h-8` buttons (32 + 4 + 32 = 68 decides the height), plus the
+ * 1 px border on each side. Sixty-eight, not the ~44 a row looks like — the
+ * buttons stack, and a placeholder sized to the text alone reserves a third of
+ * what it replaces, which shifts the section below it anyway.
+ *
+ * The bars inside carry no meaning, so the region announces itself once instead
+ * of reading twenty empty shapes.
+ */
+function TaskListSkeleton({ label }: { label: string }) {
+  return (
+    <div role="status">
+      <span className="sr-only">{label}</span>
+      <SkeletonRows rows={3} rowHeight={98} columns={["60%", "120px"]} />
+    </div>
   );
 }
 
@@ -241,7 +264,7 @@ export function TasksPage() {
           </div>
           <div className="mt-wide">
             {loading ? (
-              <p className="text-sm text-ink-muted">{t_0("tasks:loading")}</p>
+              <TaskListSkeleton label={t_0("tasks:loading")} />
             ) : (
               <TaskList
                 tasks={globalTasks}
@@ -315,7 +338,7 @@ export function TasksPage() {
               </div>
               <div className="mt-wide">
                 {loading ? (
-                  <p className="text-sm text-ink-muted">{t_0("tasks:loading")}</p>
+                  <TaskListSkeleton label={t_0("tasks:loading")} />
                 ) : (
                   <TaskList
                     tasks={workspaceTasks}
