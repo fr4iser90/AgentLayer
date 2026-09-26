@@ -1,27 +1,17 @@
 import { useTranslation } from "react-i18next";
+import { StickySaveBar } from "../../../ui/StickySaveBar";
 import { useOperatorSettings } from "./OperatorSettingsProvider";
 
 export function OperatorSettingsStickySave() {
   const { t } = useTranslation(["admin"]);
   const { save, saveMsg } = useOperatorSettings();
   return (
-    <div className="sticky bottom-0 z-lift -mx-broad border-t border-line bg-[#0d0d0d]/95 px-broad py-soft backdrop-blur-sm">
-      <div className="mx-auto flex max-w-page flex-wrap items-center justify-between gap-soft">
-        <div className="min-w-0 flex-1 text-xs text-ink-muted">
-          {saveMsg ? (
-            <span className={saveMsg.ok ? "text-success" : "text-danger"}>{saveMsg.text}</span>
-          ) : (
-            <span>{t("admin:operatorSaveHint")}</span>
-          )}
-        </div>
-        <button
-          type="button"
-          className="shrink-0 rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover"
-          onClick={() => void save()}
-        >
-          {t("admin:save")}
-        </button>
-      </div>
-    </div>
+    <StickySaveBar
+      saveLabel={t("admin:save")}
+      onSave={() => void save()}
+      status={saveMsg ? { ok: saveMsg.ok, text: saveMsg.text } : null}
+    >
+      <span>{t("admin:operatorSaveHint")}</span>
+    </StickySaveBar>
   );
 }
