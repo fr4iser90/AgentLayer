@@ -57,6 +57,27 @@ describe("scanLoadingPlaceholders", () => {
     ).toEqual([]);
   });
 
+  it("leaves a branch whose flag is negated — that arm is the empty state", () => {
+    // `!loading` puts the absence of loading in the condition, so the text arm
+    // means "there is nothing", not "wait". Reserving there would hold space for
+    // records that never come, and the guard would be asking for a placeholder
+    // over an honest empty message.
+    expect(
+      hits(`
+        function P() {
+          return visible.length === 0 && !loading ? <li className="py-base text-xs">{t("a:none")}</li> : visible.map((e) => <li key={e.id} />);
+        }
+      `)
+    ).toEqual([]);
+    expect(
+      hits(`
+        function P() {
+          return !runsLoading ? <ul>{runs.map((r) => <li key={r.id} />)}</ul> : <p>{t("a:loading")}</p>;
+        }
+      `)
+    ).toEqual([]);
+  });
+
   it("leaves a branch that gains a single block, not a list", () => {
     expect(
       hits(`
