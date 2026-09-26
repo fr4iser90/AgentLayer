@@ -1,5 +1,6 @@
 import { useOperatorSettings } from "../../../features/admin/operatorSettings/OperatorSettingsProvider";
 import { useTranslation } from "react-i18next";
+import { Checkbox } from "../../../ui/Checkbox";
 import { Select, TextArea, TextInput } from "../../../ui/Field";
 
 export function AdminInterfacesAutomationSection() {
@@ -14,9 +15,7 @@ export function AdminInterfacesAutomationSection() {
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifAutoSchedulerTitle")}</h2>
         <p className="mt-base text-xs text-ink-muted">{t("admin:ifAutoSchedulerIntro")}</p>
         <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-          <input
-            type="checkbox"
-            className="rounded-tile border-line"
+          <Checkbox
             checked={s.schedulerEnabled}
             onChange={(e) => s.setSchedulerEnabled(e.target.checked)}
           />
@@ -77,9 +76,7 @@ export function AdminInterfacesAutomationSection() {
           placeholder={t("admin:ifAutomationConcurrencyPlaceholder")}
         />
         <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-          <input
-            type="checkbox"
-            className="rounded-tile border-line"
+          <Checkbox
             checked={s.schedulerNotifyOnlyIfNotOk}
             onChange={(e) => s.setSchedulerNotifyOnlyIfNotOk(e.target.checked)}
           />
@@ -157,9 +154,7 @@ export function AdminInterfacesAutomationSection() {
           {t("admin:ifAutoPersistedJobsIntro")} {t("admin:ifAutomationDbHint")}
         </p>
         <label className="mt-soft flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-          <input
-            type="checkbox"
-            className="rounded-tile border-line"
+          <Checkbox
             checked={s.schedulerJobsWorkerEnabled}
             onChange={(e) => s.setSchedulerJobsWorkerEnabled(e.target.checked)}
           />

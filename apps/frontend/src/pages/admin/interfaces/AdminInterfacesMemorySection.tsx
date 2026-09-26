@@ -2,6 +2,7 @@ import { useOperatorSettings } from "../../../features/admin/operatorSettings/Op
 import { envProviderPatternFromCleanupKeys } from "../../../features/admin/operatorSettings/operatorSettingsTypes";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
+import { Checkbox } from "../../../ui/Checkbox";
 import { Select, TextInput } from "../../../ui/Field";
 import { Button } from "../../../ui/Button";
 
@@ -500,27 +501,21 @@ export function AdminInterfacesMemorySection() {
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:memoryRagTitle")}</h2>
         <p className="mt-base text-xs text-ink-muted">{t("admin:ifMemMemoryRagIntro")}</p>
         <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-          <input
-            type="checkbox"
-            className="rounded-tile border-line"
+          <Checkbox
             checked={s.exposeInternalErrors}
             onChange={(e) => s.setExposeInternalErrors(e.target.checked)}
           />
           {t("admin:ifMemExposeErrors")}
         </label>
         <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-          <input
-            type="checkbox"
-            className="rounded-tile border-line"
+          <Checkbox
             checked={s.memoryEnabled}
             onChange={(e) => s.setMemoryEnabled(e.target.checked)}
           />
           {t("admin:ifMemEnableMemory")}
         </label>
         <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-          <input
-            type="checkbox"
-            className="rounded-tile border-line"
+          <Checkbox
             checked={s.ragEnabled}
             onChange={(e) => s.setRagEnabled(e.target.checked)}
           />
@@ -624,18 +619,14 @@ export function AdminInterfacesMemorySection() {
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifMemGraphTitle")}</h2>
         <p className="mt-base text-xs text-ink-muted">{t("admin:ifMemGraphIntro")}</p>
         <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-          <input
-            type="checkbox"
-            className="rounded-tile border-line"
+          <Checkbox
             checked={s.memGraphEnabled}
             onChange={(e) => s.setMemGraphEnabled(e.target.checked)}
           />
           {t("admin:ifMemGraphEnable")}
         </label>
         <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-          <input
-            type="checkbox"
-            className="rounded-tile border-line"
+          <Checkbox
             checked={s.memGraphLogActivations}
             onChange={(e) => s.setMemGraphLogActivations(e.target.checked)}
           />

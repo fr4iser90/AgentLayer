@@ -15,6 +15,7 @@ import { useAuth } from "../../../auth/AuthContext";
 import { hasOrgSurface } from "../../../auth/deploymentMode";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../ui/Button";
+import { Checkbox } from "../../../ui/Checkbox";
 import { Select, TextInput } from "../../../ui/Field";
 
 type AdminModelCatalogPref = {
@@ -932,9 +933,7 @@ export function AdminInterfacesLlmSection({
                             </Button>
                           </div>
                           <label className="mt-soft flex cursor-pointer items-center gap-base text-xs text-ink-primary">
-                            <input
-                              type="checkbox"
-                              className="rounded-tile border-line"
+                            <Checkbox
                               checked={endpoint.enabled}
                               onChange={(e) => updateOperatorEndpoint(group.kind, endpointIdx, { enabled: e.target.checked })}
                             />
@@ -1331,9 +1330,7 @@ export function AdminInterfacesLlmSection({
             <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifLlmSmartRoutingTitle")}</h2>
             <p className="mt-base text-xs text-ink-muted">{t("admin:ifLlmSmartRoutingIntro")}</p>
             <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-              <input
-                type="checkbox"
-                className="rounded-tile border-line"
+              <Checkbox
                 checked={s.llmSmartRouting}
                 onChange={(e) => s.setLlmSmartRouting(e.target.checked)}
               />
