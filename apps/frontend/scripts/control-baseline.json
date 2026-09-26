@@ -29,9 +29,6 @@
   "src/features/chat/TurnNavigator.tsx": {
     "button": 2
   },
-  "src/features/dashboard/BlockSettingsModal.tsx": {
-    "button": 1
-  },
   "src/features/dashboard/CardGridBlock.tsx": {
     "button": 1
   },
