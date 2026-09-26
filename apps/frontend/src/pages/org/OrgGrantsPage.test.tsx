@@ -169,6 +169,32 @@ it("shows the empty state when nothing is company-visible", async () => {
   await waitFor(() => expect(screen.getByText("org:grantsEmpty")).toBeTruthy());
 });
 
+it("stands the table while the grant fan-out is still open", async () => {
+  type GrantsResponse = Awaited<ReturnType<typeof fetchEntityGrantsApi>>;
+  // One resolver per workspace read: `Promise.all` stays open until every one of
+  // them settles, so releasing only the last would hang the load.
+  const releases: Array<() => void> = [];
+  getGrants.mockImplementation(
+    () =>
+      new Promise<GrantsResponse>((resolve) => {
+        releases.push(() => resolve(grantsAdminRowOnly()));
+      })
+  );
+  renderPage();
+  // The loading shape is the table itself — header and skeleton rows in the
+  // row rhythm the grants will use — so nothing below it moves on arrival.
+  const table = await screen.findByRole("table");
+  const region = table.closest("[aria-busy]") as HTMLElement;
+  expect(region.getAttribute("aria-busy")).toBe("true");
+  expect(screen.queryByText("org:grantsEmpty")).toBeNull();
+  // The table is on screen before the workspace list lands, so wait for the
+  // per-workspace reads to actually be open before letting them finish.
+  await waitFor(() => expect(releases.length).toBe(2));
+  releases.forEach((release) => release());
+  await waitFor(() => expect(screen.getByText("api")).toBeTruthy());
+  expect(screen.queryByText("org:grantsEmpty")).toBeNull();
+});
+
 it("does not offer the screen outside the org surface", async () => {
   authState.user = {
     id: "u1",

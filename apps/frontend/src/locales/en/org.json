@@ -101,7 +101,6 @@
   "grantsIntro": "What members of your company may do with the workspaces the company publishes. A workspace has to be company-visible first — that is chosen when it is created or changed in its own settings.",
   "grantsImplicitAdmins": "Tenant admins and owners can already manage every company-visible workspace, so a grant naming them changes nothing. Only plain members need one, which is why they are the only role listed here.",
   "grantsRefresh": "Refresh",
-  "grantsLoading": "Loading workspaces…",
   "grantsEmpty": "No company-visible workspaces yet. There is nothing to grant until one is published.",
   "grantsNoOrg": "Company sharing is not available on this instance.",
   "grantsColWorkspace": "Workspace",
