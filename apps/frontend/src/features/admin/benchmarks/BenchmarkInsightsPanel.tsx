@@ -7,10 +7,12 @@ import {
   fetchBenchmarkCohortCompare,
   fetchBenchmarkCohorts,
   type BenchmarkAnalysisPayload,
+  type BenchmarkAnalysisScenario,
   type BenchmarkCohortRow,
 } from "./benchmarksApi";
 import { Select } from "../../../ui/Field";
 import { Button } from "../../../ui/Button";
+import { Table, type TableColumn } from "../../../ui/Table";
 
 function formatPassRate(rate: number | null | undefined): string {
   if (rate == null || Number.isNaN(rate)) return "—";
@@ -22,6 +24,34 @@ function passRateTone(rate: number): string {
   if (pct >= 90) return "text-badge-success";
   if (pct >= 60) return "text-badge-warning";
   return "text-danger";
+}
+
+// The columns are a factory because the headers are translated: at module scope
+// there is no `t`, and the panel already passes `t` into its sub-views.
+function byScenarioColumns(t: (key: string, opts?: Record<string, unknown>) => string): Array<TableColumn<BenchmarkAnalysisScenario>> {
+  return [
+    {
+      key: "scenario",
+      header: t("admin:benchColScenario"),
+      render: (row) => <span className="font-mono">{row.scenario_id}</span>,
+    },
+    {
+      key: "pass_rate",
+      header: t("admin:benchStatsPassRate"),
+      render: (row) => (
+        <span className={passRateTone(row.pass_rate)}>{formatPassRate(row.pass_rate)}</span>
+      ),
+    },
+    {
+      key: "patterns",
+      header: t("admin:agentConfigAnalysisPatterns"),
+      render: (row) => (
+        <span className="font-mono text-ink-muted">
+          {row.patterns.length ? row.patterns.join(", ") : "—"}
+        </span>
+      ),
+    },
+  ];
 }
 
 function PatternBars({
@@ -280,30 +310,14 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
                 <h2 className="text-sm font-medium text-ink-primary">
                   {t("admin:agentConfigAnalysisByScenario")}
                 </h2>
-                <div className="mt-soft overflow-x-auto">
-                  <table className="w-full min-w-[420px] text-left text-xs">
-                    <thead>
-                      <tr className="text-ink-muted">
-                        <th className="py-tight pr-soft">{t("admin:benchColScenario")}</th>
-                        <th className="py-tight pr-soft">{t("admin:benchStatsPassRate")}</th>
-                        <th className="py-tight pr-soft">{t("admin:agentConfigAnalysisPatterns")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(analysis.by_scenario ?? []).map((row) => (
-                        <tr key={row.scenario_id} className="border-t border-line-subtle">
-                          <td className="py-snug pr-soft font-mono">{row.scenario_id}</td>
-                          <td className={`py-snug pr-soft ${passRateTone(row.pass_rate)}`}>
-                            {formatPassRate(row.pass_rate)}
-                          </td>
-                          <td className="py-snug pr-soft font-mono text-meta text-ink-muted">
-                            {row.patterns.length ? row.patterns.join(", ") : "—"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <Table
+                  className="mt-soft"
+                  density="compact"
+                  minWidth="420px"
+                  columns={byScenarioColumns(t)}
+                  rows={analysis.by_scenario ?? []}
+                  rowKey={(row) => row.scenario_id}
+                />
               </section>
             ) : null}
           </div>
