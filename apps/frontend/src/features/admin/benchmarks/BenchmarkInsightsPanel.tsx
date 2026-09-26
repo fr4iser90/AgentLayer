@@ -26,34 +26,6 @@ function passRateTone(rate: number): string {
   return "text-danger";
 }
 
-// The columns are a factory because the headers are translated: at module scope
-// there is no `t`, and the panel already passes `t` into its sub-views.
-function byScenarioColumns(t: (key: string, opts?: Record<string, unknown>) => string): Array<TableColumn<BenchmarkAnalysisScenario>> {
-  return [
-    {
-      key: "scenario",
-      header: t("admin:benchColScenario"),
-      render: (row) => <span className="font-mono">{row.scenario_id}</span>,
-    },
-    {
-      key: "pass_rate",
-      header: t("admin:benchStatsPassRate"),
-      render: (row) => (
-        <span className={passRateTone(row.pass_rate)}>{formatPassRate(row.pass_rate)}</span>
-      ),
-    },
-    {
-      key: "patterns",
-      header: t("admin:agentConfigAnalysisPatterns"),
-      render: (row) => (
-        <span className="font-mono text-ink-muted">
-          {row.patterns.length ? row.patterns.join(", ") : "—"}
-        </span>
-      ),
-    },
-  ];
-}
-
 function PatternBars({
   patterns,
   t,
@@ -199,6 +171,31 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
   }
 
   const patterns = analysis?.top_patterns ?? {};
+  // Built here rather than at module scope so the headers use this hook's own
+  // `t`: a translated column list cannot live where there is no translator.
+  const byScenarioColumns: Array<TableColumn<BenchmarkAnalysisScenario>> = [
+    {
+      key: "scenario",
+      header: t("admin:benchColScenario"),
+      render: (row) => <span className="font-mono">{row.scenario_id}</span>,
+    },
+    {
+      key: "pass_rate",
+      header: t("admin:benchStatsPassRate"),
+      render: (row) => (
+        <span className={passRateTone(row.pass_rate)}>{formatPassRate(row.pass_rate)}</span>
+      ),
+    },
+    {
+      key: "patterns",
+      header: t("admin:agentConfigAnalysisPatterns"),
+      render: (row) => (
+        <span className="font-mono text-ink-muted">
+          {row.patterns.length ? row.patterns.join(", ") : "—"}
+        </span>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-wide">
@@ -314,7 +311,7 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
                   className="mt-soft"
                   density="compact"
                   minWidth="420px"
-                  columns={byScenarioColumns(t)}
+                  columns={byScenarioColumns}
                   rows={analysis.by_scenario ?? []}
                   rowKey={(row) => row.scenario_id}
                 />
