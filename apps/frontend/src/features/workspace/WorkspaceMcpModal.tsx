@@ -14,6 +14,7 @@ import {
 } from "./workspaceMcpBuilders";
 import { Button } from "../../ui/Button";
 import { Modal } from "../../ui/Modal";
+import { Radio } from "../../ui/Radio";
 import { Select, TextArea, TextInput } from "../../ui/Field";
 
 type Props = {
@@ -244,8 +245,7 @@ export function WorkspaceMcpModal({
                 <legend className="text-meta text-ink-muted">{t("workspace:launchOnServer")}</legend>
                 <div className="mt-tight flex flex-wrap gap-soft text-xs text-ink-primary">
                   <label className="inline-flex items-center gap-snug">
-                    <input
-                      type="radio"
+                    <Radio
                       name="uv-launch"
                       checked={launchMode === "uvx"}
                       onChange={() => setLaunchMode("uvx")}
@@ -255,8 +255,7 @@ export function WorkspaceMcpModal({
                     </span>
                   </label>
                   <label className="inline-flex items-center gap-snug">
-                    <input
-                      type="radio"
+                    <Radio
                       name="uv-launch"
                       checked={launchMode === "tool"}
                       onChange={() => setLaunchMode("tool")}

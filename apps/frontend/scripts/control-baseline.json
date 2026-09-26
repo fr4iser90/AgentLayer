@@ -93,7 +93,7 @@
     "button": 4
   },
   "src/features/workspace/WorkspaceMcpModal.tsx": {
-    "input": 3
+    "input": 1
   },
   "src/features/workspace/WorkspaceRetrievalBar.tsx": {
     "button": 7
@@ -111,9 +111,6 @@
   },
   "src/pages/ProjectsPage.tsx": {
     "button": 2
-  },
-  "src/pages/SetupWizardPage.tsx": {
-    "input": 3
   },
   "src/pages/StudioPage.tsx": {
     "button": 2
