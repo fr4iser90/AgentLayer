@@ -6,6 +6,7 @@ import {
 } from "../../../features/admin/operatorSettings/operatorSettingsTypes";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
+import { Checkbox } from "../../../ui/Checkbox";
 import { Select, TextInput } from "../../../ui/Field";
 import { Button } from "../../../ui/Button";
 
@@ -172,27 +173,21 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               </p>
             ) : null}
             <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-              <input
-                type="checkbox"
-                className="rounded-tile border-line"
+              <Checkbox
                 checked={s.mediaLibraryEnabled}
                 onChange={(e) => s.setMediaLibraryEnabled(e.target.checked)}
               />
               {t("admin:ifPlatformMediaLibraryEnabled")}
             </label>
             <label className="mt-base flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-              <input
-                type="checkbox"
-                className="rounded-tile border-line"
+              <Checkbox
                 checked={s.mediaUserUploadEnabled}
                 onChange={(e) => s.setMediaUserUploadEnabled(e.target.checked)}
               />
               {t("admin:ifPlatformMediaUploadEnabled")}
             </label>
             <label className="mt-base flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-              <input
-                type="checkbox"
-                className="rounded-tile border-line"
+              <Checkbox
                 checked={s.mediaSharingEnabled}
                 onChange={(e) => s.setMediaSharingEnabled(e.target.checked)}
               />
@@ -357,9 +352,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               </div>
             ) : null}
             <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-              <input
-                type="checkbox"
-                className="rounded-tile border-line"
+              <Checkbox
                 checked={s.voiceEnabled}
                 onChange={(e) => s.setVoiceEnabled(e.target.checked)}
               />
@@ -512,36 +505,28 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               />
             </label>
             <label className="mt-soft flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-              <input
-                type="checkbox"
-                className="rounded-tile border-line"
+              <Checkbox
                 checked={s.voiceBridgeTelegram}
                 onChange={(e) => s.setVoiceBridgeTelegram(e.target.checked)}
               />
               {t("admin:ifPlatformVoiceBridgeTelegram")}
             </label>
             <label className="mt-base flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-              <input
-                type="checkbox"
-                className="rounded-tile border-line"
+              <Checkbox
                 checked={s.voiceBridgeDiscord}
                 onChange={(e) => s.setVoiceBridgeDiscord(e.target.checked)}
               />
               {t("admin:ifPlatformVoiceBridgeDiscord")}
             </label>
             <label className="mt-base flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-              <input
-                type="checkbox"
-                className="rounded-tile border-line"
+              <Checkbox
                 checked={s.voiceRealtimeEnabled}
                 onChange={(e) => s.setVoiceRealtimeEnabled(e.target.checked)}
               />
               {t("admin:ifPlatformVoiceRealtime")}
             </label>
             <label className="mt-base flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-              <input
-                type="checkbox"
-                className="rounded-tile border-line"
+              <Checkbox
                 checked={s.voiceDiscordVcEnabled}
                 onChange={(e) => s.setVoiceDiscordVcEnabled(e.target.checked)}
               />
@@ -581,9 +566,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               <option value="TUI_ONLY">{t("admin:ifPlatformSurfaceTuiOnly")}</option>
             </Select>
             <label className="mt-soft flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-              <input
-                type="checkbox"
-                className="rounded-tile border-line"
+              <Checkbox
                 checked={s.webUiEnabled}
                 onChange={(e) => {
                   const on = e.target.checked;
@@ -596,9 +579,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               {t("admin:ifPlatformWebUiEnabled")}
             </label>
             <label className="mt-base flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-              <input
-                type="checkbox"
-                className="rounded-tile border-line"
+              <Checkbox
                 checked={s.apiKeyClientsEnabled}
                 onChange={(e) => {
                   const on = e.target.checked;
@@ -628,9 +609,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             </Select>
             <p className="mt-base text-xs text-ink-muted">{t("admin:ifPlatformApiKeyModesHint")}</p>
             <label className="mt-soft flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-              <input
-                type="checkbox"
-                className="rounded-tile border-line"
+              <Checkbox
                 checked={s.serverWorkspacesAdminOnly}
                 onChange={(e) => s.setServerWorkspacesAdminOnly(e.target.checked)}
               />
@@ -661,9 +640,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <h3 className="text-sm font-medium text-ink-primary">{t("admin:ifPlatformWorkspacesTitle")}</h3>
             <p className="mt-tight text-xs text-ink-muted">{t("admin:ifPlatformWorkspacesIntro")}</p>
             <label className="mt-soft flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-              <input
-                type="checkbox"
-                className="rounded-tile border-line"
+              <Checkbox
                 checked={s.workspaceAllowSelfEditing}
                 onChange={(e) => s.setWorkspaceAllowSelfEditing(e.target.checked)}
               />
@@ -684,27 +661,21 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               <option value="off">off</option>
             </Select>
             <label className="mt-soft flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-              <input
-                type="checkbox"
-                className="rounded-tile border-line"
+              <Checkbox
                 checked={s.workspaceReindexAfterGitPull}
                 onChange={(e) => s.setWorkspaceReindexAfterGitPull(e.target.checked)}
               />
               Reindex code after successful git pull
             </label>
             <label className="mt-base flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-              <input
-                type="checkbox"
-                className="rounded-tile border-line"
+              <Checkbox
                 checked={s.workspaceNightlyReindexEnabled}
                 onChange={(e) => s.setWorkspaceNightlyReindexEnabled(e.target.checked)}
               />
               Nightly reindex for stale workspaces (hourly check, max 100)
             </label>
             <label className="mt-base flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-              <input
-                type="checkbox"
-                className="rounded-tile border-line"
+              <Checkbox
                 checked={s.workspaceIndexOnAttachEnabled}
                 onChange={(e) => s.setWorkspaceIndexOnAttachEnabled(e.target.checked)}
               />

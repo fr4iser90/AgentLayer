@@ -144,24 +144,8 @@
   "src/pages/admin/AdminUsers.tsx": {
     "input": 5
   },
-  "src/pages/admin/interfaces/AdminInterfacesAutomationSection.tsx": {
-    "input": 3
-  },
-  "src/pages/admin/interfaces/AdminInterfacesBridgesSection.tsx": {
-    "input": 2
-  },
-  "src/pages/admin/interfaces/AdminInterfacesLegalSection.tsx": {
-    "input": 2
-  },
   "src/pages/admin/interfaces/AdminInterfacesLlmSection.tsx": {
-    "button": 1,
-    "input": 2
-  },
-  "src/pages/admin/interfaces/AdminInterfacesMemorySection.tsx": {
-    "input": 5
-  },
-  "src/pages/admin/interfaces/AdminInterfacesPlatformSection.tsx": {
-    "input": 15
+    "button": 1
   },
   "src/pages/org/OrgContentCms.tsx": {
     "button": 3

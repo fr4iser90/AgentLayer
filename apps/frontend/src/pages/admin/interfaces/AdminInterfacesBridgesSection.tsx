@@ -11,6 +11,7 @@ import { useOperatorSettings } from "../../../features/admin/operatorSettings/Op
 import { useAuth } from "../../../auth/AuthContext";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Checkbox } from "../../../ui/Checkbox";
 import { Select, TextInput } from "../../../ui/Field";
 import { Button } from "../../../ui/Button";
 
@@ -79,9 +80,7 @@ export function AdminInterfacesBridgesSection() {
           {t("admin:ifBridgeInProcessBridge")}
         </h3>
         <label className="mt-soft flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-          <input
-            type="checkbox"
-            className="rounded-tile border-line"
+          <Checkbox
             checked={s.bridgeEnabled}
             onChange={(e) => s.setBridgeEnabled(e.target.checked)}
           />
@@ -165,9 +164,7 @@ export function AdminInterfacesBridgesSection() {
           {t("admin:ifBridgeInProcessBridge")}
         </h3>
         <label className="mt-soft flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-          <input
-            type="checkbox"
-            className="rounded-tile border-line"
+          <Checkbox
             checked={s.tgBridgeEnabled}
             onChange={(e) => s.setTgBridgeEnabled(e.target.checked)}
           />

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useOperatorSettings } from "../../../features/admin/operatorSettings/OperatorSettingsProvider";
+import { Checkbox } from "../../../ui/Checkbox";
 import { Select, TextArea, TextInput } from "../../../ui/Field";
 
 const JURISDICTIONS = ["none", "de", "en", "custom"] as const;
@@ -19,9 +20,7 @@ export function AdminInterfacesLegalSection() {
       <p className="mt-base text-xs text-ink-muted">{t("admin:ifPlatformLegalAvvHint")}</p>
 
       <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-        <input
-          type="checkbox"
-          className="rounded-tile border-line"
+        <Checkbox
           checked={s.legalEnabled}
           onChange={(e) => s.setLegalEnabled(e.target.checked)}
         />
@@ -46,9 +45,7 @@ export function AdminInterfacesLegalSection() {
       <p className="mt-tight text-meta text-ink-muted">{t("admin:ifPlatformLegalJurisdictionHint")}</p>
 
       <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
-        <input
-          type="checkbox"
-          className="rounded-tile border-line"
+        <Checkbox
           checked={s.legalTermsEnabled}
           onChange={(e) => s.setLegalTermsEnabled(e.target.checked)}
           disabled={!s.legalEnabled || s.legalJurisdiction === "none"}
