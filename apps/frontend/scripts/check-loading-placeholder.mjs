@@ -58,8 +58,15 @@ const LOADING_NAME =
 const TERNARY = new RegExp(`${LOADING_NAME.source}[^?\\n]{0,40}\\?\\s`, "g");
 /** Anything that already costs vertical space while it waits. */
 const RESERVED = /Skeleton|animate-pulse|animate-spin|Loader/;
-/** A structure whose height grows with the number of records. */
-const REPEATED = /\.map\(|<(?:ul|ol|table|tbody)[\s/>]/;
+/**
+ * A structure whose height grows with the number of records.
+ *
+ * `Table` is named next to the lower-case tag on purpose: rendering the same
+ * table through `ui/Table` removes the word `table` from the loaded arm and
+ * leaves the shift untouched, so an adoption would otherwise read as a resolved
+ * placeholder and lower the baseline on its own.
+ */
+const REPEATED = /\.map\(|<(?:ul|ol|table|tbody)[\s/>]|<Table[\s/>]/;
 /**
  * The whole arm is one call — the height lives inside that function.
  *
