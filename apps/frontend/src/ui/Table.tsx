@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { SkeletonRows } from "./Skeleton";
 
 /**
@@ -70,6 +70,19 @@ export interface TableProps<T> {
    * three characters and wraps every date.
    */
   minWidth?: string;
+  /**
+   * Extra classes on one row's `<tr>` — the tone a column cannot carry, because
+   * it colours the whole line: the in-flight run, the best attempt. Without it
+   * callers kept their own `<tbody>` just to paint one background, and gave up
+   * the pinned header to get it.
+   */
+  rowClassName?: (row: T, index: number) => string | undefined;
+  /**
+   * A second `<tr>` under the row, spanning every column — the expanded
+   * diagnostics of one result. Return `null` for the rows that have nothing to
+   * show, so a collapsed table still draws exactly one `<tr>` per record.
+   */
+  rowDetail?: (row: T, index: number) => ReactNode;
   className?: string;
 }
 
@@ -83,6 +96,9 @@ export function Table<T>({
   rowHeight,
   stickyHeader = true,
   className,
+  minWidth,
+  rowClassName,
+  rowDetail,
 }: TableProps<T>) {
   const span = columns.length;
   const headCell = [
@@ -97,7 +113,10 @@ export function Table<T>({
       role="region"
       aria-busy={loading || undefined}
     >
-      <table className="w-full border-collapse border-line text-left">
+      <table
+        className="w-full border-collapse border-line text-left"
+        style={minWidth ? { minWidth } : undefined}
+      >
         <thead className="border-b border-line">
           <tr>
             {columns.map((col) => (
@@ -135,24 +154,40 @@ export function Table<T>({
               </td>
             </tr>
           ) : (
-            rows.map((row, i) => (
-              <tr
-                key={rowKey ? rowKey(row, i) : i}
-                className="border-b border-line-subtle last:border-b-0 hover:bg-white/[0.03]"
-              >
-                {columns.map((col) => (
-                  <td
-                    key={col.key}
-                    style={col.width ? { width: col.width } : undefined}
-                    className={[CELL[density], ALIGN[col.align ?? "left"]]
+            rows.map((row, i) => {
+              const detail = rowDetail ? rowDetail(row, i) : null;
+              return (
+                <Fragment key={rowKey ? rowKey(row, i) : i}>
+                  <tr
+                    className={[
+                      "border-b border-line-subtle last:border-b-0 hover:bg-white/[0.03]",
+                      rowClassName ? rowClassName(row, i) : undefined,
+                    ]
                       .filter(Boolean)
                       .join(" ")}
                   >
-                    {col.render(row, i)}
-                  </td>
-                ))}
-              </tr>
-            ))
+                    {columns.map((col) => (
+                      <td
+                        key={col.key}
+                        style={col.width ? { width: col.width } : undefined}
+                        className={[CELL[density], ALIGN[col.align ?? "left"]]
+                          .filter(Boolean)
+                          .join(" ")}
+                      >
+                        {col.render(row, i)}
+                      </td>
+                    ))}
+                  </tr>
+                  {detail != null ? (
+                    <tr className="border-b border-line-subtle last:border-b-0">
+                      <td colSpan={span} className="px-soft py-base">
+                        {detail}
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              );
+            })
           )}
         </tbody>
       </table>

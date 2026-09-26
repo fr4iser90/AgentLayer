@@ -110,4 +110,45 @@ describe("Table", () => {
     expect(numeric).toHaveClass("text-right");
     expect(numeric).toHaveStyle({ width: "9rem" });
   });
+
+  it("gives the table the declared minimum width", () => {
+    const { container } = renderTable({ minWidth: "840px" });
+    // The floor is what keeps eight columns from squeezing the name column to
+    // three characters; without it the wrapper has nothing to scroll.
+    expect(container.querySelector("table")).toHaveStyle({ minWidth: "840px" });
+  });
+
+  it("puts rowClassName on the row it names and keeps the row chrome", () => {
+    renderTable({ rowClassName: (r) => (r.used > 100 ? "bg-success-subtle" : undefined) });
+    const body = screen.getAllByRole("row").slice(1);
+    expect(body).toHaveLength(2);
+    expect(body[1]).toHaveClass("bg-success-subtle");
+    expect(body[0]).not.toHaveClass("bg-success-subtle");
+    expect(body[1]).toHaveClass("border-b", "hover:bg-white/[0.03]");
+  });
+
+  it("draws rowDetail as one row spanning every column, only where there is detail", () => {
+    renderTable({
+      rowDetail: (r) => (r.id === 1 ? <span>diagnostics</span> : null),
+    });
+    // Header + both data rows + the single detail row.
+    const body = screen.getAllByRole("row").slice(1);
+    expect(body).toHaveLength(3);
+    const detail = screen.getByText("diagnostics");
+    const detailCell = detail.parentElement as HTMLTableCellElement;
+    expect(detailCell.tagName).toBe("TD");
+    expect(detailCell.colSpan).toBe(columns.length);
+    // The detail follows the record it belongs to instead of landing at the end
+    // of the table — the row it explains has to stay above it.
+    expect(body[1].contains(detail)).toBe(true);
+    expect(body[0].contains(detail)).toBe(false);
+    expect(body[2].textContent).toContain("support");
+    expect(body[2].querySelectorAll("td")).toHaveLength(columns.length);
+  });
+
+  it("does not draw detail rows while loading", () => {
+    renderTable({ loading: true, rowDetail: () => <span>diagnostics</span> });
+    expect(screen.queryByText("diagnostics")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("row")).toHaveLength(2);
+  });
 });
