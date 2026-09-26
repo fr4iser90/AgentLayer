@@ -9,9 +9,14 @@
  * files in `src/ui/` and no record of which of them the app actually stands on.
  *
  * So the rule is dull and checkable: every `src/ui/*.tsx` must have at least one
- * importer somewhere else in `src/`. That is the difference between a design
- * system and a pile of well-named components, and it is the only part of the
- * claim that a machine can confirm without a screenshot.
+ * importer **outside `src/ui/`**. That is the difference between a design system
+ * and a pile of well-named components, and it is the only part of the claim that
+ * a machine can confirm without a screenshot.
+ *
+ * "Somewhere else" was the first version and it was too weak: it let a module
+ * pass while only its neighbours in `src/ui/` loaded it, which is a primitive
+ * waiting for a surface that never arrives. A component that claims to be how the
+ * app draws a checkbox has to be drawn by the app, not by the folder.
  *
  * Importers are resolved from the specifier, not from the exported name: the
  * repo has no `src/ui/index.ts` and callers write `../ui/Button`, so matching on
@@ -79,7 +84,7 @@ export function resolveSpecifier(fromFileRel, specifier) {
 }
 
 /**
- * Pure core: which ui modules does nothing import?
+ * Pure core: which ui modules are not adopted by the app?
  *
  * `files` is `[{ rel, specifiers }]`. Self-imports do not count — a module that
  * only ever appears in its own file is exactly the orphan this guard is for, and
@@ -109,7 +114,7 @@ export function findOrphans(files, uiDir = UI) {
         (f) => !f.startsWith(`${uiDir}/`)
       ),
     }))
-    .filter((m) => m.fromUi.length + m.fromApp.length === 0);
+    .filter((m) => m.fromApp.length === 0);
 }
 
 async function scanTree() {
@@ -186,16 +191,20 @@ if (isMain) {
       .then(({ orphans, covered, exempt }) => {
         if (orphans.length) {
           console.error(
-            `[primitive-coverage] FAILED - ${orphans.length} Primitive(n) in src/ui/ ohne jede Nutzung:`
+            `[primitive-coverage] FAILED - ${orphans.length} Primitive(n) in src/ui/ ohne Consument außerhalb von src/ui/:`
           );
-          for (const o of orphans) console.error(`  ${o.module}`);
+          for (const o of orphans) {
+            console.error(
+              `  ${o.module}${o.fromUi.length ? ` (nur in src/ui/: ${o.fromUi.join(", ")})` : ""}`
+            );
+          }
           console.error(
             "[primitive-coverage] Entweder nutzt eine Fläche sie, oder sie gehört nicht in src/ui/. Begründete Ausnahmen in NOT_FOR_REUSE mit Grund."
           );
           process.exit(1);
         }
         console.log(
-          `[primitive-coverage] OK - ${covered} Primitive(n) in src/ui/, jede mit mindestens einem Importeur außerhalb ihrer eigenen Datei${exempt.length ? `, ${exempt.length} begründet ausgenommen` : ""}.`
+          `[primitive-coverage] OK - ${covered} Primitive(n) in src/ui/, jede von mindestens einer Fläche außerhalb von src/ui/ benutzt${exempt.length ? `, ${exempt.length} begründet ausgenommen` : ""}.`
         );
       })
       .catch((e) => {
