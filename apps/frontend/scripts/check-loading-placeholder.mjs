@@ -13,7 +13,9 @@
  *
  *  - Only a branch whose *condition* is a loading flag counts. `status ? … : …`
  *    and `busy ? … : …` decide meaning, not readiness, and a skeleton would be
- *    wrong there.
+ *    wrong there. A *negated* flag (`&& !loading ? <li>nothing yet</li> : rows`)
+ *    does not count either: that text arm is the empty state, and reserving it
+ *    would hold room for records that are never coming.
  *  - Only a branch that is *replaced by a repeated structure* counts: the loaded
  *    branch has to render a `.map(`, a `<ul>`/`<ol>` or a `<table>`. A heading,
  *    a form, or a single card that appears where a sentence was inserts content
@@ -30,9 +32,11 @@
  * Two things are deliberately out of reach and are the reviewer's, not the
  * guard's: whether the loaded arm is a list hidden behind a component call
  * (`<TaskList …/>` says nothing about its height), and whether the growth
- * actually moves something — a branch inside a fixed-height scroller, or one
- * whose content is only ever inserted below the fold, shifts nothing and needs
- * no placeholder however bare its text is.
+ * actually moves something — a branch inside a fixed-height scroller, inside a
+ * dashboard block (react-grid-layout sizes items from the stored `h`, so the
+ * block's box is fixed and `overflow-hidden` clips whatever grows past it), or
+ * one whose content is only ever inserted below the fold, shifts nothing and
+ * needs no placeholder however bare its text is.
  */
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
@@ -194,6 +198,13 @@ export function scanLoadingPlaceholders(rel, src) {
     // or a quote directly before it means the match landed in a string.
     const before = src[m.index - 1];
     if (before === ":" || before === '"' || before === "'" || before === "`") continue;
+    // `visible.length === 0 && !loading ? <li>nothing yet</li> : rows.map(…)` is
+    // an empty state, not a loading state: negating the flag flips which arm is
+    // which, and a placeholder painted into the empty branch would reserve space
+    // for records that are never coming.
+    let bang = m.index - 1;
+    while (bang >= 0 && /\s/.test(src[bang])) bang -= 1;
+    if (src[bang] === "!") continue;
     const parts = branches(src, q + 1);
     if (!parts) continue;
     const { cons, alt } = parts;
