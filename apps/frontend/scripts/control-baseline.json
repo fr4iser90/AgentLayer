@@ -84,13 +84,10 @@
   },
   "src/pages/ChatPage.tsx": {
     "button": 1,
-    "input": 3
+    "input": 1
   },
   "src/pages/DashboardPage.tsx": {
     "button": 6,
-    "input": 3
-  },
-  "src/pages/MySchedulesPage.tsx": {
     "input": 1
   },
   "src/pages/ProjectsPage.tsx": {
@@ -127,9 +124,6 @@
   },
   "src/pages/org/OrgKnowledgePublishSection.tsx": {
     "input": 1
-  },
-  "src/pages/org/OrgSetupPage.tsx": {
-    "input": 2
   },
   "src/pages/settings/AgentSettings.tsx": {
     "input": 9
