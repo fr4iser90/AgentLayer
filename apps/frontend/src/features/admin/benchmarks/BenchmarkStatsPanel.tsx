@@ -11,6 +11,7 @@ import {
 import { BenchmarkInsightsPanel } from "./BenchmarkInsightsPanel";
 import { Button } from "../../../ui/Button";
 import { Select } from "../../../ui/Field";
+import { Table, type TableColumn } from "../../../ui/Table";
 
 const SINCE_DAY_OPTIONS = [
   { value: "", labelKey: "admin:benchStatsSinceAll" },
@@ -79,52 +80,61 @@ function ModelLeaderboardTable({
   rows: BenchmarkStatsModelRow[];
   t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
-  if (rows.length === 0) {
-    return <p className="text-xs text-ink-muted">{t("admin:benchStatsNoData")}</p>;
-  }
+  const columns: Array<TableColumn<BenchmarkStatsModelRow>> = [
+    {
+      key: "rank",
+      header: "#",
+      render: (_row, index) => <span className="text-ink-muted">{index + 1}</span>,
+    },
+    {
+      key: "model",
+      header: t("admin:benchColProviderModel"),
+      render: (row) => <span className="font-mono">{formatBenchmarkProviderModel(row)}</span>,
+    },
+    { key: "runs", header: t("admin:benchStatsRuns"), render: (row) => row.runs },
+    {
+      key: "samples",
+      header: t("admin:benchStatsSamples"),
+      render: (row) => (
+        <>
+          {row.samples}
+          {row.skipped > 0 ? (
+            <span className="ml-tight text-ink-muted">
+              (+{row.skipped} {t("admin:benchStatsSkipped")})
+            </span>
+          ) : null}
+        </>
+      ),
+    },
+    {
+      key: "pass_rate",
+      header: t("admin:benchStatsPassRate"),
+      render: (row) => (
+        <>
+          <PassRateBadge rate={row.pass_rate} />
+          <span className="ml-tight text-ink-muted">
+            {row.passed}/{row.samples}
+          </span>
+        </>
+      ),
+    },
+    { key: "avg_ms", header: `${t("admin:benchColMs")} Ø`, render: (row) => formatMs(row.avg_latency_ms) },
+    { key: "median_ms", header: t("admin:benchStatsMedianMs"), render: (row) => formatMs(row.median_latency_ms) },
+    {
+      key: "best_ms",
+      header: t("admin:benchStatsBestMs"),
+      render: (row) => <span className="text-badge-success">{formatMs(row.min_latency_ms)}</span>,
+    },
+  ];
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] text-left text-xs">
-        <thead>
-          <tr className="text-ink-muted">
-            <th className="py-tight pr-soft">#</th>
-            <th className="py-tight pr-soft">{t("admin:benchColProviderModel")}</th>
-            <th className="py-tight pr-soft">{t("admin:benchStatsRuns")}</th>
-            <th className="py-tight pr-soft">{t("admin:benchStatsSamples")}</th>
-            <th className="py-tight pr-soft">{t("admin:benchStatsPassRate")}</th>
-            <th className="py-tight pr-soft">{t("admin:benchColMs")} Ø</th>
-            <th className="py-tight pr-soft">{t("admin:benchStatsMedianMs")}</th>
-            <th className="py-tight pr-soft">{t("admin:benchStatsBestMs")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, idx) => (
-            <tr key={`${row.catalog_owned_by}:${row.model}`} className="border-t border-line-subtle">
-              <td className="py-snug pr-soft text-ink-muted">{idx + 1}</td>
-              <td className="py-snug pr-soft font-mono text-meta">{formatBenchmarkProviderModel(row)}</td>
-              <td className="py-snug pr-soft">{row.runs}</td>
-              <td className="py-snug pr-soft">
-                {row.samples}
-                {row.skipped > 0 ? (
-                  <span className="ml-tight text-ink-muted">
-                    (+{row.skipped} {t("admin:benchStatsSkipped")})
-                  </span>
-                ) : null}
-              </td>
-              <td className="py-snug pr-soft">
-                <PassRateBadge rate={row.pass_rate} />
-                <span className="ml-tight text-ink-muted">
-                  {row.passed}/{row.samples}
-                </span>
-              </td>
-              <td className="py-snug pr-soft">{formatMs(row.avg_latency_ms)}</td>
-              <td className="py-snug pr-soft">{formatMs(row.median_latency_ms)}</td>
-              <td className="py-snug pr-soft text-badge-success">{formatMs(row.min_latency_ms)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Table
+      density="compact"
+      minWidth="640px"
+      columns={columns}
+      rows={rows}
+      rowKey={(row) => `${row.catalog_owned_by}:${row.model}`}
+      empty={t("admin:benchStatsNoData")}
+    />
   );
 }
 
@@ -138,6 +148,25 @@ function ScenarioGroupCard({
   t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
   const title = showSuite ? `${group.suite} · ${group.scenario_id}` : group.scenario_id;
+  const columns: Array<TableColumn<BenchmarkStatsModelRow>> = [
+    {
+      key: "rank",
+      header: "#",
+      render: (_row, index) => <span className="text-ink-muted">{index + 1}</span>,
+    },
+    {
+      key: "model",
+      header: t("admin:benchColProviderModel"),
+      render: (row) => <span className="font-mono">{formatBenchmarkProviderModel(row)}</span>,
+    },
+    {
+      key: "pass_rate",
+      header: t("admin:benchStatsPassRate"),
+      render: (row) => <PassRateBadge rate={row.pass_rate} />,
+    },
+    { key: "avg_ms", header: `${t("admin:benchColMs")} Ø`, render: (row) => formatMs(row.avg_latency_ms) },
+    { key: "samples", header: t("admin:benchStatsSamples"), render: (row) => row.samples },
+  ];
   return (
     <div className="rounded-card border border-line bg-black/20 p-soft">
       <div className="flex flex-wrap items-baseline justify-between gap-base">
@@ -159,32 +188,14 @@ function ScenarioGroupCard({
           ) : null}
         </div>
       </div>
-      <div className="mt-base overflow-x-auto">
-        <table className="w-full min-w-[520px] text-left text-meta">
-          <thead>
-            <tr className="text-ink-muted">
-              <th className="py-tight pr-base">#</th>
-              <th className="py-tight pr-base">{t("admin:benchColProviderModel")}</th>
-              <th className="py-tight pr-base">{t("admin:benchStatsPassRate")}</th>
-              <th className="py-tight pr-base">{t("admin:benchColMs")} Ø</th>
-              <th className="py-tight pr-base">{t("admin:benchStatsSamples")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {group.models.map((row, idx) => (
-              <tr key={`${row.catalog_owned_by}:${row.model}`} className="border-t border-line-subtle">
-                <td className="py-tight pr-base text-ink-muted">{idx + 1}</td>
-                <td className="py-tight pr-base font-mono">{formatBenchmarkProviderModel(row)}</td>
-                <td className="py-tight pr-base">
-                  <PassRateBadge rate={row.pass_rate} />
-                </td>
-                <td className="py-tight pr-base">{formatMs(row.avg_latency_ms)}</td>
-                <td className="py-tight pr-base">{row.samples}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table
+        className="mt-base"
+        density="compact"
+        minWidth="520px"
+        columns={columns}
+        rows={group.models}
+        rowKey={(row) => `${row.catalog_owned_by}:${row.model}`}
+      />
     </div>
   );
 }
