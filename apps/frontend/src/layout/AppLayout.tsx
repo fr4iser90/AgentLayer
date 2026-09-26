@@ -7,6 +7,7 @@ import { GlobalMediaProvider } from "../features/media/GlobalMediaProvider";
 import { MediaMiniPlayer } from "../features/media/MediaMiniPlayer";
 import { LegalFooterLinks } from "../components/LegalFooterLinks";
 import { AppShell } from "./AppShell";
+import { ErrorBoundary } from "../ui/ErrorBoundary";
 import { surfaceForPath } from "./navModel";
 
 const signInClass =
@@ -72,7 +73,9 @@ export function AppLayout() {
         </Link>
       }
     >
-      <Outlet />
+      <ErrorBoundary area={`route ${location.pathname}`} resetKey={location.pathname}>
+        <Outlet />
+      </ErrorBoundary>
     </AppShell>
   );
 

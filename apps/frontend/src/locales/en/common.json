@@ -95,6 +95,11 @@
   "drawer": {
     "close": "Close panel"
   },
+  "errorBoundary": {
+    "title": "This area stopped responding",
+    "hint": "The rest of the app is fine — retry, or pick another page.",
+    "retry": "Try again"
+  },
   "session": {
     "expiredTitle": "Session expired",
     "expiredBody": "Sign in again to keep working.",

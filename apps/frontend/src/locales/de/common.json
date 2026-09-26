@@ -95,6 +95,11 @@
   "drawer": {
     "close": "Bereich schließen"
   },
+  "errorBoundary": {
+    "title": "Dieser Bereich hat aufgehört zu antworten",
+    "hint": "Der Rest der App funktioniert — erneut versuchen oder eine andere Seite öffnen.",
+    "retry": "Erneut versuchen"
+  },
   "session": {
     "expiredTitle": "Sitzung abgelaufen",
     "expiredBody": "Melde dich erneut an, um weiterzuarbeiten.",
