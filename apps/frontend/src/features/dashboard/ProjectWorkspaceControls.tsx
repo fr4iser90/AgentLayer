@@ -4,6 +4,8 @@ import { useAuth } from "../../auth/AuthContext";
 import { hasOrgSurface } from "../../auth/deploymentMode";
 import type { AuthContextValue } from "../../auth/AuthContext";
 import { apiFetch, type WorkspaceApiRecord } from "../../lib/api";
+import { Select } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 type Props = {
   auth: Pick<AuthContextValue, "accessToken" | "refresh">;
@@ -112,11 +114,11 @@ export function ProjectWorkspaceControls({
         <>
           <label className="mb-base block text-meta text-ink-muted">
             {t("dashboard:workspacePickerLabel")}
-            <select
+            <Select
               value={workspaceId}
               disabled={readOnly}
               onChange={(e) => linkExisting(e.target.value)}
-              className="mt-tight w-full rounded-card border border-line bg-field px-soft py-snug text-xs text-ink-primary outline-none focus:border-violet-400/60 disabled:opacity-70"
+              className="mt-tight text-xs outline-none"
             >
               <option value="">{t("dashboard:workspacePickerNone")}</option>
               {workspaces.map((w) => (
@@ -125,7 +127,7 @@ export function ProjectWorkspaceControls({
                   {w.git_url ? ` · ${w.git_url.replace(/^https?:\/\//, "")}` : ""}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           {matched ? (
             <p className="mb-base truncate font-mono text-meta text-ink-muted">{matched.path}</p>
@@ -145,14 +147,15 @@ export function ProjectWorkspaceControls({
                   <span>{t("workspace:createShareWithCompany")}</span>
                 </label>
               ) : null}
-              <button
+              <Button
+                size="sm"
                 type="button"
                 disabled={creating}
                 onClick={() => void createFromRemote()}
-                className="rounded-tile border border-violet-500/40 bg-violet-950/30 px-soft py-snug text-xs text-violet-100 hover:bg-violet-900/40 disabled:opacity-60"
+                className="border-violet-500/40 bg-violet-950/30 px-soft py-snug text-xs text-violet-100 hover:bg-violet-900/40"
               >
                 {creating ? t("dashboard:workspaceCreating") : t("dashboard:workspaceCreateFromRemote")}
-              </button>
+              </Button>
             </>
           ) : null}
         </>

@@ -6,6 +6,8 @@ import { AgentUpdateBadge } from "./AgentUpdateBadge";
 import { DashboardGridInner } from "./DashboardGridInner";
 import type { UiBlock, UiLayout } from "./types";
 import { emptyNestedLayout, normalizeNestedLayout, sectionHasUnreadNested } from "./layoutTree";
+import { TextInput } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 export function SectionBlockBody(props: {
   block: UiBlock;
@@ -86,9 +88,9 @@ export function SectionBlockBody(props: {
       ) : null}
       <header className="dashboard-grid-no-drag flex flex-wrap items-center gap-base border-b border-line-subtle px-soft py-base">
         {editMode && !contentReadOnly ? (
-          <input
+          <TextInput
             type="text"
-            className="min-w-0 flex-1 rounded-tile border border-line bg-field px-base py-tight text-sm text-ink-primary outline-none focus:border-accent/50"
+            className="min-w-0 flex-1 outline-none"
             value={block.props.title ?? ""}
             placeholder={t("dashboard:sectionTitlePlaceholder")}
             onChange={(e) => patchSectionProps({ title: e.target.value })}
@@ -99,9 +101,9 @@ export function SectionBlockBody(props: {
         {sectionUnread && !collapsed ? (
           <AgentUpdateBadge variant="inline" title={t("notifications:agentUpdateBadgeSection")} />
         ) : null}
-        <button
+        <Button
           type="button"
-          className="dashboard-grid-no-drag rounded-tile border border-line px-base py-tight text-meta text-ink-muted hover:bg-white/5"
+          className="dashboard-grid-no-drag px-base py-tight text-meta text-ink-muted hover:bg-white/5"
           onClick={() => {
             const next = !collapsed;
             setCollapsed(next);
@@ -109,7 +111,7 @@ export function SectionBlockBody(props: {
           }}
         >
           {collapsed ? t("dashboard:sectionExpand") : t("dashboard:sectionCollapse")}
-        </button>
+        </Button>
       </header>
       {!collapsed ? (
         <div className="min-h-0 flex-1 overflow-auto p-base">

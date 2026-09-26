@@ -87,9 +87,11 @@ export function DashboardLayoutProposalInline({
                   <div className="mt-hair text-meta leading-snug text-ink-muted">{p.summary}</div>
                 ) : null}
               </div>
-              <button
+              <Button
+                variant="plain"
+                block
                 type="button"
-                className="block w-full cursor-zoom-in text-left"
+                className="block w-full cursor-zoom-in"
                 onClick={() => onEnlarge(p.id)}
                 aria-label={t("dashboard:layoutProposalsEnlarge", { title: p.title })}
               >
@@ -109,15 +111,15 @@ export function DashboardLayoutProposalInline({
                     </div>
                   </div>
                 </div>
-              </button>
+              </Button>
               <div className="flex items-center justify-end gap-snug border-t border-line-subtle px-base py-snug">
-                <button
+                <Button
                   type="button"
-                  className="rounded-tile border border-line px-base py-hair text-meta text-ink-secondary hover:bg-white/5"
+                  className="px-base py-hair text-meta text-ink-secondary hover:bg-white/5"
                   onClick={() => onEnlarge(p.id)}
                 >
                   {t("dashboard:layoutProposalsEnlargeShort")}
-                </button>
+                </Button>
                 {confirming ? (
                   <>
                     <Button
@@ -129,24 +131,28 @@ export function DashboardLayoutProposalInline({
                     >
                       {t("dashboard:layoutProposalsCancel")}
                     </Button>
-                    <button
+                    <Button
+                      variant="primary"
+                      tone="success"
                       type="button"
                       disabled={applyBusy}
-                      className="rounded-tile bg-success px-base py-hair text-meta font-medium text-ink-on-fill hover:bg-success-hover disabled:opacity-50"
+                      className="px-base py-hair text-meta"
                       onClick={() => void handleApply(p.id)}
                     >
                       {applyBusy ? t("dashboard:saving") : t("dashboard:layoutProposalsApplyConfirm")}
-                    </button>
+                    </Button>
                   </>
                 ) : (
-                  <button
+                  <Button
+                    variant="primary"
+                    tone="success"
                     type="button"
                     disabled={applyBusy}
-                    className="rounded-tile bg-success px-base py-hair text-meta font-medium text-ink-on-fill hover:bg-success-hover disabled:opacity-50"
+                    className="px-base py-hair text-meta"
                     onClick={() => setConfirmId(p.id)}
                   >
                     {t("dashboard:layoutProposalsApply")}
-                  </button>
+                  </Button>
                 )}
               </div>
             </article>

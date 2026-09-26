@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { DashboardSummary } from "./types";
 import { DEFAULT_HUBS, groupDashboardsByHub, type DashboardHubId } from "./dashboardHubNav";
+import { Button } from "../../ui/Button";
 
 function relativeActivity(iso: string, t: (key: string, opts?: any) => string): string {
   const ts = Date.parse(iso);
@@ -122,10 +123,12 @@ export function DashboardOverviewPanel(props: {
             <ul className="grid gap-soft sm:grid-cols-2">
               {items.map((w) => (
                 <li key={w.id}>
-                  <button
+                  <Button
+                    variant="plain"
+                    block
                     type="button"
                     onClick={() => onOpenDashboard(w.id)}
-                    className="flex w-full flex-col rounded-sheet border border-line bg-card p-wide text-left transition hover:border-accent/35 hover:bg-white/[0.03]"
+                    className="w-full flex-col rounded-sheet border border-line bg-card p-wide transition hover:border-accent/35 hover:bg-white/[0.03]"
                   >
                     <span className="font-medium text-ink-primary">
                       {w.title || w.kind}
@@ -142,7 +145,7 @@ export function DashboardOverviewPanel(props: {
                       <span className="rounded-tile border border-line px-snug py-hair">{accessHint(w.access_role, t)}</span>
                       <span>{t("dashboard:updatedPrefix")} {relativeActivity(w.updated_at, t)}</span>
                     </span>
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>

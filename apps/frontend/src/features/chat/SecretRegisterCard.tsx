@@ -6,6 +6,8 @@ import type { AuthContextValue } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { buildUserSecretPostBody } from "./buildSecretPayload";
 import type { SecretPromptPayload } from "./chatThreadStorage";
+import { TextInput } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 type Props = {
   prompt: SecretPromptPayload;
@@ -127,13 +129,13 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
               ) : (
                 <label className="block">
                   <span className="text-meta text-ink-muted">{t("chat:secretCardValueLabel")}</span>
-                  <input
+                  <TextInput
                     type="password"
                     autoComplete="off"
                     disabled={disabled}
                     value={rawSecret}
                     onChange={(e) => setRawSecret(e.target.value)}
-                    className="mt-hair w-full rounded-card border border-line bg-field px-firm py-snug text-sm text-ink-primary outline-none focus:border-warning/50"
+                    className="mt-hair outline-none"
                   />
                 </label>
               )}
@@ -141,14 +143,17 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
                 <p className="text-xs text-danger">{localError}</p>
               ) : null}
               <div className="flex flex-wrap items-center gap-base pt-tight">
-                <button
+                <Button
+                  variant="primary"
+                  tone="warning"
+                  size="sm"
                   type="button"
                   disabled={disabled}
                   onClick={() => void save()}
-                  className="rounded-card bg-warning px-soft py-snug text-xs font-medium text-ink-primary hover:bg-warning-hover disabled:opacity-50"
+                  className="px-soft py-snug text-xs"
                 >
                   {saving ? t("chat:secretCardSaving") : t("chat:secretCardSave")}
-                </button>
+                </Button>
                 <Link
                   to="/settings/connections"
                   className="text-meta text-ink-muted underline-offset-2 hover:text-neutral-300 hover:underline"

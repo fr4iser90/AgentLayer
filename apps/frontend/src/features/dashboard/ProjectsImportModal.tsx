@@ -6,6 +6,7 @@ import type { AuthContextValue } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { Button } from "../../ui/Button";
 import { Modal } from "../../ui/Modal";
+import { TextInput } from "../../ui/Field";
 
 export type GithubRepoRow = {
   full_name: string;
@@ -258,11 +259,11 @@ export function ProjectsImportModal({
       <p className="text-meta text-ink-muted">{t("dashboard:importFromGithubHint")}</p>
 
         <div className="flex flex-wrap items-center gap-soft border-b border-line px-roomy py-soft">
-          <input
+          <TextInput
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("dashboard:importSearchRepos")}
-            className="min-w-[200px] flex-1 rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-accent/50"
+            className="min-w-[200px] flex-1 outline-none"
           />
           <label className="flex items-center gap-base text-xs text-ink-primary">
             <input

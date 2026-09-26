@@ -8,6 +8,8 @@ import { Drawer } from "../../ui/Drawer";
 import { ProjectWorkspaceControls } from "./ProjectWorkspaceControls";
 import { getPath, setPath } from "./dashboardDataPaths";
 import type { ColumnDef } from "./types";
+import { TextArea, TextInput } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 type Row = Record<string, unknown>;
 
@@ -168,10 +170,12 @@ export function ProjectRowDetailDrawer(props: {
               <div className="text-xs font-medium uppercase tracking-wide text-ink-muted">
                 {t("dashboard:runNow")}
               </div>
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 type="button"
                 disabled={runNowBusy || !runNowInstructions.trim() || !runNowWorkspaceId.trim()}
-                className="rounded-tile bg-violet-600/80 px-soft py-snug text-xs font-medium text-ink-primary hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
+                className="bg-violet-600/80 px-soft py-snug text-xs hover:bg-violet-500"
                 onClick={async () => {
                   setRunNowBusy(true);
                   setRunNowMsg(null);
@@ -205,15 +209,16 @@ export function ProjectRowDetailDrawer(props: {
                 }}
               >
                 {runNowBusy ? t("dashboard:queueing") : t("dashboard:queueRun")}
-              </button>
+              </Button>
             </div>
             {!enableWorkspaceLink ? (
               <label className="mb-base block text-meta text-ink-muted">
                 {t("dashboard:workspaceIdUuid")}
-                <input
+                <TextInput
+                  mono
                   value={runNowWorkspaceId}
                   onChange={(e) => setRunNowWorkspaceId(e.target.value)}
-                  className="mt-tight w-full rounded-card border border-line bg-field px-soft py-snug font-mono text-xs text-ink-primary outline-none focus:border-violet-400/60"
+                  className="mt-tight text-xs outline-none"
                   placeholder={t("dashboard:workspaceUuidPlaceholder")}
                 />
               </label>
@@ -222,10 +227,10 @@ export function ProjectRowDetailDrawer(props: {
             ) : (
               <p className="mb-base text-xs text-badge-warning">{t("dashboard:workspaceRequiredForRun")}</p>
             )}
-            <textarea
+            <TextArea
               value={runNowInstructions}
               onChange={(e) => setRunNowInstructions(e.target.value)}
-              className="min-h-[110px] w-full resize-y rounded-card border border-line bg-field px-soft py-base text-xs text-ink-primary outline-none focus:border-violet-400/60"
+              className="min-h-[110px] resize-y text-xs outline-none"
               placeholder={t("dashboard:describeWhatToDo")}
             />
             {runNowMsg ? <div className="mt-base text-xs text-ink-muted">{runNowMsg}</div> : null}
@@ -238,14 +243,14 @@ export function ProjectRowDetailDrawer(props: {
               <div className="text-xs font-medium uppercase tracking-wide text-ink-muted">
                 {t("dashboard:recentRuns")}
               </div>
-              <button
+              <Button
                 type="button"
-                className="rounded-tile border border-line px-base py-tight text-meta text-ink-primary hover:bg-white/5 disabled:opacity-60"
+                className="px-base py-tight text-meta hover:bg-white/5"
                 disabled={recentRunsBusy}
                 onClick={() => void refreshRecentRuns()}
               >
                 {recentRunsBusy ? t("dashboard:loading") : t("dashboard:refresh")}
-              </button>
+              </Button>
             </div>
             {recentRunsErr ? (
               <div className="text-xs text-badge-danger">{recentRunsErr}</div>

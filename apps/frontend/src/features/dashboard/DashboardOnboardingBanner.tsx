@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Badge } from "../../ui/Badge";
 import type { DashboardOnboarding } from "./types";
+import { Button } from "../../ui/Button";
 
 const DISMISS_PREFIX = "dashboard-onboarding-dismiss:";
 
@@ -49,16 +50,16 @@ export function DashboardOnboardingBanner({
           </p>
           <p className="mt-base text-sm text-badge-success">{onboarding.greeting}</p>
         </div>
-        <button
+        <Button
           type="button"
-          className="shrink-0 rounded-tile border border-line px-base py-tight text-meta text-ink-muted hover:bg-white/5"
+          className="shrink-0 px-base py-tight text-meta text-ink-muted hover:bg-white/5"
           onClick={() => {
             dismissOnboarding(dashboardId);
             onDismiss();
           }}
         >
           {t("dashboard:onboardingDismiss")}
-        </button>
+        </Button>
       </div>
 
       {steps.length > 0 ? (
@@ -74,18 +75,23 @@ export function DashboardOnboardingBanner({
       {!readOnly && starters.length > 0 ? (
         <div className="mt-soft flex flex-wrap gap-base">
           {starters.map((starter) => (
-            <button
+            <Button
+              variant="plain"
+              block
               key={starter}
               type="button"
-              className="rounded-card border border-success/35 bg-success-subtle px-soft py-snug text-left text-xs text-badge-success hover:bg-success-subtle"
+              className="rounded-card border border-success/35 bg-success-subtle px-soft py-snug text-xs text-badge-success hover:bg-success-subtle"
               onClick={() => onStartChat(starter)}
             >
               {starter}
-            </button>
+            </Button>
           ))}
-          <button
+          <Button
+            variant="primary"
+            tone="success"
+            size="sm"
             type="button"
-            className="rounded-card bg-success px-soft py-snug text-xs font-medium text-ink-primary hover:bg-success-hover"
+            className="px-soft py-snug text-xs"
             onClick={() =>
               onStartChat(
                 t("dashboard:onboardingGenericStarter", {
@@ -95,7 +101,7 @@ export function DashboardOnboardingBanner({
             }
           >
             {t("dashboard:onboardingStartChat")}
-          </button>
+          </Button>
         </div>
       ) : null}
     </div>

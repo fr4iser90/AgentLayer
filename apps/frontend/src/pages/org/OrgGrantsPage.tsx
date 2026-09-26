@@ -11,6 +11,8 @@ import {
   replaceEntityGrantsApi,
   type GrantAccessLevel,
 } from "../../lib/entityGrantsApi";
+import { Select } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 type Row = {
   id: string;
@@ -152,14 +154,15 @@ export function OrgGrantsPage() {
       </div>
 
       <div className="mt-broad flex flex-wrap items-center gap-soft">
-        <button
+        <Button
+          size="lg"
           type="button"
-          className="rounded-tile bg-white/10 px-wide py-snug text-xs font-medium text-ink-primary hover:bg-white/15 disabled:opacity-50"
+          className="bg-white/10 px-wide py-snug text-xs hover:bg-white/15"
           disabled={loading}
           onClick={() => void load()}
         >
           {t("org:grantsRefresh")}
-        </button>
+        </Button>
       </div>
 
       {message ? <p className="mt-wide text-sm text-badge-success">{message}</p> : null}
@@ -197,9 +200,9 @@ export function OrgGrantsPage() {
                   <label className="sr-only" htmlFor={`grant-${row.id}`}>
                     {t("org:grantsColMemberAccess")} — {row.name}
                   </label>
-                  <select
+                  <Select
                     id={`grant-${row.id}`}
-                    className="rounded-tile border border-line bg-field px-base py-snug text-xs text-ink-primary disabled:opacity-50"
+                    className="text-xs"
                     value={row.level === null ? "" : row.level}
                     disabled={row.saving || row.visibility !== "tenant"}
                     onChange={(e) => {
@@ -212,7 +215,7 @@ export function OrgGrantsPage() {
                         {t(levelLabelKey(lvl))}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </td>
                 <td className="py-soft text-xs">
                   {row.saving ? (

@@ -15,6 +15,7 @@ import {
 } from "../../features/admin/agentConfig/agentConfigApi";
 import { fetchBenchmarkLlmProviders, type BenchmarkLlmProvider } from "../../features/admin/benchmarks/benchmarksApi";
 import { Button } from "../../ui/Button";
+import { Select, TextArea, TextInput } from "../../ui/Field";
 
 type Tab = "knobs" | "models";
 
@@ -287,28 +288,30 @@ export function AdminAgentConfig() {
               <p className="text-xs text-badge-warning">{t("admin:agentConfigKnobsReadOnly")}</p>
             ) : null}
             <label className="text-xs text-ink-muted">{t("admin:agentConfigValue")}</label>
-            <textarea
-              className="min-h-[80px] w-full rounded-tile border border-line bg-field p-base font-mono text-sm text-ink-primary disabled:opacity-50"
+            <TextArea
+              mono
+              className="min-h-[80px]"
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               disabled={selected.writable === false}
             />
             <label className="text-xs text-ink-muted">{t("admin:agentConfigHypothesis")}</label>
             <p className="text-meta text-ink-muted/80">{t("admin:agentConfigHypothesisHint")}</p>
-            <input
-              className="w-full rounded-tile border border-line bg-field p-base text-sm text-ink-primary disabled:opacity-50"
+            <TextInput
               value={hypothesis}
               onChange={(e) => setHypothesis(e.target.value)}
               disabled={selected.writable === false}
             />
-            <button
+            <Button
+              variant="primary"
+              tone="success"
               type="button"
               disabled={applyBusy || selected.writable === false}
               onClick={() => void onApply()}
-              className="rounded-tile bg-success px-soft py-base text-sm text-ink-on-fill hover:bg-success-hover disabled:opacity-50"
+              className="px-soft py-base text-sm"
             >
               {applyBusy ? t("admin:agentConfigApplying") : t("admin:agentConfigApplyBtn")}
-            </button>
+            </Button>
           </>
         ) : (
           <p className="text-sm text-ink-muted">{t("admin:agentConfigSelectKnob")}</p>
@@ -375,13 +378,15 @@ export function AdminAgentConfig() {
             <section className="min-h-0 overflow-auto rounded-card border border-line bg-[#111] p-soft">
               <div className="mb-base flex items-center justify-between gap-base">
                 <h2 className="text-sm font-medium text-ink-primary">{t("admin:agentConfigModelsList")}</h2>
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   type="button"
                   className="text-xs text-accent hover:underline"
                   onClick={() => selectModelOverride(null)}
                 >
                   {t("admin:agentConfigModelsNew")}
-                </button>
+                </Button>
               </div>
               <ul className="space-y-tight text-sm">
                 {modelOverrides.map((row) => {
@@ -411,13 +416,13 @@ export function AdminAgentConfig() {
                 <div className="grid gap-soft md:grid-cols-3">
                   <label className="block text-sm">
                     <span className="text-xs text-ink-muted">{t("admin:agentConfigModelsProvider")}</span>
-                    <select
+                    <Select
                       value={modelScopeCatalog}
                       onChange={(e) => {
                         setModelScopeOverrideId(null);
                         setModelScopeCatalog(e.target.value);
                       }}
-                      className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                      className="mt-tight"
                     >
                       <option value="">—</option>
                       {benchProviders.map((p) => (
@@ -425,26 +430,27 @@ export function AdminAgentConfig() {
                           {p.label} ({p.catalog_owned_by})
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </label>
                   <label className="block text-sm">
                     <span className="text-xs text-ink-muted">{t("admin:agentConfigModelsModel")}</span>
-                    <input
+                    <TextInput
+                      mono
                       value={modelScopeModel}
                       onChange={(e) => {
                         setModelScopeOverrideId(null);
                         setModelScopeModel(e.target.value);
                       }}
                       placeholder={t("admin:agentConfigModelsModelHint")}
-                      className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug font-mono text-sm text-ink-primary"
+                      className="mt-tight"
                     />
                   </label>
                   <label className="block text-sm">
                     <span className="text-xs text-ink-muted">{t("admin:agentConfigModelsLabel")}</span>
-                    <input
+                    <TextInput
                       value={modelScopeLabel}
                       onChange={(e) => setModelScopeLabel(e.target.value)}
-                      className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                      className="mt-tight"
                     />
                   </label>
                 </div>

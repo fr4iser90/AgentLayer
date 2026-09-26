@@ -10,6 +10,8 @@ import {
   visibleColSpan as computeVisibleColSpan,
 } from "./accessGating";
 import { Badge } from "../../ui/Badge";
+import { Select, TextInput } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 type TenantTemplateRow = {
   id: string;
@@ -665,8 +667,8 @@ export function AdminUsers() {
                       </td>
                       {showTenantUi && (
                         <td className="px-wide py-soft">
-                          <select
-                            className="max-w-control rounded-tile border border-line bg-field px-base py-snug text-xs text-ink-primary"
+                          <Select
+                            className="max-w-control text-xs"
                             value={tid}
                             disabled={saving || !targetEditable}
                             onChange={(e) => {
@@ -680,7 +682,7 @@ export function AdminUsers() {
                                 {tenantLabel(row, (key, opts) => t(key, opts))}
                               </option>
                             ))}
-                          </select>
+                          </Select>
                           {saving ? (
                             <span className="ml-base text-meta text-ink-muted">
                               {t("settings:saving", { ns: "settings" })}
@@ -702,11 +704,11 @@ export function AdminUsers() {
                         ) : null}
                       </td>
                       <td className="px-wide py-soft">
-                        <input
+                        <TextInput
                           type="number"
                           min={1}
                           max={1000}
-                          className="w-16 rounded-tile border border-line bg-field px-base py-tight text-xs text-ink-primary"
+                          className="w-16 text-xs"
                           value={r.workspace_quota ?? 10}
                           disabled={saving || !targetEditable}
                           onChange={(e) => {
@@ -717,11 +719,11 @@ export function AdminUsers() {
                         />
                       </td>
                       <td className="px-wide py-soft">
-                        <input
+                        <TextInput
                           type="number"
                           min={1}
                           max={50000}
-                          className="w-20 rounded-tile border border-line bg-field px-base py-tight text-xs text-ink-primary"
+                          className="w-20 text-xs"
                           value={r.media_storage_quota_mb ?? ""}
                           placeholder={t("admin:usersMediaQuotaPlaceholder")}
                           disabled={saving || !targetEditable}
@@ -734,11 +736,11 @@ export function AdminUsers() {
                         />
                       </td>
                       <td className="px-wide py-soft">
-                        <input
+                        <TextInput
                           type="number"
                           min={0}
                           max={1000}
-                          className="w-16 rounded-tile border border-line bg-field px-base py-tight text-xs text-ink-primary"
+                          className="w-16 text-xs"
                           value={r.llm_queue_priority ?? ""}
                           placeholder={t("admin:usersLlmPrioDefault")}
                           disabled={saving || !targetEditable}
@@ -756,8 +758,8 @@ export function AdminUsers() {
                         />
                       </td>
                       <td className="px-wide py-soft">
-                        <select
-                          className="rounded-tile border border-line bg-field px-base py-tight text-xs text-ink-primary"
+                        <Select
+                          className="text-xs"
                           value={
                             r.media_enabled === true ? "on" : r.media_enabled === false ? "off" : "inherit"
                           }
@@ -771,7 +773,7 @@ export function AdminUsers() {
                           <option value="inherit">{t("admin:usersMediaInherit")}</option>
                           <option value="on">{t("admin:usersMediaOn")}</option>
                           <option value="off">{t("admin:usersMediaOff")}</option>
-                        </select>
+                        </Select>
                       </td>
                       <td className="px-wide py-soft">
                         <input
@@ -803,11 +805,11 @@ export function AdminUsers() {
                         />
                       </td>
                       <td className="px-wide py-soft">
-                        <input
+                        <TextInput
                           type="number"
                           min={1}
                           max={1000}
-                          className="w-16 rounded-tile border border-line bg-field px-base py-tight text-xs text-ink-primary"
+                          className="w-16 text-xs"
                           value={r.dashboard_quota ?? 1}
                           placeholder={t("admin:usersDashboardsQuotaPlaceholder")}
                           title={t("admin:usersDashboardsQuotaPlaceholder")}
@@ -876,13 +878,15 @@ export function AdminUsers() {
             </tbody>
           </table>
         </div>
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           type="button"
           className="mt-base text-xs text-accent hover:text-badge-accent hover:underline"
           onClick={() => void reloadAll()}
         >
           {t("admin:usersRefreshList")}
-        </button>
+        </Button>
       </section>
 
       {showTenantUi && (
@@ -892,9 +896,9 @@ export function AdminUsers() {
         <div className="mt-wide flex flex-col gap-soft sm:flex-row sm:flex-wrap sm:items-end">
           <label className="block text-xs text-ink-muted">
             {t("settings:displayName", { ns: "settings" })}
-            <input
+            <TextInput
               type="text"
-              className="mt-tight block w-full min-w-[12rem] rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              className="mt-tight block min-w-[12rem]"
               value={newTenantName}
               onChange={(e) => setNewTenantName(e.target.value)}
               placeholder={t("admin:tenantDisplayNamePlaceholder")}
@@ -903,8 +907,8 @@ export function AdminUsers() {
           </label>
           <label className="block text-xs text-ink-muted">
             {t("admin:usersTenantTemplate")}
-            <select
-              className="mt-tight block w-full min-w-[14rem] rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+            <Select
+              className="mt-tight block min-w-[14rem]"
               value={newTenantTemplateId}
               onChange={(e) => setNewTenantTemplateId(e.target.value)}
             >
@@ -914,7 +918,7 @@ export function AdminUsers() {
                   {tpl.name} ({tpl.vertical_profile ?? tpl.id})
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <label className="flex items-center gap-base text-xs text-ink-muted sm:mb-base">
             <input
@@ -926,14 +930,16 @@ export function AdminUsers() {
             />
             {t("admin:usersTenantSeedDemo")}
           </label>
-          <button
+          <Button
+            variant="ghost"
+            size="lg"
             type="button"
             disabled={tenantCreateBusy}
-            className="rounded-tile bg-violet-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-violet-500 disabled:opacity-50"
+            className="bg-violet-600 px-wide py-base text-sm hover:bg-violet-500"
             onClick={() => void createTenant()}
           >
             {tenantCreateBusy ? "…" : t("admin:usersCreateTenant")}
-          </button>
+          </Button>
         </div>
         {tenantCreateMsg ? (
           <p
@@ -951,9 +957,9 @@ export function AdminUsers() {
         <div className="mt-wide flex flex-col gap-soft sm:flex-row sm:flex-wrap sm:items-end">
           <label className="block text-xs text-ink-muted">
             {t("admin:usersEmailLabel")}
-            <input
+            <TextInput
               type="email"
-              className="mt-tight block w-full min-w-[12rem] rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              className="mt-tight block min-w-[12rem]"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               autoComplete="off"
@@ -961,9 +967,9 @@ export function AdminUsers() {
           </label>
           <label className="block text-xs text-ink-muted">
             {t("admin:usersPasswordLabel")}
-            <input
+            <TextInput
               type="password"
-              className="mt-tight block w-full min-w-[12rem] rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              className="mt-tight block min-w-[12rem]"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               autoComplete="new-password"
@@ -972,8 +978,8 @@ export function AdminUsers() {
           {showTenantUi && (
             <label className="block text-xs text-ink-muted">
               {t("admin:usersTenantLabel")}
-              <select
-                className="mt-tight block rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              <Select
+                className="mt-tight block"
                 value={newTenantId}
                 onChange={(e) => setNewTenantId(e.target.value)}
               >
@@ -982,28 +988,30 @@ export function AdminUsers() {
                     {tenantLabel(row, (key, opts) => t(key, opts))}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
           )}
           <label className="block text-xs text-ink-muted">
             {t("admin:usersRoleLabel")}
-            <select
-              className="mt-tight block rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+            <Select
+              className="mt-tight block"
               value={newRole}
               onChange={(e) => setNewRole(e.target.value as "user" | "admin")}
             >
               <option value="user">user</option>
               {actorSiteAdmin && <option value="admin">admin</option>}
-            </select>
+            </Select>
           </label>
-          <button
+          <Button
+            variant="primary"
+            size="lg"
             type="button"
             disabled={createBusy}
-            className="rounded-tile bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+            className="px-wide py-base text-sm"
             onClick={() => void createUser()}
           >
             {createBusy ? "…" : t("admin:usersCreateUser")}
-          </button>
+          </Button>
         </div>
         {createMsg ? (
           <p

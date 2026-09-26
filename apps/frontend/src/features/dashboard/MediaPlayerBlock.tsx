@@ -17,6 +17,7 @@ import { getPath, setPath } from "./dashboardDataPaths";
 import { MEDIA_AUDIO_ACCEPT, addMediaEmbed, uploadMediaFile } from "./media/mediaUpload";
 import { MediaSharePanel } from "./media/MediaSharePanel";
 import { mediaIdFromRef, useMediaStreamUrl } from "./media/useMediaStreamUrl";
+import { TextInput } from "../../ui/Field";
 
 function LocalUploadPlayer(props: { mediaId: string }) {
   const { t } = useTranslation(["dashboard"]);
@@ -191,15 +192,17 @@ export function MediaPlayerBlockBody(props: {
               {globalPlayingNow ? (
                 <p className="text-xs text-badge-accent">{t("dashboard:mediaPlayingInFooter")}</p>
               ) : null}
-              <button
+              <Button
+                variant="primary"
+                size="sm"
                 type="button"
-                className="rounded-card border border-accent/40 bg-accent-subtle px-soft py-snug text-xs text-badge-accent hover:bg-accent-subtle"
+                className="border-accent/40 px-soft py-snug text-xs text-badge-accent"
                 onClick={() => (globalPlayingNow ? globalMedia.togglePause() : startPlayback(nowItem))}
               >
                 {globalPlayingNow && !globalMedia.paused
                   ? t("dashboard:mediaMiniPlayerPause")
                   : t("dashboard:mediaMiniPlayerPlay")}
-              </button>
+              </Button>
             </div>
           ) : nowMediaId ? (
             <LocalUploadPlayer mediaId={nowMediaId} />
@@ -219,14 +222,15 @@ export function MediaPlayerBlockBody(props: {
       {!readOnly ? (
         <div className="dashboard-grid-no-drag mb-wide space-y-base">
           <div className="flex flex-wrap items-center gap-base">
-            <button
+            <Button
+              size="sm"
               type="button"
-              className="rounded-card border border-line bg-black/30 px-soft py-snug text-xs text-ink-primary hover:bg-white/5 disabled:opacity-50"
+              className="bg-black/30 px-soft py-snug text-xs hover:bg-white/5"
               disabled={uploading || !dashboardId}
               onClick={() => fileRef.current?.click()}
             >
               {uploading ? t("dashboard:loading") : t("dashboard:mediaUploadTrack")}
-            </button>
+            </Button>
             <input
               ref={fileRef}
               type="file"
@@ -240,21 +244,24 @@ export function MediaPlayerBlockBody(props: {
             />
           </div>
           <div className="flex flex-wrap gap-base">
-            <input
+            <TextInput
+              mono
               type="url"
-              className="min-w-[12rem] flex-1 rounded-card border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary"
+              className="min-w-[12rem] flex-1 text-xs"
               placeholder={t("dashboard:embedUrlPlaceholder")}
               value={embedUrl}
               onChange={(e) => setEmbedUrl(e.target.value)}
             />
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               type="button"
-              className="rounded-card border border-accent/40 bg-accent-subtle px-soft py-base text-xs text-badge-accent hover:bg-accent-subtle disabled:opacity-50"
+              className="border-accent/40 px-soft py-base text-xs text-badge-accent"
               disabled={uploading || !embedUrl.trim()}
               onClick={() => void onAddEmbed()}
             >
               {t("dashboard:mediaAddEmbed")}
-            </button>
+            </Button>
           </div>
           {err ? <p className="text-xs text-danger">{err}</p> : null}
         </div>
@@ -272,14 +279,16 @@ export function MediaPlayerBlockBody(props: {
                   active ? "bg-accent-subtle text-badge-accent" : "text-ink-primary hover:bg-white/5"
                 }`}
               >
-                <button
+                <Button
+                  variant="plain"
+                  block
                   type="button"
-                  className="min-w-0 flex-1 truncate text-left"
+                  className="min-w-0 flex-1 truncate"
                   onClick={() => playItem(it)}
                   disabled={readOnly && !active}
                 >
                   {itemLabel(it, t("dashboard:mediaUntitledTrack"))}
-                </button>
+                </Button>
                 {!readOnly ? (
                   <Button
                     type="button"

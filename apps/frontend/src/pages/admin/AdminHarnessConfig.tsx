@@ -14,6 +14,7 @@ import {
   type HarnessPreset,
 } from "../../features/admin/harness/harnessApi";
 import { Button } from "../../ui/Button";
+import { Select, TextArea, TextInput } from "../../ui/Field";
 
 const emptyOverrideForm = (): HarnessConfigFields & {
   catalog_owned_by: string;
@@ -218,56 +219,57 @@ export function AdminHarnessConfig() {
               <div className="mt-wide grid gap-wide md:grid-cols-2">
                 <label className="block text-sm">
                   <span className="text-ink-muted">{t("admin:benchHarnessPreset")}</span>
-                  <select
+                  <Select
                     value={globalPreset}
                     onChange={(e) => setGlobalPreset(e.target.value as HarnessPreset)}
-                    className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                    className="mt-tight"
                   >
                     <option value="observability">{t("admin:benchHarnessObservability")}</option>
                     <option value="chat_parity">{t("admin:benchHarnessChatParity")}</option>
-                  </select>
+                  </Select>
                 </label>
                 <label className="block text-sm">
                   <span className="text-ink-muted">{t("admin:benchMaxToolRounds")}</span>
-                  <input
+                  <TextInput
                     type="number"
                     min={1}
                     value={globalMaxRounds}
                     onChange={(e) => setGlobalMaxRounds(e.target.value)}
                     placeholder={t("admin:harnessInheritPlaceholder")}
-                    className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                    className="mt-tight"
                   />
                 </label>
                 <label className="block text-sm md:col-span-2">
                   <span className="text-ink-muted">{t("admin:benchScenarioTimeout")}</span>
-                  <input
+                  <TextInput
                     type="number"
                     min={30}
                     step={30}
                     value={globalTimeout}
                     onChange={(e) => setGlobalTimeout(e.target.value)}
                     placeholder={t("admin:harnessInheritPlaceholder")}
-                    className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                    className="mt-tight"
                   />
                 </label>
                 <label className="block text-sm md:col-span-2">
                   <span className="text-ink-muted">{t("admin:harnessNotes")}</span>
-                  <textarea
+                  <TextArea
                     value={globalNotes}
                     onChange={(e) => setGlobalNotes(e.target.value)}
                     rows={2}
-                    className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                    className="mt-tight"
                   />
                 </label>
               </div>
-              <button
+              <Button
+                variant="primary"
                 type="button"
                 disabled={busy}
                 onClick={() => void onSaveGlobal()}
-                className="mt-wide rounded-tile bg-accent px-soft py-snug text-sm text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+                className="mt-wide px-soft py-snug text-sm"
               >
                 {t("admin:harnessSaveGlobal")}
-              </button>
+              </Button>
             </section>
 
             <section className="rounded-card border border-line bg-black/20 p-wide">
@@ -298,13 +300,14 @@ export function AdminHarnessConfig() {
                           <td className="py-base pr-soft">{row.max_tool_rounds_override ?? "—"}</td>
                           <td className="py-base pr-soft">{row.scenario_timeout_sec ?? "—"}</td>
                           <td className="py-base text-right">
-                            <button
+                            <Button
+                              variant="ghost"
                               type="button"
                               className="text-accent hover:underline"
                               onClick={() => startEdit(row)}
                             >
                               {t("admin:harnessEdit")}
-                            </button>
+                            </Button>
                             <Button
                               type="button"
                               variant="danger"
@@ -331,12 +334,12 @@ export function AdminHarnessConfig() {
                 <div className="mt-soft grid gap-soft md:grid-cols-2">
                   <label className="block text-sm">
                     <span className="text-ink-muted">{t("admin:harnessColProvider")}</span>
-                    <select
+                    <Select
                       value={overrideForm.catalog_owned_by}
                       onChange={(e) =>
                         setOverrideForm((f) => ({ ...f, catalog_owned_by: e.target.value }))
                       }
-                      className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                      className="mt-tight"
                     >
                       <option value="">{t("admin:harnessSelectProvider")}</option>
                       {benchProviders.map((p) => (
@@ -344,28 +347,28 @@ export function AdminHarnessConfig() {
                           {p.label || p.catalog_owned_by}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </label>
                   <label className="block text-sm">
                     <span className="text-ink-muted">{t("admin:harnessColModel")}</span>
-                    <input
+                    <TextInput
                       value={overrideForm.model}
                       onChange={(e) => setOverrideForm((f) => ({ ...f, model: e.target.value }))}
                       placeholder={t("admin:harnessModelWildcardHint")}
-                      className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                      className="mt-tight"
                     />
                   </label>
                   <label className="block text-sm">
                     <span className="text-ink-muted">{t("admin:harnessLabel")}</span>
-                    <input
+                    <TextInput
                       value={overrideForm.label}
                       onChange={(e) => setOverrideForm((f) => ({ ...f, label: e.target.value }))}
-                      className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                      className="mt-tight"
                     />
                   </label>
                   <label className="block text-sm">
                     <span className="text-ink-muted">{t("admin:benchHarnessPreset")}</span>
-                    <select
+                    <Select
                       value={overrideForm.harness_preset}
                       onChange={(e) =>
                         setOverrideForm((f) => ({
@@ -373,15 +376,15 @@ export function AdminHarnessConfig() {
                           harness_preset: e.target.value as HarnessPreset,
                         }))
                       }
-                      className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                      className="mt-tight"
                     >
                       <option value="observability">{t("admin:benchHarnessObservability")}</option>
                       <option value="chat_parity">{t("admin:benchHarnessChatParity")}</option>
-                    </select>
+                    </Select>
                   </label>
                   <label className="block text-sm">
                     <span className="text-ink-muted">{t("admin:benchMaxToolRounds")}</span>
-                    <input
+                    <TextInput
                       type="number"
                       min={1}
                       value={
@@ -396,12 +399,12 @@ export function AdminHarnessConfig() {
                         }))
                       }
                       placeholder={t("admin:harnessInheritPlaceholder")}
-                      className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                      className="mt-tight"
                     />
                   </label>
                   <label className="block text-sm">
                     <span className="text-ink-muted">{t("admin:benchScenarioTimeout")}</span>
-                    <input
+                    <TextInput
                       type="number"
                       min={30}
                       step={30}
@@ -417,28 +420,29 @@ export function AdminHarnessConfig() {
                         }))
                       }
                       placeholder={t("admin:harnessInheritPlaceholder")}
-                      className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                      className="mt-tight"
                     />
                   </label>
                   <label className="block text-sm md:col-span-2">
                     <span className="text-ink-muted">{t("admin:harnessNotes")}</span>
-                    <textarea
+                    <TextArea
                       value={overrideForm.notes || ""}
                       onChange={(e) => setOverrideForm((f) => ({ ...f, notes: e.target.value }))}
                       rows={2}
-                      className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                      className="mt-tight"
                     />
                   </label>
                 </div>
                 <div className="mt-wide flex gap-base">
-                  <button
+                  <Button
+                    variant="primary"
                     type="button"
                     disabled={busy}
                     onClick={() => void onSaveOverride()}
-                    className="rounded-tile bg-accent px-soft py-snug text-sm text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+                    className="px-soft py-snug text-sm"
                   >
                     {editingId ? t("admin:harnessUpdateOverride") : t("admin:harnessAddOverrideBtn")}
-                  </button>
+                  </Button>
                   {editingId ? (
                     <Button
                       type="button"

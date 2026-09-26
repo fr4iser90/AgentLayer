@@ -4,6 +4,7 @@ import type { ChatThread } from "../chat/chatThreadStorage";
 import { Listbox } from "../../ui/Listbox";
 import { Tooltip } from "../../ui/Tooltip";
 import { useClickOutside } from "../../ui/useClickOutside";
+import { Button } from "../../ui/Button";
 
 type LabelPack = { shared: string; personal: string; untitled: string };
 
@@ -46,10 +47,12 @@ export function DashboardEmbeddedThreadMenu({
   return (
     <div ref={rootRef} className="relative min-w-0 max-w-[58%]">
       <Tooltip label={t("dashboard:embeddedChatThreadMenuHint")}>
-      <button
+      <Button
+        variant="plain"
+        block
           type="button"
           disabled={!canPick}
-          className="flex max-w-full items-center gap-hair truncate text-left text-meta text-ink-secondary hover:text-white disabled:opacity-50"
+          className="max-w-full items-center gap-hair truncate text-meta text-ink-secondary hover:text-white"
           aria-haspopup="listbox"
           aria-expanded={open}
           aria-controls={menuId}
@@ -57,10 +60,10 @@ export function DashboardEmbeddedThreadMenu({
             if (!canPick) return;
             setOpen((o) => !o);
           }}
-        >
+      >
           <span className="truncate">{triggerLabel}</span>
           {canPick ? <span className="shrink-0 text-ink-muted">▾</span> : null}
-        </button>
+        </Button>
       </Tooltip>
       {open ? (
         <Listbox

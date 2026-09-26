@@ -4,6 +4,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import type { UiBlock } from "./types";
 import { useDashboardPublicShare } from "./DashboardPublicShareContext";
+import { Button } from "../../ui/Button";
 
 type PreviewEvent = {
   summary?: string;
@@ -130,9 +131,9 @@ export function ShareWidgetBlockBody(props: { block: UiBlock }) {
         <pre className="mt-soft whitespace-pre-wrap text-sm text-ink-primary font-sans">{summary}</pre>
       )}
       {publicShareToken ? null : (
-        <button type="button" className="mt-base text-xs text-accent hover:underline" onClick={() => void load()}>
+        <Button variant="ghost" size="sm" type="button" className="mt-base text-xs text-accent hover:underline" onClick={() => void load()}>
           {t("dashboard:shareWidgetRefresh")}
-        </button>
+        </Button>
       )}
     </section>
   );

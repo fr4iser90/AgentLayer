@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { TextArea } from "../../ui/Field";
 
 const MIN_HEIGHT_PX = 52;
 const MAX_HEIGHT_VH = 0.4;
@@ -43,10 +44,11 @@ export const ChatComposerTextarea = forwardRef<HTMLTextAreaElement, Props>(funct
   }, [value]);
 
   return (
-    <textarea
+    <TextArea
+      bare
       ref={innerRef}
       disabled={disabled}
-      className="min-h-[52px] w-full resize-none bg-transparent text-sm leading-relaxed text-ink-primary placeholder:text-neutral-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+      className="min-h-[52px] resize-none leading-relaxed"
       placeholder={placeholder}
       value={value}
       onChange={(e) => onChange(e.target.value)}

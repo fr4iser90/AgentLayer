@@ -7,6 +7,8 @@ import {
   type VoicePrefs,
   type VoiceStatus,
 } from "../../features/voice/voiceApi";
+import { Select, TextInput } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 const defaultPrefs: VoicePrefs = {
   input_enabled: true,
@@ -103,8 +105,8 @@ export function VoiceSettings() {
         </label>
         <label className="block text-xs text-ink-muted">
           {t("settings:voiceModeWeb")}
-          <select
-            className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+          <Select
+            className="mt-tight max-w-controlWide"
             value={prefs.mode_web}
             onChange={(e) => setPrefs((p) => ({ ...p, mode_web: e.target.value }))}
           >
@@ -112,12 +114,12 @@ export function VoiceSettings() {
             <option value="toggle">{t("settings:voiceModeToggle")}</option>
             <option value="hands_free">{t("settings:voiceModeHandsFree")}</option>
             <option value="realtime">{t("settings:voiceModeRealtime")}</option>
-          </select>
+          </Select>
         </label>
         <label className="block text-xs text-ink-muted">
           {t("settings:voiceLanguage")}
-          <input
-            className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+          <TextInput
+            className="mt-tight max-w-control"
             value={prefs.language}
             onChange={(e) => setPrefs((p) => ({ ...p, language: e.target.value }))}
             placeholder={t("settings:voiceLanguagePlaceholder")}
@@ -125,8 +127,8 @@ export function VoiceSettings() {
         </label>
         <label className="block text-xs text-ink-muted">
           {t("settings:voiceTtsVoice")}
-          <input
-            className="mt-tight w-full max-w-control rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+          <TextInput
+            className="mt-tight max-w-control"
             value={prefs.voice_id ?? ""}
             onChange={(e) =>
               setPrefs((p) => ({ ...p, voice_id: e.target.value.trim() || null }))
@@ -136,36 +138,38 @@ export function VoiceSettings() {
         </label>
         <label className="block text-xs text-ink-muted">
           {t("settings:voiceModeTelegram")}
-          <select
-            className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+          <Select
+            className="mt-tight max-w-controlWide"
             value={prefs.mode_telegram}
             onChange={(e) => setPrefs((p) => ({ ...p, mode_telegram: e.target.value }))}
           >
             <option value="text_only">{t("settings:voiceModeTextOnly")}</option>
             <option value="voice_reply">{t("settings:voiceModeVoiceOnly")}</option>
             <option value="voice_both">{t("settings:voiceModeBoth")}</option>
-          </select>
+          </Select>
         </label>
         <label className="block text-xs text-ink-muted">
           {t("settings:voiceModeDiscord")}
-          <select
-            className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+          <Select
+            className="mt-tight max-w-controlWide"
             value={prefs.mode_discord}
             onChange={(e) => setPrefs((p) => ({ ...p, mode_discord: e.target.value }))}
           >
             <option value="text_only">{t("settings:voiceModeTextOnly")}</option>
             <option value="voice_reply">{t("settings:voiceModeVoiceOnly")}</option>
             <option value="voice_both">{t("settings:voiceModeBoth")}</option>
-          </select>
+          </Select>
         </label>
-        <button
+        <Button
+          variant="primary"
+          size="lg"
           type="button"
           disabled={saving}
           onClick={() => void save()}
-          className="rounded-card bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+          className="px-wide py-base text-sm"
         >
           {t("settings:voiceSave")}
-        </button>
+        </Button>
       </div>
     </div>
   );

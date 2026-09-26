@@ -32,22 +32,26 @@ export function PermissionAskCard({ request, onReply, disabled }: Props) {
         </pre>
       ) : null}
       <div className="mt-soft flex flex-wrap gap-base">
-        <button
+        <Button
+          variant="primary"
+          tone="warning"
+          size="sm"
           type="button"
           disabled={disabled}
-          className="rounded-tile bg-warning px-soft py-snug text-xs font-medium text-black disabled:opacity-50"
+          className="px-soft py-snug text-xs text-black"
           onClick={() => onReply("once")}
         >
           {t("chat:permissionAllowOnce")}
-        </button>
-        <button
+        </Button>
+        <Button
+          size="sm"
           type="button"
           disabled={disabled}
-          className="rounded-tile border border-line bg-black/20 px-soft py-snug text-xs text-ink-primary disabled:opacity-50"
+          className="bg-black/20 px-soft py-snug text-xs"
           onClick={() => onReply("always")}
         >
           {t("chat:permissionAllowAlways")}
-        </button>
+        </Button>
         <Button
           type="button"
           variant="danger"

@@ -5,6 +5,7 @@ import { Mascot, pickCharacter } from "../ui/Mascot";
 import { Menu } from "../ui/Menu";
 import { Tooltip } from "../ui/Tooltip";
 import { useClickOutside } from "../ui/useClickOutside";
+import { Button } from "../ui/Button";
 
 /**
  * The account control: who you are, in which language, and how to leave.
@@ -32,15 +33,17 @@ export function UserMenu() {
   return (
     <div className="relative" ref={rootRef}>
       <Tooltip label={email || t("userMenu.account")}>
-      <button
+      <Button
+        variant="ghost"
+        size="lg"
           type="button"
-          className="flex h-9 w-9 items-center justify-center rounded-pill outline-none ring-accent/40 transition-transform duration-fast ease-standard hover:scale-105 focus-visible:ring-2"
+          className="h-9 w-9 outline-none ring-accent/40 hover:scale-105"
           aria-expanded={open}
           aria-haspopup="menu"
           onClick={() => setOpen((v) => !v)}
-        >
+      >
           <Mascot character={pickCharacter(email)} state={open ? "happy" : "idle"} size={30} ariaLabel={null} />
-        </button>
+        </Button>
       </Tooltip>
       {open ? (
         <Menu

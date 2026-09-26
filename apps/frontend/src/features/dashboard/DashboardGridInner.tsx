@@ -95,14 +95,16 @@ function AddBlockToolbar(props: {
   return (
     <div className={`flex flex-wrap gap-base ${compact ? "" : "mb-tight"}`}>
       {definitions.map((definition) => (
-        <button
+        <Button
+          variant="primary"
+          size="sm"
           key={definition.type}
           type="button"
-          className="dashboard-grid-no-drag rounded-card bg-accent px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-accent-hover"
+          className="dashboard-grid-no-drag px-soft py-snug text-xs"
           onClick={() => onAdd(definition.type)}
         >
           {t(definition.addLabelKey as "dashboard:addList")}
-        </button>
+        </Button>
       ))}
     </div>
   );
@@ -347,17 +349,19 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                       <div className="flex shrink-0 gap-tight">
                         {canExpand ? (
                           <Tooltip label={t("dashboard:blockExpand")}>
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="sm"
                               type="button"
-                              className="dashboard-grid-no-drag rounded-tile px-base py-hair text-xs text-badge-accent hover:bg-accent-subtle"
+                              className="dashboard-grid-no-drag px-base py-hair text-xs text-badge-accent"
                               aria-label={t("dashboard:blockExpand")}
                               onClick={() => {
                                 acknowledgeBlock(b.id);
                                 setExpandedBlockId(b.id);
                               }}
-                            >
+                          >
                               {t("dashboard:blockExpand")}
-                            </button>
+                            </Button>
                           </Tooltip>
                         ) : null}
                         {onPinBlockToChat && b.type !== "dashboard_ref" ? (
@@ -380,25 +384,29 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                         ) : null}
                         {canConfigureBlock ? (
                           <Tooltip label={t("dashboard:blockSettingsTitle")}>
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="sm"
                               type="button"
-                              className="dashboard-grid-no-drag rounded-tile px-base py-hair text-xs text-badge-warning hover:bg-warning-subtle"
+                              className="dashboard-grid-no-drag px-base py-hair text-xs text-badge-warning"
                               aria-label={t("dashboard:blockSettingsTitle")}
                               onClick={() => setSettingsBlockId(b.id)}
-                            >
+                          >
                               <Settings aria-hidden className="h-3.5 w-3.5" />
-                            </button>
+                            </Button>
                           </Tooltip>
                         ) : null}
                         {onPinBlock && b.type !== "dashboard_ref" ? (
                           <Tooltip label={t("dashboard:pinBlockHint")}>
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="sm"
                               type="button"
-                              className="dashboard-grid-no-drag rounded-tile px-base py-hair text-xs text-violet-200 hover:bg-violet-950/50"
+                              className="dashboard-grid-no-drag px-base py-hair text-xs text-violet-200 hover:bg-violet-950/50"
                               onClick={() => onPinBlock(b.id)}
-                            >
+                          >
                               {t("dashboard:pinBlock")}
-                            </button>
+                            </Button>
                           </Tooltip>
                         ) : null}
                         {editMode ? (

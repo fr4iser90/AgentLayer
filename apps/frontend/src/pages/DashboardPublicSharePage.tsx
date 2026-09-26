@@ -11,6 +11,8 @@ import {
 import { publicShareUsesGalleryPresentation } from "../features/dashboard/publicSharePresentation";
 import { parseUiLayout } from "../features/dashboard/layoutMode";
 import type { DashboardDetail, UiLayout } from "../features/dashboard/types";
+import { TextInput } from "../ui/Field";
+import { Button } from "../ui/Button";
 
 function asUiLayout(raw: unknown): UiLayout | null {
   return parseUiLayout(raw);
@@ -144,21 +146,23 @@ export function DashboardPublicSharePage() {
         </h1>
         <p className="mt-soft text-sm text-ink-muted">{t("dashboard:publicSharePasswordPrompt")}</p>
         <form className="mt-wide space-y-soft" onSubmit={onSubmitPassword}>
-          <input
+          <TextInput
             type="password"
             value={passwordInput}
             onChange={(e) => setPasswordInput(e.target.value)}
             placeholder={t("dashboard:publicSharePasswordPlaceholder")}
-            className="w-full rounded-card border border-line-strong bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-violet-500/50"
+            className="outline-none"
             autoComplete="current-password"
           />
           {passwordError ? <p className="text-xs text-badge-danger">{passwordError}</p> : null}
-          <button
+          <Button
+            variant="ghost"
+            size="lg"
             type="submit"
-            className="w-full rounded-card bg-violet-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-violet-500"
+            className="w-full bg-violet-600 px-wide py-base text-sm hover:bg-violet-500"
           >
             {t("dashboard:publicShareUnlock")}
-          </button>
+          </Button>
         </form>
       </div>
     );

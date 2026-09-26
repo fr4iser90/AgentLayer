@@ -3,6 +3,7 @@ import type { ConversationGoal, ConversationTodo } from "../../lib/api";
 import { useTranslation } from "react-i18next";
 import { Check, Circle, Pause, Pencil, Play, X } from "lucide-react";
 import { Tooltip } from "../../ui/Tooltip";
+import { Button } from "../../ui/Button";
 
 type GoalActions = {
   goal: ConversationGoal | null;
@@ -37,46 +38,54 @@ function GoalActionButtons({
     <div className="flex shrink-0 items-center gap-tight">
       {paused ? (
         <Tooltip label={t("chat:goalResume")}>
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
             type="button"
-            className="rounded-tile px-snug py-hair text-xs text-badge-warning hover:bg-white/10 disabled:opacity-40"
+            className="px-snug py-hair text-xs text-badge-warning hover:bg-white/10"
             disabled={disabled}
             onClick={onResume}
-          >
+        >
             <Play aria-hidden className="h-3.5 w-3.5" />
-          </button>
+          </Button>
         </Tooltip>
       ) : (
         <Tooltip label={t("chat:goalPause")}>
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
             type="button"
-            className="rounded-tile px-snug py-hair text-xs text-badge-warning hover:bg-white/10 disabled:opacity-40"
+            className="px-snug py-hair text-xs text-badge-warning hover:bg-white/10"
             disabled={disabled || blocked}
             onClick={onPause}
-          >
+        >
             <Pause aria-hidden className="h-3.5 w-3.5" />
-          </button>
+          </Button>
         </Tooltip>
       )}
       <Tooltip label={t("chat:goalEdit")}>
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
           type="button"
-          className="rounded-tile px-snug py-hair text-xs text-badge-warning hover:bg-white/10 disabled:opacity-40"
+          className="px-snug py-hair text-xs text-badge-warning hover:bg-white/10"
           disabled={disabled}
           onClick={onEdit}
-        >
+      >
           <Pencil aria-hidden className="h-3.5 w-3.5" />
-        </button>
+        </Button>
       </Tooltip>
       <Tooltip label={t("chat:goalClear")}>
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
           type="button"
-          className="rounded-tile px-snug py-hair text-xs text-badge-danger hover:bg-white/10 disabled:opacity-40"
+          className="px-snug py-hair text-xs text-badge-danger hover:bg-white/10"
           disabled={disabled}
           onClick={onClear}
-        >
+      >
           <X aria-hidden className="h-3.5 w-3.5" />
-        </button>
+        </Button>
       </Tooltip>
     </div>
   );

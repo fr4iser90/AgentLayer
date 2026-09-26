@@ -17,6 +17,7 @@ import {
 import type { UiBlock } from "./types";
 import { Button } from "../../ui/Button";
 import { Drawer } from "../../ui/Drawer";
+import { Select, TextInput } from "../../ui/Field";
 
 type TabId = "general" | "data" | "share" | "display";
 
@@ -311,8 +312,8 @@ export function BlockSettingsModal({
                 <span className="text-meta text-ink-muted">
                   {t("dashboard:blockSettingsTitleLabel")}
                 </span>
-                <input
-                  className="w-full rounded-card border border-line bg-field px-soft py-base text-ink-primary outline-none focus:border-accent/50"
+                <TextInput
+                  className="outline-none"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
@@ -330,8 +331,9 @@ export function BlockSettingsModal({
             <div className="space-y-wide">
               <label className="block space-y-tight">
                 <span className="text-meta text-ink-muted">{t("dashboard:blockSettingsDataPath")}</span>
-                <input
-                  className="w-full rounded-card border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary outline-none focus:border-accent/50"
+                <TextInput
+                  mono
+                  className="text-xs outline-none"
                   value={dataPath}
                   onChange={(e) => setDataPath(e.target.value)}
                   placeholder={t("dashboard:blockSettingsDataPathPlaceholder")}
@@ -385,9 +387,9 @@ export function BlockSettingsModal({
                   >
                     {t("dashboard:blockSettingsShareTarget")}
                   </label>
-                  <select
+                  <Select
                     id="block-settings-share-target"
-                    className="w-full rounded-card border border-line bg-field px-soft py-base text-ink-primary outline-none focus:border-accent/50"
+                    className="outline-none"
                     value={shareKey}
                     onChange={(e) => setShareKey(e.target.value)}
                   >
@@ -397,7 +399,7 @@ export function BlockSettingsModal({
                         {c.displayName} · {c.resourceName}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   <span className="block text-meta text-ink-muted">
                     {t("dashboard:blockSettingsShareTargetHint")}
                   </span>
@@ -415,12 +417,12 @@ export function BlockSettingsModal({
                 >
                   {t("dashboard:blockSettingsShareDays")}
                 </label>
-                <input
+                <TextInput
                   id="block-settings-share-days"
                   type="number"
                   min={1}
                   max={90}
-                  className="w-24 rounded-card border border-line bg-field px-soft py-base text-ink-primary"
+                  className="w-24"
                   value={daysAhead}
                   onChange={(e) =>
                     setDaysAhead(Math.min(90, Math.max(1, Number(e.target.value) || 7)))
@@ -440,14 +442,15 @@ export function BlockSettingsModal({
                   <span className="text-meta text-ink-muted">{t("dashboard:blockSettingsPreset")}</span>
                   <div className="flex flex-wrap gap-base">
                     {(["compact", "standard", "comfortable"] as DisplayPresetId[]).map((preset) => (
-                      <button
+                      <Button
+                        size="sm"
                         key={preset}
                         type="button"
-                        className="rounded-card border border-line-strong bg-black/30 px-soft py-snug text-xs text-ink-primary hover:border-accent/40 hover:bg-accent-subtle"
+                        className="bg-black/30 px-soft py-snug text-xs"
                         onClick={() => applyPreset(preset)}
                       >
                         {t(`dashboard:blockSettingsPreset_${preset}`)}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -472,11 +475,11 @@ export function BlockSettingsModal({
                     <span className="text-meta text-ink-muted">
                       {t("dashboard:blockSettingsGridColumns")}
                     </span>
-                    <input
+                    <TextInput
                       type="number"
                       min={1}
                       max={5}
-                      className="w-24 rounded-card border border-line bg-field px-soft py-base text-ink-primary"
+                      className="w-24"
                       value={gridColumns}
                       onChange={(e) => setGridColumns(Number(e.target.value) || 3)}
                     />

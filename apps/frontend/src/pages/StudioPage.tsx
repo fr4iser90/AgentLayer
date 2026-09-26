@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { SchemaForm } from "../components/SchemaForm";
 import { CollapsibleSidebarShell } from "../layout/CollapsibleSidebarShell";
+import { Button } from "../ui/Button";
 
 type CatalogPreset = {
   run_key: string;
@@ -198,15 +199,15 @@ export function StudioPage() {
     >
       <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-wide md:p-deep">
         <div className="flex flex-wrap items-start gap-base">
-          <button
+          <Button
             type="button"
-            className="shrink-0 rounded-card border border-line bg-black/30 px-firm py-snug text-meta font-medium text-ink-secondary hover:bg-white/10 md:hidden"
+            className="shrink-0 bg-black/30 px-firm py-snug text-meta text-ink-secondary hover:bg-white/10 md:hidden"
             aria-expanded={presetSidebarOpen}
             aria-label={t("common:studio.openPresetsSidebar")}
             onClick={() => setPresetSidebarOpen(true)}
           >
             {t("common:studio.openPresetsSidebarShort")}
-          </button>
+          </Button>
           <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-semibold text-ink-primary">{t("common:studio.title")}</h1>
             <p className="mt-tight max-w-measure text-sm text-ink-muted">{t("common:studio.subtitle")}</p>
@@ -228,13 +229,14 @@ export function StudioPage() {
             <span className="text-ink-muted">
               Default engine: {catalog.engine_default ?? "—"}
             </span>
-            <button
+            <Button
+              variant="ghost"
               type="button"
               className="text-accent underline hover:text-badge-accent"
               onClick={() => window.location.reload()}
             >
               {t("common:studio.reloadCatalog")}
-            </button>
+            </Button>
           </div>
         ) : null}
 
@@ -261,14 +263,15 @@ export function StudioPage() {
             ) : null}
 
             <div className="mt-deep flex flex-wrap items-center gap-soft">
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 disabled={jobLoading}
                 onClick={() => void runJob()}
-                className="rounded-sheet bg-white px-roomy py-firm text-sm font-semibold text-black hover:bg-neutral-200 disabled:opacity-50"
+                className="bg-white px-roomy py-firm text-sm font-semibold text-black hover:bg-neutral-200"
               >
                 {jobLoading ? t("common:studio.running") : t("common:studio.run")}
-              </button>
+              </Button>
               <code className="text-xs text-ink-muted">POST /v1/studio/jobs</code>
             </div>
 

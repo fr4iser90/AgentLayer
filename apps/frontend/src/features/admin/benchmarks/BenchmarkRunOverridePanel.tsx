@@ -11,6 +11,8 @@ import {
   isHarnessKnob,
   type AgentConfigKnob,
 } from "../agentConfig/agentConfigApi";
+import { TextArea } from "../../../ui/Field";
+import { Button } from "../../../ui/Button";
 
 export type RunOverridePatch = { knob_id: string; value: unknown };
 
@@ -240,28 +242,31 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
                 </div>
 
                 <label className="text-xs text-ink-muted">{t("admin:benchRunOverrideValueLabel")}</label>
-                <textarea
-                  className="min-h-[80px] w-full rounded-tile border border-line bg-field p-base font-mono text-sm text-ink-primary"
+                <TextArea
+                  mono
+                  className="min-h-[80px]"
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                 />
 
                 <div className="flex flex-wrap gap-base">
-                  <button
+                  <Button
+                    variant="primary"
+                    tone="warning"
                     type="button"
                     onClick={() => setOverrideForKnob(selected)}
-                    className="rounded-tile bg-warning px-soft py-base text-sm text-ink-on-fill hover:bg-warning-hover"
+                    className="px-soft py-base text-sm"
                   >
                     {t("admin:benchRunOverrideSetBtn")}
-                  </button>
+                  </Button>
                   {hasOverride ? (
-                    <button
+                    <Button
                       type="button"
                       onClick={() => clearOverride(selected.id)}
-                      className="rounded-tile border border-line-strong px-soft py-base text-sm text-ink-muted hover:bg-white/5"
+                      className="px-soft py-base text-sm text-ink-muted hover:bg-white/5"
                     >
                       {t("admin:benchRunOverrideUseHarness")}
-                    </button>
+                    </Button>
                   ) : null}
                 </div>
               </>

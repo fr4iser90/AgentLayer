@@ -2,6 +2,8 @@ import { useOperatorSettings } from "../../../features/admin/operatorSettings/Op
 import { envProviderPatternFromCleanupKeys } from "../../../features/admin/operatorSettings/operatorSettingsTypes";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
+import { Select, TextInput } from "../../../ui/Field";
+import { Button } from "../../../ui/Button";
 
 function ProviderModelSelect({
   id,
@@ -23,9 +25,9 @@ function ProviderModelSelect({
   const current = value.trim();
   const options = current && !models.includes(current) ? [current, ...models] : models;
   return (
-    <select
+    <Select
       id={id}
-      className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary disabled:opacity-50"
+      className="mt-tight"
       value={current}
       disabled={loading || options.length === 0}
       onChange={(e) => onChange(e.target.value)}
@@ -36,7 +38,7 @@ function ProviderModelSelect({
           {model}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
@@ -90,14 +92,16 @@ export function AdminInterfacesMemorySection() {
                   {t("admin:envProviderFoundIntro", { prefix: pendingEmbeddingEnvPrefix })}
                 </p>
               </div>
-              <button
+              <Button
+                variant="primary"
+                tone="warning"
                 type="button"
                 disabled={s.envOperatorImporting === "embedding"}
-                className="rounded-tile bg-warning px-soft py-snug text-sm font-medium text-black hover:bg-warning-hover disabled:opacity-50"
+                className="px-soft py-snug text-sm text-black"
                 onClick={() => void s.importOperatorEnvProviders("embedding")}
               >
                 {s.envOperatorImporting === "embedding" ? t("admin:envLlmImporting") : t("admin:envLlmImportButton")}
-              </button>
+              </Button>
             </div>
             <div className="mt-soft space-y-base">
               {pendingEmbeddingEnvProviders.map((p) => (
@@ -130,14 +134,15 @@ export function AdminInterfacesMemorySection() {
           </div>
         ) : null}
         <div className="mt-wide flex flex-wrap gap-base">
-          <button
+          <Button
+            variant="primary"
             type="button"
-            className="rounded-tile border border-accent/40 bg-accent-subtle px-soft py-snug text-sm text-badge-accent hover:bg-accent-subtle disabled:opacity-40"
+            className="border-accent/40 px-soft py-snug text-sm text-badge-accent"
             disabled={s.embeddingModelsLoading}
             onClick={() => void s.refreshEmbeddingCatalog()}
           >
             {s.embeddingModelsLoading ? t("admin:ifMemLoadingModels") : t("admin:ifMemLoadModelsEmbedding")}
-          </button>
+          </Button>
         </div>
         {s.ragEmbeddingStatusHint ? (
           <p
@@ -169,9 +174,9 @@ export function AdminInterfacesMemorySection() {
                   <label className="mt-base block text-xs text-ink-muted" htmlFor="embedding-provider-id">
                     {t("admin:ifMemEmbeddingProvider")}
                   </label>
-                  <select
+                  <Select
                     id="embedding-provider-id"
-                    className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary disabled:opacity-50"
+                    className="mt-tight max-w-controlWide"
                     value={s.ragEmbeddingProviderId || s.ragEmbeddingProviderIdEffective || ""}
                     onChange={(e) => s.setRagEmbeddingProviderId(e.target.value)}
                   >
@@ -181,7 +186,7 @@ export function AdminInterfacesMemorySection() {
                         {p.label} ({p.provider_id})
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   {s.ragEmbeddingProviderIdEffective ? (
                     <p className="mt-tight text-xs text-ink-muted">
                       {t("admin:ifMemEmbeddingProviderActive")}{" "}
@@ -196,9 +201,10 @@ export function AdminInterfacesMemorySection() {
             <label className="mt-base block text-xs text-ink-muted" htmlFor="embedding-base-url">
               {t("admin:ifMemBaseUrlLabel")}
             </label>
-            <input
+            <TextInput
+              mono
               id="embedding-base-url"
-              className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary disabled:opacity-50"
+              className="mt-tight"
               value={
                 s.embeddingApiBaseSource === "env"
                   ? (s.embeddingApiBaseEffective ?? "")
@@ -231,11 +237,12 @@ export function AdminInterfacesMemorySection() {
             <label className="mt-base block text-xs text-ink-muted" htmlFor="embedding-api-key">
               {t("admin:ifMemApiKeyLabel")}
             </label>
-            <input
+            <TextInput
+              mono
               id="embedding-api-key"
               type="password"
               autoComplete="off"
-              className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary disabled:opacity-50"
+              className="mt-tight"
               value={s.embeddingApiKey}
               onChange={(e) => s.setEmbeddingApiKey(e.target.value)}
               placeholder={
@@ -253,9 +260,10 @@ export function AdminInterfacesMemorySection() {
             <label className="mt-soft block text-xs text-ink-muted" htmlFor="embedding-header-name">
               {t("admin:ifMemHeaderForKey")}
             </label>
-            <input
+            <TextInput
+              mono
               id="embedding-header-name"
-              className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary disabled:opacity-50"
+              className="mt-tight max-w-controlWide"
               value={s.embeddingApiHeaderName}
               onChange={(e) => s.setEmbeddingApiHeaderName(e.target.value)}
               placeholder={t("admin:ifMemoryApiKeyPlaceholder")}
@@ -290,12 +298,13 @@ export function AdminInterfacesMemorySection() {
                 <label className="block text-xs text-ink-muted" htmlFor="rag-dim">
                   {t("admin:ifMemEmbedDim")}
                 </label>
-                <input
+                <TextInput
+                  mono
                   id="rag-dim"
                   type="number"
                   min={32}
                   max={4096}
-                  className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+                  className="mt-tight"
                   value={s.ragEmbeddingDim}
                   onChange={(e) => s.setRagEmbeddingDim(e.target.value)}
                 />
@@ -324,14 +333,16 @@ export function AdminInterfacesMemorySection() {
                       {t("admin:envProviderFoundIntro", { prefix: pendingExtractorEnvPrefix })}
                     </p>
                   </div>
-                  <button
+                  <Button
+                    variant="primary"
+                    tone="warning"
                     type="button"
                     disabled={s.envOperatorImporting === "extractor"}
-                    className="rounded-tile bg-warning px-soft py-snug text-sm font-medium text-black hover:bg-warning-hover disabled:opacity-50"
+                    className="px-soft py-snug text-sm text-black"
                     onClick={() => void s.importOperatorEnvProviders("extractor")}
                   >
                     {s.envOperatorImporting === "extractor" ? t("admin:envLlmImporting") : t("admin:envLlmImportButton")}
-                  </button>
+                  </Button>
                 </div>
                 <div className="mt-soft space-y-base">
                   {pendingExtractorEnvProviders.map((p) => (
@@ -359,9 +370,9 @@ export function AdminInterfacesMemorySection() {
                 <label className="mt-soft block text-xs text-ink-muted" htmlFor="extractor-provider-id">
                   {t("admin:ifMemExtractorProvider")}
                 </label>
-                <select
+                <Select
                   id="extractor-provider-id"
-                  className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+                  className="mt-tight max-w-controlWide"
                   value={s.extractorProviderId || s.extractorProviderIdEffective || ""}
                   onChange={(e) => s.setExtractorProviderId(e.target.value)}
                 >
@@ -371,7 +382,7 @@ export function AdminInterfacesMemorySection() {
                       {p.label} ({p.provider_id})
                     </option>
                   ))}
-                </select>
+                </Select>
                 {s.extractorProviderIdEffective ? (
                   <p className="mt-tight text-xs text-ink-muted">
                     {t("admin:ifMemExtractorProviderActive")}{" "}
@@ -389,9 +400,10 @@ export function AdminInterfacesMemorySection() {
             <label className="mt-base block text-xs text-ink-muted" htmlFor="extractor-base-url">
               {t("admin:ifMemBaseUrlLabel")}
             </label>
-            <input
+            <TextInput
+              mono
               id="extractor-base-url"
-              className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight"
               value={s.extractorApiBaseUrl}
               onChange={(e) => s.setExtractorApiBaseUrl(e.target.value)}
               placeholder={t("admin:ifMemExtractorUrlPlaceholder")}
@@ -415,11 +427,12 @@ export function AdminInterfacesMemorySection() {
             <label className="mt-base block text-xs text-ink-muted" htmlFor="extractor-api-key">
               {t("admin:ifMemApiKeyLabel")}
             </label>
-            <input
+            <TextInput
+              mono
               id="extractor-api-key"
               type="password"
               autoComplete="off"
-              className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight"
               value={s.extractorApiKey}
               onChange={(e) => s.setExtractorApiKey(e.target.value)}
               placeholder={s.extractorApiKeyConfigured ? t("admin:tokenReplacePlaceholder") : t("admin:ifMemPasteKey")}
@@ -429,9 +442,10 @@ export function AdminInterfacesMemorySection() {
                 <label className="block text-xs text-ink-muted" htmlFor="extractor-header-name">
                   {t("admin:ifMemHeaderForKey")}
                 </label>
-                <input
+                <TextInput
+                  mono
                   id="extractor-header-name"
-                  className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+                  className="mt-tight"
                   value={s.extractorApiHeaderName}
                   onChange={(e) => s.setExtractorApiHeaderName(e.target.value)}
                   placeholder={t("admin:ifMemoryApiKeyPlaceholder")}
@@ -460,12 +474,13 @@ export function AdminInterfacesMemorySection() {
                 <label className="block text-xs text-ink-muted" htmlFor="extractor-timeout">
                   {t("admin:ifMemExtractorTimeout")}
                 </label>
-                <input
+                <TextInput
+                  mono
                   id="extractor-timeout"
                   type="number"
                   min={1}
                   max={1800}
-                  className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+                  className="mt-tight"
                   value={s.extractorTimeoutSec}
                   onChange={(e) => s.setExtractorTimeoutSec(e.target.value)}
                 />
@@ -516,12 +531,13 @@ export function AdminInterfacesMemorySection() {
             <label className="block text-xs text-ink-muted" htmlFor="rag-chunk">
               {t("admin:ifMemChunkSize")}
             </label>
-            <input
+            <TextInput
+              mono
               id="rag-chunk"
               type="number"
               min={200}
               max={8000}
-              className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight"
               value={s.ragChunkSize}
               onChange={(e) => s.setRagChunkSize(e.target.value)}
             />
@@ -530,12 +546,13 @@ export function AdminInterfacesMemorySection() {
             <label className="block text-xs text-ink-muted" htmlFor="rag-overlap">
               {t("admin:ifMemChunkOverlap")}
             </label>
-            <input
+            <TextInput
+              mono
               id="rag-overlap"
               type="number"
               min={0}
               max={2000}
-              className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight"
               value={s.ragChunkOverlap}
               onChange={(e) => s.setRagChunkOverlap(e.target.value)}
             />
@@ -544,12 +561,13 @@ export function AdminInterfacesMemorySection() {
             <label className="block text-xs text-ink-muted" htmlFor="rag-topk">
               {t("admin:ifMemTopK")}
             </label>
-            <input
+            <TextInput
+              mono
               id="rag-topk"
               type="number"
               min={1}
               max={50}
-              className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight"
               value={s.ragTopK}
               onChange={(e) => s.setRagTopK(e.target.value)}
             />
@@ -558,13 +576,14 @@ export function AdminInterfacesMemorySection() {
             <label className="block text-xs text-ink-muted" htmlFor="rag-timeout">
               {t("admin:ifMemEmbedTimeout")}
             </label>
-            <input
+            <TextInput
+              mono
               id="rag-timeout"
               type="number"
               min={5}
               max={600}
               step="1"
-              className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight"
               value={s.ragEmbedTimeout}
               onChange={(e) => s.setRagEmbedTimeout(e.target.value)}
             />
@@ -573,9 +592,10 @@ export function AdminInterfacesMemorySection() {
         <label className="mt-wide block text-xs text-ink-muted" htmlFor="rag-domains">
           {t("admin:ifMemTenantDomains")}
         </label>
-        <input
+        <TextInput
+          mono
           id="rag-domains"
-          className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+          className="mt-tight"
           value={s.ragTenantDomains}
           onChange={(e) => s.setRagTenantDomains(e.target.value)}
           placeholder={t("admin:ifMemoryCollectionPlaceholder")}
@@ -589,9 +609,10 @@ export function AdminInterfacesMemorySection() {
         <label className="mt-wide block text-xs text-ink-muted" htmlFor="docs-root">
           {t("admin:ifMemDocsPathOptional")}
         </label>
-        <input
+        <TextInput
+          mono
           id="docs-root"
-          className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+          className="mt-tight"
           value={s.docsRoot}
           onChange={(e) => s.setDocsRoot(e.target.value)}
           placeholder={t("admin:ifMemoryDocsPathPlaceholder")}
@@ -625,12 +646,13 @@ export function AdminInterfacesMemorySection() {
             <label className="block text-xs text-ink-muted" htmlFor="mg-hops">
               {t("admin:ifMemGraphMaxHops")}
             </label>
-            <input
+            <TextInput
+              mono
               id="mg-hops"
               type="number"
               min={0}
               max={4}
-              className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight"
               value={s.memGraphMaxHops}
               onChange={(e) => s.setMemGraphMaxHops(e.target.value)}
             />
@@ -639,13 +661,14 @@ export function AdminInterfacesMemorySection() {
             <label className="block text-xs text-ink-muted" htmlFor="mg-score">
               {t("admin:ifMemGraphMinScore")}
             </label>
-            <input
+            <TextInput
+              mono
               id="mg-score"
               type="number"
               step="0.01"
               min={0}
               max={1}
-              className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight"
               value={s.memGraphMinScore}
               onChange={(e) => s.setMemGraphMinScore(e.target.value)}
             />
@@ -654,12 +677,13 @@ export function AdminInterfacesMemorySection() {
             <label className="block text-xs text-ink-muted" htmlFor="mg-bullets">
               {t("admin:ifMemGraphMaxBullets")}
             </label>
-            <input
+            <TextInput
+              mono
               id="mg-bullets"
               type="number"
               min={1}
               max={50}
-              className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight"
               value={s.memGraphMaxBullets}
               onChange={(e) => s.setMemGraphMaxBullets(e.target.value)}
             />
@@ -668,12 +692,13 @@ export function AdminInterfacesMemorySection() {
             <label className="block text-xs text-ink-muted" htmlFor="mg-chars">
               {t("admin:ifMemGraphMaxChars")}
             </label>
-            <input
+            <TextInput
+              mono
               id="mg-chars"
               type="number"
               min={200}
               max={50000}
-              className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
+              className="mt-tight"
               value={s.memGraphMaxPromptChars}
               onChange={(e) => s.setMemGraphMaxPromptChars(e.target.value)}
             />

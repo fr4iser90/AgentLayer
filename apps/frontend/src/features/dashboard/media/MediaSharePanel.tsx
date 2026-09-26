@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "../../../ui/Button";
 import { useAuth } from "../../../auth/AuthContext";
 import { apiFetch } from "../../../lib/api";
+import { Select, TextInput } from "../../../ui/Field";
 
 type UploadItem = {
   id: string;
@@ -162,22 +163,24 @@ export function MediaSharePanel() {
             const open = expandedId === u.id;
             return (
               <li key={u.id} className="rounded-tile border border-line p-base">
-                <button
+                <Button
+                  variant="plain"
+                  block
                   type="button"
-                  className="flex w-full items-center justify-between text-left text-sm text-ink-primary"
+                  className="w-full items-center justify-between text-sm text-ink-primary"
                   onClick={() => (open ? setExpandedId(null) : openItem(u.id, u.license))}
                 >
                   <span className="truncate">{label}</span>
                   <span className="ml-base shrink-0 text-meta text-ink-muted">
                     {u.shareable ? t("dashboard:mediaShareable") : t("dashboard:mediaNeedsLicense")}
                   </span>
-                </button>
+                </Button>
                 {open ? (
                   <div className="mt-soft space-y-base border-t border-line pt-soft">
                     <label className="block text-meta uppercase text-ink-muted">
                       {t("dashboard:mediaLicenseLabel")}
-                      <select
-                        className="mt-tight block w-full rounded-tile border border-line bg-field px-base py-tight text-xs text-ink-primary"
+                      <Select
+                        className="mt-tight block text-xs"
                         value={license}
                         onChange={(e) => setLicense(e.target.value)}
                       >
@@ -186,35 +189,35 @@ export function MediaSharePanel() {
                             {l}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     </label>
-                    <input
+                    <TextInput
                       type="text"
-                      className="w-full rounded-tile border border-line bg-field px-base py-tight text-xs text-ink-primary"
+                      className="text-xs"
                       placeholder={t("dashboard:mediaLicenseNotePlaceholder")}
                       value={licenseNote}
                       onChange={(e) => setLicenseNote(e.target.value)}
                     />
-                    <button
+                    <Button
                       type="button"
                       disabled={busy}
-                      className="rounded-tile border border-line px-base py-tight text-meta text-ink-primary hover:bg-white/5"
+                      className="px-base py-tight text-meta hover:bg-white/5"
                       onClick={() => void saveLicense(u.id)}
                     >
                       {t("dashboard:mediaSaveLicense")}
-                    </button>
+                    </Button>
                     {u.shareable || license ? (
                       <>
                         <div className="flex flex-wrap gap-base pt-base">
-                          <input
+                          <TextInput
                             type="email"
-                            className="min-w-[10rem] flex-1 rounded-tile border border-line bg-field px-base py-tight text-xs text-ink-primary"
+                            className="min-w-[10rem] flex-1 text-xs"
                             placeholder={t("dashboard:mediaShareEmailPlaceholder")}
                             value={shareEmail}
                             onChange={(e) => setShareEmail(e.target.value)}
                           />
-                          <select
-                            className="rounded-tile border border-line bg-field px-base py-tight text-xs text-ink-primary"
+                          <Select
+                            className="text-xs"
                             value={sharePerm}
                             onChange={(e) =>
                               setSharePerm(e.target.value as "play" | "play_and_download")
@@ -222,15 +225,16 @@ export function MediaSharePanel() {
                           >
                             <option value="play">{t("dashboard:mediaPermPlay")}</option>
                             <option value="play_and_download">{t("dashboard:mediaPermDownload")}</option>
-                          </select>
-                          <button
+                          </Select>
+                          <Button
+                            variant="primary"
                             type="button"
                             disabled={busy || !shareEmail.trim()}
-                            className="rounded-tile border border-accent/40 bg-accent-subtle px-base py-tight text-meta text-badge-accent"
+                            className="border-accent/40 px-base py-tight text-meta text-badge-accent"
                             onClick={() => void shareItem(u.id)}
                           >
                             {t("dashboard:mediaShareAction")}
-                          </button>
+                          </Button>
                         </div>
                         {grants.length > 0 ? (
                           <ul className="mt-base space-y-tight text-meta text-ink-muted">

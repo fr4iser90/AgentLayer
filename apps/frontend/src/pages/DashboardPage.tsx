@@ -49,6 +49,7 @@ import type {
 } from "../features/dashboard/types";
 import { layoutModeOf, parseUiLayout, withLayoutMode } from "../features/dashboard/layoutMode";
 import { Tooltip } from "../ui/Tooltip";
+import { Select, TextArea, TextInput } from "../ui/Field";
 
 function asUiLayout(raw: unknown): UiLayout | null {
   return parseUiLayout(raw);
@@ -1174,17 +1175,19 @@ export function DashboardPage() {
             <ul className="mt-deep grid gap-wide sm:grid-cols-2 lg:grid-cols-3">
               {installableCatalog.map((row) => (
                 <li key={row.kind}>
-                  <button
+                  <Button
+                    variant="plain"
+                    block
                     type="button"
                     onClick={() => confirmInstallCatalogRow(row)}
-                    className="flex h-full min-h-[148px] w-full flex-col rounded-sheet border border-line bg-card p-roomy text-left transition hover:border-accent/35 hover:bg-white/[0.03]"
+                    className="h-full min-h-[148px] w-full flex-col rounded-sheet border border-line bg-card p-roomy transition hover:border-accent/35 hover:bg-white/[0.03]"
                   >
                     <span className="text-base font-medium text-ink-primary">{row.label}</span>
                     {row.description ? (
                       <span className="mt-base text-sm leading-snug text-ink-muted">{row.description}</span>
                     ) : null}
                     <span className="mt-auto pt-wide text-sm font-medium text-accent">{t("dashboard:install")}</span>
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>
@@ -1254,7 +1257,9 @@ export function DashboardPage() {
         </p>
         <div className="flex flex-col gap-hair">
           {structureEditAllowed ? (
-            <button
+            <Button
+              variant="plain"
+              block
               type="button"
               onClick={() => {
                 setNewWsModalOpen(true);
@@ -1262,10 +1267,10 @@ export function DashboardPage() {
                 setSelectedId(null);
                 setActionsSidebarOpen(false);
               }}
-              className="rounded-tile px-base py-snug text-left text-xs text-ink-primary transition hover:bg-white/5"
+              className="rounded-tile px-base py-snug text-xs text-ink-primary transition hover:bg-white/5"
             >
               {t("dashboard:createNew")}
-            </button>
+            </Button>
           ) : null}
           <button
             type="button"
@@ -1282,13 +1287,15 @@ export function DashboardPage() {
             {t("dashboard:overviewTitle")}
           </button>
           <Tooltip label={t("dashboard:comingSoon")}>
-          <button
+          <Button
+            variant="plain"
+            block
               type="button"
               disabled
-              className="cursor-not-allowed rounded-tile px-base py-snug text-left text-xs text-white/30"
-            >
+              className="cursor-not-allowed rounded-tile px-base py-snug text-xs text-white/30"
+          >
               {t("dashboard:import")}
-            </button>
+            </Button>
           </Tooltip>
           <button
             type="button"
@@ -1336,22 +1343,26 @@ export function DashboardPage() {
         <p className="mt-tight text-sm text-ink-muted">{t("dashboard:hubHomeSubtitle")}</p>
       </div>
       <div className="grid gap-wide sm:grid-cols-2">
-        <button
+        <Button
+          variant="plain"
+          block
           type="button"
           onClick={() => setNewWsModalOpen(true)}
-          className="flex flex-col rounded-sheet border border-line bg-card p-broad text-left transition hover:border-accent/35 hover:bg-white/[0.03]"
+          className="flex-col rounded-sheet border border-line bg-card p-broad transition hover:border-accent/35 hover:bg-white/[0.03]"
         >
           <span className="text-base font-semibold text-ink-primary">{t("dashboard:newDashboardTitle")}</span>
           <span className="mt-base text-sm text-ink-muted">{t("dashboard:newDashboardSubtitle")}</span>
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="plain"
+          block
           type="button"
           onClick={() => openCatalog()}
-          className="flex flex-col rounded-sheet border border-line bg-card p-broad text-left transition hover:border-accent/35 hover:bg-white/[0.03]"
+          className="flex-col rounded-sheet border border-line bg-card p-broad transition hover:border-accent/35 hover:bg-white/[0.03]"
         >
           <span className="text-base font-semibold text-ink-primary">{t("dashboard:catalogTitle")}</span>
           <span className="mt-base text-sm text-ink-muted">{t("dashboard:catalogIntro")}</span>
-        </button>
+        </Button>
       </div>
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{t("dashboard:recentActivity")}</p>
@@ -1361,14 +1372,16 @@ export function DashboardPage() {
           <ul className="mt-base space-y-snug text-sm text-ink-secondary">
             {recentActivity.map((w) => (
               <li key={w.id}>
-                <button
+                <Button
+                  variant="plain"
+                  block
                   type="button"
-                  className="w-full rounded-tile px-base py-snug text-left hover:bg-white/5"
+                  className="w-full rounded-tile px-base py-snug hover:bg-white/5"
                   onClick={() => selectDashboard(w.id)}
                 >
                   <span className="text-ink-primary">{w.title || w.kind}</span>
                   <span className="text-ink-muted"> — {relativeActivityEn(w.updated_at)}</span>
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -1380,35 +1393,36 @@ export function DashboardPage() {
   const catalogMain = (
     <div className="min-h-0 flex-1 space-y-wide p-wide md:p-broad">
       <div className="flex flex-wrap items-end gap-soft">
-        <button
+        <Button
+          variant="ghost"
           type="button"
           onClick={() => setHubPanel("home")}
           className="text-sm text-accent hover:text-badge-accent"
         >
           {t("dashboard:backToDashboards")}
-        </button>
+        </Button>
       </div>
       <h1 className="text-xl font-semibold text-ink-primary">{t("dashboard:catalogTitle")}</h1>
       <div className="flex flex-wrap items-end gap-soft">
         <div className="min-w-[200px] flex-1">
           <label className="mb-tight block text-xs text-ink-muted">{t("dashboard:catalogSearchLabel")}</label>
-          <input
+          <TextInput
             value={catalogQuery}
             onChange={(e) => setCatalogQuery(e.target.value)}
             placeholder={t("dashboard:filterByNamePlaceholder")}
-            className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-accent/50"
+            className="outline-none"
           />
         </div>
         <div>
           <label className="mb-tight block text-xs text-ink-muted">{t("dashboard:catalogCategoryLabel")}</label>
-          <select
+          <Select
             disabled
-            className="rounded-card border border-line bg-field px-soft py-base text-sm text-white/50"
+            className="text-white/50"
             value="all"
             onChange={() => {}}
           >
             <option value="all">{t("dashboard:catalogCategoryAll")}</option>
-          </select>
+          </Select>
         </div>
       </div>
       {catalogRows.length === 0 ? (
@@ -1432,23 +1446,24 @@ export function DashboardPage() {
                       {t("dashboard:catalogInstalledBadge")}
                     </Badge>
                   ) : (
-                    <button
+                    <Button
+                      variant="primary"
                       type="button"
                       disabled={installBusy || !row.has_schema}
-                      className="rounded-card bg-accent px-soft py-snug text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+                      className="px-soft py-snug text-sm"
                       onClick={() => confirmInstallCatalogRow(row)}
                     >
                       {t("dashboard:install")}
-                    </button>
+                    </Button>
                   )}
                   {isInstalled && row.has_template ? (
-                    <button
+                    <Button
                       type="button"
-                      className="rounded-card border border-line px-soft py-snug text-sm text-ink-primary hover:bg-white/5"
+                      className="px-soft py-snug text-sm hover:bg-white/5"
                       onClick={() => void createWs(row)}
                     >
                       {t("dashboard:catalogCreateDashboardBtn")}
-                    </button>
+                    </Button>
                   ) : null}
                 </div>
               </li>
@@ -1546,9 +1561,9 @@ export function DashboardPage() {
                 <div className="mb-wide flex flex-wrap items-end gap-soft">
                   <div className="min-w-[200px] flex-1">
                     <label className="mb-tight block text-xs text-ink-muted">{t("dashboard:dashboardTitleLabel")}</label>
-                    <input
+                    <TextInput
                       readOnly={!canEditStructure}
-                      className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-accent/50 read-only:cursor-default read-only:opacity-90"
+                      className="outline-none"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                     />
@@ -1556,13 +1571,14 @@ export function DashboardPage() {
                   <div className="flex flex-wrap gap-base">
                     {canEditStructure ? (
                       !layoutEditMode ? (
-                        <button
+                        <Button
+                          size="lg"
                           type="button"
-                          className="rounded-card border border-line px-wide py-base text-sm text-ink-primary hover:bg-white/5"
+                          className="px-wide py-base text-sm hover:bg-white/5"
                           onClick={() => startLayoutEdit()}
                         >
                           {t("dashboard:editLayout")}
-                        </button>
+                        </Button>
                       ) : (
                         <>
                           <div className="flex overflow-hidden rounded-card border border-line">
@@ -1607,32 +1623,36 @@ export function DashboardPage() {
                       )
                     ) : null}
                     {canEditStructure || (useMode && canEditContent) ? (
-                      <button
+                      <Button
+                        variant="primary"
+                        size="lg"
                         type="button"
                         disabled={saving}
-                        className="rounded-card bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+                        className="px-wide py-base text-sm"
                         onClick={() => void save()}
                       >
                         {saving ? t("dashboard:saving") : t("admin:save")}
-                      </button>
+                      </Button>
                     ) : null}
                     {canEditStructure && selectedId && layoutHasImportableList(uiLayout) ? (
-                      <button
+                      <Button
+                        size="lg"
                         type="button"
-                        className="rounded-card border border-violet-500/40 bg-violet-950/25 px-wide py-base text-sm text-violet-100 hover:bg-violet-900/35"
+                        className="border-violet-500/40 bg-violet-950/25 px-wide py-base text-sm text-violet-100 hover:bg-violet-900/35"
                         onClick={() => setProjectsImportOpen(true)}
                       >
                         {t("dashboard:importFromGithub")}
-                      </button>
+                      </Button>
                     ) : null}
                     {detail && canEditStructure ? (
-                      <button
+                      <Button
+                        size="lg"
                         type="button"
-                        className="rounded-card border border-line px-wide py-base text-sm text-ink-primary hover:bg-white/5"
+                        className="px-wide py-base text-sm hover:bg-white/5"
                         onClick={() => setSettingsOpen(true)}
                       >
                         {t("dashboard:settingsLabel")}
-                      </button>
+                      </Button>
                     ) : null}
                     {isPrimaryOwner && canEditStructure ? (
                       <Button
@@ -1686,41 +1706,47 @@ export function DashboardPage() {
                     </span>
                     {canEditStructure ? (
                       !layoutEditMode ? (
-                        <button
+                        <Button
+                          size="sm"
                           type="button"
-                          className="rounded-card border border-line px-soft py-snug text-xs text-ink-primary hover:bg-white/5"
+                          className="px-soft py-snug text-xs hover:bg-white/5"
                           onClick={() => startLayoutEdit()}
                         >
                           {t("dashboard:editLayout")}
-                        </button>
+                        </Button>
                       ) : (
-                        <button
+                        <Button
+                          variant="primary"
+                          size="sm"
                           type="button"
-                          className="rounded-card border border-accent/50 bg-accent-subtle px-soft py-snug text-xs text-badge-accent"
+                          className="border-accent/50 px-soft py-snug text-xs text-badge-accent"
                           onClick={() => cancelLayoutEdit()}
                         >
                           {t("admin:cancel")}
-                        </button>
+                        </Button>
                       )
                     ) : null}
                     {canEditStructure || (useMode && canEditContent) ? (
-                      <button
+                      <Button
+                        variant="primary"
+                        size="sm"
                         type="button"
                         disabled={saving}
-                        className="rounded-card bg-accent px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+                        className="px-soft py-snug text-xs"
                         onClick={() => void save()}
                       >
                         {saving ? t("dashboard:saving") : t("admin:save")}
-                      </button>
+                      </Button>
                     ) : null}
                     {detail && canEditStructure ? (
-                      <button
+                      <Button
+                        size="sm"
                         type="button"
-                        className="rounded-card border border-line px-soft py-snug text-xs text-ink-primary hover:bg-white/5"
+                        className="px-soft py-snug text-xs hover:bg-white/5"
                         onClick={() => setSettingsOpen(true)}
                       >
                         {t("dashboard:settingsLabel")}
-                      </button>
+                      </Button>
                     ) : null}
                   </div>
                 )}
@@ -1801,13 +1827,15 @@ export function DashboardPage() {
               </div>
             </aside>
           ) : dashboardReady && chatDock === "hidden" && isCanvasBoard ? (
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               type="button"
-              className="fixed bottom-6 right-6 z-canvas rounded-card border border-accent/40 bg-accent-subtle px-soft py-base text-xs font-medium text-badge-accent shadow-lg hover:bg-accent-subtle lg:bottom-8 lg:right-8"
+              className="fixed bottom-6 right-6 z-canvas border-accent/40 px-soft py-base text-xs text-badge-accent shadow-lg lg:bottom-8 lg:right-8"
               onClick={() => setChatDock("mini")}
             >
               {t("dashboard:chatDockShow")}
-            </button>
+            </Button>
           ) : null}
         </div>
       </div>
@@ -1842,15 +1870,15 @@ export function DashboardPage() {
       >
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <div className="flex shrink-0 items-center gap-base border-b border-line px-wide py-base md:hidden">
-            <button
+            <Button
               type="button"
-              className="rounded-card border border-line bg-black/30 px-firm py-snug text-meta font-medium text-ink-secondary hover:bg-white/10"
+              className="bg-black/30 px-firm py-snug text-meta text-ink-secondary hover:bg-white/10"
               aria-expanded={actionsSidebarOpen}
               aria-label={t("dashboard:openActionsSidebar")}
               onClick={() => setActionsSidebarOpen(true)}
             >
               {t("dashboard:openActionsSidebarShort")}
-            </button>
+            </Button>
           </div>
           {main}
         </div>
@@ -1890,14 +1918,14 @@ export function DashboardPage() {
                 </p>
                 <p className="mt-tight text-xs text-ink-muted">{t("dashboard:templateImportHint")}</p>
                 <div className="mt-soft flex flex-wrap gap-base">
-                  <button
+                  <Button
                     type="button"
                     disabled={templateBusy}
-                    className="rounded-card border border-line px-soft py-base text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
+                    className="px-soft py-base text-sm hover:bg-white/5"
                     onClick={() => void exportTemplate()}
                   >
                     {t("dashboard:templateExport")}
-                  </button>
+                  </Button>
                   <label className="cursor-pointer rounded-card bg-accent px-soft py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover">
                     {t("dashboard:templateImport")}
                     <input
@@ -1926,7 +1954,8 @@ export function DashboardPage() {
               <label className="mt-soft block text-meta text-ink-muted" htmlFor="ws-agent-prompt">
                 {t("dashboard:dashboardAgentPromptLabel")}
               </label>
-              <textarea
+              <TextArea
+                mono
                 id="ws-agent-prompt"
                 readOnly={!canEditContent}
                 rows={8}
@@ -1946,7 +1975,7 @@ export function DashboardPage() {
                   });
                 }}
                 placeholder={t("dashboard:agentPromptExtraPlaceholder")}
-                className="mt-tight w-full resize-y rounded-card border border-line bg-field px-soft py-base font-mono text-sm leading-relaxed text-ink-primary outline-none placeholder:text-white/25 focus:border-accent/50 read-only:cursor-default read-only:opacity-90"
+                className="mt-tight resize-y leading-relaxed outline-none"
               />
               <p className="mt-base text-meta text-ink-muted">{t("dashboard:agentPromptExtraSavedHint")}</p>
               <p className="mt-soft text-meta text-ink-muted">{t("dashboard:agentPromptScrollHint")}</p>
@@ -1972,14 +2001,15 @@ export function DashboardPage() {
                     <Badge key={name} tone="accent" className="max-w-full">
                       <span className="truncate font-mono">{name}</span>
                       {canEditContent ? (
-                        <button
+                        <Button
+                          variant="ghost"
                           type="button"
                           className="shrink-0 text-badge-accent hover:text-white"
                           aria-label={t("dashboard:dashboardToolRemoveAria", { name })}
                           onClick={() => removeToolFromDashboardAllowlist(name)}
                         >
                           ×
-                        </button>
+                        </Button>
                       ) : null}
                     </Badge>
                   ))
@@ -1991,10 +2021,10 @@ export function DashboardPage() {
                     <label className="mb-tight block text-meta text-ink-muted" htmlFor="ws-tool-pick">
                       {t("dashboard:dashboardToolFromCatalog")}
                     </label>
-                    <select
+                    <Select
                       id="ws-tool-pick"
                       disabled={pickableCatalogTools.length === 0}
-                      className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-accent/50 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="outline-none"
                       defaultValue=""
                       onChange={(e) => {
                         const v = e.currentTarget.value;
@@ -2010,14 +2040,15 @@ export function DashboardPage() {
                           {n}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                   <div className="min-w-[min(100%,200px)] flex-1">
                     <label className="mb-tight block text-meta text-ink-muted" htmlFor="ws-tool-manual">
                       {t("dashboard:dashboardToolManualLabel")}
                     </label>
                     <div className="flex gap-base">
-                      <input
+                      <TextInput
+                        mono
                         id="ws-tool-manual"
                         value={manualToolName}
                         onChange={(e) => setManualToolName(e.target.value)}
@@ -2029,18 +2060,18 @@ export function DashboardPage() {
                           }
                         }}
                         placeholder={t("dashboard:shareToolNamePlaceholder")}
-                        className="min-w-0 flex-1 rounded-card border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary outline-none focus:border-accent/50"
+                        className="min-w-0 flex-1 outline-none"
                       />
-                      <button
+                      <Button
                         type="button"
-                        className="shrink-0 rounded-card border border-line px-soft py-base text-sm text-ink-primary hover:bg-white/5"
+                        className="shrink-0 px-soft py-base text-sm hover:bg-white/5"
                         onClick={() => {
                           addToolToDashboardAllowlist(manualToolName);
                           setManualToolName("");
                         }}
                       >
                         {t("dashboard:dashboardToolAdd")}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -2063,36 +2094,37 @@ export function DashboardPage() {
                     <label className="mb-tight block text-meta text-ink-muted">
                       {t("dashboard:membersEmailLabel")}
                     </label>
-                    <input
+                    <TextInput
                       type="email"
                       value={memberEmail}
                       onChange={(e) => setMemberEmail(e.target.value)}
                       placeholder={t("dashboard:shareEmailPlaceholder")}
-                      className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-accent/50"
+                      className="outline-none"
                     />
                   </div>
                   <div>
                     <label className="mb-tight block text-meta text-ink-muted">
                       {t("dashboard:membersRoleLabel")}
                     </label>
-                    <select
+                    <Select
                       value={memberRole}
                       onChange={(e) => setMemberRole(e.target.value as "viewer" | "editor" | "co_owner")}
-                      className="rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
                     >
                       <option value="viewer">{t("dashboard:membersRoleViewer")}</option>
                       <option value="editor">{t("dashboard:membersRoleEditor")}</option>
                       <option value="co_owner">{t("dashboard:membersRoleCoOwner")}</option>
-                    </select>
+                    </Select>
                   </div>
-                  <button
+                  <Button
+                    variant="primary"
+                    size="lg"
                     type="button"
                     disabled={membersBusy || !memberEmail.trim()}
-                    className="rounded-card bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+                    className="px-wide py-base text-sm"
                     onClick={() => void addDashboardMember()}
                   >
                     {membersBusy ? "…" : t("dashboard:membersAdd")}
-                  </button>
+                  </Button>
                 </div>
                 {members.length === 0 ? (
                   <p className="mt-soft text-xs text-ink-muted">{t("dashboard:membersNoneYet")}</p>
@@ -2136,37 +2168,39 @@ export function DashboardPage() {
                     <label className="mb-tight block text-meta text-ink-muted">
                       {t("dashboard:blockShareUserEmailLabel")}
                     </label>
-                    <input
+                    <TextInput
                       type="email"
                       value={blockShareEmail}
                       onChange={(e) => setBlockShareEmail(e.target.value)}
                       placeholder={t("dashboard:shareEmailPlaceholder")}
-                      className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-accent/50"
+                      className="outline-none"
                     />
                   </div>
                   <div className="min-w-[140px]">
                     <label className="mb-tight block text-meta text-ink-muted">
                       {t("dashboard:blockShareAccessLabel")}
                     </label>
-                    <select
+                    <Select
                       value={blockSharePermission}
                       onChange={(e) =>
                         setBlockSharePermission(e.target.value === "edit" ? "edit" : "view")
                       }
-                      className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-accent/50"
+                      className="outline-none"
                     >
                       <option value="view">{t("dashboard:blockShareViewOnly")}</option>
                       <option value="edit">{t("dashboard:blockShareEdit")}</option>
-                    </select>
+                    </Select>
                   </div>
-                  <button
+                  <Button
+                    variant="primary"
+                    size="lg"
                     type="button"
                     disabled={blockSharesBusy || !blockShareEmail.trim()}
-                    className="rounded-card bg-accent px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+                    className="px-wide py-base text-sm"
                     onClick={() => void addBlockShareGrant()}
                   >
                     {blockSharesBusy ? "…" : t("dashboard:shareSelectedBlocks")}
-                  </button>
+                  </Button>
                 </div>
                 <p className="mt-soft text-meta uppercase tracking-wide text-ink-muted">
                   {t("dashboard:blocksToInclude")}
@@ -2244,13 +2278,16 @@ export function DashboardPage() {
                       {window.location.origin}
                       {createdPublicLink}
                     </p>
-                    <button
+                    <Button
+                      variant="primary"
+                      tone="success"
+                      size="sm"
                       type="button"
-                      className="mt-base rounded-tile bg-success px-soft py-snug text-xs font-medium text-ink-primary hover:bg-success-hover"
+                      className="mt-base px-soft py-snug text-xs"
                       onClick={() => void copyPublicShareUrl(createdPublicLink)}
                     >
                       {t("dashboard:publicShareCopyLink")}
-                    </button>
+                    </Button>
                   </div>
                 ) : null}
                 <div className="mt-soft flex flex-wrap items-end gap-base">
@@ -2258,46 +2295,48 @@ export function DashboardPage() {
                     <label className="mb-tight block text-meta text-ink-muted">
                       {t("dashboard:publicShareLabelField")}
                     </label>
-                    <input
+                    <TextInput
                       type="text"
                       value={publicShareLabel}
                       onChange={(e) => setPublicShareLabel(e.target.value)}
                       placeholder={t("dashboard:publicShareLabelPlaceholder")}
-                      className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-violet-500/50"
+                      className="outline-none"
                     />
                   </div>
                   <div className="min-w-[180px]">
                     <label className="mb-tight block text-meta text-ink-muted">
                       {t("dashboard:publicShareExpiresLabel")}
                     </label>
-                    <input
+                    <TextInput
                       type="datetime-local"
                       value={publicShareExpiresAt}
                       onChange={(e) => setPublicShareExpiresAt(e.target.value)}
-                      className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-violet-500/50"
+                      className="outline-none"
                     />
                   </div>
                   <div className="min-w-[160px]">
                     <label className="mb-tight block text-meta text-ink-muted">
                       {t("dashboard:publicSharePasswordField")}
                     </label>
-                    <input
+                    <TextInput
                       type="password"
                       value={publicSharePassword}
                       onChange={(e) => setPublicSharePassword(e.target.value)}
                       placeholder={t("dashboard:publicSharePasswordOptional")}
-                      className="w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-violet-500/50"
+                      className="outline-none"
                       autoComplete="new-password"
                     />
                   </div>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="lg"
                     type="button"
                     disabled={publicSharesBusy}
-                    className="rounded-card bg-violet-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-violet-500 disabled:opacity-50"
+                    className="bg-violet-600 px-wide py-base text-sm hover:bg-violet-500"
                     onClick={() => void createPublicShare()}
                   >
                     {publicSharesBusy ? "…" : t("dashboard:publicShareCreate")}
-                  </button>
+                  </Button>
                 </div>
                 <p className="mt-soft text-meta uppercase tracking-wide text-ink-muted">
                   {t("dashboard:publicShareBlocksHint")}
@@ -2449,13 +2488,15 @@ export function DashboardPage() {
               ) : (
                 kindsAllowedForNewDashboard.map((row) => (
                   <li key={row.kind}>
-                    <button
+                    <Button
+                      variant="plain"
+                      block
                       type="button"
-                      className="w-full rounded-card border border-line px-soft py-base text-left text-sm text-ink-primary hover:bg-white/5"
+                      className="w-full rounded-card border border-line px-soft py-base text-sm text-ink-primary hover:bg-white/5"
                       onClick={() => void createWs(row)}
                     >
                       {row.label}
-                    </button>
+                    </Button>
                   </li>
                 ))
               )}
@@ -2525,17 +2566,17 @@ export function DashboardPage() {
         >
           <label className="block text-sm text-ink-muted">
             {t("dashboard:pinBlockTarget")}
-            <select
+            <Select
               value={pinTargetId}
               onChange={(e) => setPinTargetId(e.target.value)}
-              className="mt-tight w-full rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              className="mt-tight"
             >
               {pinTargetOptions.map((w) => (
                 <option key={w.id} value={w.id}>
                   {w.title || w.kind}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         </Modal>
       ) : null}

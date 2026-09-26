@@ -84,13 +84,14 @@ export function DashboardLayoutProposalPanel({
             <h2 className="text-sm font-semibold text-ink-primary">{t("dashboard:layoutProposalsTitle")}</h2>
             <p className="text-xs text-ink-muted">{t("dashboard:layoutProposalsSubtitle")}</p>
           </div>
-          <button
+          <Button
+            size="sm"
             type="button"
             onClick={onClose}
-            className="rounded-card border border-line px-firm py-tight text-xs text-ink-secondary hover:bg-white/5"
+            className="px-firm py-tight text-xs text-ink-secondary hover:bg-white/5"
           >
             {t("dashboard:layoutProposalsClose")}
-          </button>
+          </Button>
         </header>
 
         {loading ? (
@@ -166,24 +167,30 @@ export function DashboardLayoutProposalPanel({
                   >
                     {t("dashboard:layoutProposalsCancel")}
                   </Button>
-                  <button
+                  <Button
+                    variant="primary"
+                    tone="success"
+                    size="sm"
                     type="button"
                     disabled={applyBusy}
                     onClick={() => void applyProposal(selected.id)}
-                    className="rounded-card bg-success px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-success-hover disabled:opacity-50"
+                    className="px-soft py-snug text-xs"
                   >
                     {applyBusy ? t("dashboard:saving") : t("dashboard:layoutProposalsApply")}
-                  </button>
+                  </Button>
                 </>
               ) : (
-                <button
+                <Button
+                  variant="primary"
+                  tone="success"
+                  size="lg"
                   type="button"
                   disabled={!selected || applyBusy}
                   onClick={() => selected && setConfirmId(selected.id)}
-                  className="rounded-card bg-success px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-success-hover disabled:opacity-50"
+                  className="px-wide py-base text-sm"
                 >
                   {t("dashboard:layoutProposalsApply")}
-                </button>
+                </Button>
               )}
             </footer>
           </>

@@ -6,6 +6,7 @@ import { itemLabel } from "./mediaTypes";
 import { useOptionalGlobalMedia } from "./GlobalMediaProvider";
 import { MediaMiniPlayerPanel } from "./MediaMiniPlayerPanel";
 import { mediaCanPlay, mediaPlaysEmbed } from "./mediaPlayerPlayback";
+import { Button } from "../../ui/Button";
 
 export function MediaMiniPlayer() {
   const { t } = useTranslation(["dashboard"]);
@@ -129,9 +130,10 @@ export function MediaMiniPlayer() {
 
           <div className="flex shrink-0 items-center gap-tight">
             {isEmbed && media.embedUrl ? (
-              <button
+              <Button
+                size="sm"
                 type="button"
-                className="rounded-tile border border-line px-base py-snug text-xs text-badge-accent hover:bg-white/10"
+                className="px-base py-snug text-xs text-badge-accent hover:bg-white/10"
                 onClick={() => setEmbedExpanded((open) => !open)}
                 aria-expanded={embedExpanded}
                 aria-label={
@@ -143,20 +145,23 @@ export function MediaMiniPlayer() {
                 {embedExpanded
                   ? t("dashboard:mediaMiniPlayerEmbedCollapse")
                   : t("dashboard:mediaMiniPlayerEmbedExpand")}
-              </button>
+              </Button>
             ) : null}
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               type="button"
-              className="rounded-tile px-base py-snug text-xs text-ink-primary hover:bg-white/10 disabled:opacity-40"
+              className="px-base py-snug text-xs hover:bg-white/10"
               onClick={media.playPrev}
               disabled={!canPlay}
               aria-label={t("dashboard:mediaMiniPlayerPrev")}
             >
               ⏮
-            </button>
-            <button
+            </Button>
+            <Button
+              size="sm"
               type="button"
-              className="rounded-tile bg-white/15 px-soft py-snug text-xs font-medium text-ink-primary hover:bg-white/20 disabled:opacity-40"
+              className="bg-white/15 px-soft py-snug text-xs hover:bg-white/20"
               onClick={media.togglePause}
               disabled={!canPlay || (isPersistentAudio && media.streamLoading)}
               aria-label={
@@ -166,16 +171,18 @@ export function MediaMiniPlayer() {
               }
             >
               {hasTrack && !media.paused ? "⏸" : "▶"}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               type="button"
-              className="rounded-tile px-base py-snug text-xs text-ink-primary hover:bg-white/10 disabled:opacity-40"
+              className="px-base py-snug text-xs hover:bg-white/10"
               onClick={media.playNext}
               disabled={!canPlay}
               aria-label={t("dashboard:mediaMiniPlayerNext")}
             >
               ⏭
-            </button>
+            </Button>
           </div>
 
           <div className="flex shrink-0 items-center gap-base">
@@ -187,15 +194,16 @@ export function MediaMiniPlayer() {
                 {t("dashboard:mediaMiniPlayerOpenDashboard")}
               </Link>
             ) : null}
-            <button
+            <Button
+              variant="ghost"
               type="button"
-              className="rounded-tile px-base py-tight text-meta text-ink-muted hover:bg-white/5 hover:text-neutral-200 disabled:opacity-40"
+              className="px-base py-tight text-meta text-ink-muted hover:bg-white/5 hover:text-neutral-200"
               onClick={media.stop}
               disabled={!hasTrack}
               aria-label={t("dashboard:mediaMiniPlayerStop")}
             >
               {t("dashboard:mediaMiniPlayerStop")}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

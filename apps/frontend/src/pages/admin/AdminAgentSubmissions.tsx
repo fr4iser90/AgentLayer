@@ -5,6 +5,8 @@ import { apiFetch } from "../../lib/api";
 import { formatDateTimeLocal } from "../../lib/formatDateTime";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import { Badge, type BadgeTone } from "../../ui/Badge";
+import { Select, TextArea } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 type SubmissionStatus = "pending" | "approved" | "rejected";
 type StatusFilter = SubmissionStatus | "all";
@@ -176,9 +178,9 @@ export function AdminAgentSubmissions() {
           <span className="sr-only">
             {t("admin:agentSubmissionsFilterLabel")}
           </span>
-          <select
+          <Select
             id="agents-submissions-filter"
-            className="rounded-tile border border-line bg-field px-base py-snug text-xs text-ink-primary"
+            className="text-xs"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
           >
@@ -186,16 +188,17 @@ export function AdminAgentSubmissions() {
             <option value="approved">{t("admin:agentSubmissionsFilterApproved")}</option>
             <option value="rejected">{t("admin:agentSubmissionsFilterRejected")}</option>
             <option value="all">{t("admin:agentSubmissionsFilterAll")}</option>
-          </select>
+          </Select>
         </label>
-        <button
+        <Button
+          size="lg"
           type="button"
-          className="rounded-tile bg-white/10 px-wide py-snug text-xs font-medium text-ink-primary hover:bg-white/15 disabled:opacity-50"
+          className="bg-white/10 px-wide py-snug text-xs hover:bg-white/15"
           disabled={loading}
           onClick={() => void loadList()}
         >
           {t("admin:agentSubmissionsRefresh")}
-        </button>
+        </Button>
       </div>
 
       {msg ? <p className="mt-wide text-sm text-badge-warning">{msg}</p> : null}
@@ -332,28 +335,34 @@ export function AdminAgentSubmissions() {
                   <label className="block text-xs text-ink-muted" htmlFor="agents-submissions-notes">
                     {t("admin:agentSubmissionsReviewNotes")}
                   </label>
-                  <textarea
+                  <TextArea
                     id="agents-submissions-notes"
-                    className="mt-tight min-h-20 w-full rounded-tile border border-line bg-field px-soft py-base text-xs text-ink-primary placeholder:text-neutral-500"
+                    className="mt-tight min-h-20 text-xs"
                     value={reviewNotes}
                     onChange={(e) => setReviewNotes(e.target.value)}
                     placeholder={t("admin:agentSubmissionsReviewNotesPlaceholder")}
                   />
                   <div className="mt-soft flex flex-wrap gap-base">
-                    <button
+                    <Button
+                      variant="primary"
+                      tone="success"
+                      size="lg"
                       type="button"
-                      className="rounded-tile bg-success px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-success-hover disabled:opacity-50"
+                      className="px-wide py-base text-sm"
                       onClick={() => setConfirm({ decision: "approve" })}
                     >
                       {t("admin:agentSubmissionsApprove")}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="primary"
+                      tone="danger"
+                      size="lg"
                       type="button"
-                      className="rounded-tile bg-danger px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-danger-hover disabled:opacity-50"
+                      className="px-wide py-base text-sm"
                       onClick={() => setConfirm({ decision: "reject" })}
                     >
                       {t("admin:agentSubmissionsReject")}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : null}

@@ -14,6 +14,7 @@ import {
 } from "./workspaceMcpBuilders";
 import { Button } from "../../ui/Button";
 import { Modal } from "../../ui/Modal";
+import { Select, TextArea, TextInput } from "../../ui/Field";
 
 type Props = {
   open: boolean;
@@ -204,8 +205,8 @@ export function WorkspaceMcpModal({
             <div className="mt-base grid gap-base sm:grid-cols-2">
               <label className="block sm:col-span-2">
                 <span className="text-meta text-ink-muted">{t("workspace:presetLabel")}</span>
-                <select
-                  className="mt-hair w-full rounded-card border border-line bg-field px-base py-snug text-xs text-ink-primary"
+                <Select
+                  className="mt-hair text-xs"
                   value={presetId}
                   onChange={(e) => applyPreset(e.target.value)}
                 >
@@ -214,12 +215,13 @@ export function WorkspaceMcpModal({
                       {p.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               <label className="block">
                 <span className="text-meta text-ink-muted">{t("workspace:serverIdLabel")}</span>
-                <input
-                  className="mt-hair w-full rounded-card border border-line bg-field px-base py-snug font-mono text-xs text-ink-primary"
+                <TextInput
+                  mono
+                  className="mt-hair text-xs"
                   value={serverId}
                   onChange={(e) => {
                     setServerId(e.target.value);
@@ -230,8 +232,9 @@ export function WorkspaceMcpModal({
               </label>
               <label className="block">
                 <span className="text-meta text-ink-muted">{t("workspace:packageLabel")}</span>
-                <input
-                  className="mt-hair w-full rounded-card border border-line bg-field px-base py-snug font-mono text-xs text-ink-primary"
+                <TextInput
+                  mono
+                  className="mt-hair text-xs"
                   value={packageSpec}
                   onChange={(e) => handlePackageSpecChange(e.target.value)}
                   placeholder={t("workspace:packagePlaceholder")}
@@ -274,8 +277,9 @@ export function WorkspaceMcpModal({
                 <span className="text-meta text-ink-muted">
                   {launchMode === "uvx" ? t("workspace:binaryAfterFromLabel") : t("workspace:binaryOnPathLabel")}
                 </span>
-                <input
-                  className="mt-hair w-full rounded-card border border-line bg-field px-base py-snug font-mono text-xs text-ink-primary"
+                <TextInput
+                  mono
+                  className="mt-hair text-xs"
                   value={binary}
                   onChange={(e) => {
                     setBinary(e.target.value);
@@ -286,8 +290,9 @@ export function WorkspaceMcpModal({
               </label>
               <label className="block">
                 <span className="text-meta text-ink-muted">{t("workspace:argsLabel")}</span>
-                <input
-                  className="mt-hair w-full rounded-card border border-line bg-field px-base py-snug font-mono text-xs text-ink-primary"
+                <TextInput
+                  mono
+                  className="mt-hair text-xs"
                   value={mcpArgsText}
                   onChange={(e) => {
                     setMcpArgsText(e.target.value);
@@ -318,13 +323,15 @@ export function WorkspaceMcpModal({
               </pre>
             ) : null}
             {uvFormError ? <p className="mt-base text-xs text-badge-danger">{uvFormError}</p> : null}
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               type="button"
-              className="mt-base rounded-card border border-accent/50 bg-accent-subtle px-soft py-snug text-xs font-medium text-badge-accent hover:bg-accent-subtle"
+              className="mt-base border-accent/50 px-soft py-snug text-xs text-badge-accent"
               onClick={handleAddUvServer}
             >
               {t("workspace:addToJsonList")}
-            </button>
+            </Button>
             {preset.toolInstallHint ? (
               <p className="mt-base text-meta text-ink-muted">
                 {t("workspace:optionalPersistentInstallHint", {
@@ -336,8 +343,9 @@ export function WorkspaceMcpModal({
           </section>
 
           <p className="mt-soft text-meta font-semibold uppercase tracking-wide text-ink-muted">{t("workspace:serversJsonTitle")}</p>
-          <textarea
-            className="mt-tight h-48 w-full resize-y rounded-card border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary"
+          <TextArea
+            mono
+            className="mt-tight resize-y text-xs"
             spellCheck={false}
             value={text}
             onChange={(e) => setText(e.target.value)}

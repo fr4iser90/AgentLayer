@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useOperatorSettings } from "../../../features/admin/operatorSettings/OperatorSettingsProvider";
+import { Select, TextArea, TextInput } from "../../../ui/Field";
 
 const JURISDICTIONS = ["none", "de", "en", "custom"] as const;
 
@@ -30,9 +31,9 @@ export function AdminInterfacesLegalSection() {
       <label className="mt-wide block text-xs text-ink-muted" htmlFor="legal-jurisdiction">
         {t("admin:ifPlatformLegalJurisdiction")}
       </label>
-      <select
+      <Select
         id="legal-jurisdiction"
-        className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+        className="mt-tight max-w-controlWide"
         value={s.legalJurisdiction}
         onChange={(e) => s.setLegalJurisdiction(e.target.value)}
       >
@@ -41,7 +42,7 @@ export function AdminInterfacesLegalSection() {
             {t(`admin:ifPlatformLegalJurisdiction_${j}`)}
           </option>
         ))}
-      </select>
+      </Select>
       <p className="mt-tight text-meta text-ink-muted">{t("admin:ifPlatformLegalJurisdictionHint")}</p>
 
       <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
@@ -58,9 +59,9 @@ export function AdminInterfacesLegalSection() {
       <div className="mt-broad grid gap-wide sm:grid-cols-2">
         <label className="block text-xs text-ink-muted" htmlFor="legal-entity-name">
           {t("admin:ifPlatformLegalEntityName")}
-          <input
+          <TextInput
             id="legal-entity-name"
-            className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+            className="mt-tight"
             value={s.legalEntityName}
             onChange={(e) => s.setLegalEntityName(e.target.value)}
             placeholder={t("admin:ifPlatformLegalEntityNamePlaceholder")}
@@ -68,10 +69,10 @@ export function AdminInterfacesLegalSection() {
         </label>
         <label className="block text-xs text-ink-muted" htmlFor="legal-entity-email">
           {t("admin:ifPlatformLegalEntityEmail")}
-          <input
+          <TextInput
             id="legal-entity-email"
             type="email"
-            className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+            className="mt-tight"
             value={s.legalEntityEmail}
             onChange={(e) => s.setLegalEntityEmail(e.target.value)}
             placeholder={t("admin:ifPlatformLegalEntityEmailPlaceholder")}
@@ -81,10 +82,10 @@ export function AdminInterfacesLegalSection() {
 
       <label className="mt-wide block text-xs text-ink-muted" htmlFor="legal-entity-address">
         {t("admin:ifPlatformLegalEntityAddress")}
-        <textarea
+        <TextArea
           id="legal-entity-address"
           rows={2}
-          className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+          className="mt-tight"
           value={s.legalEntityAddress}
           onChange={(e) => s.setLegalEntityAddress(e.target.value)}
           placeholder={t("admin:ifPlatformLegalEntityAddressPlaceholder")}
@@ -93,9 +94,9 @@ export function AdminInterfacesLegalSection() {
 
       <label className="mt-wide block text-xs text-ink-muted" htmlFor="legal-entity-phone">
         {t("admin:ifPlatformLegalEntityPhone")}
-        <input
+        <TextInput
           id="legal-entity-phone"
-          className="mt-tight w-full max-w-controlWide rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+          className="mt-tight max-w-controlWide"
           value={s.legalEntityPhone}
           onChange={(e) => s.setLegalEntityPhone(e.target.value)}
         />
@@ -108,10 +109,11 @@ export function AdminInterfacesLegalSection() {
         <p className="mt-base text-xs text-ink-muted">{t("admin:ifPlatformLegalOverridesIntro")}</p>
         <label className="mt-wide block text-xs text-ink-muted" htmlFor="legal-impressum-md">
           {t("admin:ifPlatformLegalImpressumOverride")}
-          <textarea
+          <TextArea
+            mono
             id="legal-impressum-md"
             rows={6}
-            className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary"
+            className="mt-tight text-xs"
             value={s.legalImpressumMd}
             onChange={(e) => s.setLegalImpressumMd(e.target.value)}
             placeholder={t("admin:ifPlatformLegalOverridePlaceholder")}
@@ -119,10 +121,11 @@ export function AdminInterfacesLegalSection() {
         </label>
         <label className="mt-wide block text-xs text-ink-muted" htmlFor="legal-privacy-md">
           {t("admin:ifPlatformLegalPrivacyOverride")}
-          <textarea
+          <TextArea
+            mono
             id="legal-privacy-md"
             rows={8}
-            className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary"
+            className="mt-tight text-xs"
             value={s.legalPrivacyMd}
             onChange={(e) => s.setLegalPrivacyMd(e.target.value)}
             placeholder={t("admin:ifPlatformLegalOverridePlaceholder")}
@@ -130,10 +133,11 @@ export function AdminInterfacesLegalSection() {
         </label>
         <label className="mt-wide block text-xs text-ink-muted" htmlFor="legal-terms-md">
           {t("admin:ifPlatformLegalTermsOverride")}
-          <textarea
+          <TextArea
+            mono
             id="legal-terms-md"
             rows={8}
-            className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary"
+            className="mt-tight text-xs"
             value={s.legalTermsMd}
             onChange={(e) => s.setLegalTermsMd(e.target.value)}
             placeholder={t("admin:ifPlatformLegalOverridePlaceholder")}

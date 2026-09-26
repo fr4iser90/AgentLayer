@@ -79,6 +79,7 @@ import { Button } from "../../ui/Button";
 import { Tooltip } from "../../ui/Tooltip";
 import { Badge } from "../../ui/Badge";
 import { Modal } from "../../ui/Modal";
+import { Select, TextInput } from "../../ui/Field";
 
 const benchCheckboxClass =
   "h-4 w-4 shrink-0 rounded-tile border-2 border-accent/70 bg-black/60 text-accent accent-accent focus:ring-2 focus:ring-accent/70 focus:ring-offset-0";
@@ -170,13 +171,14 @@ function CollapsibleMono({
         {text}
       </pre>
       {long ? (
-        <button
+        <Button
+          variant="ghost"
           type="button"
           className="mt-tight text-accent hover:underline"
           onClick={() => setExpanded((v) => !v)}
         >
           {expanded ? t("admin:benchDetailShowLess") : t("admin:benchDetailShowFull")}
-        </button>
+        </Button>
       ) : null}
     </div>
   );
@@ -1863,17 +1865,17 @@ export function AdminBenchmarks() {
             <p className="mt-tight text-xs text-ink-muted">{t("admin:benchRunIdentityDesc")}</p>
             <label className="mt-soft block text-xs text-ink-muted">{t("admin:benchRunAs")}</label>
             <div className="mt-tight flex flex-wrap items-center gap-base">
-              <select
+              <Select
                 value={runAsUserId}
                 onChange={(e) => setRunAsUserId(e.target.value)}
-                className="min-w-[16rem] flex-1 rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
+                className="min-w-[16rem] flex-1"
               >
                 {tenantUsers.map((u) => (
                   <option key={u.id} value={u.id}>
                     {userOptionLabel(u)}
                   </option>
                 ))}
-              </select>
+              </Select>
               <Link
                 to="/admin/users"
                 className="text-xs text-accent hover:underline"
@@ -1886,10 +1888,10 @@ export function AdminBenchmarks() {
                 <label className="mt-soft block text-xs text-ink-muted">
                   {t("admin:benchFriendUser")}
                 </label>
-                <select
+                <Select
                   value={friendUserId}
                   onChange={(e) => setFriendUserId(e.target.value)}
-                  className="mt-tight w-full max-w-controlWide rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
+                  className="mt-tight max-w-controlWide"
                 >
                   {friendCandidates.length === 0 ? (
                     <option value="">{t("admin:benchFriendUserEmpty")}</option>
@@ -1900,7 +1902,7 @@ export function AdminBenchmarks() {
                       </option>
                     ))
                   )}
-                </select>
+                </Select>
                 <p className="mt-tight text-meta text-ink-muted">{t("admin:benchFriendUserHint")}</p>
               </>
             ) : null}
@@ -1960,16 +1962,17 @@ export function AdminBenchmarks() {
                 <p className="mt-base text-xs text-ink-muted">{t("admin:benchReadinessUnavailable")}</p>
               )}
               {runAsUserId ? (
-                <button
+                <Button
+                  size="sm"
                   type="button"
                   disabled={cleaningWorkspaces || readinessLoading}
                   onClick={() => void onCleanupBenchWorkspaces()}
-                  className="mt-soft rounded-card border border-line-strong bg-black/30 px-soft py-snug text-xs font-medium text-ink-primary hover:bg-white/10 disabled:opacity-50"
+                  className="mt-soft bg-black/30 px-soft py-snug text-xs hover:bg-white/10"
                 >
                   {cleaningWorkspaces
                     ? t("admin:benchCleanupRunning")
                     : t("admin:benchCleanupResources")}
-                </button>
+                </Button>
               ) : null}
               <p className="mt-base text-meta text-ink-muted">
                 {t("admin:benchCleanupWorkspacesHint")}
@@ -2018,13 +2021,15 @@ export function AdminBenchmarks() {
                 ) : null}
               </div>
               {benchProviders.length ? (
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   type="button"
                   onClick={selectAllProviders}
                   className="text-xs text-accent hover:underline"
                 >
                   {t("admin:benchSelectAllEndpoints")}
-                </button>
+                </Button>
               ) : null}
             </div>
 
@@ -2089,7 +2094,8 @@ export function AdminBenchmarks() {
                           <div className="flex flex-wrap items-center justify-between gap-base">
                             <span className="text-ink-muted">{t("admin:benchModels")}</span>
                             {catalogModels.length > 1 ? (
-                              <button
+                              <Button
+                                variant="ghost"
                                 type="button"
                                 onClick={() =>
                                   selectAllProviderModels(p.catalog_owned_by, catalogModels)
@@ -2097,7 +2103,7 @@ export function AdminBenchmarks() {
                                 className="text-accent hover:underline"
                               >
                                 {t("admin:benchSelectAllModels")}
-                              </button>
+                              </Button>
                             ) : null}
                           </div>
                           {catalogModels.length > 0 ? (
@@ -2128,7 +2134,8 @@ export function AdminBenchmarks() {
                             <div className="mt-base space-y-base">
                               {(selectedModels.length ? selectedModels : [""]).map((model, idx) => (
                                 <div key={`${p.catalog_owned_by}-${idx}`} className="flex gap-base">
-                                  <input
+                                  <TextInput
+                                    mono
                                     value={model}
                                     onChange={(e) =>
                                       setProviderCustomModel(
@@ -2137,7 +2144,7 @@ export function AdminBenchmarks() {
                                         e.target.value
                                       )
                                     }
-                                    className="min-w-0 flex-1 rounded-tile border border-line bg-field px-base py-snug text-sm font-mono"
+                                    className="min-w-0 flex-1"
                                     placeholder={
                                       defaultProviderModel(p) || t("admin:benchModelMissing")
                                     }
@@ -2158,13 +2165,14 @@ export function AdminBenchmarks() {
                                   ) : null}
                                 </div>
                               ))}
-                              <button
+                              <Button
+                                variant="ghost"
                                 type="button"
                                 onClick={() => addProviderCustomModel(p.catalog_owned_by)}
                                 className="text-accent hover:underline"
                               >
                                 {t("admin:benchAddModel")}
-                              </button>
+                              </Button>
                               <p className="text-ink-muted">
                                 {providerUnreachable
                                   ? t("admin:benchModelCatalogUnreachable", {
@@ -2207,11 +2215,11 @@ export function AdminBenchmarks() {
                               </div>
                               <label className="mt-base block text-meta text-ink-muted">
                                 {tLoose("admin:benchTuneReviewerModel")}
-                                <select
+                                <Select
                                   value={reviewerValue}
                                   disabled={!isReviewerProvider || reviewerOptions.length === 0}
                                   onChange={(e) => setReviewerModel(e.target.value)}
-                                  className="mt-tight w-full rounded-card border border-line bg-field px-soft py-base text-xs text-ink-primary disabled:opacity-50"
+                                  className="mt-tight text-xs"
                                 >
                                   {reviewerValue && !reviewerOptions.includes(reviewerValue) ? (
                                     <option value={reviewerValue}>{reviewerValue}</option>
@@ -2221,7 +2229,7 @@ export function AdminBenchmarks() {
                                       {model}
                                     </option>
                                   ))}
-                                </select>
+                                </Select>
                               </label>
                               {reviewerOptions.length === 0 ? (
                                 <p className="mt-base text-meta text-badge-warning">
@@ -2262,37 +2270,37 @@ export function AdminBenchmarks() {
             <div className="mt-wide grid gap-soft md:grid-cols-3">
               <label className="block text-xs text-ink-muted">
                 {tLoose("admin:benchTuneDepth")}
-                <select
+                <Select
                   value={tuningMode}
                   onChange={(e) => setTuningMode(e.target.value)}
-                  className="mt-tight w-full rounded-card border border-line bg-field px-soft py-base text-xs text-ink-primary"
+                  className="mt-tight text-xs"
                 >
                   <option value="fast">{t("admin:benchTuneModeFast")}</option>
                   <option value="standard">{t("admin:benchTuneModeStandard")}</option>
                   <option value="deep">{t("admin:benchTuneModeDeep")}</option>
-                </select>
+                </Select>
               </label>
               <label className="block text-xs text-ink-muted">
                 {tLoose("admin:benchTuneReviewerTitle")}
-                <select
+                <Select
                   value={reviewerMode}
                   onChange={(e) => setReviewerMode(e.target.value as "off" | "patch_and_test")}
-                  className="mt-tight w-full rounded-card border border-line bg-field px-soft py-base text-xs text-ink-primary"
+                  className="mt-tight text-xs"
                 >
                   <option value="off">{tLoose("admin:benchTuneReviewerOff")}</option>
                   <option value="patch_and_test">{tLoose("admin:benchTuneReviewerPatchAndTest")}</option>
-                </select>
+                </Select>
               </label>
               <label className="block text-xs text-ink-muted">
                 {tLoose("admin:benchTuneMaxPatchRounds")}
-                <input
+                <TextInput
                   type="number"
                   min={1}
                   max={10}
                   disabled={reviewerMode !== "patch_and_test"}
                   value={maxPatchRounds}
                   onChange={(e) => setMaxPatchRounds(e.target.value)}
-                  className="mt-tight w-full rounded-card border border-line bg-field px-soft py-base text-xs text-ink-primary disabled:opacity-50"
+                  className="mt-tight text-xs"
                 />
               </label>
             </div>
@@ -2438,7 +2446,8 @@ export function AdminBenchmarks() {
                                       </td>
                                       <td className="px-base py-tight">
                                         {(a.runs ?? []).map((r) => (
-                                          <button
+                                          <Button
+                                            variant="ghost"
                                             key={r.run_id}
                                             type="button"
                                             className="mr-base text-badge-accent hover:underline"
@@ -2448,7 +2457,7 @@ export function AdminBenchmarks() {
                                             }}
                                           >
                                             {r.suite || r.run_id.slice(0, 8)}
-                                          </button>
+                                          </Button>
                                         ))}
                                       </td>
                                     </tr>
@@ -2463,19 +2472,20 @@ export function AdminBenchmarks() {
                         </div>
                         <div className="flex shrink-0 flex-wrap gap-base">
                           <Tooltip label={reviewerModelLabel || tLoose("admin:benchTuneReviewerNeedsModel")}>
-                          <button
+                          <Button
                               type="button"
                               disabled={!canReview || reviewingTuneId === session.id}
-                              className="rounded-tile border border-violet-500/40 px-base py-tight text-violet-200 hover:bg-violet-500/10 disabled:opacity-40"
+                              className="border-violet-500/40 px-base py-tight text-violet-200 hover:bg-violet-500/10"
                               onClick={() => void onReviewTune(session)}
-                            >
+                          >
                               {reviewingTuneId === session.id
                                 ? tLoose("admin:benchTuneReviewing")
                                 : tLoose("admin:benchTuneRunReviewer")}
-                            </button>
+                            </Button>
                           </Tooltip>
                           {session.best_run_id ? (
-                            <button
+                            <Button
+                              variant="ghost"
                               type="button"
                               className="text-badge-accent hover:underline"
                               onClick={() => {
@@ -2484,12 +2494,12 @@ export function AdminBenchmarks() {
                               }}
                             >
                               {t("admin:benchTuneOpenBestRun")}
-                            </button>
+                            </Button>
                           ) : null}
-                          <button
+                          <Button
                             type="button"
                             disabled={!canPromote || promotingTuneId === session.id}
-                            className="rounded-tile border border-success/40 px-base py-tight text-badge-success hover:bg-success-subtle disabled:opacity-40"
+                            className="border-success/40 px-base py-tight text-badge-success"
                             onClick={() => void onPromoteTune(session)}
                           >
                             {session.promoted_at
@@ -2497,7 +2507,7 @@ export function AdminBenchmarks() {
                               : promotingTuneId === session.id
                                 ? t("admin:benchTunePromoting")
                                 : t("admin:benchTunePromote")}
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -2514,17 +2524,17 @@ export function AdminBenchmarks() {
           <>
           <section className="rounded-sheet border border-line bg-card p-wide">
             <label className="block text-xs text-ink-muted">{t("admin:benchSuite")}</label>
-            <select
+            <Select
               value={suite}
               onChange={(e) => onSuiteChange(e.target.value)}
-              className="mt-tight w-full max-w-controlWide rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
+              className="mt-tight max-w-controlWide"
             >
               {suites.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.label}
                 </option>
               ))}
-            </select>
+            </Select>
             {suiteDetail?.description ? (
               <p className="mt-base text-xs text-ink-muted">{suiteDetail.description}</p>
             ) : null}
@@ -2536,13 +2546,15 @@ export function AdminBenchmarks() {
                 <h2 className="text-sm font-medium text-ink-primary">{t("admin:benchScenarios")}</h2>
                 <p className="text-xs text-ink-muted">{t("admin:benchScenariosHint")}</p>
               </div>
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 type="button"
                 onClick={selectAllScenarios}
                 className="text-xs text-accent hover:underline"
               >
                 {t("admin:benchSelectAllScenarios")}
-              </button>
+              </Button>
             </div>
             {activeFixtures.length > 0 ? (
               <p className="mt-base text-meta text-ink-muted">
@@ -2614,7 +2626,8 @@ export function AdminBenchmarks() {
                           }
                           return null;
                         })()}
-                        <button
+                        <Button
+                          variant="ghost"
                           type="button"
                           onClick={() =>
                             setExpandedScenarioId(expanded ? null : sc.id)
@@ -2622,7 +2635,7 @@ export function AdminBenchmarks() {
                           className="mt-tight text-meta text-accent hover:underline"
                         >
                           {expanded ? t("admin:benchHidePrompt") : t("admin:benchShowPrompt")}
-                        </button>
+                        </Button>
                         {expanded ? (
                           <div className="mt-base space-y-tight rounded-tile border border-line-subtle bg-black/30 p-base text-meta">
                             <p className="text-ink-muted">{t("admin:benchPrompt")}</p>
@@ -2666,13 +2679,13 @@ export function AdminBenchmarks() {
             <div className="grid gap-soft sm:grid-cols-2 lg:grid-cols-3">
               <label className="block text-sm sm:col-span-2 lg:col-span-3">
                 <span className="text-ink-muted">{t("admin:benchCohortLabel")}</span>
-                <input
+                <TextInput
                   type="text"
                   maxLength={128}
                   value={cohortLabel}
                   onChange={(e) => setCohortLabel(e.target.value)}
                   placeholder={t("admin:benchCohortLabelPlaceholder")}
-                  className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                  className="mt-tight"
                 />
                 <span className="mt-tight block text-meta text-ink-muted">
                   {t("admin:benchCohortLabelHint")}
@@ -2680,48 +2693,48 @@ export function AdminBenchmarks() {
               </label>
               <label className="block text-sm">
                 <span className="text-ink-muted">{t("admin:benchPromptVariant")}</span>
-                <select
+                <Select
                   value={promptVariant}
                   onChange={(e) => setPromptVariant(e.target.value)}
-                  className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                  className="mt-tight"
                 >
                   {availablePromptVariants.map((variant) => (
                     <option key={variant} value={variant}>
                       {t(`admin:benchPromptVariant_${variant}`, { defaultValue: variant })}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <span className="mt-tight block text-meta text-ink-muted">
                   {t("admin:benchPromptVariantHint")}
                 </span>
               </label>
               <label className="block text-sm">
                 <span className="text-ink-muted">{t("admin:benchPromptLocale")}</span>
-                <select
+                <Select
                   value={promptLocale}
                   onChange={(e) => setPromptLocale(e.target.value)}
-                  className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                  className="mt-tight"
                 >
                   {availablePromptLocales.map((loc) => (
                     <option key={loc} value={loc}>
                       {loc.toUpperCase()}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <span className="mt-tight block text-meta text-ink-muted">
                   {t("admin:benchPromptLocaleHint")}
                 </span>
               </label>
               <label className="block text-sm">
                 <span className="text-ink-muted">{t("admin:benchScenarioTimeout")}</span>
-                <input
+                <TextInput
                   type="number"
                   min={30}
                   step={30}
                   value={scenarioTimeoutSec}
                   onChange={(e) => setScenarioTimeoutSec(e.target.value)}
                   placeholder={t("admin:benchScenarioTimeoutPlaceholder")}
-                  className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                  className="mt-tight"
                 />
                 <span className="mt-tight block text-meta text-ink-muted">
                   {t("admin:benchScenarioTimeoutHint")}
@@ -2729,14 +2742,14 @@ export function AdminBenchmarks() {
               </label>
               <label className="block text-sm">
                 <span className="text-ink-muted">{t("admin:benchMaxToolRounds")}</span>
-                <input
+                <TextInput
                   type="number"
                   min={1}
                   max={512}
                   value={maxToolRoundsOverride}
                   onChange={(e) => setMaxToolRoundsOverride(e.target.value)}
                   placeholder={t("admin:benchMaxToolRoundsPlaceholder")}
-                  className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                  className="mt-tight"
                 />
                 <span className="mt-tight block text-meta text-ink-muted">
                   {t("admin:benchMaxToolRoundsHint")}
@@ -2744,14 +2757,14 @@ export function AdminBenchmarks() {
               </label>
               <label className="block text-sm">
                 <span className="text-ink-muted">{t("admin:benchScenarioFailureRetries")}</span>
-                <input
+                <TextInput
                   type="number"
                   min={0}
                   max={20}
                   value={scenarioFailureRetries}
                   onChange={(e) => setScenarioFailureRetries(e.target.value)}
                   placeholder={t("admin:benchScenarioFailureRetriesPlaceholder")}
-                  className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                  className="mt-tight"
                 />
                 <span className="mt-tight block text-meta text-ink-muted">
                   {t("admin:benchScenarioFailureRetriesHint")}
@@ -2841,13 +2854,15 @@ export function AdminBenchmarks() {
                 >
                   {t("admin:benchBulkDeleteHistory")}
                 </Button>
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   type="button"
                   onClick={() => void loadRuns()}
                   className="text-xs text-accent"
                 >
                   {t("admin:agentTracesRefresh")}
-                </button>
+                </Button>
               </div>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
@@ -2861,10 +2876,12 @@ export function AdminBenchmarks() {
                       selectedId === r.id ? "bg-white/10" : ""
                     }`}
                   >
-                    <button
+                    <Button
+                      variant="plain"
+                      block
                       type="button"
                       onClick={() => setSelectedId(r.id)}
-                      className="min-w-0 flex-1 px-soft py-base text-left text-sm hover:bg-white/5"
+                      className="min-w-0 flex-1 px-soft py-base text-sm hover:bg-white/5"
                     >
                       <div className="font-medium text-ink-primary">{r.suite}</div>
                       <div className="text-xs text-ink-muted">
@@ -2876,18 +2893,19 @@ export function AdminBenchmarks() {
                           ? ` · ${tenantUsers.find((u) => u.id === r.user_id)?.email || r.user_id.slice(0, 8)}`
                           : ""}
                       </div>
-                    </button>
+                    </Button>
                     {r.status === "queued" || r.status === "running" ? (
                       <Tooltip label={t("admin:benchCancelRun")}>
-                      <button
+                      <Button
+                        variant="ghost"
                           type="button"
                           disabled={cancellingRunId === r.id}
                           aria-label={t("admin:benchCancelRun")}
                           onClick={() => void onCancelRun(r)}
-                          className="shrink-0 px-base text-badge-danger/90 hover:bg-danger/20 hover:text-badge-danger disabled:opacity-50"
-                        >
+                          className="shrink-0 px-base text-badge-danger/90 hover:text-badge-danger"
+                      >
                           {cancellingRunId === r.id ? "…" : "■"}
-                        </button>
+                        </Button>
                       </Tooltip>
                     ) : null}
                     <Button
@@ -2965,16 +2983,17 @@ export function AdminBenchmarks() {
                   </p>
                 ) : null}
                 {detail.status === "queued" || detail.status === "running" ? (
-                  <button
+                  <Button
+                    size="sm"
                     type="button"
                     disabled={cancellingRunId === detail.id}
                     onClick={() => void onCancelRun(detail)}
-                    className="mt-base rounded-card border border-danger/40 bg-danger-subtle px-soft py-snug text-xs font-medium text-badge-danger hover:bg-danger/20 disabled:opacity-50"
+                    className="mt-base border-danger/40 px-soft py-snug text-xs text-badge-danger"
                   >
                     {cancellingRunId === detail.id
                       ? t("admin:benchCancelling")
                       : t("admin:benchCancelRun")}
-                  </button>
+                  </Button>
                 ) : null}
                 {detail.error_text ? (
                   <p className="mt-base text-sm text-danger">{detail.error_text}</p>
@@ -3049,34 +3068,34 @@ export function AdminBenchmarks() {
                 ) : null}
                 {(detail.report_json?.results?.length ?? 0) > 0 ? (
                   <div className="mt-soft flex flex-wrap gap-base">
-                    <button
+                    <Button
                       type="button"
-                      className="rounded-tile border border-line-strong bg-black/30 px-firm py-tight text-meta text-white/90 hover:bg-white/10"
+                      className="bg-black/30 px-firm py-tight text-meta text-white/90 hover:bg-white/10"
                       onClick={() => downloadAttemptsCsv(detail)}
                     >
                       {t("admin:benchExportAttemptsCsv")}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className="rounded-tile border border-line-strong bg-black/30 px-firm py-tight text-meta text-white/90 hover:bg-white/10"
+                      className="bg-black/30 px-firm py-tight text-meta text-white/90 hover:bg-white/10"
                       onClick={() => downloadFailuresCsv(detail)}
                     >
                       {t("admin:benchExportFailuresCsv")}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className="rounded-tile border border-line-strong bg-black/30 px-firm py-tight text-meta text-white/90 hover:bg-white/10"
+                      className="bg-black/30 px-firm py-tight text-meta text-white/90 hover:bg-white/10"
                       onClick={() => downloadFailuresJson(detail)}
                     >
                       {t("admin:benchExportFailuresJson")}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className="rounded-tile border border-line-strong bg-black/30 px-firm py-tight text-meta text-white/90 hover:bg-white/10"
+                      className="bg-black/30 px-firm py-tight text-meta text-white/90 hover:bg-white/10"
                       onClick={() => downloadFullReportJson(detail)}
                     >
                       {t("admin:benchExportFullJson")}
-                    </button>
+                    </Button>
                   </div>
                 ) : null}
                 <BenchmarkFailuresSummary
@@ -3170,16 +3189,17 @@ export function AdminBenchmarks() {
                                         ? t("admin:benchDetailCollapse")
                                         : t("admin:benchDetailExpand")
                                     }>
-                                  <button
+                                  <Button
+                                    variant="ghost"
                                       type="button"
-                                      className="rounded-tile px-tight text-ink-muted hover:bg-white/5 hover:text-white"
+                                      className="px-tight text-ink-muted hover:bg-white/5 hover:text-white"
                                       aria-expanded={expanded}
                                       onClick={() =>
                                         setExpandedResultKey(expanded ? null : rowKey)
                                       }
-                                    >
+                                  >
                                       {expanded ? "▾" : "▸"}
-                                    </button>
+                                    </Button>
                                   </Tooltip>
                                 ) : null}
                                 <CopyScenarioDetailsButton res={res} compact />
@@ -3329,10 +3349,10 @@ export function AdminBenchmarks() {
           </p>
           <label className="mt-wide block text-xs text-ink-muted">
               {t("admin:benchSuite")}
-              <select
+              <Select
                 value={bulkDeleteSuite}
                 onChange={(e) => setBulkDeleteSuite(e.target.value)}
-                className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                className="mt-tight"
               >
                 <option value="">{t("admin:benchStatsAllSuites")}</option>
                 {historySuiteOptions.map((s) => (
@@ -3340,20 +3360,20 @@ export function AdminBenchmarks() {
                     {s}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="mt-soft block text-xs text-ink-muted">
               {t("admin:benchBulkDeleteOlderThan")}
-              <select
+              <Select
                 value={bulkDeleteOlderThanDays}
                 onChange={(e) => setBulkDeleteOlderThanDays(e.target.value)}
-                className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                className="mt-tight"
               >
                 <option value="">{t("admin:benchBulkDeleteAnyAge")}</option>
                 <option value="30">{t("admin:benchBulkDeleteOlder30d")}</option>
                 <option value="90">{t("admin:benchBulkDeleteOlder90d")}</option>
                 <option value="180">{t("admin:benchBulkDeleteOlder180d")}</option>
-              </select>
+              </Select>
             </label>
             <p className="mt-soft text-sm text-warning">
               {bulkDeletePreviewLoading

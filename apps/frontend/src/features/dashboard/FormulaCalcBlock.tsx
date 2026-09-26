@@ -1,6 +1,8 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { evaluateFormula } from "./formulaEval";
+import { Select, TextInput } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 export type FormulaInputOption = {
   label: string;
@@ -123,8 +125,8 @@ export function FormulaCalcBlockBody({
             return (
               <label key={inp.key} className="block text-xs text-ink-muted">
                 {inp.label}
-                <select
-                  className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                <Select
+                  className="mt-tight"
                   disabled={readOnly}
                   value={values[inp.key] ?? ""}
                   onChange={(e) => setValues((v) => ({ ...v, [inp.key]: e.target.value }))}
@@ -136,7 +138,7 @@ export function FormulaCalcBlockBody({
                       {opt.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
             );
           }
@@ -147,8 +149,7 @@ export function FormulaCalcBlockBody({
                 <span className="ml-tight text-meta opacity-70">{t("dashboard:formulaPercentHint")}</span>
               ) : null}
               <div className="relative mt-tight">
-                <input
-                  className="w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                <TextInput
                   type="number"
                   step={inp.step ?? (control === "percent" ? 1 : "any")}
                   disabled={readOnly}
@@ -167,12 +168,14 @@ export function FormulaCalcBlockBody({
           );
         })}
         {!readOnly ? (
-          <button
+          <Button
+            variant="primary"
+            size="sm"
             type="submit"
-            className="rounded-tile bg-accent px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-accent-hover"
+            className="px-soft py-snug text-xs"
           >
             {t("dashboard:formulaCalculate")}
-          </button>
+          </Button>
         ) : null}
       </form>
       {formulaNote ? <p className="font-mono text-meta text-ink-muted">{formulaNote}</p> : null}

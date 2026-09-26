@@ -10,6 +10,7 @@ import {
 } from "./benchmarksApi";
 import { BenchmarkInsightsPanel } from "./BenchmarkInsightsPanel";
 import { Button } from "../../../ui/Button";
+import { Select } from "../../../ui/Field";
 
 const SINCE_DAY_OPTIONS = [
   { value: "", labelKey: "admin:benchStatsSinceAll" },
@@ -281,10 +282,10 @@ export function BenchmarkStatsPanel({
             ) : null}
             <label className="text-xs text-ink-muted">
               {t("admin:benchSuite")}
-              <select
+              <Select
                 value={suiteFilter}
                 onChange={(e) => setSuiteFilter(e.target.value)}
-                className="mt-tight block rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                className="mt-tight block"
               >
                 <option value="">{t("admin:benchStatsAllSuites")}</option>
                 {suiteOptions
@@ -294,72 +295,73 @@ export function BenchmarkStatsPanel({
                       {s}
                     </option>
                   ))}
-              </select>
+              </Select>
             </label>
             <label className="text-xs text-ink-muted">
               {t("admin:benchStatsSince")}
-              <select
+              <Select
                 value={sinceDays}
                 onChange={(e) => setSinceDays(e.target.value)}
-                className="mt-tight block rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                className="mt-tight block"
               >
                 {SINCE_DAY_OPTIONS.map((opt) => (
                   <option key={opt.value || "all"} value={opt.value}>
                     {t(opt.labelKey)}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="text-xs text-ink-muted">
               {t("admin:benchStatsTableMinSamples")}
-              <select
+              <Select
                 value={minSamples}
                 onChange={(e) => setMinSamples(e.target.value)}
-                className="mt-tight block rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                className="mt-tight block"
               >
                 {MIN_SAMPLE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {t(opt.labelKey)}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="text-xs text-ink-muted">
               {t("admin:benchStatsBadgeMinSamples")}
-              <select
+              <Select
                 value={badgeMinSamples}
                 onChange={(e) => setBadgeMinSamples(e.target.value)}
-                className="mt-tight block rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                className="mt-tight block"
               >
                 {BADGE_MIN_SAMPLE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {t(opt.labelKey)}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="text-xs text-ink-muted">
               {t("admin:benchStatsFastestQualify")}
-              <select
+              <Select
                 value={fastestMinPassRate}
                 onChange={(e) => setFastestMinPassRate(e.target.value)}
-                className="mt-tight block max-w-control rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
+                className="mt-tight block max-w-control"
               >
                 {FASTEST_PASS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {t(opt.labelKey)}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
-            <button
+            <Button
+              size="sm"
               type="button"
               onClick={() => void loadStats()}
               disabled={loading}
-              className="rounded-card border border-line-strong bg-black/30 px-soft py-snug text-xs text-ink-primary hover:bg-white/10 disabled:opacity-50"
+              className="bg-black/30 px-soft py-snug text-xs hover:bg-white/10"
             >
               {loading ? t("admin:loading") : t("admin:agentTracesRefresh")}
-            </button>
+            </Button>
           </div>
         </div>
         {stats?.meta ? (

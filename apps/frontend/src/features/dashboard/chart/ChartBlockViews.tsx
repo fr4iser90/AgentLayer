@@ -8,6 +8,7 @@ import { Button } from "../../../ui/Button";
 import "./chartRegister";
 
 import { getPath, setPath } from "../dashboardDataPaths";
+import { Select, TextArea, TextInput } from "../../../ui/Field";
 
 export type ChartTypeName = "line" | "bar" | "pie" | "doughnut";
 
@@ -187,8 +188,8 @@ export function ChartBlockBody(props: {
         <div className="dashboard-grid-no-drag mt-wide space-y-soft border-t border-line-subtle pt-wide">
           <div>
             <label className="mb-tight block text-meta uppercase text-ink-muted">{t("dashboard:chartTypeLabel")}</label>
-            <select
-              className="w-full rounded-tile border border-line bg-field px-base py-snug text-xs text-ink-primary"
+            <Select
+              className="text-xs"
               value={chart.chartType}
               onChange={(e) =>
                 patchChart(dp, setData, {
@@ -200,14 +201,14 @@ export function ChartBlockBody(props: {
               <option value="bar">{t("dashboard:chartTypeBar")}</option>
               <option value="pie">{t("dashboard:chartTypePie")}</option>
               <option value="doughnut">{t("dashboard:chartTypeDoughnut")}</option>
-            </select>
+            </Select>
           </div>
           <div>
             <label className="mb-tight block text-meta uppercase text-ink-muted">
               {t("dashboard:chartCategoriesLabel")}
             </label>
-            <textarea
-              className="min-h-[72px] w-full rounded-tile border border-line bg-field px-base py-snug text-xs text-ink-primary"
+            <TextArea
+              className="min-h-[72px] text-xs"
               value={chart.labels.join("\n")}
               onChange={(e) => {
                 const labels = e.target.value.split("\n").map((s) => s.trimEnd());
@@ -249,9 +250,9 @@ export function ChartBlockBody(props: {
                   </Button>
                 ) : null}
               </div>
-              <input
+              <TextInput
                 type="text"
-                className="mb-base w-full rounded-tile border border-line bg-field px-base py-tight text-xs text-ink-primary"
+                className="mb-base text-xs"
                 placeholder={t("dashboard:chartSeriesLabelPlaceholder")}
                 value={s.label}
                 onChange={(e) =>
@@ -265,9 +266,9 @@ export function ChartBlockBody(props: {
               <label className="mb-tight block text-meta text-ink-muted">
                 {t("dashboard:chartValuesLabel")}
               </label>
-              <input
+              <TextInput
                 type="text"
-                className="w-full rounded-tile border border-line bg-field px-base py-tight text-xs text-ink-primary"
+                className="text-xs"
                 value={s.data.join(", ")}
                 onChange={(e) => {
                   const parts = e.target.value.split(",").map((x) => Number(x.trim()) || 0);
@@ -287,9 +288,10 @@ export function ChartBlockBody(props: {
             </div>
           ))}
           {(chart.chartType === "line" || chart.chartType === "bar") && chart.series.length < 6 ? (
-            <button
+            <Button
+              size="sm"
               type="button"
-              className="rounded-tile bg-white/10 px-base py-tight text-xs text-ink-primary hover:bg-white/15"
+              className="bg-white/10 px-base py-tight text-xs hover:bg-white/15"
               onClick={() =>
                 patchChart(dp, setData, (prev) => {
                   const need = Math.max(prev.labels.length, 1);
@@ -305,7 +307,7 @@ export function ChartBlockBody(props: {
               }
             >
               {t("dashboard:chartAddSeries")}
-            </button>
+            </Button>
           ) : null}
         </div>
       ) : null}
@@ -377,9 +379,9 @@ export function SparklineBlockBody(props: {
       {!readOnly ? (
         <div className="dashboard-grid-no-drag mt-soft">
           <label className="mb-tight block text-meta text-ink-muted">{t("dashboard:sparklineValuesLabel")}</label>
-          <input
+          <TextInput
             type="text"
-            className="w-full rounded-tile border border-line bg-field px-base py-snug text-xs text-ink-primary"
+            className="text-xs"
             value={values.join(", ")}
             onChange={(e) => {
               const nums = e.target.value

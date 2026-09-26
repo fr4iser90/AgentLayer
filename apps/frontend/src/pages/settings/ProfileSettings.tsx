@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { Badge } from "../../ui/Badge";
+import { Button } from "../../ui/Button";
 
 type MeResponse = {
   id?: string;
@@ -121,26 +122,29 @@ export function ProfileSettings() {
               </div>
             ) : null}
           </dl>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             type="button"
             className="mt-broad text-xs text-accent hover:text-badge-accent hover:underline"
             onClick={() => void load()}
           >
             {t("settings:profileRefresh")}
-          </button>
+          </Button>
         </div>
       )}
 
       <div className="rounded-sheet border border-line bg-black/20 p-roomy">
         <h2 className="text-sm font-medium text-ink-primary">{t("settings:sessionTitle")}</h2>
         <p className="mt-tight text-xs text-ink-muted">{t("settings:profileSessionHint")}</p>
-        <button
+        <Button
+          size="lg"
           type="button"
-          className="mt-wide rounded-tile border border-line-strong bg-white/5 px-wide py-base text-sm text-ink-primary hover:bg-white/10"
+          className="mt-wide bg-white/5 px-wide py-base text-sm hover:bg-white/10"
           onClick={() => void logout()}
         >
           {t("settings:signOut")}
-        </button>
+        </Button>
       </div>
     </div>
   );

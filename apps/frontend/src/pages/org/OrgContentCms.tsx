@@ -5,6 +5,7 @@ import type { AuthUser } from "../../auth/AuthContext";
 import { hasOrgSurface } from "../../auth/deploymentMode";
 import { apiFetch } from "../../lib/api";
 import { Button } from "../../ui/Button";
+import { TextArea, TextInput } from "../../ui/Field";
 
 type ContentStatus =
   | "draft"
@@ -375,13 +376,15 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
           <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
             {t("org:cmsNotes")}
           </p>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             type="button"
             className="text-xs text-accent hover:text-badge-accent"
             onClick={startNew}
           >
             {t("org:cmsNewNote")}
-          </button>
+          </Button>
         </div>
         {canReview ? (
           <div className="mt-base flex gap-tight text-meta">
@@ -453,9 +456,9 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
         <label className="mt-wide block text-xs text-ink-muted" htmlFor="cms-title">
           {t("org:knowledgeTitleLabel")}
         </label>
-        <input
+        <TextInput
           id="cms-title"
-          className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary disabled:opacity-60"
+          className="mt-tight"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           required
@@ -465,9 +468,10 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
         <label className="mt-wide block text-xs text-ink-muted" htmlFor="cms-body">
           {t("org:knowledgeTextLabel")}
         </label>
-        <textarea
+        <TextArea
+          mono
           id="cms-body"
-          className="mt-tight min-h-56 w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary disabled:opacity-60"
+          className="mt-tight min-h-56"
           value={bodyMd}
           onChange={(e) => setBodyMd(e.target.value)}
           required
@@ -480,9 +484,9 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
           </label>
         ) : null}
         {status === "in_review" && canReview ? (
-          <textarea
+          <TextArea
             id="cms-reject-comment"
-            className="mt-tight min-h-20 w-full rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
+            className="mt-tight min-h-20"
             value={rejectComment}
             onChange={(e) => setRejectComment(e.target.value)}
             placeholder={t("org:cmsRejectCommentPlaceholder")}
@@ -490,52 +494,60 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
         ) : null}
 
         <div className="mt-wide flex flex-wrap gap-base">
-          <button
+          <Button
+            size="lg"
             type="submit"
             disabled={busy || readOnly}
-            className="rounded-tile border border-line px-wide py-snug text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
+            className="px-wide py-snug text-sm hover:bg-white/5"
           >
             {busy ? t("org:cmsSaving") : t("org:cmsSaveDraft")}
-          </button>
+          </Button>
           {status === "draft" ? (
-            <button
+            <Button
+              size="lg"
               type="button"
               disabled={busy}
-              className="rounded-tile border border-accent/40 px-wide py-snug text-sm text-badge-accent hover:bg-accent-subtle disabled:opacity-50"
+              className="border-accent/40 px-wide py-snug text-sm text-badge-accent"
               onClick={() => void submitForReview()}
             >
               {t("org:cmsSubmitForReview")}
-            </button>
+            </Button>
           ) : null}
           {status === "in_review" && canReview ? (
             <>
-              <button
+              <Button
+                variant="primary"
+                tone="success"
+                size="lg"
                 type="button"
                 disabled={busy}
-                className="rounded-tile bg-success px-wide py-snug text-sm font-medium text-ink-on-fill hover:bg-success-hover disabled:opacity-50"
+                className="px-wide py-snug text-sm"
                 onClick={() => void approveSelected()}
               >
                 {t("org:cmsApprove")}
-              </button>
-              <button
+              </Button>
+              <Button
+                size="lg"
                 type="button"
                 disabled={busy}
-                className="rounded-tile border border-warning/40 px-wide py-snug text-sm text-badge-warning hover:bg-warning-subtle disabled:opacity-50"
+                className="border-warning/40 px-wide py-snug text-sm text-badge-warning"
                 onClick={() => void rejectSelected()}
               >
                 {t("org:cmsReject")}
-              </button>
+              </Button>
             </>
           ) : null}
           {status === "approved" && canPublish ? (
-            <button
+            <Button
+              variant="primary"
+              size="lg"
               type="button"
               disabled={busy}
-              className="rounded-tile bg-accent px-wide py-snug text-sm font-medium text-ink-on-fill hover:bg-accent-hover disabled:opacity-50"
+              className="px-wide py-snug text-sm"
               onClick={() => void publishSelected()}
             >
               {busy ? t("org:knowledgePublishing") : t("org:cmsPublish")}
-            </button>
+            </Button>
           ) : null}
           {!canPublish && status === "approved" ? (
             <p className="w-full text-xs text-ink-muted">{t("org:cmsPublishRequiresApprover")}</p>

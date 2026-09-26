@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Bot, Check, FileText, Package, Wrench, X } from "lucide-react";
 import type { RunCard } from "./buildRunCards";
+import { Button } from "../../ui/Button";
 
 type Props = {
   card: RunCard;
@@ -382,7 +383,8 @@ export function RunCardBlock({
             </details>
           ) : null}
           {expandableDetails ? (
-            <button
+            <Button
+              variant="ghost"
               type="button"
               className="mt-snug text-meta text-accent hover:text-badge-accent hover:underline"
               onClick={() => {
@@ -391,7 +393,7 @@ export function RunCardBlock({
               }}
             >
               {expanded ? t("chat:runCardHideDetails") : t("chat:runCardShowDetails")}
-            </button>
+            </Button>
           ) : null}
           {expanded ? (
             <ul className="mt-base space-y-tight border-t border-line-subtle pt-base">

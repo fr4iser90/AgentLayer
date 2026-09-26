@@ -10,6 +10,7 @@ import { UserMenu } from "../components/UserMenu";
 import { NotificationBell } from "../components/NotificationBell";
 import { AgentRunningBadge } from "../features/chat/AgentRunningBadge";
 import type { NavSurface } from "./navModel";
+import { Button } from "../ui/Button";
 
 interface AppShellProps {
   surface: NavSurface;
@@ -72,15 +73,16 @@ export function AppShell({
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-canvas">
       <header className="flex shrink-0 items-center gap-soft border-b border-line bg-panel px-wide py-base">
-        <button
+        <Button
+          variant="ghost"
           type="button"
-          className="shrink-0 rounded-tile p-tight text-ink-muted hover:bg-white/5 hover:text-ink-primary md:hidden"
+          className="shrink-0 p-tight text-ink-muted hover:bg-white/5 hover:text-ink-primary md:hidden"
           aria-label={t("nav.openMenu", { ns: "common" })}
           aria-expanded={drawerOpen}
           onClick={() => setDrawerOpen(true)}
         >
           <PanelLeft size={18} aria-hidden />
-        </button>
+        </Button>
         <Link to="/" className="flex shrink-0 items-center gap-snug">
           <Mascot size={28} animated={false} ariaLabel={t("app.title", { ns: "common" })} />
           <span className="text-sm font-semibold tracking-tight text-ink-primary">

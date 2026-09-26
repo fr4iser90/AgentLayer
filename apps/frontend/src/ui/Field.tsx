@@ -29,16 +29,35 @@ const FIELD_BASE = [
 
 const FIELD_MONO = "font-mono";
 
+/**
+ * A field that sits flush inside a surface that is already the frame — the chat
+ * composer and the media search, which live in a bordered panel of their own.
+ *
+ * `read-only:bg-transparent` in `FIELD_BASE` is not this: it is a variant
+ * modifier, applied only together with `read-only`, and a composer is editable.
+ * Those two sites hand-drew `border-0 bg-transparent`, which also left the focus
+ * ring without a border to recolour — focus became invisible. `bare` keeps the
+ * focus affordance and drops only the field's own box.
+ */
+const FIELD_BARE = [
+  "w-full bg-transparent text-ink-primary",
+  "placeholder:text-field-placeholder",
+  "focus:outline-none",
+  "disabled:cursor-not-allowed disabled:opacity-45",
+].join(" ");
+
 export interface TextInputProps extends InputHTMLAttributes<HTMLInputElement> {
   mono?: boolean;
+  /** Flush with the surrounding surface — see `FIELD_BARE`. */
+  bare?: boolean;
 }
 
 export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
-  function TextInput({ mono = false, className, ...rest }, ref) {
+  function TextInput({ mono = false, bare = false, className, ...rest }, ref) {
     return (
       <input
         ref={ref}
-        className={[FIELD_BASE, mono && FIELD_MONO, className]
+        className={[bare ? FIELD_BARE : FIELD_BASE, mono && FIELD_MONO, className]
           .filter(Boolean)
           .join(" ")}
         {...rest}
@@ -50,14 +69,16 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
 export interface TextAreaProps
   extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   mono?: boolean;
+  /** Flush with the surrounding surface — see `FIELD_BARE`. */
+  bare?: boolean;
 }
 
 export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(
-  function TextArea({ mono = false, className, ...rest }, ref) {
+  function TextArea({ mono = false, bare = false, className, ...rest }, ref) {
     return (
       <textarea
         ref={ref}
-        className={[FIELD_BASE, mono && FIELD_MONO, className]
+        className={[bare ? FIELD_BARE : FIELD_BASE, mono && FIELD_MONO, className]
           .filter(Boolean)
           .join(" ")}
         {...rest}

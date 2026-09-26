@@ -5,6 +5,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { Button } from "../../ui/Button";
 import { EmptyState } from "../../ui/EmptyState";
+import { TextArea, TextInput } from "../../ui/Field";
 
 type FriendRequest = {
   id: number;
@@ -288,20 +289,23 @@ export function FriendsSettings() {
                       {req.message && <div className="text-sm text-ink-muted mt-tight">{req.message}</div>}
                     </div>
                     <div className="flex gap-base">
-                      <button
+                      <Button
+                        variant="primary"
+                        tone="success"
                         type="button"
                         onClick={() => acceptRequest(req.id)}
-                        className="px-soft py-snug rounded-tile bg-success text-ink-on-fill text-sm hover:bg-success-hover"
+                        className="px-soft py-snug text-sm"
                       >
                         {t("settings:friendsAcceptBtn")}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="ghost"
                         type="button"
                         onClick={() => declineRequest(req.id)}
-                        className="px-soft py-snug rounded-tile bg-neutral-700 text-ink-primary text-sm hover:bg-neutral-600"
+                        className="px-soft py-snug bg-neutral-700 text-sm hover:bg-neutral-600"
                       >
                         {t("settings:friendsDeclineBtn")}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -331,19 +335,17 @@ export function FriendsSettings() {
             <div className="rounded-sheet border border-line bg-card p-roomy space-y-wide">
               <h3 className="font-medium text-ink-primary">{t("settings:friendsSendRequestTitle")}</h3>
               <div className="space-y-soft">
-                <input
+                <TextInput
                   type="email"
                   placeholder={t("settings:friendRequestEmailPlaceholder")}
                   value={newRequestEmail}
                   onChange={(e) => setNewRequestEmail(e.target.value)}
-                  className="w-full px-soft py-base rounded-tile bg-field border border-line text-ink-primary text-sm"
                 />
-                <input
+                <TextInput
                   type="text"
                   placeholder={t("settings:friendRequestMessagePlaceholder")}
                   value={newRequestMessage}
                   onChange={(e) => setNewRequestMessage(e.target.value)}
-                  className="w-full px-soft py-base rounded-tile bg-field border border-line text-ink-primary text-sm"
                 />
                 <div className="flex justify-end gap-soft pt-base">
                   <Button
@@ -354,25 +356,27 @@ export function FriendsSettings() {
                   >
                     {t("settings:friendsCancelRequest")}
                   </Button>
-                  <button
+                  <Button
+                    variant="primary"
+                    size="lg"
                     type="button"
                     onClick={sendFriendRequest}
                     disabled={!newRequestEmail.trim() || saving}
-                    className="px-wide py-base rounded-tile bg-accent text-ink-on-fill text-sm hover:bg-accent-hover disabled:opacity-50"
+                    className="px-wide py-base text-sm"
                   >
                     {t("settings:friendsSendRequest")}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
           ) : (
-            <button
+            <Button
               type="button"
               onClick={() => setShowSendRequestForm(true)}
-              className="w-full py-soft rounded-sheet border border-dashed border-line-strong text-ink-muted hover:border-white/40 hover:text-white text-sm"
+              className="w-full py-soft border-dashed text-ink-muted hover:text-white text-sm"
             >
               {t("settings:friendsSendRequestBtn")}
-            </button>
+            </Button>
           )}
 
           {/* Confirmed Friends */}
@@ -399,13 +403,15 @@ export function FriendsSettings() {
                       )}
                     </div>
                     <div className="flex gap-soft opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         type="button"
                         onClick={() => openEditFriend(friend)}
                         className="text-xs text-accent hover:text-badge-accent"
                       >
                         {t("settings:friendsEditWithIcon")}
-                      </button>
+                      </Button>
                       <Button
                         type="button"
                         variant="danger"
@@ -486,21 +492,19 @@ export function FriendsSettings() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-wide">
                 <div className="space-y-tight">
                   <label className="text-xs text-ink-muted">{t("settings:friendsNameRequired")}</label>
-                  <input
+                  <TextInput
                     type="text"
                     value={newPerson.name}
                     onChange={(e) => setNewPerson({ ...newPerson, name: e.target.value })}
-                    className="w-full px-soft py-base rounded-tile bg-field border border-line text-ink-primary text-sm"
                     placeholder={t("settings:friendNamePlaceholder")}
                   />
                 </div>
                 <div className="space-y-tight">
                   <label className="text-xs text-ink-muted">{t("settings:friendsNicknameLabel")}</label>
-                  <input
+                  <TextInput
                     type="text"
                     value={newPerson.nickname}
                     onChange={(e) => setNewPerson({ ...newPerson, nickname: e.target.value })}
-                    className="w-full px-soft py-base rounded-tile bg-field border border-line text-ink-primary text-sm"
                     placeholder={t("settings:friendNicknamePlaceholder")}
                   />
                 </div>
@@ -509,21 +513,20 @@ export function FriendsSettings() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-wide">
                 <div className="space-y-tight">
                   <label className="text-xs text-ink-muted">{t("settings:friendsEmailLabel")}</label>
-                  <input
+                  <TextInput
                     type="email"
                     value={newPerson.email}
                     onChange={(e) => setNewPerson({ ...newPerson, email: e.target.value })}
-                    className="w-full px-soft py-base rounded-tile bg-field border border-line text-ink-primary text-sm"
                     placeholder={t("settings:friendEmailPlaceholder")}
                   />
                 </div>
                 <div className="space-y-tight">
                   <label className="text-xs text-ink-muted">{t("settings:friendsDiscordIdLabel")}</label>
-                  <input
+                  <TextInput
+                    mono
                     type="text"
                     value={newPerson.discord_user_id}
                     onChange={(e) => setNewPerson({ ...newPerson, discord_user_id: e.target.value })}
-                    className="w-full px-soft py-base rounded-tile bg-field border border-line text-ink-primary text-sm font-mono"
                     placeholder={t("settings:friendPhonePlaceholder")}
                   />
                 </div>
@@ -532,42 +535,39 @@ export function FriendsSettings() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-wide">
                 <div className="space-y-tight">
                   <label className="text-xs text-ink-muted">{t("settings:friendsRelationLabel")}</label>
-                  <input
+                  <TextInput
                     type="text"
                     value={newPerson.relation}
                     onChange={(e) => setNewPerson({ ...newPerson, relation: e.target.value })}
-                    className="w-full px-soft py-base rounded-tile bg-field border border-line text-ink-primary text-sm"
                     placeholder={t("settings:friendRelationPlaceholder")}
                   />
                 </div>
                 <div className="space-y-tight">
                   <label className="text-xs text-ink-muted">{t("settings:friendsBirthdayLabel")}</label>
-                  <input
+                  <TextInput
                     type="date"
                     value={newPerson.birthday}
                     onChange={(e) => setNewPerson({ ...newPerson, birthday: e.target.value })}
-                    className="w-full px-soft py-base rounded-tile bg-field border border-line text-ink-primary text-sm"
                   />
                 </div>
               </div>
 
               <div className="space-y-tight">
                 <label className="text-xs text-ink-muted">{t("settings:friendsDescriptionLabel")}</label>
-                <textarea
+                <TextArea
                   value={newPerson.description}
                   onChange={(e) => setNewPerson({ ...newPerson, description: e.target.value })}
-                  className="w-full px-soft py-base rounded-tile bg-field border border-line text-ink-primary text-sm min-h-[80px]"
+                  className="min-h-[80px]"
                   placeholder={t("settings:friendDescriptionPlaceholder")}
                 />
               </div>
 
               <div className="space-y-tight">
                 <label className="text-xs text-ink-muted">{t("settings:friendsToneFormLabel")}</label>
-                <input
+                <TextInput
                   type="text"
                   value={newPerson.tone}
                   onChange={(e) => setNewPerson({ ...newPerson, tone: e.target.value })}
-                  className="w-full px-soft py-base rounded-tile bg-field border border-line text-ink-primary text-sm"
                   placeholder={t("settings:friendTonePlaceholder")}
                 />
               </div>
@@ -581,24 +581,26 @@ export function FriendsSettings() {
                 >
                   {t("settings:friendsCancel")}
                 </Button>
-                <button
+                <Button
+                  variant="primary"
+                  size="lg"
                   type="button"
                   onClick={addKnownPerson}
                   disabled={!newPerson.name.trim() || saving}
-                  className="px-wide py-base rounded-tile bg-accent text-ink-on-fill text-sm hover:bg-accent-hover disabled:opacity-50"
+                  className="px-wide py-base text-sm"
                 >
                   {t("settings:friendsAdd")}
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
-            <button
+            <Button
               type="button"
               onClick={() => setShowAddForm(true)}
-              className="w-full py-soft rounded-sheet border border-dashed border-line-strong text-ink-muted hover:border-white/40 hover:text-white text-sm"
+              className="w-full py-soft border-dashed text-ink-muted hover:text-white text-sm"
             >
               {t("settings:friendsAddNewPerson")}
-            </button>
+            </Button>
           )}
         </div>
       )}

@@ -206,14 +206,14 @@ export function ProjectsPage() {
                 {t("workspace:projectsListTitle")}
               </h2>
             )}
-            <button
+            <Button
               type="button"
-              className="rounded-tile border border-line px-base py-tight text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
+              className="px-base py-tight text-meta text-ink-secondary hover:bg-white/5"
               disabled={loading}
               onClick={() => void reload()}
             >
               {t("workspace:projectsRefresh")}
-            </button>
+            </Button>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-base">
             {loading ? (
@@ -321,22 +321,22 @@ export function ProjectsPage() {
                   </h3>
                   <div className="flex items-center gap-base">
                     {browsePath ? (
-                      <button
+                      <Button
                         type="button"
-                        className="rounded-tile border border-line px-base py-hair text-meta text-ink-secondary hover:bg-white/5"
+                        className="px-base py-hair text-meta text-ink-secondary hover:bg-white/5"
                         onClick={() => setBrowsePath(parentPath(browsePath))}
                       >
                         {t("workspace:projectsTreeUp")}
-                      </button>
+                      </Button>
                     ) : null}
-                    <button
+                    <Button
                       type="button"
-                      className="rounded-tile border border-line px-base py-hair text-meta text-ink-secondary hover:bg-white/5"
+                      className="px-base py-hair text-meta text-ink-secondary hover:bg-white/5"
                       disabled={treeLoading}
                       onClick={() => void loadTree()}
                     >
                       {t("workspace:projectsRefresh")}
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 <p className="shrink-0 truncate border-b border-line-subtle px-soft py-tight font-mono text-meta text-ink-muted">
@@ -354,9 +354,11 @@ export function ProjectsPage() {
                       {entries.map((e) => (
                         <li key={e.path}>
                           {e.is_dir ? (
-                            <button
+                            <Button
+                              variant="plain"
+                              block
                               type="button"
-                              className="flex w-full items-center gap-base rounded-tile px-base py-tight text-left text-xs text-badge-accent hover:bg-white/5"
+                              className="w-full items-center gap-base rounded-tile px-base py-tight text-xs text-badge-accent hover:bg-white/5"
                               onClick={() => setBrowsePath(e.path)}
                             >
                               <span className="text-ink-muted">/</span>
@@ -366,7 +368,7 @@ export function ProjectsPage() {
                                   {t("workspace:treeEntrySymlink")}
                                 </span>
                               ) : null}
-                            </button>
+                            </Button>
                           ) : (
                             <div className="flex items-center gap-base rounded-tile px-base py-tight text-xs text-ink-secondary">
                               <span className="text-ink-muted">·</span>

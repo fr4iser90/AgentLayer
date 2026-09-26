@@ -5,6 +5,7 @@ import { Bell } from "lucide-react";
 import { useNotificationContext } from "../features/notifications/NotificationProvider";
 import { Tooltip } from "../ui/Tooltip";
 import { useClickOutside } from "../ui/useClickOutside";
+import { Button } from "../ui/Button";
 
 function severityDot(severity: string): string {
   if (severity === "error" || severity === "action_required") return "bg-danger";
@@ -53,20 +54,22 @@ export function NotificationBell() {
   return (
     <div className="relative" ref={rootRef}>
       <Tooltip label={t("notifications:bellTitle")}>
-      <button
+      <Button
+        variant="ghost"
+        size="lg"
           type="button"
-          className="relative flex h-9 w-9 items-center justify-center rounded-pill text-ink-primary outline-none ring-accent/40 hover:bg-white/10 focus-visible:ring-2"
+          className="relative h-9 w-9 outline-none ring-accent/40 hover:bg-white/10"
           aria-expanded={open}
           aria-haspopup="menu"
           onClick={() => setOpen((v) => !v)}
-        >
+      >
           <Bell aria-hidden className="h-[18px] w-[18px]" />
           {unread > 0 ? (
             <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-pill bg-unread px-tight text-meta font-semibold text-ink-on-fill">
               {unread > 99 ? "99+" : unread}
             </span>
           ) : null}
-        </button>
+        </Button>
       </Tooltip>
       {open ? (
         <div
@@ -76,13 +79,15 @@ export function NotificationBell() {
           <div className="flex items-center justify-between gap-base border-b border-line px-soft py-base">
             <p className="text-sm font-medium text-ink-primary">{t("notifications:inboxTitle")}</p>
             {unread > 0 ? (
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 type="button"
                 className="text-xs text-accent hover:text-badge-accent"
                 onClick={() => void markAllRead()}
               >
                 {t("notifications:markAllRead")}
-              </button>
+              </Button>
             ) : null}
           </div>
           <div className="max-h-[min(60vh,420px)] overflow-y-auto py-tight">
@@ -125,13 +130,15 @@ export function NotificationBell() {
                           </Link>
                         ) : null}
                         {!n.read ? (
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             type="button"
                             className="text-xs text-ink-muted hover:text-neutral-300"
                             onClick={() => void markRead(n.id)}
                           >
                             {t("notifications:dismiss")}
-                          </button>
+                          </Button>
                         ) : null}
                       </div>
                     </div>
