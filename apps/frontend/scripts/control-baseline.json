@@ -1,0 +1,198 @@
+{
+  "src/components/LanguageSwitch.tsx": {
+    "button": 1
+  },
+  "src/components/SchemaForm.tsx": {
+    "input": 1
+  },
+  "src/features/admin/agentConfig/ExperimentDetailPanel.tsx": {
+    "button": 1
+  },
+  "src/features/admin/benchmarks/BenchmarkRunOverridePanel.tsx": {
+    "button": 1
+  },
+  "src/features/admin/benchmarks/CopyScenarioDetailsButton.tsx": {
+    "button": 1
+  },
+  "src/features/chat/AgentActivityPanel.tsx": {
+    "input": 1
+  },
+  "src/features/chat/MessageFeedbackButtons.tsx": {
+    "button": 2
+  },
+  "src/features/chat/ModelCatalogSelect.tsx": {
+    "button": 2
+  },
+  "src/features/chat/ProposalMessageBody.tsx": {
+    "button": 1
+  },
+  "src/features/chat/SecretRegisterCard.tsx": {
+    "input": 1
+  },
+  "src/features/chat/TurnNavigator.tsx": {
+    "button": 2
+  },
+  "src/features/dashboard/BlockSettingsModal.tsx": {
+    "button": 1,
+    "input": 6
+  },
+  "src/features/dashboard/CardGridBlock.tsx": {
+    "button": 1
+  },
+  "src/features/dashboard/DashboardBlocks.tsx": {
+    "input": 2
+  },
+  "src/features/dashboard/DashboardCanvasSurface.tsx": {
+    "button": 1
+  },
+  "src/features/dashboard/DashboardEmbeddedChat.tsx": {
+    "input": 2
+  },
+  "src/features/dashboard/DashboardGridInner.tsx": {
+    "button": 1
+  },
+  "src/features/dashboard/DashboardLayoutProposalPanel.tsx": {
+    "button": 1
+  },
+  "src/features/dashboard/DashboardSidebarNav.tsx": {
+    "button": 2
+  },
+  "src/features/dashboard/MediaPlayerBlock.tsx": {
+    "input": 1
+  },
+  "src/features/dashboard/ProjectWorkspaceControls.tsx": {
+    "input": 1
+  },
+  "src/features/dashboard/ProjectsImportModal.tsx": {
+    "input": 4
+  },
+  "src/features/dashboard/gallery/GalleryBlockBody.tsx": {
+    "input": 2
+  },
+  "src/features/dashboard/gallery/GalleryPublicSection.tsx": {
+    "button": 1
+  },
+  "src/features/media/MediaMiniPlayer.tsx": {
+    "button": 1,
+    "input": 1
+  },
+  "src/features/media/MediaMiniPlayerPanel.tsx": {
+    "button": 4,
+    "input": 1
+  },
+  "src/features/voice/ChatComposerVoiceControls.tsx": {
+    "input": 2
+  },
+  "src/features/voice/VoiceHandsFreeBar.tsx": {
+    "button": 1
+  },
+  "src/features/voice/VoiceMicButton.tsx": {
+    "button": 1
+  },
+  "src/features/workspace/CodingWorkspacePanels.tsx": {
+    "button": 4
+  },
+  "src/features/workspace/WorkspaceMcpModal.tsx": {
+    "input": 3
+  },
+  "src/features/workspace/WorkspaceRetrievalBar.tsx": {
+    "button": 7
+  },
+  "src/pages/ChatPage.tsx": {
+    "button": 1,
+    "input": 3
+  },
+  "src/pages/DashboardPage.tsx": {
+    "button": 6,
+    "input": 3
+  },
+  "src/pages/MySchedulesPage.tsx": {
+    "input": 1
+  },
+  "src/pages/ProjectsPage.tsx": {
+    "button": 2
+  },
+  "src/pages/SetupWizardPage.tsx": {
+    "input": 3
+  },
+  "src/pages/StudioPage.tsx": {
+    "button": 2
+  },
+  "src/pages/admin/AdminAgentConfig.tsx": {
+    "button": 3
+  },
+  "src/pages/admin/AdminAgentSubmissions.tsx": {
+    "button": 1
+  },
+  "src/pages/admin/AdminAgentTraces.tsx": {
+    "button": 1
+  },
+  "src/pages/admin/AdminAgents.tsx": {
+    "button": 1,
+    "input": 1
+  },
+  "src/pages/admin/AdminBenchmarks.tsx": {
+    "button": 7,
+    "input": 5
+  },
+  "src/pages/admin/AdminSchedules.tsx": {
+    "input": 3
+  },
+  "src/pages/admin/AdminTools.tsx": {
+    "input": 2
+  },
+  "src/pages/admin/AdminUsers.tsx": {
+    "input": 5
+  },
+  "src/pages/admin/interfaces/AdminInterfacesAutomationSection.tsx": {
+    "input": 3
+  },
+  "src/pages/admin/interfaces/AdminInterfacesBridgesSection.tsx": {
+    "input": 2
+  },
+  "src/pages/admin/interfaces/AdminInterfacesLegalSection.tsx": {
+    "input": 2
+  },
+  "src/pages/admin/interfaces/AdminInterfacesLlmSection.tsx": {
+    "button": 1,
+    "input": 2
+  },
+  "src/pages/admin/interfaces/AdminInterfacesMemorySection.tsx": {
+    "input": 5
+  },
+  "src/pages/admin/interfaces/AdminInterfacesPlatformSection.tsx": {
+    "input": 15
+  },
+  "src/pages/org/OrgContentCms.tsx": {
+    "button": 3
+  },
+  "src/pages/org/OrgKnowledgePublishSection.tsx": {
+    "input": 1
+  },
+  "src/pages/org/OrgSetupPage.tsx": {
+    "input": 2
+  },
+  "src/pages/settings/AgentSettings.tsx": {
+    "input": 13
+  },
+  "src/pages/settings/ConnectionsSettings.tsx": {
+    "input": 1
+  },
+  "src/pages/settings/DelegateSettings.tsx": {
+    "input": 4
+  },
+  "src/pages/settings/NotificationsSettings.tsx": {
+    "input": 1
+  },
+  "src/pages/settings/SharesSettings.tsx": {
+    "button": 2,
+    "input": 4
+  },
+  "src/pages/settings/ToolsSettings.tsx": {
+    "button": 1,
+    "input": 1
+  },
+  "src/pages/settings/VoiceSettings.tsx": {
+    "input": 3
+  }
+}
