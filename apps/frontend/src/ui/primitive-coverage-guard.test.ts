@@ -73,19 +73,32 @@ describe("findOrphans", () => {
     expect(orphans.map((o) => o.module)).toEqual(["src/ui/Planted.tsx"]);
   });
 
-  it("accepts an importer from inside src/ui, but still wants one for itself", () => {
-    // Table.tsx loading Skeleton.tsx satisfies the rule for Skeleton — what the
-    // guard refuses is a module no other file loads. Table is itself unreferenced
-    // here, so it is the one left on the list.
+  it("refuses a module only its neighbours in src/ui load", () => {
+    // The weaker reading — "some other file imports it" — passed this shape, and
+    // it is the shape of a primitive that was written and never shipped: Table
+    // loads Planted, nothing outside the folder loads either of them, and both
+    // compile happily. An adoption claim is a claim about the app.
     const files = [
       { rel: "src/ui/Planted.tsx", specifiers: [] },
       { rel: "src/ui/Table.tsx", specifiers: ["./Planted"] },
     ];
-    expect(findOrphans(files).map((o) => o.module)).toEqual(["src/ui/Table.tsx"]);
+    expect(findOrphans(files).map((o) => o.module)).toEqual([
+      "src/ui/Planted.tsx",
+      "src/ui/Table.tsx",
+    ]);
     expect(countConsumers(files)).toEqual([
       { module: "src/ui/Planted.tsx", outside: 0, inside: 1 },
       { module: "src/ui/Table.tsx", outside: 0, inside: 0 },
     ]);
+
+    // One surface loading it is enough — the row leaves the list on its own.
+    const adopted = [...files, { rel: "src/pages/Report.tsx", specifiers: ["../ui/Planted"] }];
+    expect(findOrphans(adopted).map((o) => o.module)).toEqual(["src/ui/Table.tsx"]);
+    expect(countConsumers(adopted)[0]).toEqual({
+      module: "src/ui/Planted.tsx",
+      outside: 1,
+      inside: 1,
+    });
   });
 
   it("does not let a module import itself into being used", () => {
