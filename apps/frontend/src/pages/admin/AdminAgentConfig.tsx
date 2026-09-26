@@ -16,6 +16,7 @@ import {
 import { fetchBenchmarkLlmProviders, type BenchmarkLlmProvider } from "../../features/admin/benchmarks/benchmarksApi";
 import { Button } from "../../ui/Button";
 import { Select, TextArea, TextInput } from "../../ui/Field";
+import { Tabs } from "../../ui/Tabs";
 
 type Tab = "knobs" | "models";
 
@@ -347,20 +348,16 @@ export function AdminAgentConfig() {
             {t("admin:agentConfigGitSha")}: {gitSha}
           </p>
         ) : null}
-        <div className="mt-soft flex flex-wrap gap-base">
-          {(["knobs", "models"] as Tab[]).map((id) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setTab(id)}
-              className={`rounded-tile px-soft py-tight text-xs ${
-                tab === id ? "bg-white/15 text-ink-primary" : "text-ink-muted hover:bg-white/5"
-              }`}
-            >
-              {t(`admin:agentConfigTab_${id}`)}
-            </button>
-          ))}
-        </div>
+        <Tabs
+          className="mt-soft"
+          ariaLabel={t("admin:agentConfigTabsAria")}
+          value={tab}
+          onChange={(id) => setTab(id === "models" ? "models" : "knobs")}
+          items={(["knobs", "models"] as Tab[]).map((id) => ({
+            id,
+            label: t(`admin:agentConfigTab_${id}`),
+          }))}
+        />
       </header>
 
       {error ? (
