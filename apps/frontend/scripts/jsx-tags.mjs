@@ -112,6 +112,79 @@ export function findElements(src, name) {
 }
 
 /**
+ * Top-level attribute names of an opening tag, in source order.
+ *
+ * `hasNamedAttr` answers "is there a non-empty value here", which is the wrong
+ * question for a boolean prop: `<Button block>` carries `block` with no `=`, and
+ * a plain substring search for `block` would equally find the word inside
+ * `className="mt-4 block"` — a class is not a prop. Tokenising instead of
+ * searching keeps both wrong answers out: quoted values and brace expressions
+ * are skipped as units, so only names standing at the top level of the tag are
+ * reported. A `{...spread}` is reported as `"..."`; whether it happens to contain
+ * the attribute is not knowable here and a guard must not guess.
+ */
+export function attrNames(tag) {
+  const names = [];
+  let i = 1; // past `<`
+  const skipQuoted = (quote) => {
+    i += 1;
+    while (i < tag.length && tag[i] !== quote) {
+      if (tag[i] === "\\") i += 1;
+      i += 1;
+    }
+    i += 1;
+  };
+  const skipBraces = () => {
+    let depth = 0;
+    while (i < tag.length) {
+      const c = tag[i];
+      if (c === "'" || c === '"' || c === "`") {
+        skipQuoted(c);
+        continue;
+      }
+      if (c === "{") depth += 1;
+      else if (c === "}") {
+        depth -= 1;
+        if (depth === 0) {
+          i += 1;
+          return;
+        }
+      }
+      i += 1;
+    }
+  };
+  while (i < tag.length && /[A-Za-z0-9_.]/.test(tag[i])) i += 1; // the element name
+  while (i < tag.length) {
+    const c = tag[i];
+    if (/\s/.test(c)) {
+      i += 1;
+      continue;
+    }
+    if (c === ">" || (c === "/" && tag[i + 1] === ">")) break;
+    if (c === "{") {
+      names.push("...");
+      skipBraces();
+      continue;
+    }
+    const start = i;
+    while (i < tag.length && !/[\s=>/]/.test(tag[i])) i += 1;
+    const name = tag.slice(start, i);
+    if (!name) {
+      i += 1;
+      continue;
+    }
+    names.push(name);
+    while (i < tag.length && /\s/.test(tag[i])) i += 1;
+    if (tag[i] !== "=") continue;
+    i += 1;
+    const v = tag[i];
+    if (v === "'" || v === '"' || v === "`") skipQuoted(v);
+    else if (v === "{") skipBraces();
+  }
+  return names;
+}
+
+/**
  * Is `attr` present on this opening tag as a standalone attribute with a
  * non-empty value?
  *
