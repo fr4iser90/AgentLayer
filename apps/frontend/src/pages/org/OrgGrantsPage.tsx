@@ -13,6 +13,7 @@ import {
 } from "../../lib/entityGrantsApi";
 import { Select } from "../../ui/Field";
 import { Button } from "../../ui/Button";
+import { Table, type TableColumn } from "../../ui/Table";
 
 type Row = {
   id: string;
@@ -136,6 +137,70 @@ export function OrgGrantsPage() {
     [rows]
   );
 
+  // The two narrow tracks get fixed widths on purpose: the status column carries
+  // either "Up to date" or a backend error message, and with auto layout the
+  // first failing workspace would re-track the name and select columns under it.
+  const columns: Array<TableColumn<Row>> = [
+    {
+      key: "workspace",
+      header: t("org:grantsColWorkspace"),
+      render: (row) => (
+        <>
+          <span className="font-medium text-ink-primary">{row.name}</span>
+          {row.visibility !== "tenant" ? (
+            <Badge tone="warning" className="ml-base">
+              {t("org:grantsPrivateTag")}
+            </Badge>
+          ) : null}
+        </>
+      ),
+    },
+    {
+      key: "access",
+      header: t("org:grantsColMemberAccess"),
+      width: "12rem",
+      // The row's own label stays: every column header reads the same on every
+      // row, so without it a screen reader cannot say which workspace a level is for.
+      render: (row) => (
+        <>
+          <label className="sr-only" htmlFor={`grant-${row.id}`}>
+            {t("org:grantsColMemberAccess")} — {row.name}
+          </label>
+          <Select
+            id={`grant-${row.id}`}
+            value={row.level === null ? "" : row.level}
+            disabled={row.saving || row.visibility !== "tenant"}
+            onChange={(e) => {
+              const next = e.target.value === "" ? null : (e.target.value as GrantAccessLevel);
+              void setLevel(row.id, next);
+            }}
+          >
+            {ACCESS_LEVELS.map((lvl) => (
+              <option key={String(lvl)} value={lvl === null ? "" : lvl}>
+                {t(levelLabelKey(lvl))}
+              </option>
+            ))}
+          </Select>
+        </>
+      ),
+    },
+    {
+      key: "status",
+      header: t("org:grantsColStatus"),
+      width: "14rem",
+      render: (row) =>
+        row.saving ? (
+          <span className="text-ink-muted">{t("org:grantsSaving")}</span>
+        ) : row.error ? (
+          <span className="text-danger">{row.error}</span>
+        ) : row.visibility !== "tenant" ? (
+          <span className="text-badge-warning">{t("org:grantsInertWhilePrivate")}</span>
+        ) : (
+          <span className="text-ink-muted">{t("org:grantsUpToDate")}</span>
+        ),
+    },
+  ];
+
   if (!hasOrgSurface(auth.user)) {
     return (
       <div className="mx-auto max-w-pageNarrow px-wide py-page text-sm text-ink-muted">
@@ -168,71 +233,20 @@ export function OrgGrantsPage() {
       {message ? <p className="mt-wide text-sm text-badge-success">{message}</p> : null}
       {error ? <p className="mt-wide text-sm text-danger">{error}</p> : null}
 
-      {loading ? (
-        <p className="mt-broad text-sm text-ink-muted">{t("org:grantsLoading")}</p>
-      ) : null}
-
-      {!loading && rows.length === 0 ? (
-        <p className="mt-broad text-sm text-ink-muted">{t("org:grantsEmpty")}</p>
-      ) : null}
-
-      {!loading && rows.length > 0 ? (
-        <table className="mt-broad w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-muted">
-              <th className="py-base pr-wide font-medium">{t("org:grantsColWorkspace")}</th>
-              <th className="py-base pr-wide font-medium">{t("org:grantsColMemberAccess")}</th>
-              <th className="py-base font-medium">{t("org:grantsColStatus")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} className="border-b border-line/60 align-top">
-                <td className="py-soft pr-wide">
-                  <span className="font-medium text-ink-primary">{row.name}</span>
-                  {row.visibility !== "tenant" ? (
-                    <Badge tone="warning" className="ml-base">
-                      {t("org:grantsPrivateTag")}
-                    </Badge>
-                  ) : null}
-                </td>
-                <td className="py-soft pr-wide">
-                  <label className="sr-only" htmlFor={`grant-${row.id}`}>
-                    {t("org:grantsColMemberAccess")} — {row.name}
-                  </label>
-                  <Select
-                    id={`grant-${row.id}`}
-                    className="text-xs"
-                    value={row.level === null ? "" : row.level}
-                    disabled={row.saving || row.visibility !== "tenant"}
-                    onChange={(e) => {
-                      const next = e.target.value === "" ? null : (e.target.value as GrantAccessLevel);
-                      void setLevel(row.id, next);
-                    }}
-                  >
-                    {ACCESS_LEVELS.map((lvl) => (
-                      <option key={String(lvl)} value={lvl === null ? "" : lvl}>
-                        {t(levelLabelKey(lvl))}
-                      </option>
-                    ))}
-                  </Select>
-                </td>
-                <td className="py-soft text-xs">
-                  {row.saving ? (
-                    <span className="text-ink-muted">{t("org:grantsSaving")}</span>
-                  ) : row.error ? (
-                    <span className="text-danger">{row.error}</span>
-                  ) : row.visibility !== "tenant" ? (
-                    <span className="text-badge-warning">{t("org:grantsInertWhilePrivate")}</span>
-                  ) : (
-                    <span className="text-ink-muted">{t("org:grantsUpToDate")}</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : null}
+      {/* One table for both the loading and the loaded shape: the header, the
+          row rhythm and the empty row are all in place before the fan-out
+          resolves, so nothing below it moves when the grants land.
+          52 px is a real row here — `py-base` (8+8) around the tallest cell
+          content, the 36 px `Select` (`py-snug` 6+6 + 22 px `text-body` + border). */}
+      <Table
+        className="mt-broad"
+        columns={columns}
+        rows={rows}
+        rowKey={(row) => row.id}
+        loading={loading}
+        empty={t("org:grantsEmpty")}
+        rowHeight={52}
+      />
 
       {!loading && privateCount > 0 ? (
         <p className="mt-wide text-xs text-badge-warning">{t("org:grantsPrivateWarning")}</p>
