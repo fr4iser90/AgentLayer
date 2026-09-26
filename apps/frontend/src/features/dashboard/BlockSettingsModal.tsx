@@ -19,6 +19,7 @@ import { Button } from "../../ui/Button";
 import { Drawer } from "../../ui/Drawer";
 import { Checkbox } from "../../ui/Checkbox";
 import { Select, TextInput } from "../../ui/Field";
+import { Tabs } from "../../ui/Tabs";
 
 type TabId = "general" | "data" | "share" | "display";
 
@@ -268,26 +269,19 @@ export function BlockSettingsModal({
             {blockTypeLabel(block.type)} ·{" "}
             <span className="font-mono text-ink-muted">{block.id}</span>
           </p>
-          <nav
-            className="mt-soft flex gap-tight border-b border-line-subtle"
-            aria-label={t("dashboard:blockSettingsTabsAria")}
-          >
-            {tabs.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={[
-                  "rounded-t-tile px-soft py-snug text-xs font-medium transition-colors",
-                  tab === item.id
-                    ? "border border-b-0 border-line-strong bg-black/40 text-ink-primary"
-                    : "text-ink-muted hover:text-ink-primary"
-                ].join(" ")}
-                onClick={() => setTab(item.id)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
+          <Tabs
+            className="mt-soft"
+            ariaLabel={t("dashboard:blockSettingsTabsAria")}
+            value={tab}
+            onChange={(id) => {
+              // Tabs hands back a plain string; resolved against the tabs this
+              // block renders instead of cast to TabId, so the drawer cannot be
+              // pointed at a section it never drew.
+              const next = tabs.find((item) => item.id === id);
+              if (next) setTab(next.id);
+            }}
+            items={tabs}
+          />
         </>
       }
       footer={
