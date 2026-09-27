@@ -152,11 +152,6 @@ export const MIGRATION = {
     { line: 712, from: "4xl", to: "dialogFull" },
     { line: 356, from: "5xl", to: "pageWide" },
   ],
-  "src/pages/admin/AdminSchedules.tsx": [
-    { line: 513, from: "2xl", to: "dialogWide" },
-    { line: 677, from: "2xl", to: "dialogWide" },
-    { line: 316, from: "5xl", to: "pageWide" },
-  ],
   "src/features/dashboard/DashboardLayoutProposalPanel.tsx": [
     // Carries a grid preview, so it keeps the full modal width.
     { line: 81, from: "5xl", to: "dialogFull" },

@@ -42,7 +42,7 @@ export const APP_ROUTES = [
   { path: "/app/admin/agents", page: "AdminAgents", file: "pages/admin/AdminAgents.tsx", auth: "admin" },
   { path: "/app/admin/agent-submissions", page: "AdminAgentSubmissions", file: "pages/admin/AdminAgentSubmissions.tsx", auth: "admin" },
   { path: "/app/admin/users", page: "AdminUsers", file: "pages/admin/AdminUsers.tsx", auth: "admin" },
-  { path: "/app/admin/schedules", page: "AdminSchedules", file: "pages/admin/AdminSchedules.tsx", auth: "admin" },
+  { path: "/app/admin/schedules", page: "MySchedulesPage", file: "pages/MySchedulesPage.tsx", auth: "admin" },
   { path: "/app/admin/run-traces", page: "AdminAgentTraces", file: "pages/admin/AdminAgentTraces.tsx", auth: "admin" },
   { path: "/app/admin/benchmarks", page: "AdminBenchmarks", file: "pages/admin/AdminBenchmarks.tsx", auth: "admin" },
 ];

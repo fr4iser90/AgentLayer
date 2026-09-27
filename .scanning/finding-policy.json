@@ -249,7 +249,7 @@
   "eslint": {
     "accepted_findings": [
       {
-        "path_regex": "apps/frontend/src/pages/admin/AdminSchedules\\.tsx$|apps/frontend/src/pages/MySchedulesPage\\.tsx$",
+        "path_regex": "apps/frontend/src/pages/MySchedulesPage\\.tsx$",
         "message_regex": "Unused eslint-disable.*no-alert",
         "reason": "False positive: stale no-alert disable when no-alert is not enabled in security-scan eslint config; window.confirm is intentional delete UX (directives removed in source)."
       },
