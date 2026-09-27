@@ -3,6 +3,7 @@ import { SettingsLayout } from "./layout/SettingsLayout";
 import { AuthProvider } from "./auth/AuthContext";
 import { FriendsSettings } from "./pages/settings/FriendsSettings";
 import { RequireSiteAdmin } from "./auth/RequireSiteAdmin";
+import { RequireCapability } from "./auth/RequireCapability";
 import { RequireOrgAdmin } from "./auth/RequireOrgAdmin";
 import { RequireUserAdmin } from "./auth/RequireUserAdmin";
 import { OrgSetupPage } from "./pages/org/OrgSetupPage";
@@ -163,12 +164,38 @@ export function App() {
                 <Route path="users" element={<RequireUserAdmin><AdminUsers /></RequireUserAdmin>} />
                 <Route path="scheduled-jobs" element={<AdminScheduledJobs />} />
                 <Route path="schedules" element={<AdminSchedules />} />
-                <Route path="run-traces" element={<AdminAgentTraces />} />
                 <Route path="benchmarks" element={<AdminBenchmarks />} />
                 <Route path="harness" element={<Navigate to="../agent-config" replace />} />
                 <Route path="agent-config" element={<AdminAgentConfig />} />
                 <Route path="workflows" element={<Navigate to="../scheduled-jobs" replace />} />
               </Route>
+              {/*
+                An admin page that is not the platform operator's alone.
+
+                `RequireSiteAdmin` sits above the whole area, so it refused a
+                delegated holder before any child route was consulted — and this
+                page's three endpoints never asked for that: all of them run
+                `require_admin_scope(request, "observability.read")`
+                (`run_traces_admin_api.py:37,50,79`). The slug is now what the
+                route asks, which is also what the rail asks: `NavLeaf.cap` in
+                `navModel.ts` carries the same string, and
+                `adminCapabilityGate.test.ts` fails the two when they disagree.
+
+                Deliberately a route of its own rather than a child of `admin`,
+                and named in full: a page joins this branch by spelling out the
+                capability, and nothing slides in under the operator's guard by
+                accident. What still blocks the other admin leaves — including
+                one that asks for a provider admin rather than either of these —
+                is listed beside `NavLeaf.cap`, by file and line.
+              */}
+              <Route
+                path="admin/run-traces"
+                element={
+                  <RequireCapability cap="observability.read">
+                    <AdminAgentTraces />
+                  </RequireCapability>
+                }
+              />
             </Route>
             <Route path="*" element={<DefaultLandingRedirect />} />
           </Route>
