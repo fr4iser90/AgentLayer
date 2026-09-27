@@ -21,6 +21,12 @@ export function AdminInterfacesAutomationPage() {
       }
     >
       <AdminInterfacesAutomationSection />
+      <section className="mt-deep rounded-sheet border border-line bg-card p-roomy">
+        <h2 className="text-sm font-medium text-ink-primary">{t("admin:pluginCronTitle")}</h2>
+        <p className="mt-base text-xs text-ink-muted">{t("admin:pluginCronIntro")}</p>
+        <p className="mt-wide text-xs text-ink-muted">{t("admin:pluginCronLlmNote")}</p>
+        <p className="mt-wide text-xs text-ink-muted">{t("admin:pluginCronNoApi")}</p>
+      </section>
     </AdminInterfacesPageShell>
   );
 }

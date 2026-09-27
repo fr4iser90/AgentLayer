@@ -24,7 +24,6 @@ import { AdminTools } from "./pages/admin/AdminTools";
 import { AdminAgents } from "./pages/admin/AdminAgents";
 import { AdminAgentSubmissions } from "./pages/admin/AdminAgentSubmissions";
 import { AdminUsers } from "./pages/admin/AdminUsers";
-import { AdminScheduledJobs } from "./pages/admin/AdminScheduledJobs";
 import { AdminSchedules } from "./pages/admin/AdminSchedules";
 import { AdminAgentTraces } from "./pages/admin/AdminAgentTraces";
 import { AdminBenchmarks } from "./pages/admin/AdminBenchmarks";
@@ -162,12 +161,11 @@ export function App() {
                 <Route path="agents" element={<AdminAgents />} />
                 <Route path="agent-submissions" element={<AdminAgentSubmissions />} />
                 <Route path="users" element={<RequireUserAdmin><AdminUsers /></RequireUserAdmin>} />
-                <Route path="scheduled-jobs" element={<AdminScheduledJobs />} />
                 <Route path="schedules" element={<AdminSchedules />} />
                 <Route path="benchmarks" element={<AdminBenchmarks />} />
                 <Route path="harness" element={<Navigate to="../agent-config" replace />} />
                 <Route path="agent-config" element={<AdminAgentConfig />} />
-                <Route path="workflows" element={<Navigate to="../scheduled-jobs" replace />} />
+                <Route path="workflows" element={<Navigate to="../interfaces/automation" replace />} />
               </Route>
               {/*
                 An admin page that is not the platform operator's alone.
