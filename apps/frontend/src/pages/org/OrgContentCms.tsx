@@ -66,19 +66,38 @@ function statusBadge(status: string, t: (k: string) => string): string {
 export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
   const { t } = useTranslation(["org"]);
   const auth = useAuth();
-  const canPublish =
-    (auth.user?.profession_policy?.can_publish_content ??
-      auth.user?.site_role === "site_admin") ||
-    auth.user?.role?.toLowerCase() === "admin" ||
-    auth.user?.membership_role === "tenant_owner" ||
-    auth.user?.membership_role === "tenant_admin";
-  const canReview =
-    auth.user?.profession_policy?.can_review_content === true ||
-    auth.user?.site_role === "site_admin" ||
-    auth.user?.role?.toLowerCase() === "admin" ||
-    auth.user?.membership_role === "tenant_owner" ||
-    auth.user?.membership_role === "tenant_admin";
   const base = apiBase(auth.user);
+
+  /*
+    The deployment mode picks which route family `base` aims at, and that choice
+    is who the server lets through.
+
+    `/v1/org/tenant-content` asks a tenant membership and then `content.review` /
+    `content.publish` (`tenant_content_api.py:186,213,252,315`). `profession_policy`
+    is that policy as the wire serves it and already carries both slugs for a tenant
+    admin, so it is the only thing to ask here. It comes only with a membership
+    (`auth_api.py:337`), so the membership role answers when it could not be
+    resolved — otherwise a tenant admin would lose the button while the API still
+    served them. No membership answers neither, which is right: `require_tenant_member`
+    exempts nobody, the platform operator included.
+
+    `/v1/admin/tenant-content` asks `require_site_admin`, which reads `site_role`
+    and nothing else (`auth.py:422`).
+
+    The legacy `users.role` column is neither of those. `agent_effective_role`
+    (`request_auth.py:64`) refuses to elevate an `admin` paired with `site_user`, and
+    that pair was OR'd into both flags: publish and review showed for accounts whose
+    requests the endpoint these buttons aimed at rejected.
+  */
+  const policy = auth.user?.profession_policy;
+  const tenantAdmin =
+    auth.user?.membership_role === "tenant_owner" || auth.user?.membership_role === "tenant_admin";
+  const canReview = hasOrgSurface(auth.user)
+    ? (policy?.can_review_content ?? tenantAdmin)
+    : auth.user?.site_role === "site_admin";
+  const canPublish = hasOrgSurface(auth.user)
+    ? (policy?.can_publish_content ?? tenantAdmin)
+    : auth.user?.site_role === "site_admin";
 
   const [items, setItems] = useState<ContentRow[]>([]);
   const [reviewQueue, setReviewQueue] = useState<ContentRow[]>([]);
