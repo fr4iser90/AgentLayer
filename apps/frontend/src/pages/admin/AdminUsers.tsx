@@ -656,6 +656,15 @@ export function AdminUsers() {
                   const targetEditable = canEditTargetRow(user, {
                     site_role: r.site_role,
                   });
+                  // The chip is green for the account the server hands the instance
+                  // to (`require_site_admin`, auth.py:422), not for whatever the
+                  // legacy column still holds: `agent_effective_role`
+                  // (request_auth.py:64) refuses to elevate an `admin` paired with
+                  // `site_user`, and rank is exactly what a green chip reads as to
+                  // whoever reviews this list. The legacy value stays on show — the
+                  // column is real and minimum-role checks still read it — it just
+                  // no longer carries the colour.
+                  const operator = r.site_role === "site_admin";
                   return (
                     <tr key={r.id} className="border-b border-line/80 hover:bg-white/[0.03]">
                       <td className="px-wide py-soft text-ink-primary">
@@ -692,8 +701,8 @@ export function AdminUsers() {
                         </td>
                       )}
                       <td className="px-wide py-soft">
-                        <Badge tone={r.role?.toLowerCase() === "admin" ? "success" : "accent"}>
-                          {r.role}
+                        <Badge tone={operator ? "success" : "accent"}>
+                          {operator ? "site_admin" : r.role}
                         </Badge>
                         {!targetEditable ? (
                           <span
