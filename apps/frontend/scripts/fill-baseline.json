@@ -91,10 +91,6 @@
     "hover:bg-violet-500/10",
     "hover:bg-violet-950/20"
   ],
-  "src/pages/admin/AdminSchedules.tsx": [
-    "bg-violet-600/80",
-    "hover:bg-violet-500"
-  ],
   "src/pages/admin/AdminTools.tsx": [
     "bg-violet-900/50"
   ],

@@ -13,6 +13,7 @@ import {
 import { Button } from "../ui/Button";
 import { Modal } from "../ui/Modal";
 import { Badge, type BadgeTone } from "../ui/Badge";
+import { EmptyState } from "../ui/EmptyState";
 import { Select, TextArea, TextInput } from "../ui/Field";
 import { Checkbox } from "../ui/Checkbox";
 import { SkeletonRows } from "../ui/Skeleton";
@@ -26,7 +27,9 @@ type SchedulerJobRow = {
   interval_minutes: number;
   enabled: boolean;
   last_run_at: string | null;
+  deleted_at?: string | null;
   created_at: string;
+  coding_workflow?: unknown;
   instructions?: string;
 };
 
@@ -83,13 +86,34 @@ type SchedulerJobPreset = {
   };
 };
 
-function pill(enabled: boolean) {
-  return enabled
-    ? "bg-success-subtle text-badge-success border-success/40"
-    : "bg-white/10 text-ink-muted border-line";
+/** The admin list's owner filter, mirroring `GET /v1/admin/scheduler-jobs`. */
+type JobOwnerScope = "all" | "global_only" | "dashboard";
+
+function pill(enabled: boolean): BadgeTone {
+  return enabled ? "success" : "neutral";
 }
 
-export function MySchedulesPage() {
+export type SchedulesScope = "user" | "admin";
+
+/**
+ * One schedules surface, read through one of two endpoint families.
+ *
+ * `/schedules` lists the signed-in user's own jobs on
+ * `/v1/user/scheduler-jobs`; `/admin/schedules` lists the company's on
+ * `/v1/admin/scheduler-jobs`, the family gated by `schedule.manage` on the
+ * server. Only the list, who may archive a job, and which rows the filters can
+ * reach differ — everything else (create, edit, enable, run history) was the
+ * same dialog written twice, so the admin half lives here as a scope instead of
+ * a second file that has to be taught every change twice.
+ *
+ * The create defaults stay split on purpose: a self-service job is born
+ * disabled at a daily interval so nobody's agent starts running before they
+ * saved it deliberately, while an admin job gets the worker's own default — a
+ * hourly row that starts enabled.
+ */
+export function MySchedulesPage({ scope = "user" }: { scope?: SchedulesScope }) {
+  const admin = scope === "admin";
+  const jobsPath = admin ? "/v1/admin/scheduler-jobs" : "/v1/user/scheduler-jobs";
   const { t } = useTranslation(["settings", "admin"]);
   const auth = useAuth();
   const [jobs, setJobs] = useState<SchedulerJobRow[] | null>(null);
@@ -97,13 +121,20 @@ export function MySchedulesPage() {
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const [scopeFilter, setScopeFilter] = useState<JobOwnerScope>("all");
+  const [dashboardId, setDashboardId] = useState("");
+  const [includeGlobal, setIncludeGlobal] = useState(true);
+  const [targetFilter, setTargetFilter] = useState<"all" | string>("all");
+  const [enabledFilter, setEnabledFilter] = useState<"all" | "true" | "false">("all");
+  const [includeArchived, setIncludeArchived] = useState(false);
+
   const [createOpen, setCreateOpen] = useState(false);
   const [createPresetId, setCreatePresetId] = useState<string>("");
   const [targetCatalog, setTargetCatalog] = useState<ExecutionTargetCatalogRow[]>([]);
   const [createTarget, setCreateTarget] = useState(EXECUTION_GENERAL);
   const [createWorkspaceId, setCreateWorkspaceId] = useState("");
-  const [createInterval, setCreateInterval] = useState(1440);
-  const [createEnabled, setCreateEnabled] = useState(false);
+  const [createInterval, setCreateInterval] = useState(admin ? 60 : 1440);
+  const [createEnabled, setCreateEnabled] = useState(admin);
   const [createTitle, setCreateTitle] = useState("");
   const [createInstructions, setCreateInstructions] = useState("");
   const [createDashboardId, setCreateDashboardId] = useState("");
@@ -124,17 +155,37 @@ export function MySchedulesPage() {
 
   const query = useMemo(() => {
     const q = new URLSearchParams();
+    if (admin) {
+      if (scopeFilter === "global_only") {
+        q.set("include_global", "true");
+      } else if (scopeFilter === "dashboard") {
+        if (dashboardId.trim()) q.set("dashboard_id", dashboardId.trim());
+        q.set("include_global", includeGlobal ? "true" : "false");
+      }
+      if (targetFilter !== "all") q.set("execution_target", targetFilter);
+      if (enabledFilter !== "all") q.set("enabled", enabledFilter);
+      if (includeArchived) q.set("include_archived", "true");
+    }
     q.set("limit", "200");
     return q;
-  }, []);
+  }, [admin, scopeFilter, dashboardId, includeGlobal, targetFilter, enabledFilter, includeArchived]);
+
+  // `min_role: "admin"` in the catalog is decided server-side by
+  // `agent_effective_role()`, which reads the `user_site_admin()` flag and only
+  // falls back to the legacy `users.role` column when that lookup has no value.
+  // Mirroring it here keeps the picker from offering a target the run would
+  // refuse — and from hiding one the flag already grants a site admin.
+  const elevated =
+    auth.user?.site_role === "site_admin" ||
+    (!auth.user?.site_role && auth.user?.role === "admin");
 
   const createTargetOptions = useMemo(
     () =>
       targetCatalog.filter((o) => {
         const role = (o.min_role || "user").toLowerCase();
-        return role !== "admin" || auth.user?.role === "admin";
+        return role !== "admin" || elevated;
       }),
-    [targetCatalog, auth.user?.role]
+    [targetCatalog, elevated]
   );
 
   const createNeedsWorkspace = useMemo(
@@ -146,7 +197,7 @@ export function MySchedulesPage() {
     setLoading(true);
     setErr(null);
     try {
-      const res = await apiFetch(`/v1/user/scheduler-jobs?${query.toString()}`, auth);
+      const res = await apiFetch(`${jobsPath}?${query.toString()}`, auth);
       const j = (await res.json().catch(() => null)) as any;
       if (!res.ok || !j?.ok) {
         setErr(String(j?.detail ?? j?.error ?? res.status));
@@ -165,7 +216,7 @@ export function MySchedulesPage() {
   useEffect(() => {
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [query.toString()]);
 
   useEffect(() => {
     const loadCatalog = async () => {
@@ -186,6 +237,8 @@ export function MySchedulesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // One preset directory for both scopes: the admin list read the same
+  // enabled-preset set, so a single endpoint keeps the dialogs identical.
   useEffect(() => {
     const loadPresets = async () => {
       try {
@@ -245,9 +298,24 @@ export function MySchedulesPage() {
   }, [createOpen, createNeedsWorkspace, auth]);
 
   const toggleEnabled = async (jobId: string, next: boolean) => {
-    const res = await apiFetch(`/v1/user/scheduler-jobs/${jobId}/enabled`, auth, {
+    const res = await apiFetch(`${jobsPath}/${jobId}/enabled`, auth, {
       method: "PATCH",
       body: JSON.stringify({ enabled: next }),
+    });
+    const j = (await res.json().catch(() => null)) as any;
+    if (!res.ok || !j?.ok) {
+      setErr(String(j?.detail ?? j?.error ?? res.status));
+      return;
+    }
+    await refresh();
+  };
+
+  // Soft delete exists on the admin family only: a user's own job is either
+  // there or hard-deleted, so the archive control has nothing to do in `/schedules`.
+  const archiveJob = async (jobId: string, archived: boolean) => {
+    const res = await apiFetch(`${jobsPath}/${jobId}/archived`, auth, {
+      method: "PATCH",
+      body: JSON.stringify({ archived }),
     });
     const j = (await res.json().catch(() => null)) as any;
     if (!res.ok || !j?.ok) {
@@ -266,7 +334,7 @@ export function MySchedulesPage() {
 
   const saveEdit = async () => {
     if (!editJob) return;
-    const res = await apiFetch(`/v1/user/scheduler-jobs/${editJob.id}`, auth, {
+    const res = await apiFetch(`${jobsPath}/${editJob.id}`, auth, {
       method: "PATCH",
       body: JSON.stringify({
         title: editTitle,
@@ -285,7 +353,7 @@ export function MySchedulesPage() {
 
   const hardDelete = async (jobId: string) => {
     if (!window.confirm(t("admin:schedulesPermanentDeleteConfirm"))) return;
-    const res = await apiFetch(`/v1/user/scheduler-jobs/${jobId}`, auth, { method: "DELETE" });
+    const res = await apiFetch(`${jobsPath}/${jobId}`, auth, { method: "DELETE" });
     const j = (await res.json().catch(() => null)) as any;
     if (!res.ok || !j?.ok) {
       setErr(String(j?.detail ?? j?.error ?? res.status));
@@ -301,7 +369,7 @@ export function MySchedulesPage() {
     setRunsErr(null);
     setRunsLoading(true);
     try {
-      const res = await apiFetch(`/v1/user/scheduler-jobs/${j.id}/runs?limit=25`, auth);
+      const res = await apiFetch(`${jobsPath}/${j.id}/runs?limit=25`, auth);
       const body = (await res.json().catch(() => null)) as { ok?: boolean; runs?: SchedulerJobRun[]; detail?: string };
       if (!res.ok || !body?.ok) {
         setRunsErr(String(body?.detail ?? res.status));
@@ -326,7 +394,7 @@ export function MySchedulesPage() {
     if (createCodingWorkflow.prompt_preamble?.trim()) {
       wf.prompt_preamble = createCodingWorkflow.prompt_preamble.trim();
     }
-    const res = await apiFetch(`/v1/user/scheduler-jobs`, auth, {
+    const res = await apiFetch(`${jobsPath}`, auth, {
       method: "POST",
       body: JSON.stringify({
         execution_target: createTarget,
@@ -366,9 +434,16 @@ export function MySchedulesPage() {
       header: t("settings:schedulesEnabledHeader"),
       width: "7rem",
       render: (j) => (
-        <span className={`inline-flex items-center rounded-pill border px-base py-hair text-xs ${pill(j.enabled)}`}>
-          {j.enabled ? t("settings:schedulesEnabled") : t("settings:schedulesDisabled")}
-        </span>
+        <>
+          <Badge tone={pill(j.enabled)}>
+            {j.enabled ? t("settings:schedulesEnabled") : t("settings:schedulesDisabled")}
+          </Badge>
+          {admin && j.deleted_at ? (
+            <Badge tone="neutral" className="ml-base">
+              {t("admin:schedulesArchivedLabel")}
+            </Badge>
+          ) : null}
+        </>
       ),
     },
     {
@@ -409,7 +484,7 @@ export function MySchedulesPage() {
       key: "actions",
       header: t("settings:schedulesActionsHeader"),
       render: (j) => (
-        <div className="flex items-center gap-base">
+        <div className="flex flex-wrap items-center gap-base">
           <Button
             size="sm"
             type="button"
@@ -436,6 +511,16 @@ export function MySchedulesPage() {
           >
             {t("admin:schedulesEdit")}
           </Button>
+          {admin ? (
+            <Button
+              size="sm"
+              type="button"
+              className="px-base py-tight text-xs hover:bg-white/5"
+              onClick={() => void archiveJob(j.id, !j.deleted_at)}
+            >
+              {j.deleted_at ? t("admin:schedulesUnarchive") : t("admin:schedulesArchive")}
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="danger"
@@ -453,12 +538,18 @@ export function MySchedulesPage() {
     <div className="mx-auto max-w-pageWide px-broad py-page">
       <div className="flex items-start justify-between gap-wide">
         <div>
-          <h1 className="text-2xl font-semibold text-ink-primary">{t("common:schedules")}</h1>
-          <p className="mt-base text-sm text-ink-muted">
-            {t("settings:schedulesPageIntro")}{" "}
-            <span className="font-mono">general</span>{" "}
-            <span className="font-mono">coding</span>
-          </p>
+          <h1 className="text-2xl font-semibold text-ink-primary">
+            {admin ? t("admin:schedulesTitle") : t("common:nav.schedules")}
+          </h1>
+          {admin ? (
+            <p className="mt-base text-sm text-ink-muted">{t("admin:schedulesIntro")}</p>
+          ) : (
+            <p className="mt-base text-sm text-ink-muted">
+              {t("settings:schedulesPageIntro")}{" "}
+              <span className="font-mono">general</span>{" "}
+              <span className="font-mono">coding</span>
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-base">
           <Button
@@ -466,7 +557,7 @@ export function MySchedulesPage() {
             className="px-soft py-base text-sm hover:bg-white/5"
             onClick={() => setCreateOpen(true)}
           >
-            {t("settings:schedulesCreate")}
+            {t("admin:schedulesCreate")}
           </Button>
           <Button
             type="button"
@@ -479,6 +570,78 @@ export function MySchedulesPage() {
         </div>
       </div>
 
+      {admin ? (
+        <div className="mt-broad rounded-sheet border border-line bg-card p-wide">
+          <div className="grid gap-soft md:grid-cols-5">
+            <label className="text-xs text-ink-muted">
+              {t("admin:schedulesScope")}
+              <Select
+                className="mt-tight"
+                value={scopeFilter}
+                onChange={(e) => setScopeFilter(e.target.value as JobOwnerScope)}
+              >
+                <option value="all">{t("admin:schedulesScopeAll")}</option>
+                <option value="global_only">{t("admin:schedulesScopeGlobalOnly")}</option>
+                <option value="dashboard">{t("admin:schedulesScopeDashboard")}</option>
+              </Select>
+            </label>
+            <label className="text-xs text-ink-muted md:col-span-2">
+              {t("admin:schedulesDashboardId")}
+              <TextInput
+                className="mt-tight"
+                value={dashboardId}
+                onChange={(e) => setDashboardId(e.target.value)}
+                placeholder={t("admin:optional")}
+                disabled={scopeFilter !== "dashboard"}
+              />
+            </label>
+            <label className="text-xs text-ink-muted">
+              {t("admin:schedulesTarget")}
+              <Select
+                className="mt-tight"
+                value={targetFilter}
+                onChange={(e) => setTargetFilter(e.target.value)}
+              >
+                <option value="all">{t("admin:schedulesScopeAll")}</option>
+                {targetCatalog.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label className="text-xs text-ink-muted">
+              {t("admin:schedulesEnabledFilter")}
+              <Select
+                className="mt-tight"
+                value={enabledFilter}
+                onChange={(e) => setEnabledFilter(e.target.value as "all" | "true" | "false")}
+              >
+                <option value="all">{t("admin:schedulesScopeAll")}</option>
+                <option value="true">{t("admin:schedulesEnabledFilterEnabled")}</option>
+                <option value="false">{t("admin:schedulesEnabledFilterDisabled")}</option>
+              </Select>
+            </label>
+          </div>
+          {scopeFilter === "dashboard" ? (
+            <label className="mt-soft flex items-center gap-base text-xs text-ink-muted">
+              <Checkbox
+                checked={includeGlobal}
+                onChange={(e) => setIncludeGlobal(e.target.checked)}
+              />
+              {t("admin:schedulesIncludeGlobal")}
+            </label>
+          ) : null}
+          <label className="mt-soft flex items-center gap-base text-xs text-ink-muted">
+            <Checkbox
+              checked={includeArchived}
+              onChange={(e) => setIncludeArchived(e.target.checked)}
+            />
+            {t("admin:schedulesShowArchived")}
+          </label>
+        </div>
+      ) : null}
+
       {err ? <div className="mt-wide rounded-card border border-danger/30 bg-danger-subtle p-soft text-sm text-badge-danger">{err}</div> : null}
 
       {/* No `rowHeight`: the tallest cell is the `h-7` action Button, so a job row is
@@ -489,8 +652,21 @@ export function MySchedulesPage() {
         columns={jobColumns}
         rows={jobs ?? []}
         rowKey={(j) => j.id}
+        minWidth={admin ? "900px" : undefined}
         loading={jobs === null && !err}
-        empty={jobs === null ? t("settings:schedulesNoData") : t("settings:schedulesNoneYet")}
+        empty={
+          admin ? (
+            <EmptyState
+              pose={jobs ? "noResults" : "waiting"}
+              title={jobs ? t("admin:schedulesNone") : t("admin:schedulesNoDataYet")}
+              animated={false}
+            />
+          ) : jobs === null ? (
+            t("settings:schedulesNoData")
+          ) : (
+            t("settings:schedulesNoneYet")
+          )
+        }
       />
 
       {createOpen ? (
@@ -519,12 +695,14 @@ export function MySchedulesPage() {
                   (createNeedsWorkspace && !createWorkspaceId.trim())
                 }
               >
-                Create
+                {t("admin:create")}
               </Button>
             </>
           }
         >
-          <p className="text-meta text-ink-muted">{t("admin:schedulesCreateHelpUser")}</p>
+          <p className="text-meta text-ink-muted">
+            {admin ? t("admin:createScheduleHelp") : t("admin:schedulesCreateHelpUser")}
+          </p>
 
           <div className="mt-soft grid gap-soft md:grid-cols-2">
               <label className="text-xs text-ink-muted md:col-span-2">
@@ -553,7 +731,7 @@ export function MySchedulesPage() {
               </label>
 
               <label className="text-xs text-ink-muted">
-                {t("admin:schedulesTarget")}
+                {t("settings:schedulesTargetHeader")}
                 <Select
                   className="mt-tight"
                   value={createTarget}
@@ -614,7 +792,7 @@ export function MySchedulesPage() {
                 />
               </label>
               <label className="text-xs text-ink-muted md:col-span-2">
-                Title
+                {t("settings:schedulesTitleHeader")}
                 <TextInput
                   className="mt-tight"
                   value={createTitle}
@@ -645,7 +823,7 @@ export function MySchedulesPage() {
                   checked={createEnabled}
                   onChange={(e) => setCreateEnabled(e.target.checked)}
                 />
-                Enabled
+                {t("settings:schedulesEnabledHeader")}
               </label>
             </div>
         </Modal>
@@ -674,7 +852,7 @@ export function MySchedulesPage() {
                 onClick={() => void saveEdit()}
                 disabled={!editInstructions.trim()}
               >
-                Save
+                {t("admin:save")}
               </Button>
             </>
           }
@@ -682,7 +860,7 @@ export function MySchedulesPage() {
           <p className="font-mono text-meta text-ink-muted">id: {editJob.id}</p>
           <div className="mt-soft grid gap-soft">
               <label className="text-xs text-ink-muted">
-                Title
+                {t("settings:schedulesTitleHeader")}
                 <TextInput
                   className="mt-tight"
                   value={editTitle}
@@ -701,7 +879,7 @@ export function MySchedulesPage() {
                 />
               </label>
               <label className="text-xs text-ink-muted">
-                Instructions
+                <span>{t("admin:instructionsPlaceholder")}</span>
                 <TextArea
                   className="mt-tight min-h-[140px] resize-y"
                   value={editInstructions}
@@ -870,4 +1048,3 @@ export function MySchedulesPage() {
     </div>
   );
 }
-

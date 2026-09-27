@@ -24,7 +24,6 @@ import { AdminTools } from "./pages/admin/AdminTools";
 import { AdminAgents } from "./pages/admin/AdminAgents";
 import { AdminAgentSubmissions } from "./pages/admin/AdminAgentSubmissions";
 import { AdminUsers } from "./pages/admin/AdminUsers";
-import { AdminSchedules } from "./pages/admin/AdminSchedules";
 import { AdminAgentTraces } from "./pages/admin/AdminAgentTraces";
 import { AdminBenchmarks } from "./pages/admin/AdminBenchmarks";
 import { AdminAgentConfig } from "./pages/admin/AdminAgentConfig";
@@ -161,7 +160,7 @@ export function App() {
                 <Route path="agents" element={<AdminAgents />} />
                 <Route path="agent-submissions" element={<AdminAgentSubmissions />} />
                 <Route path="users" element={<RequireUserAdmin><AdminUsers /></RequireUserAdmin>} />
-                <Route path="schedules" element={<AdminSchedules />} />
+                <Route path="schedules" element={<MySchedulesPage scope="admin" />} />
                 <Route path="benchmarks" element={<AdminBenchmarks />} />
                 <Route path="harness" element={<Navigate to="../agent-config" replace />} />
                 <Route path="agent-config" element={<AdminAgentConfig />} />
