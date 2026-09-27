@@ -46,6 +46,54 @@ const AGENT_ASSIGN_CAP = "agent.assign";
 const WORKSPACE_MANAGE_CAP = "workspace.manage";
 
 /**
+ * The admin capability slugs — `ALL_ADMIN_CAPABILITIES` in
+ * `domain/access/capabilities.py`.
+ *
+ * A runtime tuple and not only a union type, because nothing in the frontend
+ * build type-checks (`npm run build` transpiles and bundles): a typo in a nav
+ * leaf's `cap` would ship and quietly deny that page to every delegated holder.
+ * `adminCapabilityGate.test.ts` reads the list against the nav model and the
+ * route table.
+ *
+ * Benchmarks deliberately have no slug — their gate is a provider quota, not a
+ * role (comment beside the constant in the backend). Adding one here would be
+ * an API decision, not a UI one.
+ */
+export const ADMIN_CAPABILITIES = [
+  "agent.assign",
+  "user.manage",
+  "workspace.manage",
+  "dashboard.manage",
+  "schedule.manage",
+  "observability.read",
+  "feedback.read",
+  "knowledge.manage"
+] as const;
+
+export type AdminCapability = (typeof ADMIN_CAPABILITIES)[number];
+
+/**
+ * Whether the actor holds one admin capability.
+ *
+ * The frontend copy of `evaluate_access`: a site admin holds every capability,
+ * anyone else only what `/auth/me` granted them, trimmed and lowercased like
+ * the backend's `_normalise`.
+ *
+ * It deliberately does not carry the legacy `role === "admin"` read that
+ * `isSiteAdmin` keeps: `require_admin_scope` never had that fallback, so a
+ * surface gated by a capability must not admit a holder the API would refuse.
+ * Where a surface still sits behind `RequireSiteAdmin` as well, the route guard
+ * asks both and says so.
+ */
+export function holdsCapability(
+  actor?: AccessActor | null,
+  cap: AdminCapability
+): boolean {
+  if (actor?.site_role === "site_admin") return true;
+  return normalizeCapabilities(actor).has(cap);
+}
+
+/**
  * Whether the actor may manage company sharing grants on workspaces.
  *
  * Mirrors the backend gate: `require_admin_scope(request, "workspace.manage")`,
@@ -55,8 +103,7 @@ const WORKSPACE_MANAGE_CAP = "workspace.manage";
  * enforces it, this only decides whether the screen is reachable.
  */
 export function canManageWorkspaceGrants(actor?: AccessActor | null): boolean {
-  if (actor?.site_role === "site_admin") return true;
-  return normalizeCapabilities(actor).has(WORKSPACE_MANAGE_CAP);
+  return holdsCapability(actor, WORKSPACE_MANAGE_CAP);
 }
 
 /** Tenant membership that owns or administers the company. */
@@ -108,8 +155,7 @@ export function normalizeCapabilities(
  * A site admin holds every capability; a delegated holder only what was granted.
  */
 export function canAssignAgents(actor?: AccessActor | null): boolean {
-  if (actor?.site_role === "site_admin") return true;
-  return normalizeCapabilities(actor).has(AGENT_ASSIGN_CAP);
+  return holdsCapability(actor, AGENT_ASSIGN_CAP);
 }
 
 /**

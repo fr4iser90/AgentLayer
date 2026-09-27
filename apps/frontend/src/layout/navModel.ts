@@ -67,7 +67,9 @@ import { hasOrgSurface, isSingleUser } from "../auth/deploymentMode";
 import {
   canManageWorkspaceGrants,
   canReachOrgSurface,
-  isSiteAdmin
+  holdsCapability,
+  isSiteAdmin,
+  type AdminCapability
 } from "../pages/admin/accessGating";
 
 export type NavLeaf = {
@@ -79,6 +81,36 @@ export type NavLeaf = {
   end?: boolean;
   /** Tenant allowlist id; admin/org/settings leaves are gated by their guards. */
   nav?: NavItemId;
+  /**
+   * The admin capability that opens this leaf — for a page the platform
+   * operator does not exclusively own.
+   *
+   * All of `/admin` hangs off `RequireSiteAdmin`, so a delegated holder had no
+   * route at all to a page whose endpoint they pass:
+   * `run_traces_admin_api.py:37,50,79` ask
+   * `require_admin_scope(request, "observability.read")` while the route asked
+   * the platform operator. A leaf that carries `cap` is therefore served from a
+   * route of its own in `App.tsx`, outside the operator's `admin` branch, and
+   * the rail shows it to whoever holds it. Both halves read this one field:
+   * a row the route refuses is precisely the drift `isSiteAdmin`'s comment
+   * describes, and `adminCapabilityGate.test.ts` fails the pair apart.
+   *
+   * No `cap` means platform-operator-only — and no other admin leaf has earned
+   * one yet, because each still has an endpoint the guard could not step
+   * around: `/admin/users` mixes `require_site_admin`
+   * (`admin_users_api.py:83,90,97`) with `user.manage` (:124,139,289);
+   * `/admin/agents` is site-admin (`agents_import_admin_api.py:279`);
+   * `/admin/agent-config` loads `benchmarks_admin_api.py:196` `/llm-providers`,
+   * itself site-admin (:199); `/admin/schedules` is refused
+   * `/v1/user/scheduler-jobs/execution-targets` until the `schedules_allowed`
+   * flag is set (`schedules_access.py:47`, `schema_122` `DEFAULT false`);
+   * `/admin/interfaces/*` asks a fourth thing entirely
+   * (`require_provider_admin`, `provider_admin_acl.py:39`, used by
+   * `model_catalog_api.py`). Opening one of them is a commit of its own: move
+   * the route into the capability branch and add this field, so the test can
+   * watch both halves move together.
+   */
+  cap?: AdminCapability;
   /** The leaf leaves the app: `to` is a full URL, rendered as `<a>`. */
   external?: boolean;
   /**
@@ -244,7 +276,12 @@ const ADMIN_SECTIONS: NavSection[] = [
     leaves: [
       { to: "/admin/benchmarks", labelKey: "admin:benchNav", icon: Activity },
       { to: "/admin/agent-config", labelKey: "admin:agentConfigNav", icon: SlidersHorizontal },
-      { to: "/admin/run-traces", labelKey: "admin:runTraces", icon: ScrollText }
+      {
+        to: "/admin/run-traces",
+        labelKey: "admin:runTraces",
+        icon: ScrollText,
+        cap: "observability.read"
+      }
     ]
   }
 ];
@@ -337,6 +374,36 @@ export function settingsNav(user: AuthUser | null | undefined): NavSurface {
   };
 }
 
+/**
+ * The admin rail for this reader: the operator's area, plus their own doors.
+ *
+ * A leaf without `cap` belongs to the platform operator because that is what
+ * its route asks. Offering it to anyone else puts a row on screen that returns
+ * the reader to where they came from, which is the drift `cap` exists to
+ * prevent — so a delegated holder gets the capability leaves they hold and
+ * nothing more, and the rail can never claim more than the router serves.
+ */
+function adminLeafVisible(user: AuthUser | null | undefined, leaf: NavLeaf): boolean {
+  // No identity is not a denied identity: `RequireSession` has already turned
+  // that reader away from `/admin`, so filtering here would only invent an
+  // answer nobody asked for. `NavRail.test.tsx` drives the rail this way.
+  if (user == null) return true;
+  if (isSiteAdmin(user)) return true;
+  return !!leaf.cap && holdsCapability(user, leaf.cap);
+}
+
+function filterAdminSections(
+  sections: NavSection[],
+  user: AuthUser | null | undefined
+): NavSection[] {
+  return sections
+    .map((section) => ({
+      ...section,
+      leaves: section.leaves.filter((leaf) => adminLeafVisible(user, leaf))
+    }))
+    .filter((section) => section.leaves.length > 0);
+}
+
 export function adminNav(user: AuthUser | null | undefined): NavSurface {
   const sections = [...ADMIN_SECTIONS];
   if (!isSingleUser(user)) {
@@ -350,7 +417,7 @@ export function adminNav(user: AuthUser | null | undefined): NavSurface {
     namespace: "admin",
     titleKey: "admin:operatorAdmin",
     ariaKey: "admin:adminSectionsAria",
-    sections: withBackToApp(sections)
+    sections: withBackToApp(filterAdminSections(sections, user))
   };
 }
 
