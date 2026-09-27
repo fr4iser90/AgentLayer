@@ -126,10 +126,6 @@ export function AdminInterfacesOverviewPage() {
         <Link to="/admin/schedules" className="text-accent hover:underline">
           {t("admin:adminToSchedules")}
         </Link>
-        . {t("admin:pluginCronRegistry")}{" "}
-        <Link to="/admin/scheduled-jobs" className="text-accent hover:underline">
-          {t("admin:adminToPluginCron")}
-        </Link>
         .
       </p>
     </AdminInterfacesPageShell>

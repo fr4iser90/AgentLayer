@@ -266,10 +266,7 @@ const ADMIN_SECTIONS: NavSection[] = [
   },
   {
     labelKey: "admin:navAutomation",
-    leaves: [
-      { to: "/admin/schedules", labelKey: "admin:schedulesTitle", icon: CalendarClock },
-      { to: "/admin/scheduled-jobs", labelKey: "admin:pluginCron", icon: Workflow }
-    ]
+    leaves: [{ to: "/admin/schedules", labelKey: "admin:schedulesTitle", icon: CalendarClock }]
   },
   {
     labelKey: "admin:navObservability",

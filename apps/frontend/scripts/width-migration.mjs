@@ -246,7 +246,6 @@ export const MIGRATION = {
   // old narrow widths were right about the shape and wrong about the name.
   "src/pages/LoginPage.tsx": [{ line: 49, from: "sm", to: "dialog" }],
   "src/pages/SetupWizardPage.tsx": [{ line: 461, from: "lg", to: "dialog" }],
-  "src/pages/admin/AdminScheduledJobs.tsx": [{ line: 7, from: "xl", to: "page" }],
   "src/pages/settings/NotificationsSettings.tsx": [
     { line: 126, from: "xl", to: "page" },
   ],

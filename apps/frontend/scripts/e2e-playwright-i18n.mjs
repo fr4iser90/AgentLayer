@@ -133,10 +133,6 @@ const ROUTE_MARKERS = {
   },
   "/app/admin/tools": { de: ["Tools", "Paket"], en: ["Tools", "package"] },
   "/app/admin/users": { de: ["Benutzer", "Users", "Tenant"], en: ["Users", "Tenant"] },
-  "/app/admin/scheduled-jobs": {
-    de: ["Jobs", "geplant", "Scheduled"],
-    en: ["Scheduled", "Jobs"],
-  },
   "/app/admin/schedules": { de: ["Zeitpläne", "Schedules"], en: ["Schedules"] },
   "/app/admin/run-traces": {
     de: ["Traces", "Trace", "Lauf"],

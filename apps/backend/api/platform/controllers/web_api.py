@@ -94,7 +94,6 @@ def register_web_routes(app: FastAPI) -> None:
         @app.get("/app/admin/agent-config")
         @app.get("/app/admin/run-traces")
         @app.get("/app/admin/users")
-        @app.get("/app/admin/scheduled-jobs")
         @app.get("/app/admin/schedules")
         @app.get("/app/admin/workflows")
         @app.get("/app/admin/agent-config/{rest:path}")
