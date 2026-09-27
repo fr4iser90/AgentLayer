@@ -401,6 +401,7 @@
   "benchRunLive": "Live — Aktualisierung alle 3 s",
   "benchRunLiveProgress": "bestanden",
   "benchRunWaitingResults": "Fixture-Setup oder erstes Szenario läuft …",
+  "benchRunNoResults": "Keine Szenario-Ergebnisse.",
   "benchInFlightNow": "Aktuell",
   "benchInFlightRunning": "LÄUFT",
   "benchInFlightStarting": "Agent-Turn startet",

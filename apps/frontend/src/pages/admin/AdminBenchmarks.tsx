@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Check, X } from "lucide-react";
@@ -31,6 +31,7 @@ import {
   type BenchmarkScenario,
   type BenchmarkScenarioResult,
   type BenchmarkSuite,
+  type BenchmarkTuningAttempt,
   type BenchmarkTuningSession,
   benchmarkScenarioPrompt,
 } from "../../features/admin/benchmarks/benchmarksApi";
@@ -81,6 +82,7 @@ import { Badge } from "../../ui/Badge";
 import { Modal } from "../../ui/Modal";
 import { Select, TextInput } from "../../ui/Field";
 import { Tabs } from "../../ui/Tabs";
+import { Table, type TableColumn } from "../../ui/Table";
 
 const benchCheckboxClass =
   "h-4 w-4 shrink-0 rounded-tile border-2 border-accent/70 bg-black/60 text-accent accent-accent focus:ring-2 focus:ring-accent/70 focus:ring-offset-0";
@@ -365,6 +367,35 @@ function formatResultFailureLine(res: BenchmarkScenarioResult, t: (key: string) 
     return `${transport} · ${t("admin:benchResultAlsoRubric").replace("{{reason}}", rubric)}`;
   }
   return (res.failure_reason || transport || rubric).trim();
+}
+
+/**
+ * One `<tr>` of the run-detail table.
+ *
+ * The in-flight scenario used to be a hand-drawn row above the results map,
+ * which is exactly the shape that kept this table off `ui/Table`: a row the
+ * primitive cannot express is a row it cannot colour. Making it a row of the
+ * same list is what buys the pinned header.
+ */
+type BenchRunRow =
+  | { kind: "in_flight"; key: string; in_flight: BenchmarkInFlight }
+  | { kind: "result"; key: string; res: BenchmarkScenarioResult };
+
+function benchRunRows(detail: BenchmarkRun | null): BenchRunRow[] {
+  const inFlight = detail?.report_json?.in_flight;
+  const results = (detail?.report_json?.results ?? [])
+    .slice()
+    .sort((a, b) => a.scenario_id.localeCompare(b.scenario_id));
+  return [
+    ...(inFlight
+      ? [{ kind: "in_flight" as const, key: "in-flight", in_flight: inFlight }]
+      : []),
+    ...results.map<BenchRunRow>((res, i) => ({
+      kind: "result",
+      key: `${res.scenario_id}-${i}`,
+      res,
+    })),
+  ];
 }
 
 function BenchmarkFailuresSummary({
@@ -1776,6 +1807,237 @@ export function AdminBenchmarks() {
     }
   };
 
+  const tuneAttemptColumns: Array<TableColumn<BenchmarkTuningAttempt>> = [
+    {
+      key: "preset",
+      header: t("admin:benchTunePreset"),
+      render: (a) => (
+        <span className="font-medium text-ink-primary">{a.label || a.preset_id}</span>
+      ),
+    },
+    {
+      key: "result",
+      header: t("admin:benchTuneResultCol"),
+      render: (a) => `${a.passed ?? 0}/${a.total ?? 0}`,
+    },
+    {
+      key: "pass_rate",
+      header: t("admin:benchTunePassRate"),
+      render: (a) => formatTunePct(a.pass_rate),
+    },
+    {
+      key: "score",
+      header: t("admin:benchTuneScoreCol"),
+      render: (a) => (typeof a.score === "number" ? a.score.toFixed(1) : "—"),
+    },
+    {
+      key: "failures",
+      header: t("admin:benchTuneFailures"),
+      render: (a) => (
+        <span className="text-ink-muted">
+          {formatTuneClusters(
+            (a.runs ?? []).reduce<Record<string, number>>((acc, r) => {
+              for (const [k, n] of Object.entries(r.failure_clusters ?? {})) {
+                acc[k] = (acc[k] ?? 0) + n;
+              }
+              return acc;
+            }, {}),
+          )}
+        </span>
+      ),
+    },
+    {
+      key: "runs",
+      header: t("admin:benchTuneRuns"),
+      render: (a) =>
+        (a.runs ?? []).map((r) => (
+          <Button
+            variant="ghost"
+            key={r.run_id}
+            type="button"
+            className="mr-base text-badge-accent hover:underline"
+            onClick={() => {
+              setTab("history");
+              setSelectedId(r.run_id);
+            }}
+          >
+            {r.suite || r.run_id.slice(0, 8)}
+          </Button>
+        )),
+    },
+  ];
+
+  const runRows = benchRunRows(detail);
+  const runResultColumns: Array<TableColumn<BenchRunRow>> = [
+    {
+      key: "detail",
+      width: "2rem",
+      header: <span className="sr-only">{t("admin:benchColDetail")}</span>,
+      render: (row) =>
+        row.kind === "in_flight" ? (
+          <span className="text-accent" aria-hidden>
+            ◉
+          </span>
+        ) : (
+          <div className="flex flex-col items-start gap-hair">
+            {scenarioHasDiagnostics(row.res) || Boolean(row.res.failure_reason) ? (
+              <Tooltip
+                label={
+                  expandedResultKey === row.key
+                    ? t("admin:benchDetailCollapse")
+                    : t("admin:benchDetailExpand")
+                }
+              >
+                <Button
+                  variant="ghost"
+                  type="button"
+                  className="px-tight text-ink-muted hover:bg-white/5 hover:text-white"
+                  aria-expanded={expandedResultKey === row.key}
+                  onClick={() =>
+                    setExpandedResultKey(expandedResultKey === row.key ? null : row.key)
+                  }
+                >
+                  {expandedResultKey === row.key ? "▾" : "▸"}
+                </Button>
+              </Tooltip>
+            ) : null}
+            <CopyScenarioDetailsButton res={row.res} compact />
+          </div>
+        ),
+    },
+    {
+      key: "scenario",
+      header: t("admin:benchColScenario"),
+      render: (row) =>
+        row.kind === "in_flight" ? (
+          <span className="font-mono text-badge-accent">{row.in_flight.scenario_id}</span>
+        ) : (
+          <span className="font-mono">{row.res.scenario_id}</span>
+        ),
+    },
+    {
+      key: "provider_model",
+      header: t("admin:benchColProviderModel"),
+      render: (row) =>
+        row.kind === "in_flight" ? (
+          <span className="font-mono text-meta text-badge-accent">
+            {formatInFlightProviderModel(row.in_flight)}
+          </span>
+        ) : (
+          <span className="font-mono text-meta">
+            {formatBenchmarkProviderModel(row.res)}
+          </span>
+        ),
+    },
+    {
+      key: "result",
+      header: t("admin:benchColResult"),
+      render: (row) =>
+        row.kind === "in_flight" ? (
+          <span className="text-badge-accent">
+            {t("admin:benchInFlightRunning")} —{" "}
+            {formatInFlightActivity(row.in_flight, t)}
+          </span>
+        ) : (
+          <>
+            {row.res.run_metrics?.project_run_status
+              ? `${row.res.run_metrics.project_run_status} · `
+              : ""}
+            {formatBenchmarkResultStatus(row.res)}
+            {!row.res.skipped && !row.res.passed ? (
+              <span className="ml-tight text-ink-muted">
+                — {formatResultFailureLine(row.res, t)}
+              </span>
+            ) : row.res.failure_reason && row.res.skipped ? (
+              <span className="ml-tight text-ink-muted">— {row.res.failure_reason}</span>
+            ) : null}
+            {hasMultipleAttempts(row.res) &&
+            row.res.passed &&
+            row.res.run_metrics?.pass_at_1 === false ? (
+              <span className="ml-tight text-warning">({t("admin:benchPassAt1Miss")})</span>
+            ) : null}
+          </>
+        ),
+    },
+    {
+      key: "tools",
+      header: t("admin:benchColTools"),
+      render: (row) =>
+        row.kind === "in_flight" ? (
+          <span className="text-badge-accent">
+            {formatInFlightToolsColumn(row.in_flight, t)}
+            {(row.in_flight.tool_names?.length ?? 0) > 0 ? (
+              <span className="ml-tight text-ink-muted">
+                ({row.in_flight.tool_names!.slice(-3).join(", ")})
+              </span>
+            ) : null}
+            {typeof row.in_flight.forwarded_tool_count === "number" &&
+            row.in_flight.forwarded_tool_count > 0 ? (
+              <span className="ml-tight block text-meta text-ink-muted">
+                → {row.in_flight.forwarded_tool_count} {t("admin:benchInFlightForwardedTools")}
+                {row.in_flight.routed_category
+                  ? ` (${row.in_flight.routed_category})`
+                  : ""}
+              </span>
+            ) : null}
+          </span>
+        ) : (
+          <>
+            {row.res.tool_call_count ?? 0}
+            {row.res.run_metrics?.llm_round_count != null
+              ? ` · ${row.res.run_metrics.llm_round_count} llm`
+              : ""}
+          </>
+        ),
+    },
+    {
+      key: "compaction",
+      header: t("admin:benchColCompaction"),
+      render: (row) =>
+        row.kind === "in_flight" ? (
+          <span className="text-ink-muted">—</span>
+        ) : (
+          <>
+            {row.res.run_metrics?.compaction_count ?? 0}
+            {(row.res.run_metrics?.compaction_events?.length ?? 0) > 0 ? (
+              <span className="ml-tight text-ink-muted">
+                {(row.res.run_metrics?.compaction_events ?? [])
+                  .map((e) => e.phase)
+                  .filter(Boolean)
+                  .join(", ")}
+              </span>
+            ) : null}
+          </>
+        ),
+    },
+    {
+      key: "ctx",
+      header: t("admin:benchColCtx"),
+      render: (row) =>
+        row.kind === "in_flight" ? (
+          <span className="font-mono text-meta text-badge-accent">
+            {formatInFlightPromptTokens(row.in_flight) ?? "—"}
+          </span>
+        ) : row.res.run_metrics?.context_utilization_pct != null ? (
+          `${row.res.run_metrics.context_utilization_pct}%`
+        ) : (
+          "—"
+        ),
+    },
+    {
+      key: "ms",
+      header: t("admin:benchColMs"),
+      render: (row) =>
+        row.kind === "in_flight" ? (
+          <span className="text-badge-accent">
+            {formatInFlightElapsed(row.in_flight) ?? "…"}
+          </span>
+        ) : (
+          Math.round(row.res.latency_ms)
+        ),
+    },
+  ];
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-wide overflow-hidden p-wide">
       <div className="shrink-0">
@@ -2385,69 +2647,19 @@ export function AdminBenchmarks() {
                             </p>
                           )}
                           {attempts.length ? (
-                            <div className="mt-base overflow-x-auto rounded-tile border border-line-subtle bg-black/20">
-                              <table className="w-full min-w-[560px] text-left text-meta">
-                                <thead className="text-ink-muted">
-                                  <tr>
-                                    <th className="px-base py-tight">{t("admin:benchTunePreset")}</th>
-                                    <th className="px-base py-tight">{t("admin:benchTuneResultCol")}</th>
-                                    <th className="px-base py-tight">{t("admin:benchTunePassRate")}</th>
-                                    <th className="px-base py-tight">{t("admin:benchTuneScoreCol")}</th>
-                                    <th className="px-base py-tight">{t("admin:benchTuneFailures")}</th>
-                                    <th className="px-base py-tight">{t("admin:benchTuneRuns")}</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {attempts.map((a) => (
-                                    <tr
-                                      key={a.preset_id}
-                                      className={`border-t border-line-subtle ${
-                                        a.preset_id === bestAttempt?.preset_id
-                                          ? "bg-success-subtle"
-                                          : ""
-                                      }`}
-                                    >
-                                      <td className="px-base py-tight font-medium text-ink-primary">
-                                        {a.label || a.preset_id}
-                                      </td>
-                                      <td className="px-base py-tight">
-                                        {a.passed ?? 0}/{a.total ?? 0}
-                                      </td>
-                                      <td className="px-base py-tight">{formatTunePct(a.pass_rate)}</td>
-                                      <td className="px-base py-tight">
-                                        {typeof a.score === "number" ? a.score.toFixed(1) : "—"}
-                                      </td>
-                                      <td className="px-base py-tight text-ink-muted">
-                                        {formatTuneClusters(
-                                          (a.runs ?? []).reduce<Record<string, number>>((acc, r) => {
-                                            for (const [k, n] of Object.entries(r.failure_clusters ?? {})) {
-                                              acc[k] = (acc[k] ?? 0) + n;
-                                            }
-                                            return acc;
-                                          }, {})
-                                        )}
-                                      </td>
-                                      <td className="px-base py-tight">
-                                        {(a.runs ?? []).map((r) => (
-                                          <Button
-                                            variant="ghost"
-                                            key={r.run_id}
-                                            type="button"
-                                            className="mr-base text-badge-accent hover:underline"
-                                            onClick={() => {
-                                              setTab("history");
-                                              setSelectedId(r.run_id);
-                                            }}
-                                          >
-                                            {r.suite || r.run_id.slice(0, 8)}
-                                          </Button>
-                                        ))}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
+                            <Table
+                              className="mt-base border border-line-subtle bg-black/20"
+                              columns={tuneAttemptColumns}
+                              rows={attempts}
+                              rowKey={(a) => a.preset_id}
+                              density="compact"
+                              minWidth="560px"
+                              rowClassName={(a) =>
+                                a.preset_id === bestAttempt?.preset_id
+                                  ? "bg-success-subtle"
+                                  : undefined
+                              }
+                            />
                           ) : null}
                           {session.error_text ? (
                             <p className="mt-tight text-meta text-danger">{session.error_text}</p>
@@ -3088,175 +3300,40 @@ export function AdminBenchmarks() {
                   )}
                   t={t}
                 />
-                <table className="mt-wide w-full text-left text-xs">
-                  <thead>
-                    <tr className="text-ink-muted">
-                      <th className="py-tight pr-base w-8" aria-label={t("admin:benchColDetail")} />
-                      <th className="py-tight pr-base">{t("admin:benchColScenario")}</th>
-                      <th className="py-tight pr-base">{t("admin:benchColProviderModel")}</th>
-                      <th className="py-tight pr-base">{t("admin:benchColResult")}</th>
-                      <th className="py-tight pr-base">{t("admin:benchColTools")}</th>
-                      <th className="py-tight pr-base">{t("admin:benchColCompaction")}</th>
-                      <th className="py-tight pr-base">{t("admin:benchColCtx")}</th>
-                      <th className="py-tight pr-base">{t("admin:benchColMs")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(detail.report_json?.results ?? []).length === 0 &&
-                    !detail.report_json?.in_flight &&
-                    (detail.status === "running" || detail.status === "queued") ? (
-                      <tr>
-                        <td colSpan={8} className="py-soft text-ink-muted">
-                          {t("admin:benchRunWaitingResults")}
-                        </td>
-                      </tr>
-                    ) : null}
-                    {detail.report_json?.in_flight ? (
-                      <tr className="border-t border-accent/20 bg-accent-subtle">
-                        <td className="py-snug pr-tight align-top text-accent" aria-hidden>
-                          ◉
-                        </td>
-                        <td className="py-snug pr-base font-mono text-badge-accent">
-                          {detail.report_json.in_flight.scenario_id}
-                        </td>
-                        <td className="py-snug pr-base font-mono text-meta text-badge-accent">
-                          {formatInFlightProviderModel(detail.report_json.in_flight)}
-                        </td>
-                        <td className="py-snug pr-base text-badge-accent">
-                          {t("admin:benchInFlightRunning")} —{" "}
-                          {formatInFlightActivity(detail.report_json.in_flight, t)}
-                        </td>
-                        <td className="py-snug pr-base text-badge-accent">
-                          {formatInFlightToolsColumn(detail.report_json.in_flight, t)}
-                          {(detail.report_json.in_flight.tool_names?.length ?? 0) > 0 ? (
-                            <span className="ml-tight text-ink-muted">
-                              ({detail.report_json.in_flight.tool_names!.slice(-3).join(", ")})
-                            </span>
-                          ) : null}
-                          {typeof detail.report_json.in_flight.forwarded_tool_count ===
-                            "number" &&
-                          detail.report_json.in_flight.forwarded_tool_count > 0 ? (
-                            <span className="ml-tight block text-meta text-ink-muted">
-                              → {detail.report_json.in_flight.forwarded_tool_count}{" "}
-                              {t("admin:benchInFlightForwardedTools")}
-                              {detail.report_json.in_flight.routed_category
-                                ? ` (${detail.report_json.in_flight.routed_category})`
-                                : ""}
-                            </span>
-                          ) : null}
-                        </td>
-                        <td className="py-snug pr-base text-ink-muted">—</td>
-                        <td className="py-snug pr-base font-mono text-meta text-badge-accent">
-                          {formatInFlightPromptTokens(detail.report_json.in_flight) ?? "—"}
-                        </td>
-                        <td className="py-snug pr-base text-badge-accent">
-                          {formatInFlightElapsed(detail.report_json.in_flight) ?? "…"}
-                        </td>
-                      </tr>
-                    ) : null}
-                    {(detail.report_json?.results ?? []).map((res, i) => {
-                      const rowKey = `${res.scenario_id}-${i}`;
-                      const expanded = expandedResultKey === rowKey;
-                      const hist = attemptHistoryFromResult(res);
-                      const attemptIdx =
-                        attemptTabByRow[rowKey] ?? (hist.length > 0 ? hist.length - 1 : 0);
-                      const canExpand = scenarioHasDiagnostics(res) || Boolean(res.failure_reason);
-                      return (
-                        <Fragment key={rowKey}>
-                          <tr className="border-t border-line-subtle">
-                            <td className="py-snug pr-tight align-top">
-                              <div className="flex flex-col items-start gap-hair">
-                                {canExpand ? (
-                                  <Tooltip label={
-                                      expanded
-                                        ? t("admin:benchDetailCollapse")
-                                        : t("admin:benchDetailExpand")
-                                    }>
-                                  <Button
-                                    variant="ghost"
-                                      type="button"
-                                      className="px-tight text-ink-muted hover:bg-white/5 hover:text-white"
-                                      aria-expanded={expanded}
-                                      onClick={() =>
-                                        setExpandedResultKey(expanded ? null : rowKey)
-                                      }
-                                  >
-                                      {expanded ? "▾" : "▸"}
-                                    </Button>
-                                  </Tooltip>
-                                ) : null}
-                                <CopyScenarioDetailsButton res={res} compact />
-                              </div>
-                            </td>
-                            <td className="py-snug pr-base font-mono">{res.scenario_id}</td>
-                            <td className="py-snug pr-base font-mono text-meta">
-                              {formatBenchmarkProviderModel(res)}
-                            </td>
-                            <td className="py-snug pr-base">
-                              {res.run_metrics?.project_run_status
-                                ? `${res.run_metrics.project_run_status} · `
-                                : ""}
-                              {formatBenchmarkResultStatus(res)}
-                              {!res.skipped && !res.passed ? (
-                                <span className="ml-tight text-ink-muted">
-                                  — {formatResultFailureLine(res, t)}
-                                </span>
-                              ) : res.failure_reason && res.skipped ? (
-                                <span className="ml-tight text-ink-muted">
-                                  — {res.failure_reason}
-                                </span>
-                              ) : null}
-                              {hasMultipleAttempts(res) && res.passed && res.run_metrics?.pass_at_1 === false ? (
-                                <span className="ml-tight text-warning">
-                                  ({t("admin:benchPassAt1Miss")})
-                                </span>
-                              ) : null}
-                            </td>
-                            <td className="py-snug pr-base">
-                              {res.tool_call_count ?? 0}
-                              {res.run_metrics?.llm_round_count != null
-                                ? ` · ${res.run_metrics.llm_round_count} llm`
-                                : ""}
-                            </td>
-                            <td className="py-snug pr-base">
-                              {res.run_metrics?.compaction_count ?? 0}
-                              {(res.run_metrics?.compaction_events?.length ?? 0) > 0 ? (
-                                <span className="ml-tight text-ink-muted">
-                                  (
-                                  {(res.run_metrics?.compaction_events ?? [])
-                                    .map((e) => e.phase)
-                                    .filter(Boolean)
-                                    .join(", ")}
-                                  )
-                                </span>
-                              ) : null}
-                            </td>
-                            <td className="py-snug pr-base">
-                              {res.run_metrics?.context_utilization_pct != null
-                                ? `${res.run_metrics.context_utilization_pct}%`
-                                : "—"}
-                            </td>
-                            <td className="py-snug pr-base">{Math.round(res.latency_ms)}</td>
-                          </tr>
-                          {expanded ? (
-                            <tr className="border-t border-line-subtle">
-                              <td colSpan={8} className="py-base pr-base">
-                                <BenchmarkScenarioDetailWithAttempts
-                                  res={res}
-                                  t={t}
-                                  selectedAttemptIndex={attemptIdx}
-                                  onSelectAttempt={(idx) =>
-                                    setAttemptTabByRow((prev) => ({ ...prev, [rowKey]: idx }))
-                                  }
-                                />
-                              </td>
-                            </tr>
-                          ) : null}
-                        </Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                <Table
+                  className="mt-wide"
+                  columns={runResultColumns}
+                  rows={runRows}
+                  rowKey={(row) => row.key}
+                  density="compact"
+                  empty={
+                    detail.status === "running" || detail.status === "queued"
+                      ? t("admin:benchRunWaitingResults")
+                      : t("admin:benchRunNoResults")
+                  }
+                  rowClassName={(row) =>
+                    row.kind === "in_flight"
+                      ? "border-t border-accent/20 bg-accent-subtle"
+                      : undefined
+                  }
+                  rowDetail={(row) => {
+                    if (row.kind !== "result" || expandedResultKey !== row.key) return null;
+                    const hist = attemptHistoryFromResult(row.res);
+                    return (
+                      <BenchmarkScenarioDetailWithAttempts
+                        res={row.res}
+                        t={t}
+                        selectedAttemptIndex={
+                          attemptTabByRow[row.key] ??
+                          (hist.length > 0 ? hist.length - 1 : 0)
+                        }
+                        onSelectAttempt={(idx) =>
+                          setAttemptTabByRow((prev) => ({ ...prev, [row.key]: idx }))
+                        }
+                      />
+                    );
+                  }}
+                />
               </>
             )}
           </div>
