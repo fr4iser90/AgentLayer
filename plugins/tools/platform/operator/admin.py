@@ -806,32 +806,9 @@ def scheduler_presets_list(arguments: dict[str, Any]) -> str:
     g_adm = _require_admin()
     if isinstance(g_adm, str):
         return g_adm
-    from apps.backend.infrastructure.platform.config import PLUGINS_DIR
+    from apps.backend.application.scheduling.use_cases.schedule_presets import read_schedule_presets
 
-    root = PLUGINS_DIR / "schedules" / "presets"
-    rows: list[dict[str, Any]] = []
-    if root.is_dir():
-        for p in sorted(root.glob("*.json")):
-            try:
-                raw = json.loads(p.read_text(encoding="utf-8"))
-            except Exception:
-                continue
-            if not isinstance(raw, dict):
-                continue
-            pid = str(raw.get("id") or "").strip()
-            label = str(raw.get("label") or "").strip()
-            if not pid or not label:
-                continue
-            job = raw.get("job")
-            rows.append(
-                {
-                    "id": pid,
-                    "label": label,
-                    "description": str(raw.get("description") or "").strip(),
-                    "job": job if isinstance(job, dict) else {},
-                }
-            )
-    return _ok({"presets": rows})
+    return _ok({"presets": read_schedule_presets()})
 
 
 # --- project runs ---
