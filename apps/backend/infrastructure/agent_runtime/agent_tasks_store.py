@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
 from psycopg.rows import dict_row
 from psycopg.types.json import Json
@@ -13,14 +13,14 @@ from apps.backend.infrastructure.db import db
 
 TaskScope = Literal["global", "workspace"]
 TaskStatus = Literal[
-    "draft", "planning", "queued", "in_progress", "blocked", "done", "cancelled"
+    "draft", "planning", "queued", "in_progress", "blocked", "failed", "done", "cancelled"
 ]
 TaskPriority = Literal["low", "normal", "high"]
 
-_STATUSES: frozenset[str] = frozenset(
-    {"draft", "planning", "queued", "in_progress", "blocked", "done", "cancelled"}
-)
-_PRIORITIES: frozenset[str] = frozenset({"low", "normal", "high"})
+# Derived so the label the runner writes and the label this module accepts cannot
+# drift apart again — the drift was ``failed``, see schema_139.
+_STATUSES: frozenset[str] = frozenset(get_args(TaskStatus))
+_PRIORITIES: frozenset[str] = frozenset(get_args(TaskPriority))
 
 
 def _now() -> datetime:
@@ -120,10 +120,13 @@ def create_task(
             if row and row.get("root_task_id") is None:
                 tid = row["id"]
                 cur.execute(
-                    "UPDATE agent_tasks SET root_task_id = %s WHERE id = %s",
-                    (tid, tid),
+                    "UPDATE agent_tasks SET root_task_id = %s WHERE id = %s AND tenant_id = %s",
+                    (tid, tid, tenant_id),
                 )
-                cur.execute("SELECT * FROM agent_tasks WHERE id = %s", (tid,))
+                cur.execute(
+                    "SELECT * FROM agent_tasks WHERE id = %s AND tenant_id = %s",
+                    (tid, tenant_id),
+                )
                 row = cur.fetchone()
         conn.commit()
     return dict(row) if row else {}
@@ -159,13 +162,13 @@ def update_task(
         return None
     parts: list[str] = ["updated_at = now()"]
     args: list[Any] = []
-    if status is not None and status in _STATUSES:
+    if status is not None:
         parts.append("status = %s")
         args.append(status)
     if goal is not None:
         parts.append("goal = %s")
         args.append(goal.strip()[:16000])
-    if priority is not None and priority in _PRIORITIES:
+    if priority is not None:
         parts.append("priority = %s")
         args.append(priority)
     if assigned_agent_id is not None:
@@ -256,6 +259,8 @@ def list_tasks(
 def fetch_queued_tasks(*, limit: int = 10) -> list[dict[str, Any]]:
     """Queued root tasks for the background runner (oldest first)."""
     lim = max(1, min(50, int(limit)))
+    # tenant-scope: site-wide — one worker dispatches every tenant's queued roots;
+    # each row is handled afterwards under the tenant_id it carries itself.
     sql = """
         SELECT * FROM agent_tasks
         WHERE status = 'queued'

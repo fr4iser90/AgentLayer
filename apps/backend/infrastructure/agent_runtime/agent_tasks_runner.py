@@ -93,11 +93,6 @@ async def _run_task_row(row: dict[str, Any]) -> None:
             f"task_id: {task_id}",
             f"Goal: {goal}",
             req_block,
-            (
-                "Workflow: use delegate to security_auditor for SSC resolve-scan per repo_url; "
-                "then dashboard.list_update to write scan fields on each board row. "
-                "Do not redesign layout unless the goal requires it."
-            ),
         )
         if part
     )

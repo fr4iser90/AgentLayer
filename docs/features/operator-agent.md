@@ -39,7 +39,7 @@ That keeps RBAC obvious: a normal user must not need admin to set their display 
 
 Everything below is implemented for **admin-authenticated** HTTP (`require_admin`), except routes decorated with `@require_permission` (admins still pass — see `apps/backend/infrastructure/auth.py`). Use this section as the **master checklist** for future Operator tools.
 
-**Router wiring:** in the stock `apps/backend/api/main.py`, the **entire scheduler stack** is often commented out (`scheduler_jobs_router`, `scheduler_jobs_admin_router`, `scheduler_job_presets_router`, `scheduler_jobs_user_router`, and presets user router). `project_runs_router` is typically **enabled**. Re-enable routers when you need those HTTP paths live.
+**Router wiring:** `apps/backend/api/main.py` mounts the scheduler stack — `scheduler_jobs_admin_router`, `scheduler_jobs_user_router`, both run routers and the presets user router. Presets exist **once** (`/v1/user/scheduler-job-presets`, gated by the `users.schedules_allowed` feature flag); an older site-admin twin read the same directory and answered 403 for delegated `schedule.manage` holders.
 
 ### HTTP: `apps/backend/api/main.py`
 
@@ -77,22 +77,24 @@ Everything below is implemented for **admin-authenticated** HTTP (`require_admin
 
 ### HTTP: persisted scheduler jobs — admin API (`scheduler_jobs_admin_api.py`)
 
-Prefix when mounted: `/v1/admin/scheduler-jobs`
+Prefix when mounted: `/v1/admin/scheduler-jobs` — guarded by `require_admin_scope(request, CAP_SCHEDULE_MANAGE)`, so the reachable companies come from the caller's scope, not their own row.
 
 | Method | Path pattern | Purpose |
 |--------|----------------|---------|
-| `GET` | `/` | List jobs (filters: `dashboard_id`, `include_global`, `include_archived`, `execution_target`, `enabled`, `limit`). |
-| `POST` | `/` | Create job. |
+| `GET` | `/` | List jobs (filters: `tenant_id`, `dashboard_id`, `include_global`, `include_archived`, `execution_target`, `enabled`, `limit`). |
+| `POST` | `/` | Create job (`tenant_id` optional; a delegated holder may only name their own company). |
 | `PATCH` | `/{job_id}` | Update fields. |
 | `PATCH` | `/{job_id}/archived` | Archive / unarchive. |
 | `DELETE` | `/{job_id}` | Hard delete. |
 | `PATCH` | `/{job_id}/enabled` | Enable/disable. |
 
+A site admin (`tenant_filter() is None`) sees every company; a delegated holder is pinned to their own and gets `403` when naming another. Rows outside a caller's scope answer `404` on the by-id routes — a `403` would confirm that another company has that job. Creates run the same two-layer target policy as the user API (registry `min_role` + the company's agent allowlist).
+
 **Overlap:** Chat tools `schedule_job_*` use the same store but **not** all admin-only actions (e.g. hard delete).
 
-### HTTP: scheduler presets (`scheduler_job_presets_api.py`)
+### HTTP: scheduler presets (`scheduler_job_presets_user_api.py`)
 
-When mounted: `GET /v1/admin/scheduler-job-presets` — templates from `plugins/schedules/presets/*.json`.
+`GET /v1/user/scheduler-job-presets` — templates from `plugins/schedules/presets/*.json`, gated by `schedule_feature_permission_error` like the schedule list itself.
 
 ### HTTP: IDE job queue (`scheduler_jobs_api.py`)
 
