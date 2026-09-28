@@ -207,6 +207,33 @@ def get_job(job_id: uuid.UUID, tenant_id: int) -> dict[str, Any] | None:
     return dict(row) if row else None
 
 
+def _writable_job(
+    *,
+    job_id: uuid.UUID,
+    tenant_id: int,
+    actor_user_id: uuid.UUID,
+    actor_is_admin: bool,
+) -> dict[str, Any] | None:
+    """The row a mutation may touch, or ``None`` when it may not.
+
+    Owner-or-admin used to be spelled inside every mutation, so a sixth mutation that
+    forgot the check would write another user's schedule, and a change to the write
+    right had to be made five times. The read stays tenant-pinned — a row outside the
+    caller's company answers ``None`` here rather than 403.
+
+    ``actor_is_admin`` is the caller's already-resolved right, never a role read: the
+    store does not get to decide who an admin is.
+    """
+    job = get_job(job_id, tenant_id)
+    if job is None:
+        return None
+    if actor_is_admin:
+        return job
+    if _uuid(job.get("created_by_user_id")) != actor_user_id:
+        return None
+    return job
+
+
 def set_enabled(
     *,
     job_id: uuid.UUID,
@@ -215,12 +242,11 @@ def set_enabled(
     actor_user_id: uuid.UUID,
     actor_is_admin: bool,
 ) -> dict[str, Any] | None:
-    job = get_job(job_id, tenant_id)
+    job = _writable_job(
+        job_id=job_id, tenant_id=tenant_id, actor_user_id=actor_user_id, actor_is_admin=actor_is_admin
+    )
     if not job:
         return None
-    if not actor_is_admin:
-        if _uuid(job.get("created_by_user_id")) != actor_user_id:
-            return None
     now = datetime.now(UTC)
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
@@ -251,12 +277,11 @@ def update_job(
     interval_minutes: int | None,
     coding_workflow: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
-    job = get_job(job_id, tenant_id)
+    job = _writable_job(
+        job_id=job_id, tenant_id=tenant_id, actor_user_id=actor_user_id, actor_is_admin=actor_is_admin
+    )
     if not job:
         return None
-    if not actor_is_admin:
-        if _uuid(job.get("created_by_user_id")) != actor_user_id:
-            return None
     now = datetime.now(UTC)
     # None means "leave unchanged"
     new_title = job.get("title") if title is None else title
@@ -300,12 +325,11 @@ def update_job(
 
 
 def archive_job(*, job_id: uuid.UUID, tenant_id: int, actor_user_id: uuid.UUID, actor_is_admin: bool) -> bool:
-    job = get_job(job_id, tenant_id)
+    job = _writable_job(
+        job_id=job_id, tenant_id=tenant_id, actor_user_id=actor_user_id, actor_is_admin=actor_is_admin
+    )
     if not job:
         return False
-    if not actor_is_admin:
-        if _uuid(job.get("created_by_user_id")) != actor_user_id:
-            return False
     now = datetime.now(UTC)
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
@@ -323,12 +347,11 @@ def archive_job(*, job_id: uuid.UUID, tenant_id: int, actor_user_id: uuid.UUID, 
 
 
 def unarchive_job(*, job_id: uuid.UUID, tenant_id: int, actor_user_id: uuid.UUID, actor_is_admin: bool) -> bool:
-    job = get_job(job_id, tenant_id)
+    job = _writable_job(
+        job_id=job_id, tenant_id=tenant_id, actor_user_id=actor_user_id, actor_is_admin=actor_is_admin
+    )
     if not job:
         return False
-    if not actor_is_admin:
-        if _uuid(job.get("created_by_user_id")) != actor_user_id:
-            return False
     now = datetime.now(UTC)
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
@@ -346,12 +369,11 @@ def unarchive_job(*, job_id: uuid.UUID, tenant_id: int, actor_user_id: uuid.UUID
 
 
 def hard_delete_job(*, job_id: uuid.UUID, tenant_id: int, actor_user_id: uuid.UUID, actor_is_admin: bool) -> bool:
-    job = get_job(job_id, tenant_id)
+    job = _writable_job(
+        job_id=job_id, tenant_id=tenant_id, actor_user_id=actor_user_id, actor_is_admin=actor_is_admin
+    )
     if not job:
         return False
-    if not actor_is_admin:
-        if _uuid(job.get("created_by_user_id")) != actor_user_id:
-            return False
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
