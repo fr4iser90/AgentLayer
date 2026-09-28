@@ -63,7 +63,6 @@ from apps.backend.api.tenant_content.controllers.tenant_content_api import (
     router as tenant_content_router,
 )
 from apps.backend.api.rag.controllers.rag_api import router as rag_router
-from apps.backend.api.scheduling.controllers.scheduler_job_presets_api import router as scheduler_job_presets_router
 from apps.backend.api.scheduling.controllers.scheduler_job_presets_user_api import router as scheduler_job_presets_user_router
 from apps.backend.api.scheduling.controllers.scheduler_job_runs_api import admin_router as scheduler_job_runs_admin_router
 from apps.backend.api.scheduling.controllers.scheduler_job_runs_api import user_router as scheduler_job_runs_user_router
@@ -116,7 +115,6 @@ for router in (
     chat_completions_router,
     studio_router,
     scheduler_jobs_admin_router,
-    scheduler_job_presets_router,
     scheduler_jobs_user_router,
     scheduler_job_runs_user_router,
     scheduler_job_runs_admin_router,
