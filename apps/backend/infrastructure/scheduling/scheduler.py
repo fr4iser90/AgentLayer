@@ -11,7 +11,6 @@ import asyncio
 import json
 import logging
 import re
-import threading
 import time
 import uuid
 from typing import Any
@@ -19,6 +18,7 @@ from typing import Any
 import httpx
 
 from apps.backend.infrastructure.platform.config import config
+from apps.backend.infrastructure.platform.poll_loop import PollLoop
 from apps.backend.application.agent_runtime.use_cases.chat_completion import chat_completion
 from apps.backend.domain.shared.identity import reset_identity, set_identity
 from apps.backend.infrastructure.settings import operator_settings
@@ -35,24 +35,47 @@ def _clamp_int(v: Any, default: int, lo: int, hi: int) -> int:
     return max(lo, min(hi, n))
 
 
-_stop = threading.Event()
-_thread: threading.Thread | None = None
 _next_tick_monotonic: float = 0.0
 
 
-def start_scheduler_worker() -> None:
-    global _thread
-    if _thread is not None and _thread.is_alive():
+def _tick_when_due() -> None:
+    """One pass: run a scheduler tick if the operator's interval has come.
+
+    The interval is read per pass, so changing it in Admin takes effect on the
+    next one. A tick is scheduled from when it was due, not from when it
+    finished, so a long run does not push the next one further out.
+    """
+    global _next_tick_monotonic
+    row = operator_settings.fetch_operator_settings_row()
+    if not row.get("scheduler_enabled"):
+        _next_tick_monotonic = 0.0
         return
-    _stop.clear()
-    _thread = threading.Thread(target=_worker_loop, daemon=True, name="scheduler-worker")
-    _thread.start()
+    interval_m = _clamp_int(row.get("scheduler_interval_minutes"), 60, 5, 24 * 60)
+    interval_s = float(interval_m * 60)
+    now = time.monotonic()
+    if _next_tick_monotonic == 0.0:
+        _next_tick_monotonic = now + interval_s
+    if now < _next_tick_monotonic:
+        return
+    _next_tick_monotonic = now + interval_s
+    asyncio.run(_run_one_tick())
+
+
+_worker = PollLoop(
+    name="scheduler-worker",
+    iteration=_tick_when_due,
+    poll_sec=5.0,
+    join_sec=15.0,
+    failure_log="scheduler tick failed",
+)
+
+
+def start_scheduler_worker() -> None:
+    _worker.start()
 
 
 def stop_scheduler_worker() -> None:
-    _stop.set()
-    if _thread is not None:
-        _thread.join(timeout=15)
+    _worker.stop()
 
 
 def _extract_assistant_text(data: dict[str, Any]) -> str:
@@ -227,28 +250,3 @@ async def _run_one_tick() -> None:
             user_id,
             outbound[:200],
         )
-
-
-def _worker_loop() -> None:
-    global _next_tick_monotonic
-    logger.info("scheduler worker started")
-    while not _stop.is_set():
-        if _stop.wait(timeout=5.0):
-            break
-        try:
-            row = operator_settings.fetch_operator_settings_row()
-            if not row.get("scheduler_enabled"):
-                _next_tick_monotonic = 0.0
-                continue
-            interval_m = _clamp_int(row.get("scheduler_interval_minutes"), 60, 5, 24 * 60)
-            interval_s = float(interval_m * 60)
-            now = time.monotonic()
-            if _next_tick_monotonic == 0.0:
-                _next_tick_monotonic = now + interval_s
-            if now < _next_tick_monotonic:
-                continue
-            _next_tick_monotonic = now + interval_s
-            asyncio.run(_run_one_tick())
-        except Exception:
-            logger.exception("scheduler tick failed")
-    logger.info("scheduler worker stopped")

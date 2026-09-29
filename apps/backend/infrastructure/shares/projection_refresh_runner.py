@@ -24,16 +24,13 @@ already refused on its own.
 from __future__ import annotations
 
 import logging
-import threading
 
 from apps.backend.domain.shares import projection_refresh
 from apps.backend.domain.shares import projections
+from apps.backend.infrastructure.platform.poll_loop import PollLoop
 from apps.backend.infrastructure.settings import operator_settings
 
 logger = logging.getLogger(__name__)
-
-_stop = threading.Event()
-_thread: threading.Thread | None = None
 
 # Poll often enough that a five-minute window is actually caught inside it,
 # and cheap enough that an empty pass costs one indexed query.
@@ -50,52 +47,50 @@ _MAX_BATCH = 20
 # already been refused at the read.
 _SWEEP_EVERY = 8
 
+_passes = 0
+
 
 def start_projection_refresh_worker() -> None:
-    global _thread
-    if _thread is not None and _thread.is_alive():
-        return
-    _stop.clear()
-    _thread = threading.Thread(
-        target=_worker_loop, daemon=True, name="share-projection-refresh-worker"
-    )
-    _thread.start()
+    _worker.start()
 
 
 def stop_projection_refresh_worker() -> None:
-    _stop.set()
-    if _thread is not None:
-        _thread.join(timeout=20)
+    _worker.stop()
 
 
-def _worker_loop() -> None:
-    logger.info("share projection refresh worker started")
-    passes = 0
-    while not _stop.is_set():
-        if _stop.wait(timeout=_POLL_SEC):
-            break
-        try:
-            if not operator_settings.friend_system_enabled():
-                continue
-            if not projections.projection_store_ready():
-                continue
-            passes += 1
-            report = projection_refresh.refresh_due(
-                limit=_MAX_BATCH, within_seconds=_WINDOW_SEC
-            )
-            if report.touched:
-                logger.info(
-                    "share projections refreshed=%s failed=%s skipped=%s",
-                    report.refreshed,
-                    report.failed,
-                    report.skipped,
-                )
-            if passes % _SWEEP_EVERY == 0:
-                swept = projection_refresh.sweep_expired()
-                if swept:
-                    logger.info(
-                        "share projections swept out of retention=%s", swept
-                    )
-        except Exception:
-            logger.exception("share projection refresh worker iteration failed")
-    logger.info("share projection refresh worker stopped")
+def _start_pass_count() -> bool:
+    """Count the sweep's passes per run, the way a fresh thread used to."""
+    global _passes
+    _passes = 0
+    return True
+
+
+def _refresh_due_projections() -> None:
+    global _passes
+    if not operator_settings.friend_system_enabled():
+        return
+    if not projections.projection_store_ready():
+        return
+    _passes += 1
+    report = projection_refresh.refresh_due(limit=_MAX_BATCH, within_seconds=_WINDOW_SEC)
+    if report.touched:
+        logger.info(
+            "share projections refreshed=%s failed=%s skipped=%s",
+            report.refreshed,
+            report.failed,
+            report.skipped,
+        )
+    if _passes % _SWEEP_EVERY == 0:
+        swept = projection_refresh.sweep_expired()
+        if swept:
+            logger.info("share projections swept out of retention=%s", swept)
+
+
+_worker = PollLoop(
+    name="share-projection-refresh-worker",
+    iteration=_refresh_due_projections,
+    poll_sec=_POLL_SEC,
+    join_sec=20.0,
+    startup=_start_pass_count,
+    failure_log="share projection refresh worker iteration failed",
+)

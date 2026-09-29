@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import threading
 import uuid
 from typing import Any
 
@@ -18,6 +17,7 @@ from apps.backend.domain.scheduling.targets import (
     is_agent_schedulable,
     normalize_execution_target,
 )
+from apps.backend.infrastructure.platform.poll_loop import PollLoop
 from apps.backend.infrastructure.settings import operator_settings
 from apps.backend.infrastructure.scheduling import scheduler_jobs_store
 run_coding_schedule_row = None  # codebase removed
@@ -25,28 +25,16 @@ from apps.backend.infrastructure.db import db
 
 logger = logging.getLogger(__name__)
 
-_stop = threading.Event()
-_thread: threading.Thread | None = None
-
 _POLL_SEC = 45.0
 _MAX_BATCH = 5
 
 
 def start_scheduler_jobs_worker() -> None:
-    global _thread
-    if _thread is not None and _thread.is_alive():
-        return
-    _stop.clear()
-    _thread = threading.Thread(
-        target=_worker_loop, daemon=True, name="scheduler-jobs-server-worker"
-    )
-    _thread.start()
+    _worker.start()
 
 
 def stop_scheduler_jobs_worker() -> None:
-    _stop.set()
-    if _thread is not None:
-        _thread.join(timeout=20)
+    _worker.stop()
 
 
 def _tenant_id(row: dict[str, Any]) -> int:
@@ -193,22 +181,32 @@ async def _run_scheduled_job(row: dict[str, Any]) -> None:
         await _run_chat_agent_job(row, agent_id=agent_id)
 
 
-def _worker_loop() -> None:
-    logger.info("scheduler_jobs worker thread started (operator_settings / Admin → Interfaces)")
-    while not _stop.is_set():
-        if _stop.wait(timeout=_POLL_SEC):
+def _run_due_jobs() -> None:
+    """One pass: run every due job the worker settings allow, stopping mid-batch on shutdown."""
+    worker_on, _ = operator_settings.scheduler_jobs_worker_settings()
+    if not worker_on:
+        return
+    for row in scheduler_jobs_store.fetch_due_jobs(limit=_MAX_BATCH):
+        if _worker.stopping():
             break
         try:
-            worker_on, _ = operator_settings.scheduler_jobs_worker_settings()
-            if not worker_on:
-                continue
-            for row in scheduler_jobs_store.fetch_due_jobs(limit=_MAX_BATCH):
-                if _stop.is_set():
-                    break
-                try:
-                    asyncio.run(_run_scheduled_job(row))
-                except Exception:
-                    logger.exception("scheduler_jobs: run failed job_id=%s", row.get("id"))
+            asyncio.run(_run_scheduled_job(row))
         except Exception:
-            logger.exception("scheduler_jobs worker iteration failed")
-    logger.info("scheduler_jobs server worker stopped")
+            logger.exception("scheduler_jobs: run failed job_id=%s", row.get("id"))
+
+
+_worker = PollLoop(
+    name="scheduler-jobs-server-worker",
+    iteration=_run_due_jobs,
+    poll_sec=_POLL_SEC,
+    join_sec=20.0,
+    failure_log="scheduler_jobs worker iteration failed",
+)
+
+
+def start_scheduler_jobs_worker() -> None:
+    _worker.start()
+
+
+def stop_scheduler_jobs_worker() -> None:
+    _worker.stop()

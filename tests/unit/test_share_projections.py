@@ -886,7 +886,7 @@ class TestRefreshWorker(unittest.TestCase):
 
     def test_the_worker_refreshes_while_the_friend_system_is_on(self) -> None:
         called = threading.Event()
-        with mock.patch.object(runner, "_POLL_SEC", 0.05), mock.patch.object(
+        with mock.patch.object(runner._worker, "poll_sec", 0.05), mock.patch.object(
             runner.operator_settings, "friend_system_enabled", return_value=True
         ), mock.patch.object(
             projections,
@@ -902,7 +902,7 @@ class TestRefreshWorker(unittest.TestCase):
         # The store is wired here on purpose. Left unwired, the store-ready
         # guard would keep the worker quiet by itself and this test would
         # pass whether the friend-system gate existed or not.
-        with mock.patch.object(runner, "_POLL_SEC", 0.05), mock.patch.object(
+        with mock.patch.object(runner._worker, "poll_sec", 0.05), mock.patch.object(
             runner.operator_settings, "friend_system_enabled", return_value=False
         ), mock.patch.object(
             projections, "projection_store_ready", return_value=True
@@ -912,7 +912,7 @@ class TestRefreshWorker(unittest.TestCase):
         due.assert_not_called()
 
     def test_the_worker_does_not_touch_an_unwired_store(self) -> None:
-        with mock.patch.object(runner, "_POLL_SEC", 0.05), mock.patch.object(
+        with mock.patch.object(runner._worker, "poll_sec", 0.05), mock.patch.object(
             runner.operator_settings, "friend_system_enabled", return_value=True
         ), mock.patch.object(
             projections, "projection_store_ready", return_value=False
@@ -936,7 +936,7 @@ class TestRefreshWorker(unittest.TestCase):
             swept.set()
             return 0
 
-        with mock.patch.object(runner, "_POLL_SEC", 0.02), mock.patch.object(
+        with mock.patch.object(runner._worker, "poll_sec", 0.02), mock.patch.object(
             runner, "_SWEEP_EVERY", 2
         ), mock.patch.object(
             runner.operator_settings, "friend_system_enabled", return_value=True
