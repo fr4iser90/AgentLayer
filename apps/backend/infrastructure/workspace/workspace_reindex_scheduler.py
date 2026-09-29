@@ -3,42 +3,22 @@
 from __future__ import annotations
 
 import logging
-import threading
-import time
+
+from apps.backend.infrastructure.platform.poll_loop import PollLoop
 
 logger = logging.getLogger(__name__)
 
-_stop = threading.Event()
-_thread: threading.Thread | None = None
-
+# The pass itself decides which workspaces are stale, so this interval only
+# bounds how long a stale index can sit before something notices.
 _CHECK_INTERVAL_SEC = 3600
 
 
 def start_workspace_reindex_scheduler() -> None:
-    global _thread
-    if _thread is not None and _thread.is_alive():
-        return
-    _stop.clear()
-    _thread = threading.Thread(target=_worker, daemon=True, name="workspace-reindex-scheduler")
-    _thread.start()
-    logger.info("Workspace reindex scheduler started (hourly check)")
+    _worker.start()
 
 
 def stop_workspace_reindex_scheduler() -> None:
-    _stop.set()
-    if _thread is not None:
-        _thread.join(timeout=15)
-
-
-def _worker() -> None:
-    while not _stop.is_set():
-        _stop.wait(_CHECK_INTERVAL_SEC)
-        if _stop.is_set():
-            break
-        try:
-            _run_nightly_pass()
-        except Exception:
-            logger.exception("workspace nightly reindex pass failed")
+    _worker.stop()
 
 
 def _run_nightly_pass() -> None:
@@ -84,3 +64,12 @@ def _run_nightly_pass() -> None:
             started += 1
     if started:
         logger.info("nightly reindex: started %s workspace index job(s)", started)
+
+
+_worker = PollLoop(
+    name="workspace-reindex-scheduler",
+    iteration=_run_nightly_pass,
+    poll_sec=_CHECK_INTERVAL_SEC,
+    join_sec=15.0,
+    failure_log="workspace nightly reindex pass failed",
+)
