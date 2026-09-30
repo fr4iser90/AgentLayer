@@ -4,11 +4,11 @@ Every handler asks its route's two questions, in this order: does the current ch
 identity hold the capability, and how far does that capability reach? Work that was
 never delegable — operator settings, interfaces, external LLM endpoints, tenants, the
 tool registry, a caller-supplied docs path — has no capability slug and asks for a site
-admin through :func:`site_scope`. Company work asks for its own slug through
-:func:`scope_for` and then stays inside the :class:`AdminScope` it returns: a delegated
-``user.manage`` holder lists their own company's people, a foreign job id reads as
-missing. Both factories are the ones ``require_admin_scope`` walks per HTTP request, so
-a console handler cannot be looser than the route it mirrors.
+admin. Company work asks for its own slug and then stays inside the :class:`AdminScope`
+it returns: a delegated ``user.manage`` holder lists their own company's people, a
+foreign job id reads as missing. Both questions go through :func:`console_scope`, the
+in-process twin of the ``require_admin_scope`` an HTTP request walks, so a console
+handler cannot be looser than the route it mirrors.
 
 Prefer these tools from ``agent_id: operator``; they are also allowlisted only for that
 agent by default.
@@ -34,8 +34,6 @@ from apps.backend.domain.access.capabilities import (
     CAP_KNOWLEDGE_MANAGE,
     CAP_SCHEDULE_MANAGE,
     CAP_USER_MANAGE,
-    scope_for,
-    site_scope,
 )
 from apps.backend.domain.access.tenant_ownership import TenantOwnedEntitiesConflict
 from apps.backend.domain.shared.identity import get_identity
@@ -52,6 +50,7 @@ from apps.backend.infrastructure.identity.auth import (
     update_user_tenant,
 )
 from apps.backend.infrastructure.db import db
+from apps.backend.infrastructure.identity.console_access import console_scope
 from apps.backend.infrastructure.settings.operator_settings import (
     InterfaceHintsPayload,
     OperatorSettingsPatch,
@@ -123,11 +122,8 @@ def _site_wide() -> AdminScope | str:
     caller-supplied ``docs_root`` move the whole instance, so they have no capability
     slug and a site admin is the only answer.
     """
-    actor = _actor_id()
-    if isinstance(actor, str):
-        return actor
     try:
-        return site_scope(actor_id=actor, site_role=db.user_site_role(actor))
+        return console_scope()
     except AdminScopeError as e:
         return _err(str(e))
 
@@ -139,17 +135,8 @@ def _scope(capability: str) -> AdminScope | str:
     legacy ``users.role``, so a delegated holder is admitted by what they were granted
     and then confined to their own company.
     """
-    actor = _actor_id()
-    if isinstance(actor, str):
-        return actor
     try:
-        return scope_for(
-            actor_id=actor,
-            capability=capability,
-            site_role=db.user_site_role(actor),
-            capabilities=db.user_capabilities(actor),
-            tenant_id=db.user_tenant_id(actor),
-        )
+        return console_scope(capability)
     except AdminScopeError as e:
         return _err(str(e))
 

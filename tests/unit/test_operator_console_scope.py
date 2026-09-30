@@ -99,9 +99,15 @@ def _identity(
     capabilities: tuple[str, ...],
     tenant_id: int = OWNER_TENANT,
 ) -> None:
-    """An identity as the console reads it: canonical role, grants, home company."""
+    """An identity as the console reads it: canonical role, grants, home company.
+
+    Patched on the auth layer because that is where the console's guard lives now —
+    ``_scope``/``_site_wide`` delegate to it, exactly as an HTTP request does.
+    """
+    from apps.backend.infrastructure.identity import console_access as console_guard
     from plugins.tools.platform.operator import admin as oa
 
+    monkeypatch.setattr(console_guard, "get_identity", lambda: (tenant_id, actor))
     monkeypatch.setattr(oa, "get_identity", lambda: (tenant_id, actor))
     monkeypatch.setattr(oa.db, "user_site_role", lambda _uid: site_role)
     monkeypatch.setattr(oa.db, "user_capabilities", lambda _uid: set(capabilities))

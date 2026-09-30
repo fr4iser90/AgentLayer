@@ -1,4 +1,13 @@
-"""Operator tools for agent-config tuning and benchmark orchestration."""
+"""Operator tools for agent-config tuning and benchmark orchestration.
+
+Each handler asks its route the two questions ``require_admin_scope`` asks per request:
+does the current chat identity hold the capability, and how far does it reach? Knob and
+tuning-session work mirrors ``/v1/admin/agent-config/*`` — ``agent.assign``, written to
+the caller's own company — and the agent registry mirrors the same capability its route
+checks. Benchmarks mirror their routes, which have no capability slug at all and ask for
+a site admin, as does triggering a benchmark run out of ``agent_config_apply``. The
+legacy ``users.role`` column is no longer consulted here.
+"""
 
 from __future__ import annotations
 
@@ -7,13 +16,17 @@ import json
 import uuid
 from typing import Any, Callable
 
-from apps.backend.domain.agent_runtime.config_registry import all_knobs, load_knob_registry
-from apps.backend.domain.shared.identity import get_identity
+from apps.backend.domain.access.capabilities import (
+    AdminScope,
+    AdminScopeError,
+    CAP_AGENT_ASSIGN,
+)
+from apps.backend.domain.agent_runtime.config_registry import all_knobs, knob_by_id, load_knob_registry
 from apps.backend.infrastructure.agent_runtime import agent_config_service, agent_config_store
 from apps.backend.infrastructure.benchmarks import benchmark_runs_store
 from apps.backend.infrastructure.agent_runtime.agent_config_fingerprint import compute_fingerprint, snapshot
-from apps.backend.infrastructure.identity.auth import get_user_by_id
 from apps.backend.infrastructure.benchmarks.benchmark_runner import start_benchmark_run
+from apps.backend.infrastructure.identity.console_access import console_scope
 from apps.backend.infrastructure.db import db
 
 __version__ = "1.0.0"
@@ -37,24 +50,39 @@ def _ok(payload: dict[str, Any]) -> str:
     return json.dumps({"ok": True, **payload}, ensure_ascii=False)
 
 
-def _admin_tid_uid() -> tuple[int, uuid.UUID] | None:
-    tid, uid = get_identity()
-    if uid is None:
-        return None
-    user = get_user_by_id(uid)
-    if not user or str(getattr(user, "role", "") or "").lower() != "admin":
-        return None
-    tenant_id = db.user_tenant_id(uid)
-    if tenant_id is None:
-        return None
-    return int(tenant_id), uid
+def _agent_admin_scope() -> AdminScope | str:
+    """Gate for the knob and tuning-session half: ``agent.assign``, as on its routes.
+
+    A delegated holder tunes their own company only — ``AdminScope`` is what carries
+    that, so an ``agent.assign`` grant cannot tune another company's runtime.
+    """
+    try:
+        return console_scope(CAP_AGENT_ASSIGN)
+    except AdminScopeError as e:
+        return _err(str(e))
 
 
-def _require_admin() -> tuple[int, uuid.UUID] | str:
-    g = _admin_tid_uid()
-    if g is None:
-        return _err("authentication and admin role required for this tool")
-    return g
+def _site_wide() -> AdminScope | str:
+    """Gate for benchmarks, which their own routes never delegate.
+
+    A run executes the platform's scenarios against real models and costs real money, so
+    ``/v1/admin/benchmarks/*`` asks for a site admin instead of a capability, and these
+    tools ask the same.
+    """
+    try:
+        return console_scope()
+    except AdminScopeError as e:
+        return _err(str(e))
+
+
+def _home_tenant(scope: AdminScope) -> int:
+    """The company these rows belong to — the caller's own, exactly as the routes take it.
+
+    An identity without a company falls back to company 1 rather than an unscoped
+    ``None``: every store here filters on ``tenant_id``, so a missing company has to read
+    as the narrowest possible range, never as all of them.
+    """
+    return int(db.user_tenant_id(scope.actor_id) or 1)
 
 
 def _parse_uuid(raw: Any, *, field: str) -> uuid.UUID | None:
@@ -85,10 +113,10 @@ def _knob_public(knob: dict[str, Any], *, tenant_id: int) -> dict[str, Any]:
 
 
 def agent_config_knobs(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _agent_admin_scope()
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     writable_only = bool(arguments.get("writable_only"))
     ui_group = str(arguments.get("ui_group") or "").strip() or None
     knobs = []
@@ -103,26 +131,49 @@ def agent_config_knobs(arguments: dict[str, Any]) -> str:
 
 
 def agent_config_snapshot(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _agent_admin_scope()
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     return _ok(snapshot(tenant_id=tid))
 
 
 def agent_config_apply(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, uid = g
+    scope = _agent_admin_scope()
+    if isinstance(scope, str):
+        return scope
+    tid, uid = _home_tenant(scope), scope.actor_id
     patches = arguments.get("patches")
     if not isinstance(patches, list) or not patches:
         return _err("patches array required")
+    normalized = [dict(p) for p in patches if isinstance(p, dict)]
+    # The two guards this route carries on top of the capability, asked before anything
+    # is written. A knob on the "operator" layer writes the single global
+    # ``operator_settings`` row, which has no tenant column — the company confinement
+    # ``agent.assign`` gives does not reach it, so only a site-wide caller may touch one.
+    if not scope.site_wide:
+        operator_knobs = sorted(
+            str(p.get("knob_id") or "")
+            for p in normalized
+            if str((knob_by_id(str(p.get("knob_id") or "")) or {}).get("layer") or "") == "operator"
+        )
+        if operator_knobs:
+            return _err(
+                "operator-layer knobs write instance-wide settings and require site admin: "
+                + ", ".join(operator_knobs)
+            )
+    # A benchmark run spends shared provider compute against the live server, and
+    # benchmark execution is site-admin only.
+    if bool(arguments.get("trigger_benchmark")):
+        try:
+            scope.require_site_wide("triggering a benchmark run")
+        except AdminScopeError as e:
+            return _err(str(e))
     session_id = _parse_uuid(arguments.get("session_id"), field="session_id")
     experiment_id = _parse_uuid(arguments.get("experiment_id"), field="experiment_id")
     result = agent_config_service.apply_patches(
         tenant_id=tid,
-        patches=[dict(p) for p in patches if isinstance(p, dict)],
+        patches=normalized,
         actor_type="operator_agent",
         actor_user_id=uid,
         actor_agent_id="operator",
@@ -173,10 +224,10 @@ def agent_config_apply(arguments: dict[str, Any]) -> str:
 
 
 def agent_config_changelog(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _agent_admin_scope()
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     limit = int(arguments.get("limit") or 50)
     session_id = _parse_uuid(arguments.get("session_id"), field="session_id")
     rows = agent_config_store.list_changelog(tid, limit=limit, session_id=session_id)
@@ -184,10 +235,10 @@ def agent_config_changelog(arguments: dict[str, Any]) -> str:
 
 
 def benchmark_run_start(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, uid = g
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
+    tid, uid = _home_tenant(scope), scope.actor_id
     suite = str(arguments.get("suite") or "").strip()
     profiles = arguments.get("profiles")
     if not suite or not isinstance(profiles, list) or not profiles:
@@ -242,10 +293,10 @@ def benchmark_run_start(arguments: dict[str, Any]) -> str:
 
 
 def benchmark_run_get(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     run_id = _parse_uuid(arguments.get("run_id"), field="run_id")
     if not run_id:
         return _err("run_id required")
@@ -258,9 +309,11 @@ def benchmark_run_get(arguments: dict[str, Any]) -> str:
 
 
 def agents_list(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
+    # The registry is instance-wide, so its route gate is the capability alone — there is
+    # no company range here to confine, unlike the knob routes.
+    scope = _agent_admin_scope()
+    if isinstance(scope, str):
+        return scope
     from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
     reg = get_agent_registry()
@@ -268,9 +321,9 @@ def agents_list(arguments: dict[str, Any]) -> str:
 
 
 def agents_get(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
+    scope = _agent_admin_scope()
+    if isinstance(scope, str):
+        return scope
     aid = str(arguments.get("agent_id") or "").strip()
     if not aid:
         return _err("agent_id required")
@@ -283,10 +336,10 @@ def agents_get(arguments: dict[str, Any]) -> str:
 
 
 def tuning_session_create(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _agent_admin_scope()
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     label = str(arguments.get("label") or "").strip()
     cohort_label = str(arguments.get("cohort_label") or label).strip()
     if not label or not cohort_label:
@@ -303,10 +356,10 @@ def tuning_session_create(arguments: dict[str, Any]) -> str:
 
 
 def tuning_session_validate(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _agent_admin_scope()
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     sid = _parse_uuid(arguments.get("session_id"), field="session_id")
     if not sid:
         return _err("session_id required")
@@ -326,10 +379,10 @@ def tuning_session_validate(arguments: dict[str, Any]) -> str:
 
 
 def tuning_session_close(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _agent_admin_scope()
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     sid = _parse_uuid(arguments.get("session_id"), field="session_id")
     if not sid:
         return _err("session_id required")
@@ -341,10 +394,10 @@ def tuning_session_close(arguments: dict[str, Any]) -> str:
 
 
 def benchmark_experiment_create(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     label = str(arguments.get("label") or "").strip()
     if not label:
         return _err("label required")
@@ -362,10 +415,10 @@ def benchmark_experiment_create(arguments: dict[str, Any]) -> str:
 
 
 def benchmark_experiment_get(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     eid = _parse_uuid(arguments.get("experiment_id"), field="experiment_id")
     if not eid:
         return _err("experiment_id required")
@@ -376,10 +429,10 @@ def benchmark_experiment_get(arguments: dict[str, Any]) -> str:
 
 
 def benchmark_experiment_run(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, uid = g
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
+    tid, uid = _home_tenant(scope), scope.actor_id
     eid = _parse_uuid(arguments.get("experiment_id"), field="experiment_id")
     if not eid:
         return _err("experiment_id required")

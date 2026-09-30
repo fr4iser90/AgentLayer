@@ -6,6 +6,7 @@ import json
 import uuid
 from unittest.mock import patch
 
+from apps.backend.infrastructure.identity import console_access as console_guard
 from apps.backend.infrastructure.settings.operator_settings import (
     _discord_trigger_prefix_sql,
     _telegram_trigger_prefix_sql,
@@ -41,7 +42,7 @@ def test_settings_patch_empty_minimal_error() -> None:
     from plugins.tools.platform.operator import admin as oa
 
     uid = uuid.uuid4()
-    with patch.object(oa, "get_identity", return_value=(1, uid)):
+    with patch.object(console_guard, "get_identity", return_value=(1, uid)):
         with patch.object(oa.db, "user_site_role", return_value="site_admin"):
             out = json.loads(oa.settings_patch({}))
     assert out == {
@@ -55,7 +56,7 @@ def test_settings_get_no_hint_fields() -> None:
     from plugins.tools.platform.operator import admin as oa
 
     uid = uuid.uuid4()
-    with patch.object(oa, "get_identity", return_value=(1, uid)):
+    with patch.object(console_guard, "get_identity", return_value=(1, uid)):
         with patch.object(oa.db, "user_site_role", return_value="site_admin"):
             with patch.object(oa, "operator_settings_public_dict", return_value={"rag_enabled": True}):
                 with patch.object(oa, "interface_hints_public", return_value={}):

@@ -170,7 +170,7 @@ The operator’s tool surface is a **capability grant**, not a tool list. `plugi
 
 | Capability | Unlocks | Source module |
 |------------|---------|---------------|
-| `operator.console` | the 26 admin actions in the table below (`min_role: admin`) | `plugins/tools/platform/operator/admin.py` |
+| `operator.console` | the 26 admin actions in the table below **and** the 14 tuning/benchmark actions under [Agent-config tuning console](#agent-config-tuning-console-implemented) (`min_role: admin`) | `plugins/tools/platform/operator/admin.py`, `plugins/tools/platform/operator/agent_config_tools.py` |
 | `knowledge.retrieve` | `rag_search` | `plugins/tools/knowledge/rag/rag.py` |
 | `scheduler.job.read` | `list` — persisted jobs for the tenant | `plugins/tools/platform/scheduler/jobs.py` |
 | `scheduler.job.write` | `create` (job; `execution_target` = registry `agent_id`, workspace agents need `workspace_id`), `set_enabled` | `plugins/tools/platform/scheduler/jobs.py` |
@@ -203,9 +203,24 @@ Implementation pointers:
 | `scheduler_presets_list` | Preset JSON templates | signed in only — the presets route it mirrors asks nothing more |
 | `project_runs_list` / `run_create` | Coding project runs | `dashboard.manage`, the caller's own company |
 
-**Each handler asks its route's two questions.** Never-delegable work (the rows above marked *site admin* — the operator row, provider endpoints, tenants, the tool registry, a caller-supplied path) has no capability slug and goes through `site_scope`; company work names its own slug and goes through `scope_for`, both in `apps/backend/domain/access/capabilities.py`. Those are the same two factories `require_admin_scope` walks per HTTP request, so a handler cannot be looser than the route it mirrors: a delegated `user.manage` holder lists one company, a `job_id` from another company reads as `job not found` rather than `403`, and the create path applies `schedule_permission_error` with the company it is about to write to — the capability says what work, never which agent. Pinned by `tests/unit/test_operator_console_scope.py`.
+**Each handler asks its route's two questions.** Never-delegable work (the rows above marked *site admin* — the operator row, provider endpoints, tenants, the tool registry, a caller-supplied path) has no capability slug and goes through `site_scope`; company work names its own slug and goes through `scope_for`, both in `apps/backend/domain/access/capabilities.py`. Those are the same two factories `require_admin_scope` walks per HTTP request, so a handler cannot be looser than the route it mirrors: a delegated `user.manage` holder lists one company, a `job_id` from another company reads as `job not found` rather than `403`, and the create path applies `schedule_permission_error` with the company it is about to write to — the capability says what work, never which agent.
 
-What still differs from HTTP is the **door** in front of the console: `TOOL_MIN_ROLE = "admin"` is judged by `caller_fulfills_effective_policy` (`apps/backend/domain/plugin_system/tool_policy.py`) against `db.user_role` — the legacy `users.role` column — so the console opens for a legacy admin, who is then confined per handler. `plugins/tools/platform/operator/agent_config_tools.py` (`operator_agent_config`) still carries its own copy of the old check for the same reason.
+Both operator consoles ask through one guard, `console_scope` (`apps/backend/infrastructure/identity/console_access.py`), the in-process twin of `require_admin_scope`. A tool handler has no `Request` to authenticate — it knows its caller only through the chat identity the runtime left in a contextvar, which is exactly how a console can drift looser than the routes it mirrors — so the guard reads the same three columns in the same order and raises `AdminScopeError` instead of an `HTTPException`. Pinned by `tests/unit/test_operator_console_scope.py` and `tests/unit/test_operator_agent_config_scope.py`.
+
+What still differs from HTTP is the **door** in front of the console: `TOOL_MIN_ROLE = "admin"` is judged by `caller_fulfills_effective_policy` (`apps/backend/domain/plugin_system/tool_policy.py`) against `db.user_role` — the legacy `users.role` column — so the console opens for a legacy admin, who is then confined per handler.
+
+### Agent-config tuning console (implemented)
+
+`plugins/tools/platform/operator/agent_config_tools.py` — `TOOL_ID = "operator_agent_config"`, the same capability and the same `min_role: admin` door. These 14 actions mirror `/v1/admin/agent-config/*` and `/v1/admin/benchmarks/*`, so the split follows the routes rather than the theme: tuning is company data, benchmarks are not.
+
+| Tool | Purpose | Gate inside the handler |
+|------|---------|-------------------------|
+| `agent_config_knobs` / `_snapshot` / `_changelog` | Knob schema, current fingerprint, who changed what | `agent.assign`, the caller's own company |
+| `agent_config_apply` | Write knob patches | `agent.assign`, own company — plus the two guards its route puts before any write: a knob on the `operator` layer and `trigger_benchmark` both need site admin, and the knob denial names the knobs so the caller learns what to escalate rather than that the patch failed |
+| `tuning_session_create` / `_validate` / `_close` | Tuning sessions | `agent.assign`, the caller's own company |
+| `agents_list` / `agents_get` | Agent registry rows for the picker | `agent.assign` — the registry is instance-wide, so its route gate is the capability alone |
+| `benchmark_run_start` / `_get` | Benchmark runs | site admin — the benchmark routes carry no capability slug |
+| `benchmark_experiment_create` / `_get` / `_run` | Experiments | site admin |
 
 ## What the operator cannot do yet (Web-UI parity)
 
@@ -217,7 +232,7 @@ The admin console above already implements most of the [suggested bundles](#sugg
 | Tool authoring | `POST /v1/admin/create-tool` has no tool counterpart; the console can list and re-policy the catalog, not generate code. |
 | Tenant templates | `GET /v1/admin/tenant-templates` is HTTP-only, so `tenant_create` can be reached without ever seeing a valid `template_id`. |
 | Other provider kinds | the console wraps the **legacy chat** endpoint routes; `/v1/admin/provider-endpoints/{kind}` (embedding and the rest) is HTTP-only. |
-| Company scope | inside the console this is closed (each handler asks its route's scope); what remains is the legacy `min_role` door in front of it and `operator_agent_config`, which still carries its own copy of the old check. |
+| Company scope | both operator consoles are closed — every handler asks its route's scope through `console_scope`. What remains is the legacy `min_role` door in front of them, and one admin surface outside this doc that still decides on `users.role` by itself: `plugins/tools/platform/reviewer/audit.py`. |
 
 ## Planned / recommended tools (roadmap)
 
