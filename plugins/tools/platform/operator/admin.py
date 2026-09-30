@@ -1,7 +1,17 @@
-"""Admin-only operator console tools (mirror ``/v1/admin/*`` HTTP where practical).
+"""Admin operator console tools (mirror ``/v1/admin/*`` HTTP where practical).
 
-Every handler checks **DB role admin** for the current chat identity. Prefer these tools
-from ``agent_id: operator``; they are also allowlisted only for that agent by default.
+Every handler asks its route's two questions, in this order: does the current chat
+identity hold the capability, and how far does that capability reach? Work that was
+never delegable — operator settings, interfaces, external LLM endpoints, tenants, the
+tool registry, a caller-supplied docs path — has no capability slug and asks for a site
+admin through :func:`site_scope`. Company work asks for its own slug through
+:func:`scope_for` and then stays inside the :class:`AdminScope` it returns: a delegated
+``user.manage`` holder lists their own company's people, a foreign job id reads as
+missing. Both factories are the ones ``require_admin_scope`` walks per HTTP request, so
+a console handler cannot be looser than the route it mirrors.
+
+Prefer these tools from ``agent_id: operator``; they are also allowlisted only for that
+agent by default.
 """
 
 from __future__ import annotations
@@ -13,9 +23,23 @@ from pathlib import Path
 from typing import Any, Callable, Literal
 
 import httpx
+from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
+from apps.backend.application.org.use_cases.org_surface_guard import reject_admin_tenant_knowledge_rag_ingest
+from apps.backend.domain.access.capabilities import (
+    AdminScope,
+    AdminScopeError,
+    CAP_DASHBOARD_MANAGE,
+    CAP_KNOWLEDGE_MANAGE,
+    CAP_SCHEDULE_MANAGE,
+    CAP_USER_MANAGE,
+    scope_for,
+    site_scope,
+)
+from apps.backend.domain.access.tenant_ownership import TenantOwnedEntitiesConflict
 from apps.backend.domain.shared.identity import get_identity
+from apps.backend.application.identity.use_cases.request_auth import agent_effective_role
 from apps.backend.infrastructure.rag.rag_docs_file_ingest_service import ingest_markdown_tree, resolve_docs_root
 from apps.backend.domain.plugin_system.registry import get_registry, reload_registry
 from apps.backend.api.tools.controllers.tools_api import ToolPoliciesPutBody
@@ -84,24 +108,97 @@ def _ok(payload: dict[str, Any]) -> str:
     return json.dumps({"ok": True, **payload}, ensure_ascii=False, default=str)
 
 
-def _admin_tid_uid() -> tuple[int, uuid.UUID] | None:
-    tid, uid = get_identity()
+def _actor_id() -> uuid.UUID | str:
+    """The chat identity behind the call, or the error to hand back when there is none."""
+    _tid, uid = get_identity()
     if uid is None:
-        return None
-    if db.user_role(uid) != "admin":
-        return None
-    try:
-        t = int(tid)
-    except (TypeError, ValueError):
-        return None
-    return t, uid
-
-
-def _require_admin() -> tuple[int, uuid.UUID] | str:
-    g = _admin_tid_uid()
-    if g is None:
         return _err("authentication and admin role required for this tool")
-    return g
+    return uid
+
+
+def _site_wide() -> AdminScope | str:
+    """Gate for the never-delegated half of the console.
+
+    Settings, interfaces, external provider endpoints, tenants, the tool registry and a
+    caller-supplied ``docs_root`` move the whole instance, so they have no capability
+    slug and a site admin is the only answer.
+    """
+    actor = _actor_id()
+    if isinstance(actor, str):
+        return actor
+    try:
+        return site_scope(actor_id=actor, site_role=db.user_site_role(actor))
+    except AdminScopeError as e:
+        return _err(str(e))
+
+
+def _scope(capability: str) -> AdminScope | str:
+    """Gate the company-scoped half and return the companies it reaches.
+
+    Reads the canonical ``site_role`` and the granted capability set rather than the
+    legacy ``users.role``, so a delegated holder is admitted by what they were granted
+    and then confined to their own company.
+    """
+    actor = _actor_id()
+    if isinstance(actor, str):
+        return actor
+    try:
+        return scope_for(
+            actor_id=actor,
+            capability=capability,
+            site_role=db.user_site_role(actor),
+            capabilities=db.user_capabilities(actor),
+            tenant_id=db.user_tenant_id(actor),
+        )
+    except AdminScopeError as e:
+        return _err(str(e))
+
+
+def _chat_tenant() -> int:
+    """The company the chat identity runs in — what a vault placeholder was minted against.
+
+    A non-numeric identity falls back to company 1, which fails closed: vault rows are
+    company-scoped, so a mismatched company resolves no secret rather than another's.
+    """
+    tid, _uid = get_identity()
+    try:
+        return int(tid)
+    except (TypeError, ValueError):
+        return 1
+
+
+def _narrow_tenant(scope: AdminScope, raw: Any) -> int | str:
+    """The company a call names, kept inside the caller's range.
+
+    Denied rather than ignored, as on the routes: naming a company you were not granted
+    is asking for something you do not have, and quietly answering with your own would
+    report a filtered list that is not the one requested.
+    """
+    if raw is None or str(raw).strip() == "":
+        return int(db.user_tenant_id(scope.actor_id) or 1)
+    try:
+        named = int(str(raw).strip())
+    except (TypeError, ValueError):
+        return _err("tenant_id must be an integer")
+    try:
+        return scope.require_tenant(named, what="tenant")
+    except AdminScopeError as e:
+        return _err(str(e))
+
+
+def _job_tenant(scope: AdminScope, jid: uuid.UUID) -> int | str:
+    """The company a job belongs to, when the caller reaches it.
+
+    A job outside the scope answers exactly like a missing one — confirming that another
+    company has a job with this id is itself the leak.
+    """
+    row = scheduler_jobs_store.get_job_any_tenant(jid)
+    if not row:
+        return _err("job not found")
+    try:
+        return scope.require_tenant(row.get("tenant_id"), what="job")
+    except AdminScopeError:
+        return _err("job not found")
 
 
 def _parse_uuid(raw: Any, *, field: str) -> uuid.UUID | None:
@@ -118,9 +215,9 @@ def _parse_uuid(raw: Any, *, field: str) -> uuid.UUID | None:
 
 def settings_get(arguments: dict[str, Any]) -> str:
     """Return masked operator_settings (``public_dict``) plus interface hints."""
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
     settings = operator_settings_public_dict()
     interfaces = interface_hints_public()
     return _ok({"settings": settings, "interfaces": interfaces})
@@ -128,10 +225,10 @@ def settings_get(arguments: dict[str, Any]) -> str:
 
 def settings_patch(arguments: dict[str, Any]) -> str:
     """Partial update; keys must match ``OperatorSettingsPatch`` (no unknown fields)."""
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
-    tid, uid = g_adm
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
+    tid, uid = _chat_tenant(), scope.actor_id
     if not isinstance(arguments, dict) or not arguments:
         return _err_obj(
             operator_settings_patch_client_error(
@@ -167,23 +264,23 @@ def settings_patch(arguments: dict[str, Any]) -> str:
 
 
 def interfaces_get(arguments: dict[str, Any]) -> str:
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
     return _ok({"interfaces": interface_hints_public()})
 
 
 def interfaces_put(arguments: dict[str, Any]) -> str:
     """Set Discord/Telegram application ids and agent_mode (sandbox|host)."""
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
     try:
         body = InterfaceHintsPayload.model_validate(arguments)
     except Exception as e:
         return _err(f"invalid body: {e}")
     apply_interface_hints(body)
-    return operator_interfaces_get({})
+    return interfaces_get({})
 
 
 # --- external LLM endpoints ---
@@ -211,9 +308,9 @@ class _ExtEndpointsPutBody(BaseModel):
 
 
 def external_llm_endpoints_get(arguments: dict[str, Any]) -> str:
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
     out: list[dict[str, Any]] = []
     for r in db.external_llm_endpoints_list_all():
         k = str(r.get("api_key") or "")
@@ -238,10 +335,10 @@ def external_llm_endpoints_get(arguments: dict[str, Any]) -> str:
 
 
 def external_llm_endpoints_put(arguments: dict[str, Any]) -> str:
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
-    tid, uid = g_adm
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
+    tid, uid = _chat_tenant(), scope.actor_id
     resolved = resolve_placeholders_deep(dict(arguments or {}), tenant_id=int(tid), user_id=uid)
     try:
         body = _ExtEndpointsPutBody.model_validate(resolved)
@@ -257,7 +354,7 @@ def external_llm_endpoints_put(arguments: dict[str, Any]) -> str:
         return _err(http_500_detail(e))
     invalidate_operator_settings_cache()
     consume_placeholders_in_obj(arguments, tenant_id=int(tid), user_id=uid)
-    return operator_external_llm_endpoints_get({})
+    return external_llm_endpoints_get({})
 
 
 class _ExtModelsBody(BaseModel):
@@ -270,10 +367,10 @@ class _ExtModelsBody(BaseModel):
 
 def external_llm_models_list(arguments: dict[str, Any]) -> str:
     """Sync ``GET {base}/v1/models`` using body overrides or stored endpoint credentials."""
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
-    tid, uid = g_adm
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
+    tid, uid = _chat_tenant(), scope.actor_id
     resolved = resolve_placeholders_deep(dict(arguments or {}), tenant_id=int(tid), user_id=uid)
     try:
         body = _ExtModelsBody.model_validate(resolved)
@@ -312,16 +409,16 @@ def external_llm_models_list(arguments: dict[str, Any]) -> str:
 
 
 def tenants_list(arguments: dict[str, Any]) -> str:
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
     return _ok({"tenants": db.tenants_list()})
 
 
 def tenant_create(arguments: dict[str, Any]) -> str:
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
     name = str(arguments.get("name") or "").strip()
     if not name:
         return _err("name is required")
@@ -347,10 +444,10 @@ def tenant_create(arguments: dict[str, Any]) -> str:
 
 
 def users_list(arguments: dict[str, Any]) -> str:
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
-    return _ok({"users": list_all_users()})
+    scope = _scope(CAP_USER_MANAGE)
+    if isinstance(scope, str):
+        return scope
+    return _ok({"users": list_all_users(tenant_ids=scope.tenant_filter())})
 
 
 class _AdminCreateUserBody(BaseModel):
@@ -363,23 +460,29 @@ class _AdminCreateUserBody(BaseModel):
 
 
 def user_create(arguments: dict[str, Any]) -> str:
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
+    scope = _scope(CAP_USER_MANAGE)
+    if isinstance(scope, str):
+        return scope
     try:
         body = _AdminCreateUserBody.model_validate(arguments)
     except Exception as e:
         return _err(f"invalid body: {e}")
-    if not db.tenant_exists(body.tenant_id):
+    if body.role == "admin" and not scope.site_wide:
+        return _err("only a site admin can create a site admin")
+    try:
+        tenant_id = scope.require_tenant(body.tenant_id, what="target tenant")
+    except AdminScopeError as e:
+        return _err(str(e))
+    if not db.tenant_exists(tenant_id):
         return _err("unknown tenant_id")
     if get_user_by_email(body.email):
         return _err("email already registered")
     try:
-        u = create_user(body.email, body.password, body.role, tenant_id=body.tenant_id)
+        u = create_user(body.email, body.password, body.role, tenant_id=tenant_id)
     except Exception as e:
         logger.exception("user_create")
         return _err(http_500_detail(e))
-    return _ok({"id": str(u.id), "email": u.email, "role": u.role, "tenant_id": body.tenant_id})
+    return _ok({"id": str(u.id), "email": u.email, "role": u.role, "tenant_id": tenant_id})
 
 
 class _AdminPatchUserBody(BaseModel):
@@ -393,9 +496,9 @@ class _AdminPatchUserBody(BaseModel):
 
 
 def user_patch(arguments: dict[str, Any]) -> str:
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
+    scope = _scope(CAP_USER_MANAGE)
+    if isinstance(scope, str):
+        return scope
     try:
         body = _AdminPatchUserBody.model_validate(arguments)
     except Exception as e:
@@ -416,11 +519,22 @@ def user_patch(arguments: dict[str, Any]) -> str:
     u = get_user_by_id(user_id)
     if not u:
         return _err("user not found")
-    if body.tenant_id is not None:
-        if not db.tenant_exists(body.tenant_id):
-            return _err("unknown tenant_id")
-        if not update_user_tenant(user_id, body.tenant_id):
-            return _err("user not found")
+    if db.user_site_role(u.id) == "site_admin" and not scope.site_wide:
+        return _err("only a site admin can modify a site admin")
+    target_tenant = int(db.user_tenant_id(u.id) or 1)
+    if not scope.allows_tenant(target_tenant):
+        return _err("user is outside your admin scope")
+    if body.tenant_id is not None and int(body.tenant_id) != target_tenant:
+        try:
+            scope.require_site_wide("moving a user between tenants")
+            if not db.tenant_exists(body.tenant_id):
+                return _err("unknown tenant_id")
+            if not update_user_tenant(user_id, body.tenant_id):
+                return _err("user not found")
+        except TenantOwnedEntitiesConflict as e:
+            return _err(str(e))
+        except AdminScopeError as e:
+            return _err(str(e))
     if body.workspace_quota is not None:
         db.query(
             "UPDATE users SET workspace_quota = %s WHERE id = %s",
@@ -444,9 +558,9 @@ def user_patch(arguments: dict[str, Any]) -> str:
 
 def tools_catalog(arguments: dict[str, Any]) -> str:
     """Same data as ``GET /v1/admin/tools`` (metadata + policy rows)."""
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
     try:
         from apps.backend.infrastructure.tools.tool_operator_policy_db import list_policies, policies_map
         from apps.backend.domain.plugin_system.tool_policy import enrich_meta_for_admin
@@ -463,9 +577,9 @@ def tools_catalog(arguments: dict[str, Any]) -> str:
 
 
 def tool_policies_put(arguments: dict[str, Any]) -> str:
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
     try:
         body = ToolPoliciesPutBody.model_validate(arguments)
     except Exception as e:
@@ -482,14 +596,14 @@ def tool_policies_put(arguments: dict[str, Any]) -> str:
 
 def reload_tools(arguments: dict[str, Any]) -> str:
     """Rescan plugin tool directories (same as ``POST /v1/admin/reload-tools``)."""
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
-    scope = str(arguments.get("scope") or "all").strip().lower()
-    if scope not in ("all", "extra"):
-        scope = "all"
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
+    scan = str(arguments.get("scope") or "all").strip().lower()
+    if scan not in ("all", "extra"):
+        scan = "all"
     try:
-        reg = reload_registry(scope=scope)
+        reg = reload_registry(scope=scan)
     except ValueError as e:
         return _err(str(e))
     except Exception as e:
@@ -500,16 +614,16 @@ def reload_tools(arguments: dict[str, Any]) -> str:
         fn = t.get("function") if isinstance(t, dict) else None
         if isinstance(fn, dict) and fn.get("name"):
             names.append(str(fn["name"]))
-    return _ok({"scope": scope, "tool_count": len(reg.chat_tool_specs), "tool_names": names})
+    return _ok({"scope": scan, "tool_count": len(reg.chat_tool_specs), "tool_names": names})
 
 
 # --- RAG admin ---
 
 
 def rag_ingest(arguments: dict[str, Any]) -> str:
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
+    scope = _scope(CAP_KNOWLEDGE_MANAGE)
+    if isinstance(scope, str):
+        return scope
     if not operator_settings.rag_settings()["enabled"]:
         return _err("RAG disabled in operator settings")
     text = arguments.get("text")
@@ -519,7 +633,11 @@ def rag_ingest(arguments: dict[str, Any]) -> str:
     title = str(arguments.get("title") or "").strip()
     su_raw = arguments.get("source_uri")
     su = str(su_raw).strip() if isinstance(su_raw, str) and str(su_raw).strip() else None
-    _tid, uid = g_adm
+    try:
+        reject_admin_tenant_knowledge_rag_ingest(domain)
+    except HTTPException as e:
+        return _err(str(e.detail))
+    uid = scope.actor_id
     tenant_id = db.user_tenant_id(uid)
     try:
         out = rag_service.ingest_for_user(tenant_id, uid, domain, title, text, su)
@@ -555,9 +673,9 @@ class _IngestDocsArgs(BaseModel):
 
 
 def rag_ingest_docs(arguments: dict[str, Any]) -> str:
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
     if not operator_settings.rag_settings()["enabled"]:
         return _err("RAG disabled in operator settings")
     try:
@@ -571,7 +689,7 @@ def rag_ingest_docs(arguments: dict[str, Any]) -> str:
         root = resolve_docs_root()
     if not root.is_dir():
         return _err(f"docs_root not found or not a directory: {root}")
-    _tid, uid = g_adm
+    _tid, uid = _chat_tenant(), scope.actor_id
     tenant_id = db.user_tenant_id(uid)
     try:
         out = ingest_markdown_tree(
@@ -596,11 +714,9 @@ def rag_ingest_docs(arguments: dict[str, Any]) -> str:
 
 
 def scheduler_job_list(arguments: dict[str, Any]) -> str:
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
-    _tid, uid = g_adm
-    tenant_id = db.user_tenant_id(uid)
+    scope = _scope(CAP_SCHEDULE_MANAGE)
+    if isinstance(scope, str):
+        return scope
     ws = _parse_uuid(arguments.get("dashboard_id"), field="dashboard_id")
     if arguments.get("dashboard_id") is not None and str(arguments.get("dashboard_id")).strip() and ws is None:
         return _err("invalid dashboard_id UUID")
@@ -623,8 +739,14 @@ def scheduler_job_list(arguments: dict[str, Any]) -> str:
         lim = int(arguments.get("limit", 200))
     except (TypeError, ValueError):
         lim = 200
-    rows = scheduler_jobs_store.list_jobs_for_tenant(
-        tenant_id=tenant_id,
+    tenant_ids: frozenset[int] | None = scope.tenant_filter()
+    if arguments.get("tenant_id") is not None and str(arguments.get("tenant_id")).strip():
+        narrowed = _narrow_tenant(scope, arguments.get("tenant_id"))
+        if isinstance(narrowed, str):
+            return narrowed
+        tenant_ids = frozenset({narrowed})
+    rows = scheduler_jobs_store.list_jobs_for_scope(
+        tenant_ids=tenant_ids,
         dashboard_id=ws,
         include_global=include_global,
         execution_target=tgt,
@@ -636,21 +758,35 @@ def scheduler_job_list(arguments: dict[str, Any]) -> str:
 
 
 def scheduler_job_create(arguments: dict[str, Any]) -> str:
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
-    _tid, uid = g_adm
-    tenant_id = db.user_tenant_id(uid)
+    scope = _scope(CAP_SCHEDULE_MANAGE)
+    if isinstance(scope, str):
+        return scope
+    uid = scope.actor_id
+    tenant_id = _narrow_tenant(scope, arguments.get("tenant_id"))
+    if isinstance(tenant_id, str):
+        return tenant_id
     from apps.backend.domain.scheduling.targets import (
         agent_requires_workspace_for_target,
         execution_target_error,
         is_valid_execution_target,
         normalize_execution_target,
+        schedule_permission_error,
     )
 
     tgt = normalize_execution_target(str(arguments.get("execution_target") or ""))
     if not tgt or not is_valid_execution_target(tgt):
         return _err(execution_target_error(arguments.get("execution_target")))
+    # The same two-layer target policy the user path applies. The capability says what
+    # work to run, never which agent — a delegated holder may only schedule one their
+    # company's allowlist carries.
+    perm_err = schedule_permission_error(
+        user_role=agent_effective_role(uid),
+        execution_target=tgt,
+        user_id=uid,
+        tenant_id=tenant_id,
+    )
+    if perm_err:
+        return _err(perm_err)
     instructions = str(arguments.get("instructions") or "").strip()
     if not instructions:
         return _err("instructions is required")
@@ -701,14 +837,16 @@ def scheduler_job_create(arguments: dict[str, Any]) -> str:
 
 
 def scheduler_job_patch(arguments: dict[str, Any]) -> str:
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
-    _tid, uid = g_adm
-    tenant_id = db.user_tenant_id(uid)
+    scope = _scope(CAP_SCHEDULE_MANAGE)
+    if isinstance(scope, str):
+        return scope
+    uid = scope.actor_id
     jid = _parse_uuid(arguments.get("job_id"), field="job_id")
     if jid is None:
         return _err("job_id UUID required")
+    tenant_id = _job_tenant(scope, jid)
+    if isinstance(tenant_id, str):
+        return tenant_id
     title = arguments.get("title")
     instr = arguments.get("instructions")
     interval = arguments.get("interval_minutes")
@@ -743,14 +881,16 @@ def scheduler_job_patch(arguments: dict[str, Any]) -> str:
 
 
 def scheduler_job_set_enabled(arguments: dict[str, Any]) -> str:
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
-    _tid, uid = g_adm
-    tenant_id = db.user_tenant_id(uid)
+    scope = _scope(CAP_SCHEDULE_MANAGE)
+    if isinstance(scope, str):
+        return scope
+    uid = scope.actor_id
     jid = _parse_uuid(arguments.get("job_id"), field="job_id")
     if jid is None:
         return _err("job_id UUID required")
+    tenant_id = _job_tenant(scope, jid)
+    if isinstance(tenant_id, str):
+        return tenant_id
     if "enabled" not in arguments:
         return _err("enabled boolean required")
     row = scheduler_jobs_store.set_enabled(
@@ -766,14 +906,16 @@ def scheduler_job_set_enabled(arguments: dict[str, Any]) -> str:
 
 
 def scheduler_job_set_archived(arguments: dict[str, Any]) -> str:
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
-    _tid, uid = g_adm
-    tenant_id = db.user_tenant_id(uid)
+    scope = _scope(CAP_SCHEDULE_MANAGE)
+    if isinstance(scope, str):
+        return scope
+    uid = scope.actor_id
     jid = _parse_uuid(arguments.get("job_id"), field="job_id")
     if jid is None:
         return _err("job_id UUID required")
+    tenant_id = _job_tenant(scope, jid)
+    if isinstance(tenant_id, str):
+        return tenant_id
     if "archived" not in arguments:
         return _err("archived boolean required")
     archived = bool(arguments.get("archived"))
@@ -788,14 +930,16 @@ def scheduler_job_set_archived(arguments: dict[str, Any]) -> str:
 
 
 def scheduler_job_delete(arguments: dict[str, Any]) -> str:
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
-    _tid, uid = g_adm
-    tenant_id = db.user_tenant_id(uid)
+    scope = _scope(CAP_SCHEDULE_MANAGE)
+    if isinstance(scope, str):
+        return scope
+    uid = scope.actor_id
     jid = _parse_uuid(arguments.get("job_id"), field="job_id")
     if jid is None:
         return _err("job_id UUID required")
+    tenant_id = _job_tenant(scope, jid)
+    if isinstance(tenant_id, str):
+        return tenant_id
     ok = scheduler_jobs_store.hard_delete_job(job_id=jid, tenant_id=tenant_id, actor_user_id=uid, actor_is_admin=True)
     if not ok:
         return _err("job not found")
@@ -803,9 +947,11 @@ def scheduler_job_delete(arguments: dict[str, Any]) -> str:
 
 
 def scheduler_presets_list(arguments: dict[str, Any]) -> str:
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
+    # The preset templates are shared prose, not company data: the route that draws
+    # them for a user asks for authentication only, and this mirrors it.
+    actor = _actor_id()
+    if isinstance(actor, str):
+        return actor
     from apps.backend.application.scheduling.use_cases.schedule_presets import read_schedule_presets
 
     return _ok({"presets": read_schedule_presets()})
@@ -815,10 +961,10 @@ def scheduler_presets_list(arguments: dict[str, Any]) -> str:
 
 
 def project_runs_list(arguments: dict[str, Any]) -> str:
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
-    _tid, uid = g_adm
+    scope = _scope(CAP_DASHBOARD_MANAGE)
+    if isinstance(scope, str):
+        return scope
+    _tid, uid = _chat_tenant(), scope.actor_id
     tenant_id = db.user_tenant_id(uid)
     ws = _parse_uuid(arguments.get("dashboard_id"), field="dashboard_id")
     if arguments.get("dashboard_id") is not None and str(arguments.get("dashboard_id")).strip() and ws is None:
@@ -838,10 +984,10 @@ def project_runs_list(arguments: dict[str, Any]) -> str:
 
 
 def run_create(arguments: dict[str, Any]) -> str:
-    g_adm = _require_admin()
-    if isinstance(g_adm, str):
-        return g_adm
-    _tid, uid = g_adm
+    scope = _scope(CAP_DASHBOARD_MANAGE)
+    if isinstance(scope, str):
+        return scope
+    _tid, uid = _chat_tenant(), scope.actor_id
     tenant_id = db.user_tenant_id(uid)
     instructions = str(arguments.get("instructions") or "").strip()
     if not instructions:
@@ -978,7 +1124,11 @@ TOOLS: list[dict[str, Any]] = [
         "Create tenant; name (string).",
         {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]},
     ),
-    _tool_fn("users_list", "List all users.", {"type": "object", "properties": {}}),
+    _tool_fn(
+        "users_list",
+        "List the users this caller may administer: their own company, every company for a site admin.",
+        {"type": "object", "properties": {}},
+    ),
     _tool_fn(
         "user_create",
         "Create user: email, password, role (user|admin), tenant_id.",
@@ -1048,10 +1198,11 @@ TOOLS: list[dict[str, Any]] = [
     ),
     _tool_fn(
         "scheduler_job_list",
-        "Admin list scheduler_jobs: optional dashboard_id, include_global, include_archived, execution_target, enabled, limit.",
+        "List scheduler_jobs within this caller's admin scope: optional tenant_id, dashboard_id, include_global, include_archived, execution_target, enabled, limit.",
         {
             "type": "object",
             "properties": {
+                "tenant_id": {"type": "integer"},
                 "dashboard_id": {"type": "string"},
                 "include_global": {"type": "boolean"},
                 "include_archived": {"type": "boolean"},
@@ -1063,7 +1214,7 @@ TOOLS: list[dict[str, Any]] = [
     ),
     _tool_fn(
         "scheduler_job_create",
-        "Create scheduler job (admin): execution_target, instructions, optional title, dashboard_id, interval_minutes, enabled, workspace_id, coding_workflow.",
+        "Create scheduler job (admin): execution_target, instructions, optional title, dashboard_id, interval_minutes, enabled, workspace_id, coding_workflow, tenant_id.",
         {
             "type": "object",
             "properties": {
