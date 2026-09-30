@@ -29,9 +29,9 @@ Die bisherigen `scheduler_*`-Spalten in `operator_settings` können parallel ble
 
 ### Phase C — Chat-gesteuerte Anlage + Tools
 
-**Umgesetzt (erste Iteration):** Agent-Tools `create`, `list`, `set_enabled` im Plugin `plugins/tools/capabilities/platform/scheduler_jobs/scheduler_jobs.py` (Persistenz über `apps.backend/infrastructure/scheduler_jobs_store.py`). **Policy:** `execution_target=ide_agent` nur mit **Admin-Rolle**; Dashboard-Zuordnung nur bei ausreichendem Dashboard-Zugriff; Listen für Nicht-Admins auf Jobs eingeschränkt, die der Nutzer angelegt hat oder die ihn als `execution_user_id` führen.
+**Umgesetzt:** Agent-Tool `scheduler_jobs` — Aktionen `create`, `list`, `set_enabled` — in `plugins/tools/platform/scheduler/jobs.py`, Persistenz über `apps/backend/infrastructure/scheduling/scheduler_jobs_store.py`. **Policy:** die Admin-Regel hängt nicht mehr am Namen `ide_agent`, sondern an den Registry-Daten des Ziels; `domain/scheduling/targets.py::schedule_permission_error` prüft zweischichtig — `min_role` des registrierten Agenten **und** die Firmen-Freigabe (`chat.allowed_agent_ids`, `agent_access_policies`), damit ein Schedule keinen Agenten erreicht, der im Chat verboten ist. Dazu das Feature-Recht `users.schedules_allowed`. Dashboard-Zuordnung nur bei ausreichendem Dashboard-Zugriff; Listen für Nicht-Admins auf Jobs eingeschränkt, die der Nutzer angelegt hat oder die ihn als `execution_user_id` führen.
 
-- **REST (Anlage weiterhin über Tools):** Lese-/Ack-Endpunkte für IDE siehe oben; optionales CRUD-PATCH später.
+- **REST:** nicht mehr Ergänzung, sondern Hauptweg — `/v1/user/scheduler-jobs` (Listen, Anlegen, PATCH, DELETE, `/{job_id}/enabled`, `execution-targets`) und `/v1/admin/scheduler-jobs` für die Firma; beide prüfen dieselbe Server-Policy wie das Tool, eine IDE-Queue mit Abholen und Ack wird nicht mehr angeboten.
 
 ### Phase D — Sichtbarkeit & Governance
 
@@ -58,4 +58,4 @@ Anforderung: **Nur bestimmte Rollen** dürfen z. B. Jobs mit `execution_target
 
 ## Status
 
-Akzeptiert (laufend erweitert). `schema_029`–`schema_033`, Tools `schedule_job_*` (inkl. `ide_workflow`), Server-Runner, IDE-API `/v1/scheduler/jobs/*`. Offen: **IDE-Extension**, **Dashboard-UI**-Liste, **Audit-Log**.
+Akzeptiert (laufend erweitert). Umgesetzt: `scheduler_jobs` mit `coding_workflow` (Grundlage `schema_029`–`schema_033`, fortgesetzt u. a. durch `schema_051` — Coding-Agent und Umbenennung `ide_workflow` → `coding_workflow` —, `schema_054` `scheduler_job_runs`, `schema_122` `users.schedules_allowed`), Agent-Tool `scheduler_jobs`, Server-Runner `scheduler_jobs_runner`, REST unter `/v1/user/scheduler-jobs` und `/v1/admin/scheduler-jobs`, Schedules-Oberfläche im Web (`/schedules`, `/admin/schedules`) — damit ist die Phase-D-Forderung „nicht nur aus dem Chat“ erfüllt. **Weggefallen:** die IDE-Queue `/v1/scheduler/jobs/due` und `/v1/scheduler/jobs/{job_id}/ack-run`; Coding- und Workspace-Jobs führt der Worker selbst aus, nichts holt sie mehr ab. Offen: **IDE-Extension**, **Audit-Log** — `scheduler_job_runs` ist Lauf-Historie, nicht die Frage, wer einen Job angelegt oder geändert hat.
