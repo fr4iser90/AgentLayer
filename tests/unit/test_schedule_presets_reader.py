@@ -100,7 +100,7 @@ def test_endpoint_still_refuses_without_the_schedule_feature(
 def test_operator_tool_offers_exactly_what_the_reader_found(
     preset_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(operator_admin, "_require_admin", lambda: (1, uuid.uuid4()))
+    monkeypatch.setattr(operator_admin, "get_identity", lambda: (1, uuid.uuid4()))
 
     payload = json.loads(operator_admin.scheduler_presets_list({}))
 
@@ -111,7 +111,7 @@ def test_operator_tool_offers_exactly_what_the_reader_found(
 def test_operator_tool_still_refuses_without_an_admin(
     preset_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(operator_admin, "_require_admin", lambda: operator_admin._err("admin role required"))
+    monkeypatch.setattr(operator_admin, "get_identity", lambda: (1, None))
 
     payload = json.loads(operator_admin.scheduler_presets_list({}))
 

@@ -30,7 +30,7 @@ That keeps RBAC obvious: a normal user must not need admin to set their display 
 
 ## Recommended build order
 
-1. ~~**Operator Tier A tools**~~ — done as the `operator_admin` console below; its remaining gap is the company-scope check, not coverage.
+1. ~~**Operator Tier A tools**~~ — done as the `operator_admin` console below, and that console now asks the same two questions the routes ask (capability, then reach).
 2. **Operator Tier C** (setup-session links for real secrets) — the only tier never built; until it exists, tokens stay in the Admin UI.
 3. **Admin UI polish** — stable routes (`/admin/...`) matter more than pixels for deep links and agent copy.
 4. **Personal tools on `general`** (or a dedicated low-privilege agent) — separate PR/track from operator; reuse `user_data_api` contracts.
@@ -187,22 +187,25 @@ Implementation pointers:
 
 ### Operator admin console (implemented)
 
-| Tool | Purpose |
-|------|---------|
-| `settings_get` | Masked settings + interface hints |
-| `settings_patch` | `OperatorSettingsPatch` fields only |
-| `interfaces_get` / `interfaces_put` | Application IDs + `agent_mode` |
-| `external_llm_endpoints_get` / `…_put` | External LLM endpoint rows |
-| `external_llm_models_list` | Probe `GET …/v1/models` (sync HTTP) |
-| `tenants_list` / `tenant_create` | Tenants |
-| `users_list` / `user_create` / `user_patch` | Users |
-| `tools_catalog` / `tool_policies_put` / `reload_tools` | Tool registry + policies |
-| `rag_ingest` / `rag_ingest_docs` | RAG ingest |
-| `scheduler_job_list` / `_create` / `_patch` / `_set_enabled` / `_set_archived` / `_delete` | Persisted jobs, admin store API |
-| `scheduler_presets_list` | Preset JSON templates |
-| `project_runs_list` / `run_create` | Coding project runs |
+| Tool | Purpose | Gate inside the handler |
+|------|---------|-------------------------|
+| `settings_get` | Masked settings + interface hints | site admin |
+| `settings_patch` | `OperatorSettingsPatch` fields only | site admin |
+| `interfaces_get` / `interfaces_put` | Application IDs + `agent_mode` | site admin |
+| `external_llm_endpoints_get` / `…_put` | External LLM endpoint rows | site admin |
+| `external_llm_models_list` | Probe `GET …/v1/models` (sync HTTP) | site admin |
+| `tenants_list` / `tenant_create` | Tenants | site admin |
+| `users_list` / `user_create` / `user_patch` | Users | `user.manage`; the listing carries only the caller's companies, a move between them needs site admin |
+| `tools_catalog` / `tool_policies_put` / `reload_tools` | Tool registry + policies | site admin |
+| `rag_ingest` | RAG ingest into an operator domain | `knowledge.manage`, the caller's own company |
+| `rag_ingest_docs` | Whole-tree ingest from a `docs_root` the caller names | site admin |
+| `scheduler_job_list` / `_create` / `_patch` / `_set_enabled` / `_set_archived` / `_delete` | Persisted jobs, admin store API | `schedule.manage`; list/create take an optional `tenant_id`, the mutations read the company off the row |
+| `scheduler_presets_list` | Preset JSON templates | signed in only — the presets route it mirrors asks nothing more |
+| `project_runs_list` / `run_create` | Coding project runs | `dashboard.manage`, the caller's own company |
 
-**The console is not gated like the HTTP routes above.** Every handler calls `_require_admin()`, which is `db.user_role(uid) == "admin"` — the legacy `users.role` column, not `site_role` + `capabilities`. Two consequences worth knowing before extending it: a delegated `user.manage` / `schedule.manage` holder gets **nothing** here (no capability slug is evaluated, so `tool_capability_any: operator.console` is the only door), and a plain `role: admin` account is **not** confined to its own company the way the routes confine one — `users_list` returns `list_all_users()` with no tenant filter, which is precisely what `GET /v1/admin/users` was changed to stop doing. Extending the console means routing handlers through the same `AdminScope`, not adding tools on top of the old check.
+**Each handler asks its route's two questions.** Never-delegable work (the rows above marked *site admin* — the operator row, provider endpoints, tenants, the tool registry, a caller-supplied path) has no capability slug and goes through `site_scope`; company work names its own slug and goes through `scope_for`, both in `apps/backend/domain/access/capabilities.py`. Those are the same two factories `require_admin_scope` walks per HTTP request, so a handler cannot be looser than the route it mirrors: a delegated `user.manage` holder lists one company, a `job_id` from another company reads as `job not found` rather than `403`, and the create path applies `schedule_permission_error` with the company it is about to write to — the capability says what work, never which agent. Pinned by `tests/unit/test_operator_console_scope.py`.
+
+What still differs from HTTP is the **door** in front of the console: `TOOL_MIN_ROLE = "admin"` is judged by `caller_fulfills_effective_policy` (`apps/backend/domain/plugin_system/tool_policy.py`) against `db.user_role` — the legacy `users.role` column — so the console opens for a legacy admin, who is then confined per handler. `plugins/tools/platform/operator/agent_config_tools.py` (`operator_agent_config`) still carries its own copy of the old check for the same reason.
 
 ## What the operator cannot do yet (Web-UI parity)
 
@@ -214,7 +217,7 @@ The admin console above already implements most of the [suggested bundles](#sugg
 | Tool authoring | `POST /v1/admin/create-tool` has no tool counterpart; the console can list and re-policy the catalog, not generate code. |
 | Tenant templates | `GET /v1/admin/tenant-templates` is HTTP-only, so `tenant_create` can be reached without ever seeing a valid `template_id`. |
 | Other provider kinds | the console wraps the **legacy chat** endpoint routes; `/v1/admin/provider-endpoints/{kind}` (embedding and the rest) is HTTP-only. |
-| Company scope | the console gate — see the caveat directly above. |
+| Company scope | inside the console this is closed (each handler asks its route's scope); what remains is the legacy `min_role` door in front of it and `operator_agent_config`, which still carries its own copy of the old check. |
 
 ## Planned / recommended tools (roadmap)
 

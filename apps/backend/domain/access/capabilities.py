@@ -8,9 +8,12 @@ company.
 
 The evaluation here is pure; the :mod:`require_admin_capability` guard in the
 auth layer reads the stored capability set for a user and delegates to
-:func:`evaluate_access`, and :func:`require_admin_scope` builds the
-:class:`AdminScope` on top. Content/knowledge RBAC lives in
-:mod:`domain.tenant_profession.policy` and is a separate axis.
+:func:`evaluate_access`. :meth:`AdminScope.for_identity` is the single place an
+:class:`AdminScope` is constructed — the HTTP guard calls it after judging the
+capability, the operator console's in-process guard through :func:`scope_for`, so
+neither surface can build its own looser range.
+Content/knowledge RBAC lives in :mod:`domain.tenant_profession.policy` and is a
+separate axis.
 """
 
 from __future__ import annotations
@@ -135,3 +138,63 @@ class AdminScope:
         than an empty allow-set.
         """
         return None if self.site_wide else self.tenant_ids
+
+    @classmethod
+    def for_identity(
+        cls,
+        *,
+        actor_id: uuid.UUID,
+        site_role: str | None,
+        tenant_id: int | None,
+    ) -> "AdminScope":
+        """Build the range an identity reaches, from its role and home company.
+
+        The construction itself, so a caller that already judged the capability
+        (:func:`require_admin_scope` does, per request) does not judge it twice.
+        """
+        if (site_role or "").strip().lower() == "site_admin":
+            return cls(actor_id=actor_id, site_wide=True, tenant_ids=frozenset())
+        return cls(
+            actor_id=actor_id,
+            site_wide=False,
+            tenant_ids=frozenset({int(tenant_id or 1)}),
+        )
+
+
+def scope_for(
+    *,
+    actor_id: uuid.UUID,
+    capability: str,
+    site_role: str | None,
+    capabilities: Iterable[str] | None,
+    tenant_id: int | None,
+) -> AdminScope:
+    """Judge ``capability`` and build the range it reaches, in one place.
+
+    The HTTP guard and the operator console's in-process guard both walk this, so a
+    confinement learned for one surface cannot leave the other permissive. Reading
+    ``site_role`` / ``capabilities`` / ``tenant_id`` is the caller's job — this stays
+    pure and therefore testable without a database.
+    """
+    if not evaluate_access(
+        site_role=site_role,
+        capabilities=capabilities,
+        capability=capability,
+    ):
+        raise AdminScopeError(f"capability required: {capability}")
+    return AdminScope.for_identity(
+        actor_id=actor_id,
+        site_role=site_role,
+        tenant_id=tenant_id,
+    )
+
+
+def site_scope(*, actor_id: uuid.UUID, site_role: str | None) -> AdminScope:
+    """Scope for admin work that is never delegated and so has no capability slug.
+
+    The provider catalog, tenants, the tool registry and caller-supplied server paths
+    move the whole instance — benchmarks deliberately have no slug for the same reason.
+    """
+    if (site_role or "").strip().lower() != "site_admin":
+        raise AdminScopeError("site admin required")
+    return AdminScope(actor_id=actor_id, site_wide=True, tenant_ids=frozenset())

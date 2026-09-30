@@ -461,13 +461,10 @@ async def require_admin_scope(request: Request, capability: str) -> AdminScope:
     from apps.backend.domain.access.capabilities import AdminScope
 
     user = await require_admin_capability(request, capability)
-    site_wide = (db.user_site_role(user.id) or "").strip().lower() == "site_admin"
-    if site_wide:
-        return AdminScope(actor_id=user.id, site_wide=True, tenant_ids=frozenset())
-    return AdminScope(
+    return AdminScope.for_identity(
         actor_id=user.id,
-        site_wide=False,
-        tenant_ids=frozenset({int(db.user_tenant_id(user.id) or 1)}),
+        site_role=db.user_site_role(user.id),
+        tenant_id=db.user_tenant_id(user.id),
     )
 
 
