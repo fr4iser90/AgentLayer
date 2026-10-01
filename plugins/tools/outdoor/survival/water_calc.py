@@ -76,7 +76,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "water_daily_liters",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Rough maintenance fluid liters/day from temperature, activity level, and optional altitude. "
                 "Educational planning only."
             ),
@@ -86,7 +86,7 @@ TOOLS: list[dict[str, Any]] = [
                     "temp_c": {"type": "number"},
                     "activity": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "light | moderate | heavy (loose strings)",
+                        "description": "light | moderate | heavy (loose strings)",
                     },
                     "altitude_m": {"type": "number"},
                 },

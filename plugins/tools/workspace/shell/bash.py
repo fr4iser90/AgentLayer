@@ -313,21 +313,21 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "bash",
-            "TOOL_DESCRIPTION": "Run a shell command within the coding workspace. ",
+            "description": "Run a shell command within the coding workspace. ",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "command": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Required. Full shell command to run in the workspace (e.g. git status, ls -la). Never omit this field.",
+                        "description": "Required. Full shell command to run in the workspace (e.g. git status, ls -la). Never omit this field.",
                     },
                     "timeout": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": f"Timeout in seconds (default {DEFAULT_TIMEOUT})",
+                        "description": f"Timeout in seconds (default {DEFAULT_TIMEOUT})",
                     },
                     "workdir": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Working directory relative to coding root",
+                        "description": "Working directory relative to coding root",
                     },
                 },
                 "required": ["command"],

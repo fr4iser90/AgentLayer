@@ -773,11 +773,11 @@ HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
 _TOOLS_COMMON = {
     "dashboard_id": {
         "type": "string",
-        "TOOL_DESCRIPTION": "Dashboard UUID. Required for queue tools when several boards exist.",
+        "description": "Dashboard UUID. Required for queue tools when several boards exist.",
     },
     "queue_path": {
         "type": "string",
-        "TOOL_DESCRIPTION": "dataPath of a media_player block (default: first media_queue on board).",
+        "description": "dataPath of a media_player block (default: first media_queue on board).",
     },
 }
 
@@ -786,15 +786,15 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "media_list",
-            "TOOL_DESCRIPTION": "List media library items (owned + shared with you).",
+            "description": "List media library items (owned + shared with you).",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "source_kind": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Optional filter: embed | upload | external_link | archive",
+                        "description": "Optional filter: embed | upload | external_link | archive",
                     },
-                    "limit": {"type": "integer", "TOOL_DESCRIPTION": f"Max items (default 50, max {_MAX_LIST})."},
+                    "limit": {"type": "integer", "description": f"Max items (default 50, max {_MAX_LIST})."},
                 },
             },
         },
@@ -803,7 +803,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "media_quota",
-            "TOOL_DESCRIPTION": "Storage quota: used_bytes, quota_bytes, upload_enabled.",
+            "description": "Storage quota: used_bytes, quota_bytes, upload_enabled.",
             "parameters": {"type": "object", "properties": {}},
         },
     },
@@ -811,11 +811,11 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "media_add_embed",
-            "TOOL_DESCRIPTION": "Add allowlisted HTTPS embed (YouTube/Vimeo) to the user's media library.",
+            "description": "Add allowlisted HTTPS embed (YouTube/Vimeo) to the user's media library.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "external_url": {"type": "string", "TOOL_DESCRIPTION": "HTTPS embed or watch URL."},
+                    "external_url": {"type": "string", "description": "HTTPS embed or watch URL."},
                     "title": {"type": "string"},
                     "artist": {"type": "string"},
                     "dashboard_id": _TOOLS_COMMON["dashboard_id"],
@@ -828,7 +828,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "media_add_stream",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Add HTTPS live audio stream (internet radio, icecast, HLS) to library as external_link. "
                 "URL is probed before save (must be reachable, valid audio/HLS, HLS needs CORS). "
                 "Use media_enqueue with the returned media_item_id to play."
@@ -838,10 +838,10 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "stream_url": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "HTTPS (or HTTP) stream URL, e.g. MDR Jump icecast.",
+                        "description": "HTTPS (or HTTP) stream URL, e.g. MDR Jump icecast.",
                     },
                     "title": {"type": "string"},
-                    "artist": {"type": "string", "TOOL_DESCRIPTION": "Station or genre label."},
+                    "artist": {"type": "string", "description": "Station or genre label."},
                     "dashboard_id": _TOOLS_COMMON["dashboard_id"],
                 },
                 "required": ["stream_url"],
@@ -852,7 +852,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "media_enqueue",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Append a library item or new embed/stream URL to a dashboard media_player queue."
             ),
             "parameters": {
@@ -860,16 +860,16 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "dashboard_id": _TOOLS_COMMON["dashboard_id"],
                     "queue_path": _TOOLS_COMMON["queue_path"],
-                    "media_item_id": {"type": "string", "TOOL_DESCRIPTION": "Existing library item UUID."},
+                    "media_item_id": {"type": "string", "description": "Existing library item UUID."},
                     "external_url": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Alternative: add allowlisted YouTube/Vimeo embed or HTTPS stream URL then enqueue.",
+                        "description": "Alternative: add allowlisted YouTube/Vimeo embed or HTTPS stream URL then enqueue.",
                     },
                     "title": {"type": "string"},
                     "artist": {"type": "string"},
                     "play_now": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Set as now playing after enqueue (default: first item only).",
+                        "description": "Set as now playing after enqueue (default: first item only).",
                     },
                 },
                 "required": [],
@@ -880,14 +880,14 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "media_dequeue",
-            "TOOL_DESCRIPTION": "Remove item from dashboard queue by index or media_ref.",
+            "description": "Remove item from dashboard queue by index or media_ref.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "dashboard_id": _TOOLS_COMMON["dashboard_id"],
                     "queue_path": _TOOLS_COMMON["queue_path"],
-                    "index": {"type": "integer", "TOOL_DESCRIPTION": "0-based queue index."},
-                    "media_ref": {"type": "string", "TOOL_DESCRIPTION": "media:{uuid} or bare UUID."},
+                    "index": {"type": "integer", "description": "0-based queue index."},
+                    "media_ref": {"type": "string", "description": "media:{uuid} or bare UUID."},
                 },
                 "required": ["dashboard_id"],
             },
@@ -897,7 +897,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "media_set_now_playing",
-            "TOOL_DESCRIPTION": "Set now_playing_id on a dashboard media queue.",
+            "description": "Set now_playing_id on a dashboard media queue.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -914,11 +914,11 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "media_delete_item",
-            "TOOL_DESCRIPTION": "Soft-delete an owned item from the media library (upload, radio stream, or embed).",
+            "description": "Soft-delete an owned item from the media library (upload, radio stream, or embed).",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "media_item_id": {"type": "string", "TOOL_DESCRIPTION": "Library item UUID."},
+                    "media_item_id": {"type": "string", "description": "Library item UUID."},
                 },
                 "required": ["media_item_id"],
             },
@@ -928,7 +928,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "media_update_metadata",
-            "TOOL_DESCRIPTION": "Update title/artist on an owned media library item.",
+            "description": "Update title/artist on an owned media library item.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -944,14 +944,14 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "media_set_license",
-            "TOOL_DESCRIPTION": "Set license on an owned upload (required before sharing).",
+            "description": "Set license on an owned upload (required before sharing).",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "media_item_id": {"type": "string"},
                     "license": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "owned | cc-by | cc-by-sa | cc0 | other",
+                        "description": "owned | cc-by | cc-by-sa | cc0 | other",
                     },
                     "license_note": {"type": "string"},
                 },
@@ -963,7 +963,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "media_share_grant",
-            "TOOL_DESCRIPTION": "Share an owned upload with another tenant user (license required).",
+            "description": "Share an owned upload with another tenant user (license required).",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -971,11 +971,11 @@ TOOLS: list[dict[str, Any]] = [
                     "email": {"type": "string"},
                     "permission": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "play (default) or play_and_download",
+                        "description": "play (default) or play_and_download",
                     },
                     "license": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Optional: set license before sharing",
+                        "description": "Optional: set license before sharing",
                     },
                     "license_note": {"type": "string"},
                 },
@@ -987,7 +987,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "media_list_shares",
-            "TOOL_DESCRIPTION": "List share grants you created (optional filter by media_item_id).",
+            "description": "List share grants you created (optional filter by media_item_id).",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -1000,7 +1000,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "media_revoke_share",
-            "TOOL_DESCRIPTION": "Revoke a share grant you created.",
+            "description": "Revoke a share grant you created.",
             "parameters": {
                 "type": "object",
                 "properties": {

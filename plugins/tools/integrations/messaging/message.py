@@ -191,7 +191,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "send",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Send a message to a friend/contact by name or email. "
                 "channel: telegram | discord | email | auto (default: telegram → discord → email). "
                 "Recipient must have linked Telegram/Discord under Settings → Connections (for those channels). "
@@ -200,31 +200,31 @@ TOOLS: list[dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "to": {"type": "string", "TOOL_DESCRIPTION": "Contact name or email (e.g. Sandra)"},
-                    "name": {"type": "string", "TOOL_DESCRIPTION": "Alias for to"},
-                    "body": {"type": "string", "TOOL_DESCRIPTION": "Message text"},
+                    "to": {"type": "string", "description": "Contact name or email (e.g. Sandra)"},
+                    "name": {"type": "string", "description": "Alias for to"},
+                    "body": {"type": "string", "description": "Message text"},
                     "subject": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Email subject only (default AgentLayer)",
+                        "description": "Email subject only (default AgentLayer)",
                     },
                     "channel": {
                         "type": "string",
                         "enum": ["auto", "telegram", "discord", "email"],
-                        "TOOL_DESCRIPTION": "Delivery channel (default auto)",
+                        "description": "Delivery channel (default auto)",
                     },
                     "link_path": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Optional app path appended as full URL (e.g. /app/dashboards)",
+                        "description": "Optional app path appended as full URL (e.g. /app/dashboards)",
                     },
                     "photo_upload_hint": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Append Telegram photo-upload instructions. Requires edit access on the "
                             "dashboard (friends.shares with permission=edit, invite_member, or block_share_grant)."
                         ),
                     },
-                    "dry_run": {"type": "boolean", "TOOL_DESCRIPTION": "Preview without sending"},
-                    "provider": {"type": "string", "TOOL_DESCRIPTION": "Mail provider when channel=email"},
+                    "dry_run": {"type": "boolean", "description": "Preview without sending"},
+                    "provider": {"type": "string", "description": "Mail provider when channel=email"},
                 },
                 "required": ["to", "body"],
             },

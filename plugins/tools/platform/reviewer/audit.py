@@ -326,7 +326,7 @@ for _name in HANDLERS:
 def _tool_fn(name: str, desc: str, parameters: dict[str, Any]) -> dict[str, Any]:
     return {
         "type": "function",
-        "function": {"name": name, "TOOL_DESCRIPTION": desc, "parameters": parameters},
+        "function": {"name": name, "description": desc, "parameters": parameters},
     }
 
 

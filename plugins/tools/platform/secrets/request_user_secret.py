@@ -152,7 +152,7 @@ TOOLS: list[dict[str, Any]] = [
         "function": {
             "name": "request_user_secret",
             "chat_full_parameters": True,
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Show the in-chat secret registration card (Web UI). "
                 "Optional scope=workspace|global and workspace_id. "
                 "service_key: catalog key or lowercased env name."
@@ -162,22 +162,22 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "service_key": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Secret slot (lowercase [a-z0-9._-]); catalog key or "
                             "lowercased env name for project credentials."
                         ),
                     },
                     "reason": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Optional short reason shown on the card.",
+                        "description": "Optional short reason shown on the card.",
                     },
                     "scope": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "global | workspace (default: workspace when bound).",
+                        "description": "global | workspace (default: workspace when bound).",
                     },
                     "workspace_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Optional workspace UUID for scope=workspace.",
+                        "description": "Optional workspace UUID for scope=workspace.",
                     },
                 },
                 "required": ["service_key"],

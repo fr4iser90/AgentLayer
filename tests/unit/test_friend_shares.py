@@ -688,7 +688,7 @@ class TestAdvertisedSurfaceMatchesEnforcement(unittest.TestCase):
     def _help_text(self) -> str:
         from plugins.tools.integrations.friends.shares import TOOLS
 
-        return TOOLS[0]["function"]["TOOL_DESCRIPTION"]
+        return TOOLS[0]["function"]["description"]
 
     def _advertised_fields(self, rtype: str) -> frozenset | None:
         pattern = re.escape(rtype) + r" accepts \{([^}]*)\}"
@@ -775,7 +775,7 @@ class TestAdvertisedSurfaceMatchesEnforcement(unittest.TestCase):
         from plugins.tools.integrations.friends.shares import TOOLS
 
         param = TOOLS[0]["function"]["parameters"]["properties"]["resource_type"]
-        m = re.search(r"Readable here: ([^.]*)\.", param["TOOL_DESCRIPTION"])
+        m = re.search(r"Readable here: ([^.]*)\.", param["description"])
         self.assertIsNotNone(m, "the resource_type help does not name the readable types")
         named = sorted(x.strip() for x in m.group(1).split(",") if x.strip())
         # Canonical ids only. Listing the legacy "calendar" alias alongside

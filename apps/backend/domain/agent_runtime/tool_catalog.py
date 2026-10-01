@@ -10,7 +10,7 @@ from apps.backend.domain.plugin_system.registry import get_registry
 logger = logging.getLogger(__name__)
 
 _CATALOG_PARAM_HINT = (
-    "Catalog lists every parameter name with type/enum stubs (not full schemas or TOOL_DESCRIPTION). "
+    "Catalog lists every parameter name with type/enum stubs (not full schemas or descriptions). "
     "When `required` is non-empty, never call the tool with `{}` — populate those fields. "
     "Include optional fields when the task or a tool error requires them (e.g. git_url, dashboard_id). "
     "After a failed call, that tool may appear with full schema in tools[] on the next LLM round only."
@@ -59,7 +59,7 @@ def _merge_tools(body_tools: list[Any] | None) -> list[Any]:
 
 
 def _minimal_property_stub(prop_schema: dict[str, Any]) -> dict[str, Any]:
-    """Type-only property entry for catalog mode (no TOOL_DESCRIPTION / long hints)."""
+    """Type-only property entry for catalog mode (no property descriptions / long hints)."""
     if not isinstance(prop_schema, dict):
         return {"type": "string"}
     stub: dict[str, Any] = {}
@@ -122,7 +122,7 @@ def _minimal_catalog_parameters(fn: dict[str, Any]) -> dict[str, Any]:
 
 def _full_schema_tool_function(name: str, fn: dict[str, Any]) -> dict[str, Any]:
     """OpenAI tools[] entry with registry ``parameters``."""
-    desc = (fn.get("TOOL_DESCRIPTION") or fn.get("description") or "").strip()
+    desc = (fn.get("description") or "").strip()
     cand = fn.get("parameters")
     if isinstance(cand, dict) and cand.get("properties"):
         params: dict[str, Any] = copy.deepcopy(cand)
@@ -145,8 +145,8 @@ def _full_schema_tool_function(name: str, fn: dict[str, Any]) -> dict[str, Any]:
 
 
 def _catalog_tool_function(name: str, fn: dict[str, Any]) -> dict[str, Any]:
-    """Small tools[] entry: TOOL_LABEL + TOOL_DESCRIPTION hint; minimal parameters."""
-    desc = (fn.get("TOOL_DESCRIPTION") or fn.get("description") or "").strip()
+    """Small tools[] entry: tool name + description hint; minimal parameters."""
+    desc = (fn.get("description") or "").strip()
     if _CATALOG_PARAM_HINT not in desc:
         desc = f"{desc}\n\n{_CATALOG_PARAM_HINT}".strip() if desc else _CATALOG_PARAM_HINT
     if name == "get_tool_help":

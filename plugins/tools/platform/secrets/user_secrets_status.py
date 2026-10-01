@@ -101,13 +101,13 @@ TOOLS: list[dict[str, Any]] = [
         "function": {
             "name": "user_secrets_status",
             "chat_full_parameters": True,
-            "TOOL_DESCRIPTION": TOOL_DESCRIPTION,
+            "description": TOOL_DESCRIPTION,
             "parameters": {
                 "type": "object",
                 "properties": {
                     "workspace_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Optional workspace UUID; defaults to the bound workspace."
                         ),
                     },

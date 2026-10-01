@@ -83,7 +83,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "info",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Get information about known people / friends from the user's contact list. "
                 "Call this tool ONLY when the user asks about a specific person or friend. "
                 "Search works with full name and nickname."
@@ -93,13 +93,13 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Name of the person to get information about. If empty, returns all known people."
                         ),
                     },
                     "entity": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Auto filled by trigger system. Contains the extracted name/email from user message."
                         ),
                     }

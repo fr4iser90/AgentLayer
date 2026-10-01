@@ -89,7 +89,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "bait_suggest",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Suggest bait/lure families and short rig notes for a target species and water clarity. "
                 "Static heuristics only."
             ),
@@ -99,7 +99,7 @@ TOOLS: list[dict[str, Any]] = [
                     "target_species": {"type": "string"},
                     "water_clarity": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "clear | murky | unknown",
+                        "description": "clear | murky | unknown",
                     },
                     "depth_m": {"type": "number"},
                 },

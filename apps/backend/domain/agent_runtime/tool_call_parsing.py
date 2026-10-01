@@ -198,7 +198,7 @@ _CONTENT_META_TOP_LEVEL_ARG_KEYS = (
     "old_filename",
     "new_filename",
     "overwrite",
-    "TOOL_DESCRIPTION",
+    "description",
 )
 
 

@@ -116,7 +116,7 @@ def apply_router_overlay_to_registry(*, tenant_id: int) -> None:
     reg = get_registry()
     sources = _overlay_sources()
     with reg._lock:
-        triggers = dict(reg._router_cat_TOOL_TRIGGERS)
+        triggers = dict(reg._router_cat_triggers)
         tools = dict(reg._router_cat_tools)
         for dom, kid in _ROUTER_KNOB_BY_DOMAIN.items():
             val, src = agent_config_effective.effective_value(kid, tenant_id=tenant_id)
@@ -148,6 +148,6 @@ def apply_router_overlay_to_registry(*, tenant_id: int) -> None:
                 if cat not in tools:
                     tools[cat] = frozenset()
 
-        reg._router_cat_TOOL_TRIGGERS = triggers
+        reg._router_cat_triggers = triggers
         reg._router_cat_tools = tools
     invalidate_router_overlay_cache(tenant_id)

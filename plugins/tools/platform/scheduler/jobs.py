@@ -253,7 +253,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "create",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Create a persisted scheduler job. execution_target: registry agent_id "
                 "(e.g. general, coding, coding_plan, security_auditor — see GET /v1/user/scheduler-jobs/execution-targets). "
                 "Workspace agents need workspace_id or coding_workflow.workspace_id. "
@@ -265,36 +265,36 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "instructions": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Task description for the executing agent.",
+                        "description": "Task description for the executing agent.",
                     },
                     "execution_target": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Registry agent_id (general, coding, coding_plan, security_auditor, …).",
+                        "description": "Registry agent_id (general, coding, coding_plan, security_auditor, …).",
                     },
-                    "title": {"type": "string", "TOOL_DESCRIPTION": "Short label (optional)."},
+                    "title": {"type": "string", "description": "Short label (optional)."},
                     "dashboard_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Optional UUID of user_dashboards row; requires edit access.",
+                        "description": "Optional UUID of user_dashboards row; requires edit access.",
                     },
                     "execution_user_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Optional UUID — user context for execution; default is caller.",
+                        "description": "Optional UUID — user context for execution; default is caller.",
                     },
                     "interval_minutes": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "5–10080; default 60.",
+                        "description": "5–10080; default 60.",
                     },
                     "enabled": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Default true.",
+                        "description": "Default true.",
                     },
                     "workspace_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Workspace UUID (required for workspace agents).",
+                        "description": "Workspace UUID (required for workspace agents).",
                     },
                     "coding_workflow": {
                         "type": "object",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Optional overrides: workspace_id, agent_id (coding|coding_plan), prompt_preamble."
                         ),
                     },
@@ -307,15 +307,15 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "list",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "List scheduler jobs in your tenant. Non-admins see jobs they created or that target them "
                 "as execution user. Optional dashboard_id filter."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "dashboard_id": {"type": "string", "TOOL_DESCRIPTION": "Optional filter UUID."},
-                    "limit": {"type": "integer", "TOOL_DESCRIPTION": "Max rows (default 50, max 200)."},
+                    "dashboard_id": {"type": "string", "description": "Optional filter UUID."},
+                    "limit": {"type": "integer", "description": "Max rows (default 50, max 200)."},
                 },
             },
         },
@@ -324,11 +324,11 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "set_enabled",
-            "TOOL_DESCRIPTION": "Enable or disable a job by id. Creator or admin only.",
+            "description": "Enable or disable a job by id. Creator or admin only.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "job_id": {"type": "string", "TOOL_DESCRIPTION": "Job UUID."},
+                    "job_id": {"type": "string", "description": "Job UUID."},
                     "enabled": {"type": "boolean"},
                 },
                 "required": ["job_id", "enabled"],

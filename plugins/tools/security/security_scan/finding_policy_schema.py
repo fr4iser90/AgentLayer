@@ -87,7 +87,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "finding_policy_schema",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "GET SimpleSecCheck finding-policy schema (per-tool accepted_findings fields). "
                 "No scan_id. Follow agent_guidance and notes in the tool response (from SSC). "
                 "Optional tools filter (e.g. semgrep,gitleaks)."
@@ -98,7 +98,7 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "tools": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Comma-separated tool names (query ?tools=); omit for full schema"
                         ),
                     },

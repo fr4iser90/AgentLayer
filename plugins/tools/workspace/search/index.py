@@ -175,7 +175,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "index",
-            "TOOL_DESCRIPTION": "Build or refresh the code index for the coding workspace. "
+            "description": "Build or refresh the code index for the coding workspace. "
             "Uses tree-sitter to parse symbols (functions, classes, imports) from source files. "
             f"Supported languages: {', '.join(sorted(set(_SUPPORTED_LANGUAGES.values())))}. "
             "Index enables fast symbol lookup, search, and code navigation. "
@@ -185,7 +185,7 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "max_files": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": f"Max files to index (default {_DEFAULT_MAX_FILES})",
+                        "description": f"Max files to index (default {_DEFAULT_MAX_FILES})",
                     },
                 },
             },

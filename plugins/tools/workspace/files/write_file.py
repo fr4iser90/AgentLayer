@@ -91,7 +91,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "write_file",
-            "TOOL_DESCRIPTION": "Create or overwrite a text file within the coding workspace. "
+            "description": "Create or overwrite a text file within the coding workspace. "
             "Paths are relative to the coding root; cannot escape to system or tool directories. "
             "Creates parent directories automatically. Use coding_replace for surgical edits.",
             "parameters": {
@@ -99,19 +99,19 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "path": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "File path relative to coding root (e.g. src/main.py)",
+                        "description": "File path relative to coding root (e.g. src/main.py)",
                     },
                     "content": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Full file contents (UTF-8 text)",
+                        "description": "Full file contents (UTF-8 text)",
                     },
                     "text": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Alias for content",
+                        "description": "Alias for content",
                     },
                     "source": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Alias for content",
+                        "description": "Alias for content",
                     },
                 },
                 "required": ["path", "content"],

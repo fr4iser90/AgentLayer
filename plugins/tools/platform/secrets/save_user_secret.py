@@ -213,7 +213,7 @@ TOOLS: list[dict[str, Any]] = [
         "function": {
             "name": "save_user_secret",
             "chat_full_parameters": True,
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Store a user secret immediately (no OTP curl). "
                 "scope=workspace (default for non-catalog keys when a workspace is bound) "
                 "or scope=global. Auto-creates env_bindings for bash when a workspace is bound. "
@@ -224,7 +224,7 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "service_key": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Secret slot name (lowercase [a-z0-9._-]). Prefer catalog keys "
                             "(e.g. ssc_api_key). For project env vars, lowercase the env name "
                             "(FOO_BAR → foo_bar)."
@@ -232,13 +232,13 @@ TOOLS: list[dict[str, Any]] = [
                     },
                     "secret": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Credential to store (plain string or JSON object as string)."
                         ),
                     },
                     "scope": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "global = account-wide; workspace = this project only "
                             "(avoids env-name clashes across projects). Default: workspace "
                             "when bound and key is not a catalog integration key."
@@ -246,14 +246,14 @@ TOOLS: list[dict[str, Any]] = [
                     },
                     "workspace_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Optional workspace UUID for scope=workspace "
                             "(defaults to the currently bound workspace)."
                         ),
                     },
                     "env_name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Optional process env name for auto-binding (default: uppercased "
                             "service_key, e.g. foo_bar → FOO_BAR)."
                         ),

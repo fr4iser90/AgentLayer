@@ -55,7 +55,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "environment",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Probe which coding CLIs exist in the AgentLayer server container "
                 "(node/npm/python/git/…). Use when unsure the toolchain is installed."
             ),

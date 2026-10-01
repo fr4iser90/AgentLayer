@@ -32,11 +32,11 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "get",
-            "TOOL_DESCRIPTION": "Alias for security_scan_status." + NO_WAIT_SUFFIX,
+            "description": "Alias for security_scan_status." + NO_WAIT_SUFFIX,
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "scan_id": {"type": "string", "TOOL_DESCRIPTION": "Scan UUID"},
+                    "scan_id": {"type": "string", "description": "Scan UUID"},
                 },
                 "required": ["scan_id"],
             },

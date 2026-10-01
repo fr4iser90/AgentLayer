@@ -190,7 +190,7 @@ def _normalize_brave(data: dict[str, Any]) -> dict[str, Any]:
             {
                 "title": w.get("title"),
                 "url": w.get("url"),
-                "content": w.get("TOOL_DESCRIPTION") or "",
+                "content": w.get("description") or "",
             }
         )
     return {"engine": "brave", "answer": None, "results": out}
@@ -627,7 +627,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "search",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Search the public web (titles, URLs, snippets). "
                 "Uses Tavily if TAVILY_API_KEY is set, else Brave if BRAVE_SEARCH_API_KEY is set, "
                 "else ddgs metasearch without any API key (unofficial, less reliable)."
@@ -635,10 +635,10 @@ TOOLS: list[dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "TOOL_DESCRIPTION": "Search query"},
+                    "query": {"type": "string", "description": "Search query"},
                     "max_results": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "Max results (1–15, default 5)",
+                        "description": "Max results (1–15, default 5)",
                     },
                 },
                 "required": ["query"],
@@ -649,7 +649,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "deep_search",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Richer research: with TAVILY_API_KEY uses advanced search + extracted page text. "
                 "Without Tavily: web snippets then fetches pages when robots.txt allows this agent's "
                 "User-Agent (see fetch_status per result; AGENT_DISABLE_FETCH_DEEP to turn off)."
@@ -659,15 +659,15 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "query": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Research question or keywords",
+                        "description": "Research question or keywords",
                     },
                     "max_results": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "Max sources (1–10, default 5)",
+                        "description": "Max sources (1–10, default 5)",
                     },
                     "max_chars_per_source": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "Truncate each snippet/raw_content (default from AGENT_SEARCH_MAX_RAW_CHARS)",
+                        "description": "Truncate each snippet/raw_content (default from AGENT_SEARCH_MAX_RAW_CHARS)",
                     },
                 },
                 "required": ["query"],

@@ -86,7 +86,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "create_release",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Create a GitHub release (POST /releases). Requires github_pat with repo / "
                 "contents write scope. Draft changelog with get_latest_release + git_read log "
                 "(since_ref=last tag); prefer draft=true until the user confirms."
@@ -94,38 +94,38 @@ TOOLS: list[dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "owner": {"type": "string", "TOOL_DESCRIPTION": "Repository owner (user or org)"},
-                    "repo": {"type": "string", "TOOL_DESCRIPTION": "Repository name without .git"},
+                    "owner": {"type": "string", "description": "Repository owner (user or org)"},
+                    "repo": {"type": "string", "description": "Repository name without .git"},
                     "tag_name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Git tag for this release (e.g. v1.2.0)",
+                        "description": "Git tag for this release (e.g. v1.2.0)",
                     },
                     "name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Release title (defaults to tag_name)",
+                        "description": "Release title (defaults to tag_name)",
                     },
                     "body": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Release notes / changelog (markdown)",
+                        "description": "Release notes / changelog (markdown)",
                     },
                     "target_commitish": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Branch or commit SHA for the tag when it does not exist yet "
                             "(default: repository default branch)"
                         ),
                     },
                     "draft": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Create as draft release (recommended until user confirms)",
+                        "description": "Create as draft release (recommended until user confirms)",
                     },
                     "prerelease": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Mark as pre-release",
+                        "description": "Mark as pre-release",
                     },
                     "generate_release_notes": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Let GitHub auto-generate release notes from merged PRs",
+                        "description": "Let GitHub auto-generate release notes from merged PRs",
                     },
                 },
                 "required": ["owner", "repo", "tag_name"],

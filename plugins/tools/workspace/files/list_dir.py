@@ -106,22 +106,22 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "list_dir",
-            "TOOL_DESCRIPTION": "List files and subdirectories within the coding workspace. "
+            "description": "List files and subdirectories within the coding workspace. "
             "Paths are relative to the coding root. Truncates after many entries.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "path": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Directory path relative to coding root (default: root)",
+                        "description": "Directory path relative to coding root (default: root)",
                     },
                     "include_files": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Include files (default true)",
+                        "description": "Include files (default true)",
                     },
                     "include_directories": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Include directories (default true)",
+                        "description": "Include directories (default true)",
                     },
                 },
             },

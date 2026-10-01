@@ -6,14 +6,14 @@ from typing import Any
 class _RouterAccum:
     """Mutable state while scanning modules for router metadata."""
 
-    __slots__ = ("cat_TOOL_DESCRIPTION", "cat_TOOL_LABEL", "order", "tools", "TOOL_TRIGGERS")
+    __slots__ = ("cat_description", "cat_label", "order", "tools", "triggers")
 
     def __init__(self) -> None:
         self.tools: dict[str, set[str]] = {}
-        self.TOOL_TRIGGERS: dict[str, set[str]] = {}
+        self.triggers: dict[str, set[str]] = {}
         self.order: list[str] = []
-        self.cat_TOOL_LABEL: dict[str, str] = {}
-        self.cat_TOOL_DESCRIPTION: dict[str, str] = {}
+        self.cat_label: dict[str, str] = {}
+        self.cat_description: dict[str, str] = {}
 
 
 def router_category_order(registry: Any, deps: Any) -> list[str]:
@@ -37,7 +37,7 @@ def domain_trigger_substrings(registry: Any, deps: Any, domain: str) -> tuple[st
     if not key:
         return ()
     with registry._lock:
-        raw = registry._router_cat_TOOL_TRIGGERS.get(key, frozenset())
+        raw = registry._router_cat_triggers.get(key, frozenset())
     base = {str(x).strip().lower() for x in raw if str(x).strip()}
     try:
         base.update(deps.overlay_phrases_for_domain(key))
@@ -52,13 +52,13 @@ def list_router_categories_catalog(registry: Any, order: list[str]) -> list[dict
         tools = registry._router_cat_tools.get(cid)
         if not tools:
             continue
-        label = registry._router_cat_TOOL_LABEL.get(cid) or cid
-        desc = registry._router_cat_TOOL_DESCRIPTION.get(cid) or ""
+        label = registry._router_cat_label.get(cid) or cid
+        desc = registry._router_cat_description.get(cid) or ""
         out.append(
             {
                 "id": cid,
-                "TOOL_LABEL": label,
-                "TOOL_DESCRIPTION": desc,
+                "label": label,
+                "description": desc,
                 "tool_count": len(tools),
             }
         )
@@ -83,7 +83,7 @@ def list_router_category_tools_lite(registry: Any, category: str) -> list[dict[s
             rows.append(
                 {
                     "name": str(n),
-                    "TOOL_DESCRIPTION": (fn.get("TOOL_DESCRIPTION") or "").strip(),
+                    "description": (fn.get("description") or "").strip(),
                 }
             )
     rows.sort(key=lambda r: r["name"])
@@ -95,7 +95,7 @@ def classify_tool_router_categories(registry: Any, order: list[str], user_text: 
         return frozenset()
     tl = user_text.lower()
     with registry._lock:
-        triggers_map = registry._router_cat_TOOL_TRIGGERS
+        triggers_map = registry._router_cat_triggers
     matched: set[str] = set()
     for cat in order:
         for sub in triggers_map.get(cat, frozenset()):

@@ -123,7 +123,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "secrets_help",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Static help for user secrets: explains that OTP and curl_bash come ONLY from register_secrets — "
                 "this tool does NOT mint an OTP. To save Gmail, google_calendar, github_pat, etc., the model must "
                 "call register_secrets and pass the returned curl_bash to the user. "
@@ -134,14 +134,14 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "service_key_example": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Example service_key name for hints only (lowercase [a-z0-9._-]), "
                             "e.g. gmail, google_calendar, github_pat"
                         ),
                     },
                     "topic": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Optional hint: email, imap, mail, gmail, github, google, gcal, calendar, ics, or generic"
                         ),
                     },

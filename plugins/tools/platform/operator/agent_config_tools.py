@@ -515,7 +515,7 @@ def _tool_fn(name: str, desc: str, parameters: dict[str, Any]) -> dict[str, Any]
         "type": "function",
         "function": {
             "name": name,
-            "TOOL_DESCRIPTION": desc,
+            "description": desc,
             "parameters": parameters,
         },
     }

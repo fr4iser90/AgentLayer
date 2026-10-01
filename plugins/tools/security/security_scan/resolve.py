@@ -140,7 +140,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "resolve",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Primary SimpleSecCheck entry: resolve or enqueue scan for a Git repo. "
                 "Returns status ready|scanning|started, scan_id, and estimated_time_seconds from the scanner. "
                 "Does not wait — call deferred_wait when the scan is still running."
@@ -150,25 +150,25 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "repo_url": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "HTTPS Git URL; omitted = workspace origin",
+                        "description": "HTTPS Git URL; omitted = workspace origin",
                     },
-                    "branch": {"type": "string", "TOOL_DESCRIPTION": "Branch (default main)"},
+                    "branch": {"type": "string", "description": "Branch (default main)"},
                     "check_commit": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Skip new scan when remote HEAD unchanged (default true)",
+                        "description": "Skip new scan when remote HEAD unchanged (default true)",
                     },
                     "force_scan": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Always enqueue a new scan (default false)",
+                        "description": "Always enqueue a new scan (default false)",
                     },
                     "findings_limit": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": f"Max findings when status=ready (1–{MAX_FINDINGS_LIMIT})",
+                        "description": f"Max findings when status=ready (1–{MAX_FINDINGS_LIMIT})",
                     },
-                    "findings_offset": {"type": "integer", "TOOL_DESCRIPTION": "Findings pagination offset"},
+                    "findings_offset": {"type": "integer", "description": "Findings pagination offset"},
                     "findings_severity": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "e.g. CRITICAL,HIGH when status=ready",
+                        "description": "e.g. CRITICAL,HIGH when status=ready",
                     },
                 },
             },

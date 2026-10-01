@@ -509,7 +509,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "list_events",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "List calendar events from the user's secret ICS/iCal HTTPS URL. "
                 "If no secret is stored yet, the response still includes otp_registration (curl_bash / jq) "
                 "for service_key google_calendar — same OTP flow as register_secrets; user runs curl locally once, then call this tool again. "
@@ -520,23 +520,23 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "days_ahead": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "Extra days forward (0–366, default 14). Added to months_ahead×31.",
+                        "description": "Extra days forward (0–366, default 14). Added to months_ahead×31.",
                     },
                     "days_back": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "Extra days into the past (0–366, default 0). Added to months_back×31.",
+                        "description": "Extra days into the past (0–366, default 0). Added to months_back×31.",
                     },
                     "months_ahead": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "Whole months forward (0–24, default 0). E.g. 6 with days_ahead 0 ≈ half a year.",
+                        "description": "Whole months forward (0–24, default 0). E.g. 6 with days_ahead 0 ≈ half a year.",
                     },
                     "months_back": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "Whole months backward (0–12, default 0).",
+                        "description": "Whole months backward (0–12, default 0).",
                     },
                     "include_by_month": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "If true (default), add by_month: YYYY-MM → counts and titles for planning.",
+                        "description": "If true (default), add by_month: YYYY-MM → counts and titles for planning.",
                     },
                 },
             },

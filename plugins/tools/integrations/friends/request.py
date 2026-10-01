@@ -92,25 +92,25 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "send_request",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Send a friend request to another AgentLayer user by email or contact name. "
                 "Required before friends.shares can grant collection/dashboard access across tenants."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "email": {"type": "string", "TOOL_DESCRIPTION": "Recipient email"},
+                    "email": {"type": "string", "description": "Recipient email"},
                     "name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Contact/friend name if email is unknown",
+                        "description": "Contact/friend name if email is unknown",
                     },
                     "entity": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Auto-filled name from trigger system",
+                        "description": "Auto-filled name from trigger system",
                     },
                     "message": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Optional short note with the request (max 500 chars)",
+                        "description": "Optional short note with the request (max 500 chars)",
                     },
                 },
             },
