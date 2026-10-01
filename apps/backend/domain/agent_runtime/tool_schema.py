@@ -219,7 +219,7 @@ def _tool_args_validation_hint(
             desc = props.get(key, {})
             hint = ""
             if isinstance(desc, dict):
-                hint = str(desc.get("TOOL_DESCRIPTION") or desc.get("description") or "").strip()
+                hint = str(desc.get("description") or "").strip()
             parts.append(f"**{key}**" + (f" ({hint})" if hint else ""))
         return (
             f"Tool `{tool_name}` was called with empty or incomplete arguments. "

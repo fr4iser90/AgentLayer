@@ -148,7 +148,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "read",
-            "TOOL_DESCRIPTION": TOOL_DESCRIPTION,
+            "description": TOOL_DESCRIPTION,
             "parameters": {
                 "type": "object",
                 "properties": {

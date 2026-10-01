@@ -273,7 +273,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "apply_patch",
-            "TOOL_DESCRIPTION": "Apply a unified diff patch to a file within the coding workspace. "
+            "description": "Apply a unified diff patch to a file within the coding workspace. "
             "Patch must be in standard unified diff format (diff --git or ---/<insert> headers). "
             "Path in the patch header is resolved relative to the coding root. "
             "Useful for applying code review suggestions or generated patches.",
@@ -282,11 +282,11 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "patch_text": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Full unified diff patch text (--- / +++ / @@ / +/-/ lines)",
+                        "description": "Full unified diff patch text (--- / +++ / @@ / +/-/ lines)",
                     },
                     "patch": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Alias for patch_text",
+                        "description": "Alias for patch_text",
                     },
                 },
                 "required": ["patch_text"],

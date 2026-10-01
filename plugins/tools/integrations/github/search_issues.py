@@ -66,7 +66,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "search_issues",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Search issues and pull requests across GitHub. "
                 "Query examples: repo:owner/name is:open label:bug"
             ),
@@ -76,7 +76,7 @@ TOOLS: list[dict[str, Any]] = [
                     "query": {"type": "string"},
                     "per_page": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "Max results 1–20 (default 10).",
+                        "description": "Max results 1–20 (default 10).",
                     },
                 },
                 "required": ["query"],

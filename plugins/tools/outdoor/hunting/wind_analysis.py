@@ -60,7 +60,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "wind_analysis",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Given wind speed (m/s), wind FROM direction (deg), and bearing toward target (deg), "
                 "return crosswind and along-wind components plus a coarse scent-transport hint."
             ),
@@ -70,11 +70,11 @@ TOOLS: list[dict[str, Any]] = [
                     "wind_speed_m_s": {"type": "number"},
                     "wind_from_deg": {
                         "type": "number",
-                        "TOOL_DESCRIPTION": "Meteorological: direction wind blows FROM, 0=N, 90=E",
+                        "description": "Meteorological: direction wind blows FROM, 0=N, 90=E",
                     },
                     "bearing_to_target_deg": {
                         "type": "number",
-                        "TOOL_DESCRIPTION": "Compass bearing from you toward target, same convention",
+                        "description": "Compass bearing from you toward target, same convention",
                     },
                 },
                 "required": ["wind_speed_m_s", "wind_from_deg", "bearing_to_target_deg"],

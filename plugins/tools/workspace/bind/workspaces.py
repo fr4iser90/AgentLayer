@@ -344,13 +344,13 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "list",
-            "TOOL_DESCRIPTION": "List project workspaces for the signed-in user (id, name, git_url).",
+            "description": "List project workspaces for the signed-in user (id, name, git_url).",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Optional filter substring for name or git_url",
+                        "description": "Optional filter substring for name or git_url",
                     },
                 },
             },
@@ -360,7 +360,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "create",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Create a workspace (manual dir or git clone). "
                 "Defaults bind=true so this run uses the new workspace."
             ),
@@ -370,24 +370,24 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Unique workspace name (folder under your user path)",
+                        "description": "Unique workspace name (folder under your user path)",
                     },
                     "source": {
                         "type": "string",
                         "enum": ["manual", "git"],
-                        "TOOL_DESCRIPTION": "manual = empty dir; git = clone",
+                        "description": "manual = empty dir; git = clone",
                     },
                     "git_url": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": 'HTTPS clone URL or "owner/repo" (GitHub)',
+                        "description": 'HTTPS clone URL or "owner/repo" (GitHub)',
                     },
                     "git_branch": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Branch for git clone (default main)",
+                        "description": "Branch for git clone (default main)",
                     },
                     "bind": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Bind this workspace for the rest of the agent run (default true)",
+                        "description": "Bind this workspace for the rest of the agent run (default true)",
                     },
                 },
             },
@@ -397,7 +397,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "bind",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Switch the active coding workspace for this chat/run by workspace_id or name. "
                 "Persists to the conversation when conversation_id is available."
             ),
@@ -407,11 +407,11 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "workspace_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Workspace UUID from workspace_list",
+                        "description": "Workspace UUID from workspace_list",
                     },
                     "name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Workspace name (alternative to workspace_id)",
+                        "description": "Workspace name (alternative to workspace_id)",
                     },
                 },
             },

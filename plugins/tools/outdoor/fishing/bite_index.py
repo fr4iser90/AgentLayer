@@ -141,7 +141,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "bite_index",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Compute a coarse 0–10 bite-activity score from optional weather inputs. "
                 "Pass numbers from openweather_* or your own observations. Not scientific."
             ),
@@ -151,17 +151,17 @@ TOOLS: list[dict[str, Any]] = [
                     "temp_c": {"type": "number"},
                     "pressure_trend_hpa_3h": {
                         "type": "number",
-                        "TOOL_DESCRIPTION": "Negative = falling pressure (often scored higher here).",
+                        "description": "Negative = falling pressure (often scored higher here).",
                     },
                     "wind_m_s": {"type": "number"},
                     "cloudiness_pct": {"type": "number"},
                     "hour_local": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "Local hour 0–23 for dawn/dusk bonus.",
+                        "description": "Local hour 0–23 for dawn/dusk bonus.",
                     },
                     "date_iso": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "YYYY-MM-DD for crude moon illumination tweak.",
+                        "description": "YYYY-MM-DD for crude moon illumination tweak.",
                     },
                 },
             },

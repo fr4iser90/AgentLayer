@@ -188,7 +188,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "status",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "SimpleSecCheck scan status (progress, completed, failed). "
                 "In agent runs, when still running, automatically deferred-waits "
                 "(timer paused) until terminal — no status polling loop. "
@@ -198,10 +198,10 @@ TOOLS: list[dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "scan_id": {"type": "string", "TOOL_DESCRIPTION": "Scan UUID"},
+                    "scan_id": {"type": "string", "description": "Scan UUID"},
                     "skip_wait": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "One-shot status only; skip auto deferred wait (default false)",
+                        "description": "One-shot status only; skip auto deferred wait (default false)",
                     },
                 },
                 "required": ["scan_id"],

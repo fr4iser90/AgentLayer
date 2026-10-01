@@ -109,7 +109,7 @@ def outdoor_environment_snapshot(arguments: dict[str, Any]) -> str:
                     "wind_deg": wind.get("deg"),
                     "cloudiness_pct": clouds.get("all"),
                     "weather_main": w0.get("main"),
-                    "weather_TOOL_DESCRIPTION": w0.get("TOOL_DESCRIPTION"),
+                    "weather_description": w0.get("description"),
                     "sunrise_unix_utc": sr,
                     "sunset_unix_utc": ss,
                 }
@@ -147,7 +147,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "outdoor_environment_snapshot",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Return structured context: current time in an IANA timezone, optional OpenWeather snapshot "
                 "(if location + server OPENWEATHER_API_KEY), coarse daylight flag, tiny exposure hints. "
                 "Use before fishing_bite_index / survival / hunting planning."
@@ -157,11 +157,11 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "timezone_name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "IANA zone, default UTC (e.g. Europe/Berlin)",
+                        "description": "IANA zone, default UTC (e.g. Europe/Berlin)",
                     },
                     "location": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "City,country for OpenWeather q= — omit to skip weather.",
+                        "description": "City,country for OpenWeather q= — omit to skip weather.",
                     },
                 },
             },

@@ -378,7 +378,7 @@ async def gather_mcp_chat_tool_specs_async() -> list[dict[str, Any]]:
                     "type": "function",
                     "function": {
                         "name": fn,
-                        "TOOL_DESCRIPTION": hint,
+                        "description": hint,
                         "parameters": schema,
                     },
                 }

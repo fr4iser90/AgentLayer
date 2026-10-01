@@ -118,7 +118,7 @@ def _effective_source_text(arguments: dict[str, Any]) -> tuple[str, str | None]:
             return text, hint
     return "", (
         "Ignored placeholder `source` (e.g. module_name). "
-        "For codegen: omit `source` and set `tool_name` + `TOOL_DESCRIPTION`. "
+        "For codegen: omit `source` and set `tool_name` + `description`. "
         "For paste: put the full module in `source` or `source_content`."
         if primary
         else None
@@ -147,7 +147,7 @@ def create(arguments: dict[str, Any]) -> str:
     if codegen:
         hint = str(arguments.get("tool_name") or arguments.get("name") or "").strip()
         if not hint:
-            # Models often pass only filename + TOOL_DESCRIPTION for codegen; derive hint from basename.
+            # Models often pass only filename + description for codegen; derive hint from basename.
             raw_fn = str(arguments.get("filename") or "").strip()
             if raw_fn:
                 base = raw_fn.replace("\\", "/").rsplit("/", 1)[-1]
@@ -172,7 +172,7 @@ def create(arguments: dict[str, Any]) -> str:
         fn, fe = tool_authoring.sanitize_tool_filename(f"{snake}.py")
         if fe or not fn:
             return json.dumps({"ok": False, "error": fe or "invalid filename"}, ensure_ascii=False)
-        extra_desc = str(arguments.get("TOOL_DESCRIPTION") or "").strip()
+        extra_desc = str(arguments.get("description") or "").strip()
         codegen_model = config.CREATE_TOOL_CODEGEN_MODEL
         overwrite = bool(arguments.get("overwrite", False))
         dest = extra_root / fn
@@ -194,7 +194,7 @@ def create(arguments: dict[str, Any]) -> str:
             text, gen_err = catalog_generate_module(
                 registered_tool_function_name=snake,
                 display_hint=hint,
-                extra_TOOL_DESCRIPTION=extra_desc,
+                extra_description=extra_desc,
                 repair_context=fix_hint,
             )
             if gen_err:
@@ -333,10 +333,10 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "create",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Create a new tool module under AGENT_TOOLS_EXTRA_DIR. "
                 "Codegen (preferred for small models): OMIT `source` entirely; set `tool_name` or `filename` (.py) "
-                "and `TOOL_DESCRIPTION` (say: use invoke_registered_tool openweather_forecast). Server runs Ollama. "
+                "and `description` (say: use invoke_registered_tool openweather_forecast). Server runs Ollama. "
                 "Paste mode: raw Python module — TOOLS must be a **list** of {\"type\":\"function\",\"function\":{...}} "
                 "entries; HANDLERS is a **dict** mapping the same function **name** strings to callables. "
                 "Do not wrap the file in '''...''' string literals; do not use TOOLS={\"fn\": func}. "
@@ -353,32 +353,32 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "tool_name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Codegen: short idea (e.g. fishingIndex) → snake_case file + tool name.",
+                        "description": "Codegen: short idea (e.g. fishingIndex) → snake_case file + tool name.",
                     },
-                    "name": {"type": "string", "TOOL_DESCRIPTION": "Alias for tool_name (codegen)."},
-                    "TOOL_DESCRIPTION": {
+                    "name": {"type": "string", "description": "Alias for tool_name (codegen)."},
+                    "description": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Codegen: domain hints (Beißindex, Fenster). "
                             "Say to use invoke_registered_tool openweather_forecast / openweather_current inside generated code."
                         ),
                     },
                     "filename": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "With source: target file. Codegen without source: basename used as tool name hint (e.g. bite_index.py).",
+                        "description": "With source: target file. Codegen without source: basename used as tool name hint (e.g. bite_index.py).",
                     },
                     "source": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Full module UTF-8 text; omit entirely to trigger codegen (do not send module_name).",
+                        "description": "Full module UTF-8 text; omit entirely to trigger codegen (do not send module_name).",
                     },
                     "source_content": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Same as source if the model wrongly split fields; optional markdown code fence.",
+                        "description": "Same as source if the model wrongly split fields; optional markdown code fence.",
                     },
                     "overwrite": {"type": "boolean"},
                     "test_arguments": {
                         "type": "object",
-                        "TOOL_DESCRIPTION": "Optional probe args after codegen reload.",
+                        "description": "Optional probe args after codegen reload.",
                     },
                 },
             },

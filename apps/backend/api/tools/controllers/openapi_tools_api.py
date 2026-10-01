@@ -66,7 +66,7 @@ def _generate_openapi_spec(title: str, tool_filter=None):
         if tool_filter and name not in tool_filter:
             continue
             
-        description = fn.get("TOOL_DESCRIPTION", fn.get("description", ""))
+        description = fn.get("description", "")
         parameters = fn.get("parameters", {})
         
         spec["paths"][f"/{name}"] = {

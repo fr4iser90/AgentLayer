@@ -68,7 +68,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "append_note",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Save a personal note for the current user (Postgres, same identity as todos). "
                 "Use for facts, project context, or a lightweight second brain."
             ),
@@ -77,9 +77,9 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "title": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Short title (optional, may be empty).",
+                        "description": "Short title (optional, may be empty).",
                     },
-                    "body": {"type": "string", "TOOL_DESCRIPTION": "Note text (required)."},
+                    "body": {"type": "string", "description": "Note text (required)."},
                 },
                 "required": ["body"],
             },
@@ -89,7 +89,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "search_notes",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Search this user's notes by keywords (full-text + substring). "
                 "Returns excerpts; use kb_read_note for full body."
             ),
@@ -99,7 +99,7 @@ TOOLS: list[dict[str, Any]] = [
                     "query": {"type": "string"},
                     "limit": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "Max rows 1–50 (default 20).",
+                        "description": "Max rows 1–50 (default 20).",
                     },
                 },
                 "required": ["query"],
@@ -110,7 +110,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "read_note",
-            "TOOL_DESCRIPTION": "Load one note by id (from kb_search_notes); body may be truncated if very long.",
+            "description": "Load one note by id (from kb_search_notes); body may be truncated if very long.",
             "parameters": {
                 "type": "object",
                 "properties": {

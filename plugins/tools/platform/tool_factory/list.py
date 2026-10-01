@@ -49,7 +49,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "list",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "List .py basenames in AGENT_TOOLS_EXTRA_DIR (writable tool-module directory, top level only). "
                 "Not the same as list_available_tools (that lists all registered tool names)."
             ),

@@ -195,7 +195,7 @@ def reject_update_tool_confused_arguments(arguments: dict[str, Any]) -> str | No
         )
     for key, owner in (
         ("overwrite", "create_tool (or replace_tool when replacing whole file)"),
-        ("TOOL_DESCRIPTION", "create_tool when generating a new module without source"),
+        ("description", "create_tool when generating a new module without source"),
     ):
         if arguments.get(key) is not None:
             return json.dumps(
@@ -415,7 +415,7 @@ def catalog_generate_module(
     *,
     registered_tool_function_name: str,
     display_hint: str,
-    extra_TOOL_DESCRIPTION: str,
+    extra_description: str,
     repair_context: str | None = None,
 ) -> tuple[str | None, str | None]:
     system = (
@@ -485,7 +485,7 @@ def catalog_generate_module(
     user = (
         f"Implement a tool for this short name / idea: {display_hint}\n"
         f"Registered tool function name (required, already chosen): {registered_tool_function_name}\n"
-        f"Extra instructions: {extra_TOOL_DESCRIPTION or '(none)'}\n"
+        f"Extra instructions: {extra_description or '(none)'}\n"
     )
     if repair_context:
         user += (

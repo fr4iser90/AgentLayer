@@ -13,13 +13,13 @@ from apps.backend.domain.agent_runtime.tool_schema import _registry_tool_spec_by
 from apps.backend.infrastructure.codebase.coding_schedule_execution import CODING_SCHEDULE_TOOL_ALLOWLIST
 
 
-def test_catalog_tool_falls_back_to_description_field():
+def test_catalog_tool_uses_the_description_field():
     fn = {
-        "description": "Legacy description text",
+        "description": "Catalog description text",
         "parameters": {"type": "object", "properties": {"x": {"type": "string"}}},
     }
     out = _catalog_tool_function("demo_tool", fn)
-    assert "Legacy description text" in out["function"]["description"]
+    assert "Catalog description text" in out["function"]["description"]
 
 
 def test_catalog_tool_includes_required_stubs_only():
@@ -35,7 +35,7 @@ def test_catalog_tool_includes_required_stubs_only():
     assert "path" in params.get("required", [])
     full = _full_schema_tool_function("write_file", fn)
     full_desc = full["function"]["parameters"]["properties"]["path"]
-    assert "TOOL_DESCRIPTION" in full_desc or "description" in full_desc
+    assert "description" in full_desc
 
 
 def test_full_schema_tool_includes_write_file_path_and_content():
@@ -101,4 +101,4 @@ def test_catalog_workspace_create_lists_all_property_stubs_name_required():
     assert props["source"] == {"type": "string", "enum": ["manual", "git"]}
     full = _full_schema_tool_function("workspace.create", fn)
     full_git = full["function"]["parameters"].get("properties", {}).get("git_url") or {}
-    assert "TOOL_DESCRIPTION" in full_git or "description" in full_git
+    assert "description" in full_git

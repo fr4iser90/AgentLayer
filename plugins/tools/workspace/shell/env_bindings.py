@@ -134,7 +134,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "env_bindings",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "List/set/clear workspace env→secret bindings in Postgres (names only). "
                 "Example set: bindings={FOO_BAR: foo_bar} (env name → lowercased service_key)."
             ),
@@ -143,11 +143,11 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "action": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "list (default) | set | clear",
+                        "description": "list (default) | set | clear",
                     },
                     "bindings": {
                         "type": "object",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "For set: map ENV_NAME → service_key "
                             '(usually lowercased env name, e.g. {"FOO_BAR":"foo_bar"}).'
                         ),
@@ -155,7 +155,7 @@ TOOLS: list[dict[str, Any]] = [
                     "keys": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "TOOL_DESCRIPTION": "For clear: env names to remove (omit = clear all).",
+                        "description": "For clear: env names to remove (omit = clear all).",
                     },
                 },
             },

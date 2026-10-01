@@ -84,7 +84,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "start",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Low-level scan enqueue (POST /api/v1/scans/). Prefer security_scan_resolve. "
                 "Returns estimated_time_seconds from the scanner when available; "
                 "call deferred_wait to poll until complete."
@@ -92,9 +92,9 @@ TOOLS: list[dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "repo_url": {"type": "string", "TOOL_DESCRIPTION": "HTTPS Git clone URL"},
-                    "branch": {"type": "string", "TOOL_DESCRIPTION": "Branch name"},
-                    "scan_type": {"type": "string", "TOOL_DESCRIPTION": "Optional scan profile"},
+                    "repo_url": {"type": "string", "description": "HTTPS Git clone URL"},
+                    "branch": {"type": "string", "description": "Branch name"},
+                    "scan_type": {"type": "string", "description": "Optional scan profile"},
                 },
             },
         },

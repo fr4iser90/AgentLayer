@@ -117,7 +117,7 @@ class TestRegistryTempScans(unittest.TestCase):
             "type": "function",
             "function": {
                 "name": "nested_ping",
-                "TOOL_DESCRIPTION": "nested",
+                "description": "nested",
                 "parameters": {"type": "object", "properties": {}},
             },
         }]
@@ -144,7 +144,7 @@ class TestRegistryTempScans(unittest.TestCase):
             "type": "function",
             "function": {
                 "name": "good_tool",
-                "TOOL_DESCRIPTION": "ok",
+                "description": "ok",
                 "parameters": {"type": "object", "properties": {}},
             },
         }]
@@ -179,7 +179,7 @@ class TestRegistryTempScans(unittest.TestCase):
             "type": "function",
             "function": {
                 "name": "dup_name",
-                "TOOL_DESCRIPTION": "first",
+                "description": "first",
                 "parameters": {"type": "object", "properties": {}},
             },
         }]
@@ -198,7 +198,7 @@ class TestRegistryTempScans(unittest.TestCase):
             "type": "function",
             "function": {
                 "name": "dup_name",
-                "TOOL_DESCRIPTION": "second",
+                "description": "second",
                 "parameters": {"type": "object", "properties": {}},
             },
         }]
@@ -223,7 +223,7 @@ class TestRegistryTempScans(unittest.TestCase):
             return json.dumps({"id": "a"})
         HANDLERS = {"tool_a": tool_a}
         TOOLS = [{"type": "function", "function": {
-            "name": "tool_a", "TOOL_DESCRIPTION": "a",
+            "name": "tool_a", "description": "a",
             "parameters": {"type": "object", "properties": {}},
         }}]
         TOOL_ID = "pa"
@@ -236,7 +236,7 @@ class TestRegistryTempScans(unittest.TestCase):
             return json.dumps({"id": "b"})
         HANDLERS = {"tool_b": tool_b}
         TOOLS = [{"type": "function", "function": {
-            "name": "tool_b", "TOOL_DESCRIPTION": "b",
+            "name": "tool_b", "description": "b",
             "parameters": {"type": "object", "properties": {}},
         }}]
         TOOL_ID = "pb"
@@ -265,7 +265,7 @@ class TestRegistryTempScans(unittest.TestCase):
             "type": "function",
             "function": {
                 "name": "naked_tool",
-                "TOOL_DESCRIPTION": "no caps",
+                "description": "no caps",
                 "parameters": {"type": "object", "properties": {}},
             },
         }]
@@ -291,7 +291,7 @@ class TestRegistryTempScans(unittest.TestCase):
             "type": "function",
             "function": {
                 "name": "manifest_tool",
-                "TOOL_DESCRIPTION": "desc",
+                "description": "desc",
                 "parameters": {
                     "type": "object",
                     "properties": {"x": {"type": "string"}},
@@ -311,7 +311,7 @@ class TestRegistryTempScans(unittest.TestCase):
                     continue
                 if fn.get("name") != "manifest_tool":
                     continue
-                self.assertTrue((fn.get("TOOL_DESCRIPTION") or "").strip())
+                self.assertTrue((fn.get("description") or "").strip())
                 self.assertTrue(_function_spec_has_basic_schema(spec))
                 return
             self.fail("manifest_tool spec not found")
@@ -329,7 +329,7 @@ class TestRegistryTempScans(unittest.TestCase):
             "type": "function",
             "function": {
                 "name": "read_file",
-                "TOOL_DESCRIPTION": "first",
+                "description": "first",
                 "parameters": {"type": "object", "properties": {}},
             },
         }]
@@ -347,7 +347,7 @@ class TestRegistryTempScans(unittest.TestCase):
             "type": "function",
             "function": {
                 "name": "read_file",
-                "TOOL_DESCRIPTION": "repo read",
+                "description": "repo read",
                 "parameters": {"type": "object", "properties": {}},
             },
         }]

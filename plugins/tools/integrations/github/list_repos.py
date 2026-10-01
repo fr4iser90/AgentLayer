@@ -65,15 +65,15 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "list_repos",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "List GitHub repos (github_pat). Does not write dashboards — "
                 "map rows and call dashboard.list_append separately."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "page": {"type": "integer", "TOOL_DESCRIPTION": "Page number (default 1)"},
-                    "per_page": {"type": "integer", "TOOL_DESCRIPTION": "1–100 (default 100)"},
+                    "page": {"type": "integer", "description": "Page number (default 1)"},
+                    "per_page": {"type": "integer", "description": "1–100 (default 100)"},
                 },
                 "required": [],
             },

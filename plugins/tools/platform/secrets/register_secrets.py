@@ -57,7 +57,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "register_secrets",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "ONLY way to get a valid OTP and curl for saving a user secret. You MUST invoke this tool — "
                 "NEVER invent or type a curl command yourself (wrong OTP, wrong JSON, broken quotes). "
                 "Copy to the user ONLY the exact curl_bash string from YOUR tool response JSON (and jq_register_example_de if present). "
@@ -70,14 +70,14 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "service_key_example": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Integration service_key (lowercase [a-z0-9._-]); "
                             "use the key from the tool that needs the credential."
                         ),
                     },
                     "ttl_seconds": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "Optional OTP lifetime 120–3600 (default 600).",
+                        "description": "Optional OTP lifetime 120–3600 (default 600).",
                     },
                 },
             },

@@ -34,24 +34,24 @@ TOOL_TRIGGERS: tuple[str, ...] = ()
 _FINDINGS_PARAMS = {
     "scan_id": {
         "type": "string",
-        "TOOL_DESCRIPTION": "Scan UUID from resolve/status/callback",
+        "description": "Scan UUID from resolve/status/callback",
     },
     "poll_path": {
         "type": "string",
-        "TOOL_DESCRIPTION": "Relative findings_poll_path or pagination.next_path from resolve/findings",
+        "description": "Relative findings_poll_path or pagination.next_path from resolve/findings",
     },
     "limit": {
         "type": "integer",
-        "TOOL_DESCRIPTION": f"Page size 1–{MAX_FINDINGS_LIMIT} (default {DEFAULT_FINDINGS_LIMIT})",
+        "description": f"Page size 1–{MAX_FINDINGS_LIMIT} (default {DEFAULT_FINDINGS_LIMIT})",
     },
-    "offset": {"type": "integer", "TOOL_DESCRIPTION": "Pagination offset (default 0)"},
+    "offset": {"type": "integer", "description": "Pagination offset (default 0)"},
     "severity": {
         "type": "string",
-        "TOOL_DESCRIPTION": "Comma-separated severities, e.g. CRITICAL,HIGH",
+        "description": "Comma-separated severities, e.g. CRITICAL,HIGH",
     },
     "findings_severity": {
         "type": "string",
-        "TOOL_DESCRIPTION": "Alias for severity filter",
+        "description": "Alias for severity filter",
     },
 }
 
@@ -187,7 +187,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "findings",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Paginated findings for a completed scan (summary + pagination). "
                 "409 if scan still running — end run and retry later."
                 + NO_WAIT_SUFFIX

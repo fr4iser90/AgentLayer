@@ -557,7 +557,7 @@ _TOOLS_BODY: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "validate_browser_automation_plan",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Validate a structured browser automation plan (JSON only). Does not write files. "
                 "Returns ok/errors and a manifest_preview. Plan fields: version (1), optional title, "
                 "optional allowed_host_prefixes (every goto URL must start with one), optional headless (bool), "
@@ -569,11 +569,11 @@ _TOOLS_BODY: list[dict[str, Any]] = [
                 "properties": {
                     "plan": {
                         "type": "object",
-                        "TOOL_DESCRIPTION": "Structured plan object (see tool description).",
+                        "description": "Structured plan object (see tool description).",
                     },
                     "plan_json": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Alternative: entire plan as a JSON string (if the model emits a string).",
+                        "description": "Alternative: entire plan as a JSON string (if the model emits a string).",
                     },
                 },
             },
@@ -583,7 +583,7 @@ _TOOLS_BODY: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "export_local_playwright_bundle",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "After a valid plan: write a Playwright Node package (task.mjs, package.json, README, "
                 "run.sh, run.ps1, manifest.json), optional image assets, zip the folder, return paths and "
                 "zip_sha256. User runs the bundle locally — not on the server."
@@ -593,15 +593,15 @@ _TOOLS_BODY: list[dict[str, Any]] = [
                 "properties": {
                     "plan": {
                         "type": "object",
-                        "TOOL_DESCRIPTION": "Same structured plan as validate_browser_automation_plan.",
+                        "description": "Same structured plan as validate_browser_automation_plan.",
                     },
                     "plan_json": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Alternative: stringified JSON plan.",
+                        "description": "Alternative: stringified JSON plan.",
                     },
                     "assets": {
                         "type": "array",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Optional images to place under assets/. Each: name (filename), "
                             "media_type (image/png, …), data_base64 (no data: prefix)."
                         ),

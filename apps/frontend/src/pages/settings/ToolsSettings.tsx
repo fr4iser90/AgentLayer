@@ -23,8 +23,6 @@ type ToolsMeta = {
   domain?: string;
   admin_bucket?: string;
   tools?: string[];
-  TOOL_LABEL?: string;
-  TOOL_DESCRIPTION?: string;
   secrets_required?: string[];
   requires?: string[];
   risk_level?: string | number;
@@ -34,7 +32,6 @@ type ToolsMeta = {
 type ChatToolFunction = {
   name?: string;
   description?: string;
-  TOOL_DESCRIPTION?: string;
   parameters?: unknown;
 };
 
@@ -86,8 +83,8 @@ function matchesSearch(m: ToolsMeta, q: string): boolean {
   if (!q.trim()) return true;
   const needle = q.trim().toLowerCase();
   const id = (m.id || "").toLowerCase();
-  const dn = (m.ui?.display_name || m.TOOL_LABEL || "").toLowerCase();
-  const tg = (m.ui?.tagline || m.TOOL_DESCRIPTION || "").toLowerCase();
+  const dn = (m.ui?.display_name || "").toLowerCase();
+  const tg = (m.ui?.tagline || "").toLowerCase();
   const tools = (m.tools ?? []).join(" ").toLowerCase();
   return id.includes(needle) || dn.includes(needle) || tg.includes(needle) || tools.includes(needle);
 }
@@ -258,7 +255,7 @@ export function ToolsSettings() {
       const reqs = secretKeysForPackage(m);
       const missing = reqs.filter((k) => !services.includes(k));
       if (!missing.length) continue;
-      const title = (m.ui?.display_name || m.TOOL_LABEL || m.id || "").trim();
+      const title = (m.ui?.display_name || m.id || "").trim();
       out.push({
         id: (m.id || "").trim(),
         title,
@@ -418,8 +415,8 @@ export function ToolsSettings() {
                       const enabled = names.length ? isPackageEnabledForChat(names) : true;
                       const reqs = secretKeysForPackage(m);
                       const missing = reqs.filter((k) => !services.includes(k));
-                      const title = (m.ui?.display_name || m.TOOL_LABEL || pid).trim();
-                      const tagline = (m.ui?.tagline || m.TOOL_DESCRIPTION || "").trim().slice(0, 200);
+                      const title = (m.ui?.display_name || pid).trim();
+                      const tagline = (m.ui?.tagline || "").trim().slice(0, 200);
                       const risk = riskLabel(m);
                       const high = isHighRisk(m);
                       const tryEnc = encodeURIComponent(tryPromptForPackage(m));
@@ -569,7 +566,7 @@ function PackageDrawer({
 }) {
   const { t } = useTranslation(["settings", "common"]);
   const pid = (pkg.id || "").trim();
-  const title = (pkg.ui?.display_name || pkg.TOOL_LABEL || pid).trim();
+  const title = (pkg.ui?.display_name || pid).trim();
   const names = (pkg.tools ?? []).filter((x): x is string => typeof x === "string" && !!x.trim());
   const first = names[0] || "tool";
   const example = t("settings:toolsTryExample", { tool: first });
@@ -582,9 +579,9 @@ function PackageDrawer({
       headerExtra={
         <>
           <p className="font-mono text-meta uppercase text-ink-muted">{pid}</p>
-          {(pkg.ui?.tagline || pkg.TOOL_DESCRIPTION) && (
+          {pkg.ui?.tagline && (
             <p className="mt-tight text-sm text-ink-muted">
-              {(pkg.ui?.tagline || pkg.TOOL_DESCRIPTION || "").slice(0, 400)}
+              {(pkg.ui?.tagline || "").slice(0, 400)}
             </p>
           )}
         </>
@@ -613,7 +610,7 @@ function PackageDrawer({
             <ul className="mt-base space-y-wide">
               {names.map((n) => {
                 const fn = fnIndex.get(n);
-                const desc = (fn?.description || fn?.TOOL_DESCRIPTION || "").trim() || "—";
+                const desc = (fn?.description || "").trim() || "—";
                 const params = summarizeParams(fn?.parameters);
                 return (
                   <li key={n} className="rounded-card border border-line bg-black/30 p-soft">

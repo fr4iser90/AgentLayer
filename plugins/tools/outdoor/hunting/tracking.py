@@ -66,7 +66,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "tracking_guide",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Return a structured field checklist for reading animal sign; optional substrate and species hints. "
                 "Educational only."
             ),
@@ -75,11 +75,11 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "animal": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "e.g. reh, wildschwein, rotwild, generic",
+                        "description": "e.g. reh, wildschwein, rotwild, generic",
                     },
                     "substrate": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "snow, mud, sand, forest_floor, …",
+                        "description": "snow, mud, sand, forest_floor, …",
                     },
                 },
             },

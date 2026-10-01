@@ -90,7 +90,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "rag_search",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Semantic search over ingested documents (vector similarity). "
                 "With an active coding workspace: searches only that workspace's indexed *.md (run Reindex). "
                 "Without a workspace: pass domain=\"agentlayer_docs\" for product docs, or omit for personal RAG. "
@@ -101,18 +101,18 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "query": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Natural-language query to embed and match.",
+                        "description": "Natural-language query to embed and match.",
                     },
                     "domain": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Optional domain filter. Use agentlayer_docs for product docs (shared in tenant). "
                             "Omit to search the caller's personal RAG across all their domains."
                         ),
                     },
                     "limit": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "Max hits 1–50 (default from operator rag_top_k).",
+                        "description": "Max hits 1–50 (default from operator rag_top_k).",
                     },
                 },
                 "required": ["query"],

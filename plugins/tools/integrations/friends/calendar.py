@@ -62,7 +62,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "calendar",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Get calendar entries from a friend who has shared his calendar with you. "
                 "CALL THIS TOOL WITH NAME OR EMAIL OF THE FRIEND. "
             ),
@@ -71,7 +71,7 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Name OR EMAIL of the friend whose calendar you want to see. "
                             "This will be matched against your friends list. Required parameter. "
                             "Prefer the email address when available; it is unique and more reliable."
@@ -79,7 +79,7 @@ TOOLS: list[dict[str, Any]] = [
                     },
                     "days": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "How many days ahead to read. The friend's grant caps it — asking "
                             "for more returns the granted horizon, not more. "
                             "The answer reports days_effective."
@@ -88,7 +88,7 @@ TOOLS: list[dict[str, Any]] = [
                     },
                     "entity": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Get friend work schedule and calendar. "
                             "Call this tool directly first. Do not call get_friend_info before. "
                             "Do not call get_tool_help. "

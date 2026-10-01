@@ -671,7 +671,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "shares",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Manage friend share permissions: grant, revoke, list, check, or read access to any "
                 "resource (resource_type is a free id, e.g. google_calendar, my_notes, dashboard). "
                 + _derived_readable_help() + " "
@@ -692,7 +692,7 @@ TOOLS: list[dict[str, Any]] = [
                     "action": {
                         "type": "string",
                         "enum": ["list", "grant", "revoke", "check", "read", "publish"],
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "list (default), grant, revoke, check, read, or publish. "
                             "publish is owner-side: it sets the shape of your own resource "
                             "that friends then see."
@@ -700,52 +700,52 @@ TOOLS: list[dict[str, Any]] = [
                     },
                     "name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Friend name or email (required for grant/revoke/check; optional for list).",
+                        "description": "Friend name or email (required for grant/revoke/check; optional for list).",
                     },
                     "entity": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Auto-filled name/email from the trigger system.",
+                        "description": "Auto-filled name/email from the trigger system.",
                     },
                     "resource_type": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Resource id to share (any lowercase id: google_calendar, notes, my_widget, …). "
                             + _derived_readable_help()
                         ),
                     },
                     "resource_identifier": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Usually 'primary' (default).",
+                        "description": "Usually 'primary' (default).",
                     },
                     "policy": {
                         "type": "object",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Optional scope, e.g. {\"days_ahead\": 7, \"expires_at\": \"2026-06-11T00:00:00Z\"}."
                         ),
                     },
                     "days_ahead": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "Shortcut for policy.days_ahead when granting calendar access.",
+                        "description": "Shortcut for policy.days_ahead when granting calendar access.",
                     },
                     "expires_at": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Shortcut for policy.expires_at (ISO-8601 UTC).",
+                        "description": "Shortcut for policy.expires_at (ISO-8601 UTC).",
                     },
                     "direction": {
                         "type": "string",
                         "enum": ["incoming", "outgoing"],
-                        "TOOL_DESCRIPTION": "For check: incoming = they share with you; outgoing = you share with them.",
+                        "description": "For check: incoming = they share with you; outgoing = you share with them.",
                     },
                     "days": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "For read: how far ahead to read. The grant caps it — asking for more "
                             "than the grant allows returns the granted horizon, not more."
                         ),
                     },
                     "projection_kind": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "For publish: which narrowing to store for your own resource. "
                             + _derived_kinds_help()
                         ),

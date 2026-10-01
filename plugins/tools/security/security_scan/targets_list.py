@@ -58,7 +58,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "targets_list",
-            "TOOL_DESCRIPTION": "List SimpleSecCheck My Targets (repo registrations)." + NO_WAIT_SUFFIX,
+            "description": "List SimpleSecCheck My Targets (repo registrations)." + NO_WAIT_SUFFIX,
             "parameters": {"type": "object", "properties": {}},
         },
     },

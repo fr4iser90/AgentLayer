@@ -141,7 +141,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "math_statistics",
-            "TOOL_DESCRIPTION": TOOL_DESCRIPTION,
+            "description": TOOL_DESCRIPTION,
             "parameters": {
                 "type": "object",
                 "required": ["values"],
@@ -149,16 +149,16 @@ TOOLS: list[dict[str, Any]] = [
                     "values": {
                         "type": "array",
                         "items": {"type": "number"},
-                        "TOOL_DESCRIPTION": "Non-empty list of numbers",
+                        "description": "Non-empty list of numbers",
                     },
                     "operation": {
                         "type": "string",
                         "enum": sorted(_OPS),
-                        "TOOL_DESCRIPTION": "Default summary returns all common stats",
+                        "description": "Default summary returns all common stats",
                     },
                     "percentile": {
                         "type": "number",
-                        "TOOL_DESCRIPTION": "Required when operation=percentile (0–100)",
+                        "description": "Required when operation=percentile (0–100)",
                     },
                 },
             },

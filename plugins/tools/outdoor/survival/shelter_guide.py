@@ -79,7 +79,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "shelter_plan",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Return an ordered shelter checklist from weather hints and whether tarp/cordage exist. "
                 "No terrain data."
             ),

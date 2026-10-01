@@ -66,7 +66,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "replace",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Replace an entire .py tool module with new full source; compile + AST + registry shape check; reload. "
                 "For small edits without rewriting the whole file, prefer update_tool (old_string → new_string)."
             ),
@@ -76,11 +76,11 @@ TOOLS: list[dict[str, Any]] = [
                     "filename": {"type": "string"},
                     "registered_tool_name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Alternative to filename when the tool lives under AGENT_TOOLS_EXTRA_DIR",
+                        "description": "Alternative to filename when the tool lives under AGENT_TOOLS_EXTRA_DIR",
                     },
-                    "tool_name": {"type": "string", "TOOL_DESCRIPTION": "Alias for registered_tool_name"},
-                    "name": {"type": "string", "TOOL_DESCRIPTION": "Alias for registered_tool_name"},
-                    "source": {"type": "string", "TOOL_DESCRIPTION": "Full replacement module text"},
+                    "tool_name": {"type": "string", "description": "Alias for registered_tool_name"},
+                    "name": {"type": "string", "description": "Alias for registered_tool_name"},
+                    "source": {"type": "string", "description": "Full replacement module text"},
                 },
                 "required": ["source"],
             },

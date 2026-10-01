@@ -89,7 +89,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "get_file",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Fetch a single file from a repository (decoded UTF-8 text). "
                 "Large files are truncated. Not for directories."
             ),
@@ -100,11 +100,11 @@ TOOLS: list[dict[str, Any]] = [
                     "repo": {"type": "string"},
                     "path": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "File path in repo, e.g. README.md",
+                        "description": "File path in repo, e.g. README.md",
                     },
                     "ref": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Optional branch, tag, or commit SHA",
+                        "description": "Optional branch, tag, or commit SHA",
                     },
                 },
                 "required": ["owner", "repo", "path"],

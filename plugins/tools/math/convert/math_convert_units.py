@@ -155,19 +155,19 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "math_convert_units",
-            "TOOL_DESCRIPTION": TOOL_DESCRIPTION,
+            "description": TOOL_DESCRIPTION,
             "parameters": {
                 "type": "object",
                 "required": ["value", "from_unit", "to_unit"],
                 "properties": {
-                    "value": {"type": "number", "TOOL_DESCRIPTION": "Numeric amount to convert"},
+                    "value": {"type": "number", "description": "Numeric amount to convert"},
                     "from_unit": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Source unit (e.g. km, lb, c, mb)",
+                        "description": "Source unit (e.g. km, lb, c, mb)",
                     },
                     "to_unit": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Target unit (e.g. miles, kg, f, gb)",
+                        "description": "Target unit (e.g. miles, kg, f, gb)",
                     },
                 },
             },

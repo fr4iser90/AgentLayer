@@ -47,13 +47,13 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "current_time",
-            "TOOL_DESCRIPTION": "Returns current time as ISO string. Optional IANA timezone, e.g. Europe/Berlin.",
+            "description": "Returns current time as ISO string. Optional IANA timezone, e.g. Europe/Berlin.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "timezone_name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "IANA timezone name, default UTC",
+                        "description": "IANA timezone name, default UTC",
                     },
                 },
             },

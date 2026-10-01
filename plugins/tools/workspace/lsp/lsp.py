@@ -180,7 +180,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "lsp",
-            "TOOL_DESCRIPTION": "LSP operations: goToDefinition, findReferences, hover, documentSymbol, workspaceSymbol, "
+            "description": "LSP operations: goToDefinition, findReferences, hover, documentSymbol, workspaceSymbol, "
             "diagnostics, completion, signatureHelp, rename. Supports Python, Go, Rust, TypeScript, "
             "JavaScript, Java, Ruby, PHP, C#, Dart, Elixir, Haskell, Lua, Terraform, SQL. "
             "Server auto-detected from PATH (docs/runbooks/lsp.md). "
@@ -190,31 +190,31 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "operation": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "goToDefinition, findReferences, hover, documentSymbol, workspaceSymbol, diagnostics, completion, signatureHelp, rename, status, restart",
+                        "description": "goToDefinition, findReferences, hover, documentSymbol, workspaceSymbol, diagnostics, completion, signatureHelp, rename, status, restart",
                     },
                     "path": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "File path relative to coding root",
+                        "description": "File path relative to coding root",
                     },
                     "line": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "1-based line number",
+                        "description": "1-based line number",
                     },
                     "character": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "1-based character offset",
+                        "description": "1-based character offset",
                     },
                     "query": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Search query for workspaceSymbol",
+                        "description": "Search query for workspaceSymbol",
                     },
                     "newName": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "New name for rename operation",
+                        "description": "New name for rename operation",
                     },
                     "wait": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Wait for publishDiagnostics before returning (default true)",
+                        "description": "Wait for publishDiagnostics before returning (default true)",
                     },
                 },
                 "required": ["operation"],

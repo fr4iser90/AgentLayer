@@ -124,7 +124,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "build",
-            "TOOL_DESCRIPTION": "Runs a multi-round local-LLM loop: generate one self-contained HTML5 page from your goal, "
+            "description": "Runs a multi-round local-LLM loop: generate one self-contained HTML5 page from your goal, "
             "validate, then revise until pass or max rounds (same limit as AGENT_MAX_TOOL_ROUNDS). "
             "Output is written under $AGENT_DATA_DIR/output/<user-id>/creative/iterative-html/<timestamp>/. "
             "If the user attached PNG/JPEG/WebP/GIF images in the same chat turn, they are saved under "
@@ -137,7 +137,7 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "goal": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Full product brief in natural language (German or English). "
                             "One static index.html: layout, copy, optional CSS animation, inline assets. "
                             "If you use ``description`` instead, the server maps it to goal."
@@ -145,13 +145,13 @@ TOOLS: list[dict[str, Any]] = [
                     },
                     "description": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Same meaning as ``goal`` — some models use this key; prefer ``goal`` when possible."
                         ),
                     },
                     "assets": {
                         "type": "array",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Optional extra images (not already attached in chat). Each element: object with "
                             "`name` (filename), `media_type` (e.g. image/png), `data_base64` (standard base64, "
                             "no data: prefix). Max 5 files total including chat uploads; max ~400KB decoded each."

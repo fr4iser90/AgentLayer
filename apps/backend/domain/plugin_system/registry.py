@@ -73,10 +73,10 @@ class ToolRegistry:
         self._chat_tool_specs: list[dict[str, Any]] = []
         self._tools_meta: list[dict[str, Any]] = []
         self._router_cat_tools: dict[str, frozenset[str]] = {}
-        self._router_cat_TOOL_TRIGGERS: dict[str, frozenset[str]] = {}
+        self._router_cat_triggers: dict[str, frozenset[str]] = {}
         self._router_cat_order: list[str] = []
-        self._router_cat_TOOL_LABEL: dict[str, str] = {}
-        self._router_cat_TOOL_DESCRIPTION: dict[str, str] = {}
+        self._router_cat_label: dict[str, str] = {}
+        self._router_cat_description: dict[str, str] = {}
         self._capability_index: dict[str, list[dict[str, Any]]] = {}
         self._tool_step_detail_fns: dict[str, Any] = {}
 
@@ -169,10 +169,10 @@ class ToolRegistry:
             self._tools_meta = acc_meta
             self._tool_step_detail_fns = dict(acc_step_detail)
             self._router_cat_tools = {k: frozenset(v) for k, v in router.tools.items()}
-            self._router_cat_TOOL_TRIGGERS = {k: frozenset(v) for k, v in router.TOOL_TRIGGERS.items()}
+            self._router_cat_triggers = {k: frozenset(v) for k, v in router.triggers.items()}
             self._router_cat_order = list(router.order)
-            self._router_cat_TOOL_LABEL = dict(router.cat_TOOL_LABEL)
-            self._router_cat_TOOL_DESCRIPTION = dict(router.cat_TOOL_DESCRIPTION)
+            self._router_cat_label = dict(router.cat_label)
+            self._router_cat_description = dict(router.cat_description)
             self._capability_index = build_capability_index(acc_meta)
 
     def _clear_storage(self) -> None:
@@ -180,10 +180,10 @@ class ToolRegistry:
         self._chat_tool_specs.clear()
         self._tools_meta.clear()
         self._router_cat_tools = {}
-        self._router_cat_TOOL_TRIGGERS = {}
+        self._router_cat_triggers = {}
         self._router_cat_order = []
-        self._router_cat_TOOL_LABEL = {}
-        self._router_cat_TOOL_DESCRIPTION = {}
+        self._router_cat_label = {}
+        self._router_cat_description = {}
         self._capability_index = {}
         self._tool_step_detail_fns = {}
 
@@ -404,14 +404,14 @@ class ToolRegistry:
                 if key not in router.order:
                     router.order.append(key)
                 router.tools.setdefault(key, set()).update(tool_names)
-                if key not in router.cat_TOOL_LABEL:
+                if key not in router.cat_label:
                     lab = getattr(mod, "TOOL_LABEL", None)
                     if isinstance(lab, str) and lab.strip():
-                        router.cat_TOOL_LABEL[key] = lab.strip()
-                if key not in router.cat_TOOL_DESCRIPTION:
+                        router.cat_label[key] = lab.strip()
+                if key not in router.cat_description:
                     cdesc = getattr(mod, "TOOL_DESCRIPTION", None)
                     if isinstance(cdesc, str) and cdesc.strip():
-                        router.cat_TOOL_DESCRIPTION[key] = cdesc.strip()
+                        router.cat_description[key] = cdesc.strip()
                 parts: list[str] = []
                 has_module_triggers = "TOOL_TRIGGERS" in mod.__dict__
                 if has_module_triggers:
@@ -425,7 +425,7 @@ class ToolRegistry:
                     elif isinstance(tr, (list, tuple, frozenset, set)):
                         parts = [str(x).strip().lower() for x in tr if str(x).strip()]
                     if parts:
-                        router.TOOL_TRIGGERS.setdefault(key, set()).update(parts)
+                        router.triggers.setdefault(key, set()).update(parts)
                 yaml_domain, yaml_phrases = load_co_located_router_phrases(source)
                 if yaml_phrases:
                     yaml_key = (yaml_domain or key).strip().lower()
@@ -433,11 +433,11 @@ class ToolRegistry:
                         if yaml_key not in router.order:
                             router.order.append(yaml_key)
                         router.tools.setdefault(yaml_key, set()).update(tool_names)
-                    router.TOOL_TRIGGERS.setdefault(yaml_key or key, set()).update(yaml_phrases)
+                    router.triggers.setdefault(yaml_key or key, set()).update(yaml_phrases)
                 elif not has_module_triggers:
                     tid = str(pid).strip().lower()
                     if tid:
-                        router.TOOL_TRIGGERS.setdefault(key, set()).add(tid)
+                        router.triggers.setdefault(key, set()).add(tid)
 
     def router_tool_names_for_category(self, category: str) -> frozenset[str]:
         with self._lock:
@@ -452,12 +452,12 @@ class ToolRegistry:
         return _router_category_order(self, plugin_registry_dependencies())
 
     def list_router_categories_catalog(self) -> list[dict[str, Any]]:
-        """Category ids with optional TOOL_LABEL/TOOL_DESCRIPTION from modules; tool counts only (no schemas)."""
+        """Category ids with optional label/description from modules; tool counts only (no schemas)."""
         with self._lock:
             return _list_router_categories_catalog(self, self._router_category_order())
 
     def list_router_category_tools_lite(self, category: str) -> list[dict[str, str]]:
-        """Registered tool function names + TOOL_DESCRIPTIONs for one router category; no parameter schemas."""
+        """Registered tool function names + descriptions for one router category; no parameter schemas."""
         return _list_router_category_tools_lite(self, category)
 
     def classify_tool_router_categories(self, user_text: str) -> frozenset[str]:

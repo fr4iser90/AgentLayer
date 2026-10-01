@@ -55,7 +55,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "get_pull_request",
-            "TOOL_DESCRIPTION": "Get one pull request by number (title, branches, body, URL).",
+            "description": "Get one pull request by number (title, branches, body, URL).",
             "parameters": {
                 "type": "object",
                 "properties": {

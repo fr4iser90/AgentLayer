@@ -541,7 +541,7 @@ check("step 5: catalog lists canonical ids only, aliases are metadata",
 # The agent-facing help must match what the grant path enforces, live.
 from plugins.tools.integrations.friends.shares import TOOLS as SHARES_TOOLS  # noqa: E402
 
-_help = SHARES_TOOLS[0]["function"]["TOOL_DESCRIPTION"]
+_help = SHARES_TOOLS[0]["function"]["description"]
 check("step 5: the agent help no longer advertises the flat field list",
       "list_keys" not in _help,
       "list_keys is read by nothing and must not be offered")

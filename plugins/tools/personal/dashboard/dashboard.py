@@ -1276,7 +1276,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "create_dashboard",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Create or reuse a dashboard from the template gallery or empty custom board. "
                 "Prefer template_id (e.g. projects-v1, personal_dashboard-v1); kind= is legacy. "
                 "When only_if_none=true (default), reuse the sole existing board with same template_id/kind. "
@@ -1288,24 +1288,24 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "template_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Gallery template id (preferred), e.g. projects-v1, pets-v1, custom for empty board"
                         ),
                     },
                     "kind": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Legacy mirror — use template_id instead. "
                             "e.g. pets, projects, ideas, shopping_list, todo, feeds, friends, photo_album, media_station, personal_dashboard, custom"
                         ),
                     },
                     "title": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Dashboard title; default is the catalog label for the kind",
+                        "description": "Dashboard title; default is the catalog label for the kind",
                     },
                     "only_if_none": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Reuse existing board when user has exactly one of that kind (default true)",
+                        "description": "Reuse existing board when user has exactly one of that kind (default true)",
                     },
                 },
                 "required": [],
@@ -1316,7 +1316,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "list",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "List dashboards the user can access (id, kind, title, access_role). "
                 "Use when dashboard_id is unknown and [Dashboard context] is missing."
             ),
@@ -1327,7 +1327,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "read",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Read one dashboard: kind, title, ui_layout, data JSON, block_ids. "
                 "Omit dashboard_id only when the user has exactly one board. "
                 "Use list_path from ui_layout block props.dataPath (e.g. pets, items, tasks, albums.0.photos)."
@@ -1337,15 +1337,15 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "dashboard_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "UUID; omit if unambiguous (single dashboard).",
+                        "description": "UUID; omit if unambiguous (single dashboard).",
                     },
                     "include_layout": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Include ui_layout (default true).",
+                        "description": "Include ui_layout (default true).",
                     },
                     "include_data": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Include data payload (default true).",
+                        "description": "Include data payload (default true).",
                     },
                 },
                 "required": [],
@@ -1356,7 +1356,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "list_append",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Append rows to any list in dashboard data (table/card_grid dataPath). "
                 "Omit list_path to use the first table/card_grid block in ui_layout. "
                 "Each row is an object; missing id is auto-generated. Recomputes stat blocks with props.compute."
@@ -1366,20 +1366,20 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "dashboard_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "UUID; omit if unambiguous.",
+                        "description": "UUID; omit if unambiguous.",
                     },
                     "list_path": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Top-level or dotted path to the list (e.g. repos, projects, events)",
+                        "description": "Top-level or dotted path to the list (e.g. repos, projects, events)",
                     },
                     "rows": {
                         "type": "array",
-                        "TOOL_DESCRIPTION": "Objects to append",
+                        "description": "Objects to append",
                         "items": {"type": "object"},
                     },
                     "dedupe_field": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Optional row field — skip append when value already exists in list",
+                        "description": "Optional row field — skip append when value already exists in list",
                     },
                 },
                 "required": ["rows"],
@@ -1390,7 +1390,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "list_update",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Patch one row in a dashboard list by row id. Recomputes stat blocks with props.compute."
             ),
             "parameters": {
@@ -1398,10 +1398,10 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "dashboard_id": {"type": "string"},
                     "list_path": {"type": "string"},
-                    "row_id": {"type": "string", "TOOL_DESCRIPTION": "Row id field (default id)"},
+                    "row_id": {"type": "string", "description": "Row id field (default id)"},
                     "patch": {
                         "type": "object",
-                        "TOOL_DESCRIPTION": "Fields to merge into the row",
+                        "description": "Fields to merge into the row",
                     },
                 },
                 "required": ["row_id", "patch"],
@@ -1412,7 +1412,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "list_delete",
-            "TOOL_DESCRIPTION": "Remove one row from a dashboard list by row id.",
+            "description": "Remove one row from a dashboard list by row id.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -1428,7 +1428,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "upload_file",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Upload an image to user_attachments; returns gallery_ref file:{uuid}. "
                 "Source: public url or base64_data. Optional append_list_path (e.g. albums.0.photos) "
                 "with caption. Otherwise patch_data hero.url or list_append manually."
@@ -1438,27 +1438,27 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "dashboard_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "UUID; omit if unambiguous.",
+                        "description": "UUID; omit if unambiguous.",
                     },
                     "url": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Public HTTPS image URL (SSRF-safe fetch).",
+                        "description": "Public HTTPS image URL (SSRF-safe fetch).",
                     },
                     "base64_data": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Base64 or data:image/...;base64,... payload.",
+                        "description": "Base64 or data:image/...;base64,... payload.",
                     },
                     "original_name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Filename hint (default upload.jpg).",
+                        "description": "Filename hint (default upload.jpg).",
                     },
                     "append_list_path": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Optional list path to append {url, caption} row.",
+                        "description": "Optional list path to append {url, caption} row.",
                     },
                     "caption": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Caption when append_list_path is set.",
+                        "description": "Caption when append_list_path is set.",
                     },
                 },
                 "required": [],
@@ -1469,7 +1469,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "patch_data",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Patch dashboard data by dotted paths (e.g. notes, tasks, chart labels). "
                 "Each patch: {path, value}. Does not change layout. "
                 "Prefer list_append/list_update for table rows; use patch_data for non-list fields."
@@ -1479,11 +1479,11 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "dashboard_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "UUID; omit if unambiguous.",
+                        "description": "UUID; omit if unambiguous.",
                     },
                     "patches": {
                         "type": "array",
-                        "TOOL_DESCRIPTION": "Objects with path (string) and value (any JSON)",
+                        "description": "Objects with path (string) and value (any JSON)",
                         "items": {"type": "object"},
                     },
                 },
@@ -1495,7 +1495,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "patch_layout",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Change dashboard layout with guarded ops: add_block, remove_block, set_grid, set_props. "
                 "add_block types: table, markdown, rich_markdown, gallery, hero, timeline, stat, chart, "
                 "sparkline, kanban, embed, section, schedules, card_grid, dashboard_ref, share_widget. Optional parent_block_id on add_block "
@@ -1507,11 +1507,11 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "dashboard_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "UUID; omit if unambiguous.",
+                        "description": "UUID; omit if unambiguous.",
                     },
                     "ops": {
                         "type": "array",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "add_block: {op,type,data_path?,parent_block_id?,grid?,props?} — "
                             "parent_block_id = section block id for nested blocks; "
                             "remove_block: {op,block_id}; set_grid: {op,block_id,grid}; "
@@ -1530,7 +1530,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "create_public_share",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Create a public read-only share link for a dashboard (no login required). "
                 "Empty block_ids = entire board; otherwise only listed layout block ids (e.g. gallery blocks). "
                 "Optional ISO expires_at and password (min 4 chars). Returns token and url_path once — owner/co-owner only."
@@ -1540,24 +1540,24 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "dashboard_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "UUID; omit if unambiguous (single dashboard).",
+                        "description": "UUID; omit if unambiguous (single dashboard).",
                     },
                     "block_ids": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "TOOL_DESCRIPTION": "Layout block ids to expose; empty = full dashboard",
+                        "description": "Layout block ids to expose; empty = full dashboard",
                     },
                     "label": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Optional label for the owner (e.g. dog album for friends)",
+                        "description": "Optional label for the owner (e.g. dog album for friends)",
                     },
                     "expires_at": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Optional ISO-8601 expiry datetime",
+                        "description": "Optional ISO-8601 expiry datetime",
                     },
                     "password": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Optional link password (min 4 characters)",
+                        "description": "Optional link password (min 4 characters)",
                     },
                 },
                 "required": [],
@@ -1568,7 +1568,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "invite_member",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Invite another user to a dashboard as viewer, editor, or co_owner (same tenant). "
                 "Pass email or a contact/friend name. Editors can upload gallery photos. "
                 "For friends in another tenant use friends.shares with resource_type collection or dashboard."
@@ -1576,12 +1576,12 @@ TOOLS: list[dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "dashboard_id": {"type": "string", "TOOL_DESCRIPTION": "Optional UUID"},
-                    "email": {"type": "string", "TOOL_DESCRIPTION": "Recipient email"},
-                    "name": {"type": "string", "TOOL_DESCRIPTION": "Friend/contact name if email unknown"},
+                    "dashboard_id": {"type": "string", "description": "Optional UUID"},
+                    "email": {"type": "string", "description": "Recipient email"},
+                    "name": {"type": "string", "description": "Friend/contact name if email unknown"},
                     "role": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "viewer, editor (default), or co_owner",
+                        "description": "viewer, editor (default), or co_owner",
                     },
                 },
                 "required": [],
@@ -1592,28 +1592,28 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "block_share_grant",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Share only specific layout blocks with another user (same tenant), e.g. photo galleries. "
                 "Set gallery_only=true to auto-pick all gallery blocks. permission=edit allows uploads."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "dashboard_id": {"type": "string", "TOOL_DESCRIPTION": "Optional UUID"},
-                    "email": {"type": "string", "TOOL_DESCRIPTION": "Viewer email"},
-                    "name": {"type": "string", "TOOL_DESCRIPTION": "Friend/contact name if email unknown"},
+                    "dashboard_id": {"type": "string", "description": "Optional UUID"},
+                    "email": {"type": "string", "description": "Viewer email"},
+                    "name": {"type": "string", "description": "Friend/contact name if email unknown"},
                     "block_ids": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "TOOL_DESCRIPTION": "Layout block ids from dashboard.read",
+                        "description": "Layout block ids from dashboard.read",
                     },
                     "gallery_only": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "When true, share all gallery blocks (ignores empty block_ids)",
+                        "description": "When true, share all gallery blocks (ignores empty block_ids)",
                     },
                     "permission": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "view or edit (default edit for uploads)",
+                        "description": "view or edit (default edit for uploads)",
                     },
                 },
                 "required": [],
@@ -1624,13 +1624,13 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "export_template",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Export a dashboard layout + data snapshot (kind, ui_layout, initial_data) for copying to another board."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "dashboard_id": {"type": "string", "TOOL_DESCRIPTION": "Source dashboard UUID"},
+                    "dashboard_id": {"type": "string", "description": "Source dashboard UUID"},
                 },
                 "required": ["dashboard_id"],
             },
@@ -1640,14 +1640,14 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "import_layout",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Create a new dashboard from a layout snapshot (copy, not live sync). "
                 "Pass kind, title, ui_layout, and optional initial_data."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "kind": {"type": "string", "TOOL_DESCRIPTION": "Usually custom or a catalog kind"},
+                    "kind": {"type": "string", "description": "Usually custom or a catalog kind"},
                     "title": {"type": "string"},
                     "ui_layout": {"type": "object"},
                     "initial_data": {"type": "object"},
@@ -1660,7 +1660,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "propose_layouts",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Propose up to three complete ui_layout alternatives for the user to preview in the UI. "
                 "Each proposal: {title, summary, ui_layout} where ui_layout is "
                 "{version: 1, blocks: [{id, type, grid, props?, data_path?, children?}, ...]} — "
@@ -1674,11 +1674,11 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "dashboard_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "UUID; omit if unambiguous.",
+                        "description": "UUID; omit if unambiguous.",
                     },
                     "proposals": {
                         "type": "array",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "1–3 objects: title (short), summary (one line), ui_layout (full layout JSON)"
                         ),
                         "items": {"type": "object"},
@@ -1692,7 +1692,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "pin_block",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Pin a block from another dashboard onto a target board as a live dashboard_ref. "
                 "Requires edit on target and read on source block."
             ),
@@ -1702,7 +1702,7 @@ TOOLS: list[dict[str, Any]] = [
                     "target_dashboard_id": {"type": "string"},
                     "source_dashboard_id": {"type": "string"},
                     "source_block_id": {"type": "string"},
-                    "parent_block_id": {"type": "string", "TOOL_DESCRIPTION": "Optional section id on target"},
+                    "parent_block_id": {"type": "string", "description": "Optional section id on target"},
                     "title": {"type": "string"},
                 },
                 "required": ["target_dashboard_id", "source_dashboard_id", "source_block_id"],

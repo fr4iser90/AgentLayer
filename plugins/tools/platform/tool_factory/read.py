@@ -72,7 +72,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "read",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Return full UTF-8 source of one .py file located **only** under AGENT_TOOLS_EXTRA_DIR "
                 "(the writable extra-tools mount, same as create_tool/update_tool). "
                 "**Do not** pass names of built-in image tools (e.g. openweather_current.py) — those modules are "
@@ -83,13 +83,13 @@ TOOLS: list[dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "filename": {"type": "string", "TOOL_DESCRIPTION": "Basename e.g. fishing_index.py"},
+                    "filename": {"type": "string", "description": "Basename e.g. fishing_index.py"},
                     "registered_tool_name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Exact registered tool function name (e.g. fishing_index) if the module lives under AGENT_TOOLS_EXTRA_DIR",
+                        "description": "Exact registered tool function name (e.g. fishing_index) if the module lives under AGENT_TOOLS_EXTRA_DIR",
                     },
-                    "tool_name": {"type": "string", "TOOL_DESCRIPTION": "Alias for registered_tool_name"},
-                    "name": {"type": "string", "TOOL_DESCRIPTION": "Alias for registered_tool_name"},
+                    "tool_name": {"type": "string", "description": "Alias for registered_tool_name"},
+                    "name": {"type": "string", "description": "Alias for registered_tool_name"},
                 },
             },
         },

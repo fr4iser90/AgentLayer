@@ -102,7 +102,7 @@ def current(arguments: dict[str, Any]) -> str:
         "cloudiness_pct": clouds.get("all"),
         "weather_id": w0.get("id"),
         "weather_main": w0.get("main"),
-        "weather_TOOL_DESCRIPTION": w0.get("TOOL_DESCRIPTION"),
+        "weather_description": w0.get("description"),
         "sunrise_unix": sys_o.get("sunrise"),
         "sunset_unix": sys_o.get("sunset"),
         "timezone_offset_s": data.get("timezone"),
@@ -192,7 +192,7 @@ def forecast(arguments: dict[str, Any]) -> str:
                 "wind_deg": wind.get("deg"),
                 "pop": item.get("pop"),
                 "weather_main": w0.get("main"),
-                "weather_TOOL_DESCRIPTION": w0.get("TOOL_DESCRIPTION"),
+                "weather_description": w0.get("description"),
             }
         )
 
@@ -220,7 +220,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "current",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Current weather snapshot for a place (OpenWeather /data/2.5/weather, metric). "
                 "For multi-hour or ‘tomorrow’ planning use openweather_forecast instead. "
                 "Server env OPENWEATHER_API_KEY only — never pass API keys in chat."
@@ -230,7 +230,7 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "location": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "City name (and optional country), e.g. Berlin,de or Munich",
+                        "description": "City name (and optional country), e.g. Berlin,de or Munich",
                     },
                 },
                 "required": ["location"],
@@ -241,7 +241,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "forecast",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "5-day weather forecast in 3-hour steps (OpenWeather /data/2.5/forecast, metric). "
                 "Use for picking time windows (e.g. tomorrow); there is no official fishing/bite index in the API — "
                 "compute any heuristic from temp, humidity, wind, pop in the returned slots. "
@@ -252,11 +252,11 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "location": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "City name (and optional country), e.g. Leipzig,de",
+                        "description": "City name (and optional country), e.g. Leipzig,de",
                     },
                     "max_slots": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "Max forecast slots to return (1–40, default 24). API returns up to 40 three-hour steps.",
+                        "description": "Max forecast slots to return (1–40, default 24). API returns up to 40 three-hour steps.",
                     },
                 },
                 "required": ["location"],

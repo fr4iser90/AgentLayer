@@ -521,7 +521,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "stat",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "File/dir metadata (size, mtime, symlink flag). Path is absolute or relative to the agent process cwd. "
                 "Not GitHub — use github_get_file for repos."
             ),
@@ -530,7 +530,7 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "path": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Absolute path, or relative to process cwd (e.g. README.md, src/foo)",
+                        "description": "Absolute path, or relative to process cwd (e.g. README.md, src/foo)",
                     },
                 },
                 "required": ["path"],
@@ -541,7 +541,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "list_dir",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "List files and subdirectories. Path is absolute or relative to process cwd. Truncates after many entries."
             ),
             "parameters": {
@@ -549,15 +549,15 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "path": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Directory path; use . for cwd",
+                        "description": "Directory path; use . for cwd",
                     },
                     "include_files": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Include files (default true)",
+                        "description": "Include files (default true)",
                     },
                     "include_directories": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Include directories (default true)",
+                        "description": "Include directories (default true)",
                     },
                 },
                 "required": [],
@@ -568,7 +568,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "read_file",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Read a UTF-8 text file. Path absolute or relative to cwd. Optional line window via "
                 "start_line and limit_lines. Large files / too many lines are truncated."
             ),
@@ -577,15 +577,15 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "path": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "File path (absolute or relative to cwd)",
+                        "description": "File path (absolute or relative to cwd)",
                     },
                     "start_line": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "1-based line to start from when limit_lines is set (default 1)",
+                        "description": "1-based line to start from when limit_lines is set (default 1)",
                     },
                     "limit_lines": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "If set, return only this many lines from start_line",
+                        "description": "If set, return only this many lines from start_line",
                     },
                 },
                 "required": ["path"],
@@ -596,7 +596,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "glob",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Glob files under ``path`` (pathlib). ``path`` is absolute or cwd-relative; pattern is relative to that base."
             ),
             "parameters": {
@@ -604,11 +604,11 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "pattern": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Glob pattern, e.g. **/*.md",
+                        "description": "Glob pattern, e.g. **/*.md",
                     },
                     "path": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Base directory (default . = cwd)",
+                        "description": "Base directory (default . = cwd)",
                     },
                 },
                 "required": ["pattern"],
@@ -619,21 +619,21 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "search_text",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Search file contents (substring or regex). Default tree is cwd; optional path_prefix narrows scope. "
                 "Skips large/binary files; match/file limits apply."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "TOOL_DESCRIPTION": "Literal substring unless regex is true"},
+                    "query": {"type": "string", "description": "Literal substring unless regex is true"},
                     "regex": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "If true, query is a Python regex",
+                        "description": "If true, query is a Python regex",
                     },
                     "path_prefix": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Optional directory (absolute or cwd-relative) to limit search",
+                        "description": "Optional directory (absolute or cwd-relative) to limit search",
                     },
                 },
                 "required": ["query"],
@@ -644,7 +644,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "replace_text",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Replace old_string with new_string in a UTF-8 text file. Path absolute or cwd-relative. "
                 "Unless replace_all is true, old_string must match exactly once."
             ),
@@ -653,10 +653,10 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "path": {"type": "string"},
                     "old_string": {"type": "string"},
-                    "new_string": {"type": "string", "TOOL_DESCRIPTION": "Replacement (may be empty)"},
+                    "new_string": {"type": "string", "description": "Replacement (may be empty)"},
                     "replace_all": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Replace every occurrence (default false = require single match)",
+                        "description": "Replace every occurrence (default false = require single match)",
                     },
                 },
                 "required": ["path", "old_string"],
@@ -667,15 +667,15 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "write_file",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Create or overwrite a UTF-8 text file; path absolute or cwd-relative. Creates parent directories as needed. "
                 "Use fs_replace_text for surgical edits."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "path": {"type": "string", "TOOL_DESCRIPTION": "File path (absolute or relative to cwd)"},
-                    "content": {"type": "string", "TOOL_DESCRIPTION": "Full new file contents"},
+                    "path": {"type": "string", "description": "File path (absolute or relative to cwd)"},
+                    "content": {"type": "string", "description": "Full new file contents"},
                 },
                 "required": ["path", "content"],
             },

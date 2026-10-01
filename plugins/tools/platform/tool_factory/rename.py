@@ -64,7 +64,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "rename",
-            "TOOL_DESCRIPTION": "Rename a .py file under AGENT_TOOLS_EXTRA_DIR (basenames only); reload registry.",
+            "description": "Rename a .py file under AGENT_TOOLS_EXTRA_DIR (basenames only); reload registry.",
             "parameters": {
                 "type": "object",
                 "properties": {

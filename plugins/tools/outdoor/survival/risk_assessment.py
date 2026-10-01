@@ -109,7 +109,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "risk_score",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Compute a coarse 0–10 survival risk score from temperature, precip, wind, night, injury, "
                 "hours without water, hours exposed."
             ),

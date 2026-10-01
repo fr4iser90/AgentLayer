@@ -105,7 +105,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "run_create",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Create a one-shot coding-agent execution run (queued in project_runs). "
                 "Requires workspace_id. Does not create a recurring schedule."
             ),
@@ -115,15 +115,15 @@ TOOLS: list[dict[str, Any]] = [
                     "instructions": {"type": "string"},
                     "workspace_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Coding workspace UUID (required).",
+                        "description": "Coding workspace UUID (required).",
                     },
                     "execution_user_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Optional UUID; default caller.",
+                        "description": "Optional UUID; default caller.",
                     },
                     "coding_workflow": {
                         "type": "object",
-                        "TOOL_DESCRIPTION": "Optional: agent_id, prompt_preamble.",
+                        "description": "Optional: agent_id, prompt_preamble.",
                     },
                 },
                 "required": ["instructions", "workspace_id"],

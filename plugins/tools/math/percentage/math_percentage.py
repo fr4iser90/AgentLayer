@@ -75,7 +75,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "math_percentage",
-            "TOOL_DESCRIPTION": TOOL_DESCRIPTION,
+            "description": TOOL_DESCRIPTION,
             "parameters": {
                 "type": "object",
                 "required": ["mode"],
@@ -83,17 +83,17 @@ TOOLS: list[dict[str, Any]] = [
                     "mode": {
                         "type": "string",
                         "enum": sorted(_MODES),
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "of = rate% of value; increase/decrease = apply rate% to value; "
                             "part_of_whole = what % is part of whole; change = % change old→new"
                         ),
                     },
-                    "value": {"type": "number", "TOOL_DESCRIPTION": "Base value (of/increase/decrease)"},
-                    "rate": {"type": "number", "TOOL_DESCRIPTION": "Percentage rate for of/increase/decrease"},
-                    "part": {"type": "number", "TOOL_DESCRIPTION": "Part value for part_of_whole"},
-                    "whole": {"type": "number", "TOOL_DESCRIPTION": "Whole value for part_of_whole"},
-                    "old_value": {"type": "number", "TOOL_DESCRIPTION": "Starting value for change"},
-                    "new_value": {"type": "number", "TOOL_DESCRIPTION": "Ending value for change"},
+                    "value": {"type": "number", "description": "Base value (of/increase/decrease)"},
+                    "rate": {"type": "number", "description": "Percentage rate for of/increase/decrease"},
+                    "part": {"type": "number", "description": "Part value for part_of_whole"},
+                    "whole": {"type": "number", "description": "Whole value for part_of_whole"},
+                    "old_value": {"type": "number", "description": "Starting value for change"},
+                    "new_value": {"type": "number", "description": "Ending value for change"},
                 },
             },
         },

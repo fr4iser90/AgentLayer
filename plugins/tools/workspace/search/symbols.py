@@ -112,7 +112,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "symbols",
-            "TOOL_DESCRIPTION": "Query symbols from the code index: lookup by name, search, list files. "
+            "description": "Query symbols from the code index: lookup by name, search, list files. "
             "Operations: lookup (exact name), search (partial match), file (get file details), "
             "list (list all indexed files). "
             "Run coding_index first to build the index.",
@@ -121,27 +121,27 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "operation": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "lookup (exact name), search (partial), file (details), list (all files)",
+                        "description": "lookup (exact name), search (partial), file (details), list (all files)",
                     },
                     "name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Exact symbol name for lookup",
+                        "description": "Exact symbol name for lookup",
                     },
                     "query": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Partial name for search",
+                        "description": "Partial name for search",
                     },
                     "kind": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Filter by kind: function, class, import, namespace",
+                        "description": "Filter by kind: function, class, import, namespace",
                     },
                     "path": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "File path for file operation",
+                        "description": "File path for file operation",
                     },
                     "language": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Filter list by language (python, typescript, etc.)",
+                        "description": "Filter list by language (python, typescript, etc.)",
                     },
                 },
             },

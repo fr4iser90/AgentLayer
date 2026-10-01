@@ -70,7 +70,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "list_pull_requests",
-            "TOOL_DESCRIPTION": "List pull requests for a repository (open, closed, or all).",
+            "description": "List pull requests for a repository (open, closed, or all).",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -79,9 +79,9 @@ TOOLS: list[dict[str, Any]] = [
                     "state": {
                         "type": "string",
                         "enum": ["open", "closed", "all"],
-                        "TOOL_DESCRIPTION": "Default open",
+                        "description": "Default open",
                     },
-                    "per_page": {"type": "integer", "TOOL_DESCRIPTION": "1–20, default 10"},
+                    "per_page": {"type": "integer", "description": "1–20, default 10"},
                 },
                 "required": ["owner", "repo"],
             },

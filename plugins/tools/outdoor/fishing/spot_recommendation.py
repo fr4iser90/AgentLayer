@@ -92,7 +92,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "spot_recommend",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Suggest coarse fishing spot patterns (structure, water type, season). "
                 "Does not fetch maps or regulations."
             ),
@@ -101,15 +101,15 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "target_species": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "e.g. Hecht, Zander, Barsch",
+                        "description": "e.g. Hecht, Zander, Barsch",
                     },
                     "water_type": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "river | lake | sea (loose strings accepted)",
+                        "description": "river | lake | sea (loose strings accepted)",
                     },
                     "season": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "spring | summer | autumn | winter (any language hints ok)",
+                        "description": "spring | summer | autumn | winter (any language hints ok)",
                     },
                     "wind_m_s": {"type": "number"},
                 },

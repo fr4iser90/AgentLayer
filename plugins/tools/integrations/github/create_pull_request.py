@@ -83,31 +83,31 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "create_pull_request",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Open a pull request on GitHub (POST /pulls). Requires github_pat with repo / "
                 "pull-request write scope. Push head with git_push first; do not use bash or gh."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "owner": {"type": "string", "TOOL_DESCRIPTION": "Repository owner (user or org)"},
-                    "repo": {"type": "string", "TOOL_DESCRIPTION": "Repository name without .git"},
+                    "owner": {"type": "string", "description": "Repository owner (user or org)"},
+                    "repo": {"type": "string", "description": "Repository name without .git"},
                     "title": {"type": "string"},
                     "head": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Source branch (e.g. security-fixes) or fork owner:branch",
+                        "description": "Source branch (e.g. security-fixes) or fork owner:branch",
                     },
                     "base": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Target branch (default main)",
+                        "description": "Target branch (default main)",
                     },
                     "body": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "PR description (markdown)",
+                        "description": "PR description (markdown)",
                     },
                     "draft": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Create as draft PR",
+                        "description": "Create as draft PR",
                     },
                 },
                 "required": ["owner", "repo", "title", "head"],

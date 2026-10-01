@@ -66,7 +66,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "search_code",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Search code on GitHub (same query syntax as github.com search). "
                 "Needs GITHUB_TOKEN (env) or user secret github_pat."
             ),
@@ -75,11 +75,11 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "query": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "GitHub code search query, e.g. org:myorg filename:flake.nix",
+                        "description": "GitHub code search query, e.g. org:myorg filename:flake.nix",
                     },
                     "per_page": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "Max results 1–20 (default 10).",
+                        "description": "Max results 1–20 (default 10).",
                     },
                 },
                 "required": ["query"],
