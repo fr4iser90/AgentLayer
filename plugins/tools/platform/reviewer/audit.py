@@ -1,4 +1,14 @@
-"""Reviewer agent tools — read-only benchmark audit (no config writes, no bench starts)."""
+"""Reviewer agent tools — read-only benchmark audit (no config writes, no bench starts).
+
+Every handler asks the two questions its mirrored route asks, through
+:func:`console_scope`. Benchmarks, experiments and reviews mirror
+``/v1/admin/benchmarks/*``, which carries no capability slug at all and admits a site
+admin; the config reads and the draft mirror ``/v1/admin/agent-config/*`` and need
+``agent.assign`` inside the caller's own company; ``agents_get`` mirrors
+``/v1/admin/agents/{agent_id}`` — same slug, nothing company-shaped, since the registry is
+instance-wide; the run trace mirrors ``/v1/admin/run-traces/runs/{run_id}`` and needs
+``observability.read``. The legacy ``users.role`` column is not consulted here.
+"""
 
 from __future__ import annotations
 
@@ -6,12 +16,19 @@ import json
 import uuid
 from typing import Any, Callable
 
+from apps.backend.application.agent_runtime.use_cases.run_traces import tool_invocations_for_run
+from apps.backend.domain.access.capabilities import (
+    AdminScope,
+    AdminScopeError,
+    CAP_AGENT_ASSIGN,
+    CAP_OBSERVABILITY_READ,
+)
 from apps.backend.domain.agent_runtime.registry import get_agent_registry
-from apps.backend.domain.shared.identity import get_identity
 from apps.backend.infrastructure.agent_runtime import agent_config_service, agent_config_store
+from apps.backend.infrastructure.agent_runtime import agent_runs_store, agent_tasks_store
 from apps.backend.infrastructure.benchmarks import benchmark_runs_store
 from apps.backend.infrastructure.agent_runtime.agent_config_fingerprint import fingerprint_response, snapshot
-from apps.backend.infrastructure.identity.auth import get_user_by_id
+from apps.backend.infrastructure.identity.console_access import console_scope
 from apps.backend.infrastructure.benchmarks.benchmark_analysis import analyze_runs, compare_cohorts, list_cohorts
 from apps.backend.infrastructure.benchmarks.benchmark_review_service import run_review
 from apps.backend.infrastructure.benchmarks.benchmark_stats import aggregate_benchmark_stats
@@ -38,24 +55,29 @@ def _ok(payload: dict[str, Any]) -> str:
     return json.dumps({"ok": True, **payload}, ensure_ascii=False)
 
 
-def _admin_tid_uid() -> tuple[int, uuid.UUID] | None:
-    tid, uid = get_identity()
-    if uid is None:
-        return None
-    user = get_user_by_id(uid)
-    if not user or str(getattr(user, "role", "") or "").lower() != "admin":
-        return None
-    tenant_id = db.user_tenant_id(uid)
-    if tenant_id is None:
-        return None
-    return int(tenant_id), uid
+def _site_wide() -> AdminScope | str:
+    """Work whose routes have no capability slug: benchmarks and reviews."""
+    try:
+        return console_scope()
+    except AdminScopeError as e:
+        return _err(str(e))
 
 
-def _require_admin() -> tuple[int, uuid.UUID] | str:
-    g = _admin_tid_uid()
-    if g is None:
-        return _err("authentication and admin role required for this tool")
-    return g
+def _scope(capability: str) -> AdminScope | str:
+    try:
+        return console_scope(capability)
+    except AdminScopeError as e:
+        return _err(str(e))
+
+
+def _home_tenant(scope: AdminScope) -> int:
+    """The company the mirrored route reads off the caller and every store filters on.
+
+    An identity without a company falls back to company 1 rather than an unscoped
+    ``None``: these are tenant-scoped reads, so a missing company must narrow one,
+    never widen it.
+    """
+    return int(db.user_tenant_id(scope.actor_id) or 1)
 
 
 def _parse_uuid(raw: Any, *, field: str) -> uuid.UUID | None:
@@ -68,10 +90,10 @@ def _parse_uuid(raw: Any, *, field: str) -> uuid.UUID | None:
 
 
 def benchmark_analysis_get(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     rows = benchmark_runs_store.list_runs_for_stats(tenant_id=tid, limit=int(arguments.get("limit") or 200))
     return _ok(
         analyze_runs(
@@ -84,19 +106,19 @@ def benchmark_analysis_get(arguments: dict[str, Any]) -> str:
 
 
 def benchmark_cohorts_list(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     rows = benchmark_runs_store.list_runs_for_stats(tenant_id=tid, limit=200)
     return _ok({"cohorts": list_cohorts(rows)})
 
 
 def benchmark_cohort_compare(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     a = str(arguments.get("cohort_a") or "").strip()
     b = str(arguments.get("cohort_b") or "").strip()
     if not a or not b:
@@ -106,19 +128,19 @@ def benchmark_cohort_compare(arguments: dict[str, Any]) -> str:
 
 
 def benchmark_stats_get(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     rows = benchmark_runs_store.list_runs_for_stats(tenant_id=tid, limit=int(arguments.get("limit") or 200))
     return _ok({"stats": aggregate_benchmark_stats(rows)})
 
 
 def benchmark_experiment_get(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     eid = _parse_uuid(arguments.get("experiment_id"), field="experiment_id")
     if not eid:
         return _err("experiment_id required")
@@ -129,10 +151,10 @@ def benchmark_experiment_get(arguments: dict[str, Any]) -> str:
 
 
 def benchmark_experiment_report(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     eid = _parse_uuid(arguments.get("experiment_id"), field="experiment_id")
     if not eid:
         return _err("experiment_id required")
@@ -143,10 +165,10 @@ def benchmark_experiment_report(arguments: dict[str, Any]) -> str:
 
 
 def benchmark_run_get(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     run_id = _parse_uuid(arguments.get("run_id"), field="run_id")
     if not run_id:
         return _err("run_id required")
@@ -157,26 +179,26 @@ def benchmark_run_get(arguments: dict[str, Any]) -> str:
 
 
 def agent_config_snapshot(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _scope(CAP_AGENT_ASSIGN)
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     return _ok(snapshot(tenant_id=tid))
 
 
 def agent_config_fingerprint(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _scope(CAP_AGENT_ASSIGN)
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     return _ok(fingerprint_response(tenant_id=tid))
 
 
 def agent_config_changelog(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _scope(CAP_AGENT_ASSIGN)
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     rows = agent_config_store.list_changelog(
         tid,
         limit=int(arguments.get("limit") or 50),
@@ -186,9 +208,9 @@ def agent_config_changelog(arguments: dict[str, Any]) -> str:
 
 
 def agents_get(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
+    scope = _scope(CAP_AGENT_ASSIGN)
+    if isinstance(scope, str):
+        return scope
     aid = str(arguments.get("agent_id") or "").strip()
     if not aid:
         return _err("agent_id required")
@@ -199,10 +221,10 @@ def agents_get(arguments: dict[str, Any]) -> str:
 
 
 def review_recommend_patches(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _scope(CAP_AGENT_ASSIGN)
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     patches = arguments.get("patches")
     if not isinstance(patches, list):
         return _err("patches array required")
@@ -215,10 +237,10 @@ def review_recommend_patches(arguments: dict[str, Any]) -> str:
 
 
 def review_submit(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     run_ids_raw = arguments.get("run_ids")
     run_ids = None
     if isinstance(run_ids_raw, list):
@@ -238,10 +260,10 @@ def review_submit(arguments: dict[str, Any]) -> str:
 
 
 def review_get(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _site_wide()
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     rid = _parse_uuid(arguments.get("review_id"), field="review_id")
     if not rid:
         return _err("review_id required")
@@ -252,35 +274,17 @@ def review_get(arguments: dict[str, Any]) -> str:
 
 
 def run_trace_get(arguments: dict[str, Any]) -> str:
-    g = _require_admin()
-    if isinstance(g, str):
-        return g
-    tid, _uid = g
+    scope = _scope(CAP_OBSERVABILITY_READ)
+    if isinstance(scope, str):
+        return scope
+    tid = _home_tenant(scope)
     run_id = _parse_uuid(arguments.get("run_id"), field="run_id")
     if not run_id:
         return _err("run_id required")
-    from apps.backend.infrastructure.agent_runtime import agent_runs_store, agent_tasks_store
-    from apps.backend.infrastructure.db import db
-    from psycopg.rows import dict_row
-
     run = agent_runs_store.get_run(run_id=run_id, tenant_id=tid)
     if not run:
         return _err("run trace not found")
-    tools: list[dict] = []
-    with db.pool().connection() as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute(
-                """
-                SELECT id, tool_name, args_json, result_excerpt, ok, created_at, agent_run_id
-                FROM tool_invocations
-                WHERE agent_run_id = %s
-                ORDER BY id ASC
-                LIMIT 500
-                """,
-                (run_id,),
-            )
-            tools = [dict(r) for r in cur.fetchall()]
-        conn.commit()
+    tools = tool_invocations_for_run(run_id)
     child_runs = agent_runs_store.list_runs(tenant_id=tid, parent_run_id=run_id, limit=50)
     task = None
     if run.get("task_id"):
