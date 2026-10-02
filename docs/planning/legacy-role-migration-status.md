@@ -8,7 +8,8 @@ status: in-progress
 # Legacy-Rollen-Migration — vollständige Aufgabe, Stand, Restarbeit
 
 **Record, kein lebendes Dokument.** Snapshot **02.10.2026, 22:15**, fortgeschrieben **02.10., 23:14**
-(Commit des Blocks + Tooling-Commit, Abschnitt A). Quelle: Session
+(Commit des Blocks + Tooling-Commit, Abschnitt A) und **02.10. ab 23:40 / 03.10. bis 00:04** (Familie 6 =
+Task-Freigabe geschlossen, committet 03.10. 00:01). Quelle: Session
 `9910e7a2-88ab-4521-9d46-d96dd404d97d` (28.09. 19:52 → 02.10. 20:12, 5 843 Records, beim Commit
 abgebrochen) **plus** Live-Messung im Working Tree am 02.10. Jeder Hacken unten ist entweder durch
 Code/Command belegt oder als *nicht nachgemessen* gekennzeichnet.
@@ -87,7 +88,7 @@ Belegt:
       --version` läuft in dem Shell). Bewusst **nicht** als `nix_shell_command` in
       `scripts/checks/config.json` verdrahtet — siehe D, das ist eine Gate-Entscheidung.
 
-### B. Legacy-Rolle: die 7 Stellen aus der Messung — 4 zu, 3 offen
+### B. Legacy-Rolle: die 7 Stellen aus der Messung — 5 zu, 2 offen
 
 Die Tabelle ist die Messung vom 02.10. (16:44), jede Zeile war einzeln nachgelesen. Der Stand unten
 ist am 02.10. erneut gegen den Code geprüft.
@@ -109,13 +110,34 @@ ist am 02.10. erneut gegen den Code geprüft.
       hintere einer fehlgeschlagenen Lese steht bewusst `False`.
       **Getestet:** `tests/unit/test_schedule_and_workspace_rights_use_site_role.py` (neu, 376 Zeilen)
       lehnt eine wiedereingeführte Legacy-Lesstelle in den sechs betroffenen Dateien per Source-Scan ab.
-- [ ] **5 — Dashboards.** `infrastructure/dashboard/dashboard_access.py:158,165-169` liest
+- [ ] **5 — Dashboards.** `infrastructure/dashboard/dashboard_access.py:165,168-169` liest
       `db.user_role(uid)` und gibt `user_role=db_role or role` weiter →
-      `domain/dashboards/access.py:32-35` prüft `role == "admin"` **vor** `site_role == "site_admin"`.
-      Gewährt die Dashboard-Rechte. (Heute verifiziert: beide Stellen unverändert.)
-- [ ] **6 — Task-Freigabe.** `plugins/tools/platform/tasks/agent_tasks.py:88` →
+      `domain/dashboards/access.py:32-36` prüft `role == "admin"` **vor** `site_role == "site_admin"` und
+      gibt dann bedingungslos `True`. Gewährt die Dashboard-Rechte.
+      (02.10. gegen 23:50 erneut nachgemessen: beide Stellen unverändert; die Regel nimmt also weiterhin einen
+      Legacy-Rollenwert als Parameter — für Block-1-/Block-6-Form müsste er aus `evaluate_dashboards_access`
+      und `dashboard_permission_error_from_flags` entfernt werden.)
+- [x] **6 — Task-Freigabe.** `plugins/tools/platform/tasks/agent_tasks.py:88` →
       `role = db.user_role(user_id)` → `domain/agent_runtime/task_approval.py:21-25,34-35`. Wer ein
-      Task direkt an `queued` (also an der Freigabe vorbei) setzen darf, entscheidet die Legacy-Spalte.
+      Task direkt an `queued` (also an der Freigabe vorbei) setzen darf, entschied die Legacy-Spalte.
+      **02.10. gegen 23:50 geschlossen, committet 03.10. 00:01:** Die Domain-Regel heißt jetzt
+      `normalize_new_task_status(requested=…,
+      site_role=…)` und vergleicht gegen `site_admin`; der Aufrufer löst über `db.user_site_role(user_id)`
+      auf. Wie in Block 1 wurde der Parameter **entfernt**, nicht ignoriert — es gibt in der Regel keinen
+      Platz mehr für einen Legacy-Rollenwert. **Nebenbei toter Code:** `may_transition_to_queued(*,
+      user_role)` hatte null Aufrufer und gab in beiden Zweigen `True` — gelöscht.
+      **Getestet:** `tests/unit/test_task_approval_uses_site_role.py` (neu, 8 Tests) — Regel pro Akteur
+      (herabgestufter Legacy-Admin / Site-Admin / normales Mitglied), unbekannte `site_role` verweigert,
+      `task_create` mit echtem Pfad (Legacy-Leser antwortet fällig `admin`), Source-Scan über beide
+      Dateien, Signatur-Scan der Regel, AST-Scan „`site_role=` enthält `user_site_role`".
+      **Mutation (02.10. live wiederholt):** `site_role=db.user_role(user_id)` → **3 fallen**, Signatur
+      `may_transition_to_queued(*, user_role)` zurückgeholt → **1 fällt**; jeweils per `cp` zurückgesetzt
+      und mit `md5sum -c` geprüft, danach wieder 11 passed (beide Dateien zusammen).
+      `tests/unit/test_task_approval.py` auf `site_role=` umgestellt (3 Tests).
+      **Ehrlich zur Reichweite:** Was die Regel öffnet, ist die **Erstzeile** (`draft` vs. `queued`) —
+      nicht die Freigabe selbst. `task_update` setzt jedes Task, das der Aufrufer sehen darf, für **jeden**
+      auf `queued`; eine approbation-pflichtige Kette ist das nicht (Gap-Zeile in
+      `docs/features/operator-agent.md` sagt das).
 - [ ] **7 — `bearer_user_role`-Familie (größte Fläche, null Testabdeckung).** ~10 Aufrufer
       (`chat_completions_api.py:31`, `chat_websocket.py:331`, `voice_realtime_websocket.py:85`,
       `domain/voice/realtime_turn.py:110-112`, `telegram_bridge.py:254`, `discord_bridge.py:377`,
@@ -135,12 +157,13 @@ Zwei Dinge, die den Befund schärfer machen als „nur ein falsches Feld":
 - `application/agent_runtime/runtime/io.py` baute ein `_UserRef` mit `role = None`; damit war die
   Legacy-Lese in der DB der **einzige** Entscheider. Der Zweig ist mit `8312afaf` entfernt (1 Zeile).
 
-**Messgröße für den Rest:** nach Block 1 stehen noch **23** `db.user_role(`-Vorkommen in 17 Dateien.
-Davon sind 3 rein dokumentarisch (`domain/workspace/workspace_common.py:118`,
+**Messgröße für den Rest:** nach Block 1 standen 23 `db.user_role(`-Vorkommen in 17 Dateien; nach
+Familie 6 sind es **22 in 16 Dateien** (02.10. 23:52, `grep -rn 'db\.user_role(' apps plugins
+--include='*.py'`). Davon sind 3 rein dokumentarisch (`domain/workspace/workspace_common.py:118`,
 `domain/scheduling/targets.py:122`, `application/identity/use_cases/request_auth.py:73`) und die in
 `plugins/tools/platform/scheduler/jobs.py:93,188,219` sind bewusste **Fallbacks**
 (`agent_effective_role(uid, db.user_role(uid))` — Legacy nur, wenn die `site_role`-Lese nicht
-verfügbar ist). Der decisive Rest sind die Familien 5–7.
+verfügbar ist). Der decisive Rest sind die Familien **5 (Dashboards)** und **7 (`bearer_user_role`)**.
 
 ### C. Doku
 
@@ -148,9 +171,14 @@ verfügbar ist). Der decisive Rest sind die Familien 5–7.
       (Runner/Bridges, zwei Domain-Regeln, `auto_workspace`) und explizit aufgelistet, was am 02.10.
       geschlossen wurde, inkl. Name des neuen Tests.
 - [x] **staged und committet** — sitzt in `8312afaf` (Zeile 235, Text unverändert gegenüber dem Snapshot).
-- [ ] **dieses Dokument: committen oder löschen?** Steht bewusst noch als `??` im Worktree — es ist ein
-      Record über Restarbeit, kein lebender Text. Passt es als Handoff nach `docs/planning/`, gehört die
-      Frage in denselben Rutsch wie die beiden Commits; wenn nicht, löscht ihn, bevor er vergilbt.
+- [x] **dieses Dokument: committen.** Entscheidung 02.10. 23:20 (er): behalten als Handoff unter
+      `docs/planning/`, committet in `ff89496a`. Die Fortschreibung für Familie 6 (Abschnitt B/6,
+      Messgröße, Tabellenzeilen unten) sitzt im selben Commit wie die Änderung selbst — ein Record, der
+      seine eigene Hash nicht kennen kann.
+- [x] Gap-Zeile in `docs/features/operator-agent.md:235` **zweitens** fortgeschrieben: die offene
+      Domain-Regel-Zeile nennt jetzt nur noch Dashboards, dafür steht die Task-Regel in der Liste des
+      am 02.10. Geschlossenen — plus der honeste Hinweis, dass `task_update` weiterhin jedem das
+      Queueing erlaubt. Sitzt im Commit zu Familie 6.
 
 ### D. CI- und Gate-Lücken (am 02.10. gemessen)
 
@@ -178,9 +206,11 @@ verfügbar ist). Der decisive Rest sind die Familien 5–7.
 
 ### E. Merge-Lage
 
-- [ ] **PR → main steht aus.** `HEAD = 4ba62ca8`, **2 Commits vor** `origin/feat/chat-persist-queue-goal-strip`
-      (die beiden von 02.10. 23:14 — **noch nicht gepusht**, braucht sein Go), der Branch läuft
-      **177 Commits** vor `main` her; `main` zuletzt `9aa96e19`.
+- [ ] **PR → main steht aus.** Alle Commits vom 02.10. (ab `8312afaf` inklusive dieses Dokuments) sind
+      **noch nicht gepusht** — Maßzahl statt Zahl: `git rev-list --count origin/feat/chat-persist-queue-goal-strip..HEAD`
+      → **4** (gemessen 03.10. 00:04; der Commit zu Familie 6 landete 03.10. 00:01 — die Messungen darunter
+      sind noch 02.10. nach 23:00). Der Branch läuft **181 Commits** vor `main` her (Snapshot
+      177); `main` zuletzt `9aa96e19`. (Stand Snapshot: HEAD war `4ba62ca8`, 2 vor `origin`.)
     - `.github/workflows/ci.yml` triggert nur `pull_request` und `push: [main]` → **auf diesem Branch ist
       CI nie gelaufen.** Der erste Lauf ist gleichzeitig der erste Test von D (Bandit) — vorher mit ihm
       die Gate-Form klären, sonst ist der PR rot, bevor er gelesen wurde.
@@ -213,6 +243,11 @@ verfügbar ist). Der decisive Rest sind die Familien 5–7.
 | **`python3Packages.bandit` im Kanal** | vorhanden, **1.9.4** (`nix-instantiate --eval`), `python3 -m bandit --version` läuft in `nix-shell`; `nix-instantiate --parse shell.nix` OK |
 | **Bandit-Lauf 23:11** | Exit **1** — 185 Funde: 83 MEDIUM (alle B608) / 102 LOW / 0 Severity-HIGH |
 | **`db.user_role(` nach `8312afaf`** | **23 Vorkommen in 17 Dateien** — unverändert gegenüber dem Snapshot (16 echte Lesstellen in `apps/backend`, 1 in `plugins/.../agent_tasks.py`, 3 Fallbacks in `scheduler/jobs.py`, 3 rein dokumentarische Zeilen) |
+| **Familie 6 — Tests** (`tests/unit/test_task_approval_uses_site_role.py` + `test_task_approval.py`, 02.10. vor 23:52) | **11 passed** |
+| **Familie 6 — Mutation 1** (`site_role=db.user_role(user_id)` in `agent_tasks.py`) | **3 failed, 8 passed** — `task_create_queues_only_for_the_site_admin`, `neither_file_reads_the_legacy_role_column`, `the_source_passes_the_canonical_read_to_the_rule`. Zurückkopiert, `md5sum -c` OK, danach 11 passed |
+| **Familie 6 — Mutation 2** (`def may_transition_to_queued(*, user_role)` zurück in die Domain-Datei) | **1 failed, 10 passed** — `no_approval_rule_accepts_a_role_string`. Zurückkopiert, `md5sum -c` OK, danach 11 passed |
+| **Familie 6 — ganze Suite** (`pytest -q`) | 2 384 passed, 5 skipped, **53 errors** — alle Errors sind `tests/e2e/*` mit `Connection refused` auf `127.0.0.1:8088` (braucht laufenden Stack, Abschnitt F), kein Fehler in `tests/unit` |
+| **Familie 6 — precommit-Profil** (02.10., kurz vor 23:52) | **all checks passed**, EXIT=0 |
 
 **Nicht ausgeführt:** das `ci`-Profil, Vitest und `npm run build` (laufen beide nirgends Pflicht — D).
 „21 passed" sind die drei Dateien, die den Block abdecken; die **ganze** Backend-Suite lief dagegen im
@@ -224,8 +259,13 @@ Hook: 2 376 passed.
 
 1. ~~**Block fertig committen** (A)~~ **erledigt 02.10. 23:14**: Profil → `8312afaf` → `git
    ls-tree`-Gegenprobe → `4ba62ca8` für `shell.nix`. Die halbe Lücke (1–4) ist im Baum, die Doku ehrlich.
-2. **Familie 6 dann 5** (Task-Freigabe, Dashboards) — klein, klar abgrenzbar, je ein Mutationstest
-   („Legacy-Zweig entfernen → Test muss fallen"), wie in Block 1.
+2. ~~**Familie 6 dann 5**~~ **Familie 6 erledigt 02.10. ~23:55, committet 03.10. 00:01** (Task-Freigabe;
+   Parameter entfernt,
+   `db.user_site_role`, neuer Test + zwei Mutationen). **Bleibt Familie 5 (Dashboards)** — gleiche Form:
+   `user_role` aus `evaluate_dashboards_access` / `dashboard_permission_error_from_flags` **entfernen**,
+   `dashboard_access.py` löst nur noch über `db.user_site_role` auf, Mutationstest wie in Block 1 und 6.
+   Wer es genau nehmen will: die Regel hat noch einen zweiten Eingang (`role` aus dem UserLike), also erst
+   alle Aufrufer zählen.
 3. **Familie 7 zuletzt und als eigener Schwung** — größte Fläche, keine Abdeckung. Zuerst die
    Testabdeckung auf `_override_allowed` bauen (heute null), dann die Aufrufer umstellen.
 4. **Gate-Form für Bandit entscheiden, bevor der PR eröffnet wird** (D + E), sonst ist der erste CI-Lauf
