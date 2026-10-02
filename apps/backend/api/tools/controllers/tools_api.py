@@ -58,7 +58,7 @@ async def list_capabilities(request: Request):
     reg = get_registry()
     pmap = _policies_map_safe()
     uid, tid = resolve_tools_list_identity(request)
-    role = db.user_role(uid)
+    role = db.user_effective_role(uid)
     meta = filter_tools_meta(reg.tools_meta, pmap, role, tid)
     by_cap = build_capability_index([dict(m) for m in meta])
     uncl = list_tools_without_capabilities([dict(m) for m in meta])
@@ -75,7 +75,7 @@ async def list_tools(request: Request):
     reg = get_registry()
     pmap = _policies_map_safe()
     uid, tid = resolve_tools_list_identity(request)
-    role = db.user_role(uid)
+    role = db.user_effective_role(uid)
     tools = filter_chat_tool_specs(reg.chat_tool_specs, reg, pmap, role, tid)
     meta = [dict(m) for m in filter_tools_meta(reg.tools_meta, pmap, role, tid)]
     attach_execution_context_by_tool(meta, pmap)

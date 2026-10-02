@@ -79,27 +79,18 @@ def query(sql: str, params: tuple[Any, ...] = ()) -> int:
 
 
 from apps.backend.infrastructure.db.identity_tenants import (
-    discord_user_id_normalize,
     scheduler_outbound_count_today_utc,
     scheduler_outbound_increment_utc,
-    telegram_user_id_normalize,
     tenant_exists,
     tenant_insert,
     tenants_list,
-    user_discord_user_id_get,
-    user_discord_user_id_set,
     user_external_sub,
     user_first_admin_id,
-    user_id_for_discord_user_id,
-    user_id_for_telegram_user_id,
-    user_id_tenant_for_discord_global,
-    user_id_tenant_for_telegram_global,
     user_role,
-    user_telegram_user_id_get,
-    user_telegram_user_id_set,
     user_tenant_id,
     user_site_role,
     user_site_admin,
+    user_effective_role,
     user_capabilities,
     user_membership_role,
     tenant_membership_upsert,
@@ -109,6 +100,18 @@ from apps.backend.infrastructure.db.identity_tenants import (
     tenant_mark_setup_completed,
     user_is_tenant_admin,
 )
+from apps.backend.infrastructure.db.identity_messaging import (
+    discord_user_id_normalize,
+    telegram_user_id_normalize,
+    user_discord_user_id_get,
+    user_discord_user_id_set,
+    user_id_for_discord_user_id,
+    user_id_for_telegram_user_id,
+    user_id_tenant_for_discord_global,
+    user_id_tenant_for_telegram_global,
+)
+
+
 def _require_user_uuid() -> tuple[int, uuid.UUID]:
     tenant_id, user_id = get_identity()
     if user_id is None:

@@ -151,7 +151,10 @@ async def admin_get_agent(
     if not agent:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
 
-    sim_role = (role or user.role or "admin").strip().lower()
+    # The preview is a promise about the door, so it has to ask the door's question:
+    # ``role`` overrides explicitly, otherwise resolve like the door does
+    # (``users.site_role``), never the legacy ``users.role`` carried on the token user.
+    sim_role = (role or db.user_effective_role(user.id)).strip().lower()
     if sim_role not in ("admin", "user", "guest"):
         sim_role = "admin"
 

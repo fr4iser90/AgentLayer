@@ -49,7 +49,9 @@ domain.register_agent_registry_dependencies(_AgentRegistryDeps())
 class _SubagentCatalogDeps:
     @staticmethod
     def user_role(user_id) -> str:
-        return db.user_role(user_id)
+        # ``delegate`` reads this to allow admin-only specialists (``operator``),
+        # so it has to answer with the same elevation source as the tool door.
+        return db.user_effective_role(user_id)
 
     @staticmethod
     def effective_string_list(key: str, *, tenant_id: int | None = None) -> list[str]:
