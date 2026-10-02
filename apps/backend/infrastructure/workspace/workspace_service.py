@@ -104,7 +104,13 @@ def _agentlayer_self_seed_dir() -> Path | None:
 
 
 def self_editing_allowed(user) -> bool:
-    """Operator flag + (admin or ``workspace_self_allowed``)."""
+    """Operator flag + (site admin or ``workspace_self_allowed``).
+
+    The admin is read from ``users.site_role``, not from ``user.role``: for a user
+    built by :func:`apps.backend.domain.workspace.workspace_common.user_from_context`
+    that attribute *is* the legacy ``users.role`` DB read, and it is what decided who
+    could point a chat at AgentLayer's own source tree.
+    """
     from apps.backend.infrastructure.settings.operator_settings import public_dict
     from apps.backend.infrastructure.db import db
 
@@ -114,9 +120,9 @@ def self_editing_allowed(user) -> bool:
     except Exception:
         logger.warning("failed to read operator settings for self-workspace")
         return False
-    if getattr(user, "role", None) == "admin":
-        return True
     try:
+        if db.user_site_role(user.id) == "site_admin":
+            return True
         with db.pool().connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(  # tenant-scope: guarded by user_id pk — caller supplied an already-resolved user

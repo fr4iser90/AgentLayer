@@ -5,6 +5,8 @@ from __future__ import annotations
 import uuid
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from apps.backend.domain.scheduling.access import (
     evaluate_schedules_access,
     schedule_feature_permission_error_from_flags,
@@ -13,13 +15,20 @@ from apps.backend.domain.scheduling.targets import schedule_permission_error
 from apps.backend.infrastructure.scheduling import schedules_access as infra
 
 
-def test_evaluate_admin_and_grant() -> None:
-    assert evaluate_schedules_access(user_role="admin") is True
-    assert evaluate_schedules_access(user_role="user", schedules_allowed=False) is False
-    assert evaluate_schedules_access(user_role="user", schedules_allowed=True) is True
-    assert evaluate_schedules_access(user_role="user", site_role="site_admin") is True
-    assert schedule_feature_permission_error_from_flags(user_role="user") is not None
-    assert schedule_feature_permission_error_from_flags(user_role="admin") is None
+def test_evaluate_site_admin_and_grant() -> None:
+    assert evaluate_schedules_access(site_role="site_admin") is True
+    assert evaluate_schedules_access(site_role="site_user", schedules_allowed=False) is False
+    assert evaluate_schedules_access(site_role="site_user", schedules_allowed=True) is True
+    assert schedule_feature_permission_error_from_flags(site_role="site_user") is not None
+    assert schedule_feature_permission_error_from_flags(site_role="site_admin") is None
+
+
+def test_the_rule_cannot_be_handed_a_legacy_role() -> None:
+    """``users.role`` has no parameter to flow through, so no caller can offer it."""
+    with pytest.raises(TypeError):
+        evaluate_schedules_access(user_role="admin")  # type: ignore[call-arg]
+    with pytest.raises(TypeError):
+        schedule_feature_permission_error_from_flags(user_role="admin")  # type: ignore[call-arg]
 
 
 def test_infra_user_without_grant_denied() -> None:
@@ -56,8 +65,8 @@ def test_infra_user_without_grant_denied() -> None:
         patch("apps.backend.infrastructure.db.db.user_site_role", return_value=None),
         patch("apps.backend.infrastructure.db.db.pool", return_value=pool),
     ):
-        assert infra.user_may_use_schedules(user_id=uid, user_role="user") is False
-        err = infra.schedule_feature_permission_error(user_id=uid, user_role="user")
+        assert infra.user_may_use_schedules(user_id=uid) is False
+        err = infra.schedule_feature_permission_error(user_id=uid)
         assert err is not None
         assert "schedules_allowed" in err
 
@@ -96,8 +105,8 @@ def test_infra_user_with_grant_allowed() -> None:
         patch("apps.backend.infrastructure.db.db.user_site_role", return_value=None),
         patch("apps.backend.infrastructure.db.db.pool", return_value=pool),
     ):
-        assert infra.user_may_use_schedules(user_id=uid, user_role="user") is True
-        assert infra.schedule_feature_permission_error(user_id=uid, user_role="user") is None
+        assert infra.user_may_use_schedules(user_id=uid) is True
+        assert infra.schedule_feature_permission_error(user_id=uid) is None
 
 
 def test_schedule_permission_error_still_checks_min_role() -> None:

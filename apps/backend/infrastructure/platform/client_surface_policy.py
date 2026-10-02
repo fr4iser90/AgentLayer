@@ -111,19 +111,22 @@ def server_workspaces_admin_only() -> bool:
 
 
 def user_may_use_server_workspaces(user: Any) -> bool:
-    """Admins always may; when the operator flag is off, everyone may."""
+    """Admins always may; when the operator flag is off, everyone may.
+
+    Admin here means ``users.site_role='site_admin'`` or a company admin
+    (``tenant_memberships.membership_role``), never the legacy ``users.role``: the
+    two reads of that column used to run first, so an account demoted through
+    ``site_role`` could still bind a workspace onto a host path — and on the
+    chat-tool path (:mod:`apps.backend.application.agent_runtime.runtime.io`) the
+    caller carries no role at all, which left the legacy DB read as the only decider.
+    """
     if not server_workspaces_admin_only():
-        return True
-    role = str(getattr(user, "role", None) or "").strip().lower()
-    if role == "admin":
         return True
     uid = getattr(user, "id", None)
     if uid is not None:
         try:
             from apps.backend.infrastructure.db import db
 
-            if db.user_role(uid) == "admin":
-                return True
             if db.user_site_role(uid) == "site_admin":
                 return True
             if db.user_is_tenant_admin(uid):

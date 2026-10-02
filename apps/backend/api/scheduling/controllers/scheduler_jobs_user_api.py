@@ -58,7 +58,7 @@ class SchedulerJobPatchBody(BaseModel):
 async def scheduler_execution_targets_catalog(request: Request) -> dict[str, Any]:
     """Scheduled job modes (not the full agent registry — only targets with a cron runner)."""
     user = await get_current_user(request)
-    feat_err = schedule_feature_permission_error(user_id=user.id, user_role=user.role)
+    feat_err = schedule_feature_permission_error(user_id=user.id)
     if feat_err:
         raise HTTPException(status_code=403, detail=feat_err)
     from apps.backend.domain.scheduling.targets import execution_target_catalog
@@ -86,7 +86,10 @@ async def scheduler_job_list(request: Request, dashboard_id: str | None = None, 
     rows = scheduler_jobs_store.list_jobs_for_user(
         tenant_id=tenant_id,
         current_user_id=user.id,
-        is_admin=(user.role == "admin"),
+        # The store takes a resolved right, never a role read: ``user.role`` is the
+        # legacy ``users.role`` column, so a demoted account (``site_role='site_user'``)
+        # would have listed every schedule in the company from it.
+        is_admin=(db.user_effective_role(user.id) == "admin"),
         dashboard_id=ws_id,
         limit=limit,
     )
@@ -100,7 +103,7 @@ async def scheduler_job_create(request: Request, body: SchedulerJobCreateBody) -
     tgt = normalize_execution_target(body.execution_target)
     if not tgt or not is_valid_execution_target(tgt):
         raise HTTPException(status_code=400, detail=execution_target_error(body.execution_target))
-    feat_err = schedule_feature_permission_error(user_id=user.id, user_role=user.role)
+    feat_err = schedule_feature_permission_error(user_id=user.id)
     if feat_err:
         raise HTTPException(status_code=403, detail=feat_err)
     perm_err = schedule_permission_error(
@@ -159,7 +162,7 @@ async def scheduler_job_create(request: Request, body: SchedulerJobCreateBody) -
 @router.patch("/{job_id}")
 async def scheduler_job_patch(request: Request, job_id: str, body: SchedulerJobPatchBody) -> dict[str, Any]:
     user = await get_current_user(request)
-    feat_err = schedule_feature_permission_error(user_id=user.id, user_role=user.role)
+    feat_err = schedule_feature_permission_error(user_id=user.id)
     if feat_err:
         raise HTTPException(status_code=403, detail=feat_err)
     tenant_id = db.user_tenant_id(user.id)
@@ -171,7 +174,7 @@ async def scheduler_job_patch(request: Request, job_id: str, body: SchedulerJobP
         job_id=jid,
         tenant_id=tenant_id,
         actor_user_id=user.id,
-        actor_is_admin=(user.role == "admin"),
+        actor_is_admin=(db.user_effective_role(user.id) == "admin"),
         title=body.title.strip() if isinstance(body.title, str) else None,
         instructions=body.instructions.strip() if isinstance(body.instructions, str) else None,
         interval_minutes=body.interval_minutes,
@@ -185,7 +188,7 @@ async def scheduler_job_patch(request: Request, job_id: str, body: SchedulerJobP
 @router.delete("/{job_id}")
 async def scheduler_job_hard_delete(request: Request, job_id: str) -> dict[str, Any]:
     user = await get_current_user(request)
-    feat_err = schedule_feature_permission_error(user_id=user.id, user_role=user.role)
+    feat_err = schedule_feature_permission_error(user_id=user.id)
     if feat_err:
         raise HTTPException(status_code=403, detail=feat_err)
     tenant_id = db.user_tenant_id(user.id)
@@ -197,7 +200,7 @@ async def scheduler_job_hard_delete(request: Request, job_id: str) -> dict[str, 
         job_id=jid,
         tenant_id=tenant_id,
         actor_user_id=user.id,
-        actor_is_admin=(user.role == "admin"),
+        actor_is_admin=(db.user_effective_role(user.id) == "admin"),
     )
     if not ok:
         raise HTTPException(status_code=404, detail="job not found or not allowed")
@@ -209,7 +212,7 @@ async def scheduler_job_set_enabled(
     request: Request, job_id: str, body: SchedulerJobSetEnabledBody
 ) -> dict[str, Any]:
     user = await get_current_user(request)
-    feat_err = schedule_feature_permission_error(user_id=user.id, user_role=user.role)
+    feat_err = schedule_feature_permission_error(user_id=user.id)
     if feat_err:
         raise HTTPException(status_code=403, detail=feat_err)
     tenant_id = db.user_tenant_id(user.id)
@@ -222,7 +225,7 @@ async def scheduler_job_set_enabled(
         tenant_id=tenant_id,
         enabled=bool(body.enabled),
         actor_user_id=user.id,
-        actor_is_admin=(user.role == "admin"),
+        actor_is_admin=(db.user_effective_role(user.id) == "admin"),
     )
     if not row:
         raise HTTPException(status_code=404, detail="job not found or not allowed")

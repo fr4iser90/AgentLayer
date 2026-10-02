@@ -374,7 +374,6 @@ def _raise_if_workspace_inaccessible(
         class _UserRef:
             def __init__(self, uid: Any) -> None:
                 self.id = uid
-                self.role = None
 
         refuse = refuse_server_workspace_for_user(_UserRef(user_id), workspace.get("execution_mode"))
         if refuse:

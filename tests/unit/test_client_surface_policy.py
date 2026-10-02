@@ -79,23 +79,43 @@ class ClientSurfacePolicyTests(unittest.TestCase):
         )
 
         class U:
-            def __init__(self, role: str) -> None:
-                self.role = role
-                self.id = None
+            def __init__(self, user_id: object) -> None:
+                self.id = user_id
 
-        with patch(
-            "apps.backend.infrastructure.platform.client_surface_policy.server_workspaces_admin_only",
-            return_value=True,
+        site_admin_id, plain_id, demoted_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+        # The demoted account still carries the legacy ``users.role`` value on the
+        # object; only ``site_role`` may elevate here.
+        demoted = U(demoted_id)
+        demoted.role = "admin"
+        site_roles = {str(site_admin_id): "site_admin", str(plain_id): "site_user", str(demoted_id): "site_user"}
+
+        with (
+            patch(
+                "apps.backend.infrastructure.platform.client_surface_policy.server_workspaces_admin_only",
+                return_value=True,
+            ),
+            patch(
+                "apps.backend.infrastructure.db.db.user_site_role",
+                side_effect=lambda uid, **_kw: site_roles.get(str(uid), "site_user"),
+            ),
+            patch(
+                "apps.backend.infrastructure.db.db.user_is_tenant_admin",
+                return_value=False,
+            ),
         ):
-            self.assertIsNone(refuse_server_workspace_for_user(U("admin"), "server"))
-            self.assertIsNotNone(refuse_server_workspace_for_user(U("user"), "server"))
-            self.assertIsNone(refuse_server_workspace_for_user(U("user"), "client"))
+            self.assertIsNone(refuse_server_workspace_for_user(U(site_admin_id), "server"))
+            self.assertIsNotNone(refuse_server_workspace_for_user(U(plain_id), "server"))
+            self.assertIsNotNone(refuse_server_workspace_for_user(demoted, "server"))
+            # Nothing to resolve means nothing to grant.
+            self.assertIsNotNone(refuse_server_workspace_for_user(U(None), "server"))
+            # A client workspace is never the hosted-host path, so the flag does not apply.
+            self.assertIsNone(refuse_server_workspace_for_user(U(plain_id), "client"))
 
         with patch(
             "apps.backend.infrastructure.platform.client_surface_policy.server_workspaces_admin_only",
             return_value=False,
         ):
-            self.assertIsNone(refuse_server_workspace_for_user(U("user"), "server"))
+            self.assertIsNone(refuse_server_workspace_for_user(U(plain_id), "server"))
 
     def _server_ws_flags(self, *, tenant_admin: bool):
         class U:
