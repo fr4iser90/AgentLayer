@@ -22,8 +22,8 @@ class _ToolRuntimeDeps:
         return policies_map()
 
     @staticmethod
-    def user_role(user_id: Any) -> str:
-        return db.user_role(user_id)
+    def tool_role(user_id: Any) -> str:
+        return db.user_effective_role(user_id)
 
     @staticmethod
     def max_chain_depth() -> int:

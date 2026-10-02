@@ -18,7 +18,9 @@ class ToolRuntimeDependencies(Protocol):
 
     def policies_map(self) -> dict[tuple[str, str], dict[str, Any]]: ...
 
-    def user_role(self, user_id: Any) -> str: ...
+    def tool_role(self, user_id: Any) -> str:
+        """Role for the ``min_role`` door — from ``users.site_role``, never ``users.role``."""
+        ...
 
     def max_chain_depth(self) -> int: ...
 
@@ -41,8 +43,8 @@ def policies_map() -> dict[tuple[str, str], dict[str, Any]]:
     return _deps.policies_map() if _deps is not None else {}
 
 
-def user_role(user_id: Any) -> str:
-    return _deps.user_role(user_id) if _deps is not None else ""
+def tool_role(user_id: Any) -> str:
+    return _deps.tool_role(user_id) if _deps is not None else ""
 
 
 def _max_chain_depth() -> int:
@@ -92,7 +94,7 @@ def run_tool(name: str, arguments: dict, context: dict | None = None) -> str:
                     ensure_ascii=False,
                 )
             tid, uid = get_identity()
-            if not caller_fulfills_effective_policy(user_role(uid), int(tid), eff):
+            if not caller_fulfills_effective_policy(tool_role(uid), int(tid), eff):
                 return json.dumps(
                     {
                         "ok": False,

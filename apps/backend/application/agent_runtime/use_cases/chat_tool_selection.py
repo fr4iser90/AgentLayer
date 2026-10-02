@@ -153,7 +153,14 @@ async def select_tools_for_chat_turn(
 
         pmap = policies_map()
         tenant_ctx, user_ctx = get_identity()
-        role = db.user_role(user_ctx)
+        try:
+            role = db.user_effective_role(user_ctx)
+        except Exception:
+            # An unresolved role must not skip the filter: without a role the caller
+            # is a plain user, which is the only reading that keeps min_role=admin
+            # tools out of the model's tool list (ADR 0011 §1).
+            logger.warning("tool door role unresolved; filtering as plain user", exc_info=True)
+            role = "user"
         merged_tools = filter_chat_tool_specs(
             merged_tools,
             get_registry(),

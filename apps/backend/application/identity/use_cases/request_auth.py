@@ -64,9 +64,10 @@ async def require_admin_scope(request: Request, capability: str) -> Any:
 def agent_effective_role(user_id: Any, fallback_role: str | None = None) -> str:
     """Agent/admin elevation resolved from the canonical ``users.site_role``.
 
-    Mirrors ``chat_run_bootstrap``: a legacy ``users.role='admin'`` paired with
-    ``site_role='site_user'`` must **not** elevate. ``fallback_role`` is used only
-    when the ``site_role`` lookup is unavailable.
+    Delegates to :func:`db.user_effective_role`, the same resolver behind the tool
+    ``min_role`` door, so a legacy ``users.role='admin'`` paired with
+    ``site_role='site_user'`` cannot elevate on either surface. ``fallback_role``
+    is used only when the ``site_role`` lookup is unavailable.
 
     Callers that feed a role into ``user_may_invoke_agent`` /
     ``schedule_permission_error`` should pass this instead of ``db.user_role()``,
@@ -74,14 +75,11 @@ def agent_effective_role(user_id: Any, fallback_role: str | None = None) -> str:
     """
     from apps.backend.infrastructure.db import db
 
-    site_flag: bool | None = None
     if user_id is not None:
         try:
-            site_flag = db.user_site_admin(user_id)
+            return db.user_effective_role(user_id)
         except Exception:
-            site_flag = None
-    if site_flag is not None:
-        return "admin" if site_flag else "user"
+            pass
     return (str(fallback_role or "user").strip().lower()) or "user"
 
 

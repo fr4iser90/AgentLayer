@@ -35,7 +35,7 @@ def _truthy(v: Any) -> bool:
 
 def catalog(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> str:
     _tid, uid = get_identity()
-    role = db.user_role(uid) if uid is not None else "user"
+    role = db.user_effective_role(uid) if uid is not None else "user"
     tenant_id = int(db.user_tenant_id(uid) or 1) if uid is not None else 1
     if context:
         ctx_role = context.get("user_role") or context.get("role")
