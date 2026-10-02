@@ -24,7 +24,7 @@ router = APIRouter(prefix="/v1/user/scheduler-job-presets", tags=["scheduler-job
 async def list_scheduler_job_presets(request: Request) -> dict[str, Any]:
     """Templates for a new schedule, gated like the schedule list itself."""
     user = await get_current_user(request)
-    feat_err = schedule_feature_permission_error(user_id=user.id, user_role=user.role)
+    feat_err = schedule_feature_permission_error(user_id=user.id)
     if feat_err:
         raise HTTPException(status_code=403, detail=feat_err)
     return {"ok": True, "presets": read_schedule_presets()}

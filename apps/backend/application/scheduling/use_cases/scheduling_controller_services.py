@@ -18,16 +18,14 @@ from apps.backend.infrastructure.scheduling.schedules_access import (
 def user_may_use_schedules(
     *,
     user_id: uuid.UUID | None = None,
-    user_role: str | None = None,
     user: Any | None = None,
 ) -> bool:
-    return _user_may_use_schedules(user_id=user_id, user_role=user_role, user=user)
+    return _user_may_use_schedules(user_id=user_id, user=user)
 
 
 def schedule_feature_permission_error(
     *,
     user_id: uuid.UUID | None = None,
-    user_role: str | None = None,
     user: Any | None = None,
 ) -> str | None:
-    return _schedule_feature_permission_error(user_id=user_id, user_role=user_role, user=user)
+    return _schedule_feature_permission_error(user_id=user_id, user=user)

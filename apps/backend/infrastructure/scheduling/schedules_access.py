@@ -41,49 +41,50 @@ def _resolve_uid(
 def user_may_use_schedules(
     *,
     user_id: uuid.UUID | None = None,
-    user_role: str | None = None,
     user: Any | None = None,
 ) -> bool:
-    role = str(user_role or getattr(user, "role", None) or "").strip().lower()
-    if role == "admin":
-        return True
+    """The schedules feature for one account: site admin, or the named grant.
 
+    Takes an identity, not a role string. A role handed in by a caller is the
+    legacy ``users.role`` (``infrastructure/identity/auth.py`` builds it from that
+    column), so accepting one here meant an account whose ``site_role`` says
+    ``site_user`` still got the feature — and there was nothing an admin could flip
+    to take it back.
+
+    No resolvable id and no readable ``site_role`` both deny: this gate guards
+    creating schedules that run on the instance, so an unreadable identity confers
+    nothing (ADR 0011 §1).
+    """
     uid = _resolve_uid(user_id, user)
     if uid is None:
-        return evaluate_schedules_access(user_role=role, schedules_allowed=False)
+        return False
 
     try:
         from apps.backend.infrastructure.db import db
 
-        db_role = db.user_role(uid)
         site = db.user_site_role(uid)
         allowed = False
         with db.pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
+                cur.execute(  # tenant-scope: guarded by user_id pk — the row read is the caller's own account
                     "SELECT COALESCE(schedules_allowed, false) FROM users WHERE id = %s",
                     (uid,),
                 )
                 row = cur.fetchone()
         if row is not None:
             allowed = bool(row[0])
-        return evaluate_schedules_access(
-            user_role=db_role or role,
-            site_role=site,
-            schedules_allowed=allowed,
-        )
+        return evaluate_schedules_access(site_role=site, schedules_allowed=allowed)
     except Exception as e:
         logger.warning("failed to check schedules_allowed: %s", e)
-        return evaluate_schedules_access(user_role=role, schedules_allowed=False)
+        return False
 
 
 def schedule_feature_permission_error(
     *,
     user_id: uuid.UUID | None = None,
-    user_role: str | None = None,
     user: Any | None = None,
 ) -> str | None:
-    if user_may_use_schedules(user_id=user_id, user_role=user_role, user=user):
+    if user_may_use_schedules(user_id=user_id, user=user):
         return None
     return schedules_feature_denied_message()
 

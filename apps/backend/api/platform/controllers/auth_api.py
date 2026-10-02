@@ -331,9 +331,12 @@ async def get_current_user_info(request: Request):
             user_may_use_schedules,
         )
 
-        base["may_use_schedules"] = user_may_use_schedules(user=user, user_role=user.role)
+        base["may_use_schedules"] = user_may_use_schedules(user=user)
     except Exception:
-        base["may_use_schedules"] = str(user.role or "").strip().lower() == "admin"
+        # The hint says nothing on a failed read. Answering it from ``user.role``
+        # would hand a demoted account the schedules UI, which is the drift this
+        # field is supposed to stop.
+        base["may_use_schedules"] = False
     if deployment == "multi_tenant" and membership:
         ensure_tenant_profession_defaults(tid)
         base["profession_policy"] = effective_policy(user.id, tid).to_public_dict()

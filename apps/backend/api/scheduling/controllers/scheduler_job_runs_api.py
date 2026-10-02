@@ -44,7 +44,9 @@ async def user_list_scheduler_job_runs(
         job_id=jid,
         tenant_id=tenant_id,
         user_id=user.id,
-        is_admin=(user.role == "admin"),
+        # Run history of another account's schedule is an admin view, and the admin
+        # behind it is ``users.site_role`` — not ``user.role``, the legacy column.
+        is_admin=(db.user_effective_role(user.id) == "admin"),
     ):
         raise HTTPException(status_code=404, detail="job not found or not allowed")
     rows = scheduler_job_runs_store.list_runs_for_job(
@@ -71,7 +73,7 @@ async def user_get_scheduler_job_run(request: Request, run_id: str) -> dict:
         job_id=jid,
         tenant_id=tenant_id,
         user_id=user.id,
-        is_admin=(user.role == "admin"),
+        is_admin=(db.user_effective_role(user.id) == "admin"),
     ):
         raise HTTPException(status_code=404, detail="run not found or not allowed")
     return {"ok": True, "run": scheduler_job_runs_store.row_to_public(row)}

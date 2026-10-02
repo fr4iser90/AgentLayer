@@ -97,7 +97,7 @@ def create(arguments: dict[str, Any]) -> str:
     if not raw_target or not is_valid_execution_target(raw_target):
         return _err(execution_target_error(arguments.get("execution_target")))
 
-    feat_err = schedule_feature_permission_error(user_id=caller_uid, user_role=role or "user")
+    feat_err = schedule_feature_permission_error(user_id=caller_uid)
     if feat_err:
         return _err(feat_err)
 
@@ -218,7 +218,7 @@ def set_enabled(arguments: dict[str, Any]) -> str:
     tenant_id, caller_uid = idt
     role = agent_effective_role(caller_uid, db.user_role(caller_uid))
     is_admin = role == "admin"
-    feat_err = schedule_feature_permission_error(user_id=caller_uid, user_role=role or "user")
+    feat_err = schedule_feature_permission_error(user_id=caller_uid)
     if feat_err:
         return _err(feat_err)
 
