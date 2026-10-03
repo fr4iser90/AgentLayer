@@ -96,7 +96,7 @@ export function Tabs({ items, value, onChange, ariaLabel, className, groupId }: 
             onClick={() => onChange(item.id)}
             className={[
               "rounded-tile px-soft py-base text-body transition-colors",
-              "focus-visible:outline-none focus-visible:shadow-focus",
+              "focus-visible:outline-hidden focus-visible:shadow-focus",
               "disabled:pointer-events-none disabled:opacity-45",
               selected
                 ? "bg-white/10 text-ink-primary"

@@ -755,7 +755,7 @@ function BlockView(props: {
         </label>
         <TextArea
           readOnly={readOnly}
-          className="min-h-[120px] resize-y outline-none"
+          className="min-h-[120px] resize-y outline-hidden"
           value={text}
           placeholder={block.props.placeholder || ""}
           onChange={(e) =>
@@ -923,7 +923,7 @@ function BlockView(props: {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={searchPlaceholder}
-                className="w-56 text-xs outline-none"
+                className="w-56 text-xs outline-hidden"
               />
             ) : null}
             {!structureLocked ? (

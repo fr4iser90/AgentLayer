@@ -1,3 +1,41 @@
+/* Tailwind v4 reads its theme from the same JS config the design guards import
+   (`check-z-index.mjs`, `check-fill-token.mjs`, `check-border-token.mjs`,
+   `width-scan.mjs` read `tailwind.config.js` at runtime), so the config stays the
+   single source of tokens instead of being translated into `@theme`.
+
+   The sources are listed here rather than left to v4's automatic detection: the
+   guard tests plant violations on purpose (`bg-red-500`, `z-[999]`) and must plant
+   them in the form the guard reads, not in the shipped stylesheet. Detection
+   ignores the negated glob in `tailwind.config.js`, so `source(none)` turns it off
+   and `@source not` excludes the test files — otherwise every violation stays
+   perfectly renderable and the token scale stops being enforceable. */
+@import "tailwindcss" source(none);
+@source "../index.html";
+@source "../src/**/*.{js,ts,jsx,tsx}";
+@source not "../src/**/*.test.{js,ts,jsx,tsx}";
+@config "../tailwind.config.js";
+
+/* Two rules v3's preflight shipped and v4's does not, restored rather than
+   accepted as a silent restyle:
+   - `cursor: pointer` on buttons. v4 dropped it (its UA fallback is `default`),
+     and src/ui alone has 59 bare <button>, so every primitive would have gone
+     from a hand to an arrow without a single call site changing.
+   - `appearance: textfield` on search inputs, which is what kept Chrome from
+     painting its own inset field over `bg-field`. v4 still neutralises
+     `::-webkit-search-decoration`; this is the other half of that rule.
+   Pinned by src/ui/preflight-compat.test.ts. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  input:where([type="search"]) {
+    -webkit-appearance: textfield;
+    outline-offset: -2px;
+  }
+}
+
 /* IBM Plex, self-hosted. Only the latin subset ships — 60 KB for all three
    faces, which is why there is no CDN round-trip here. The unicode-range is
    declared rather than omitted: without it the browser assumes full coverage
@@ -35,10 +73,6 @@
     U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191,
     U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
 html,
 body,

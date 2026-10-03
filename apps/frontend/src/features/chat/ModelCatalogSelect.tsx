@@ -80,7 +80,7 @@ export function ModelCatalogSelect({
     <div ref={rootRef} className="relative">
       <button
         type="button"
-        className={`mt-hair flex w-full items-center justify-between gap-base rounded-card border border-line bg-[#1a1a1a] ${buttonPadding} text-left text-ink-primary shadow-sm outline-none transition hover:border-accent/45 hover:bg-[#202020] focus:border-line-focus focus:ring-2 focus:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-60 ${buttonTextSize}`}
+        className={`mt-hair flex w-full items-center justify-between gap-base rounded-card border border-line bg-[#1a1a1a] ${buttonPadding} text-left text-ink-primary shadow-xs outline-hidden transition hover:border-accent/45 hover:bg-[#202020] focus:border-line-focus focus:ring-2 focus:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-60 ${buttonTextSize}`}
         disabled={isDisabled}
         aria-haspopup="listbox"
         aria-expanded={open}

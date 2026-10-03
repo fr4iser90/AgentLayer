@@ -1262,7 +1262,7 @@ export function DashboardEmbeddedChat({
                       }
                     }}
                     placeholder={t("dashboard:messagePlaceholder")}
-                    className="min-h-[40px] min-w-0 flex-1 resize-none leading-snug outline-none"
+                    className="min-h-[40px] min-w-0 flex-1 resize-none leading-snug outline-hidden"
                     disabled={readOnly || sendLoading}
                   />
                   {sendLoading ? (

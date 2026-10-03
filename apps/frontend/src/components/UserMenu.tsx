@@ -37,7 +37,7 @@ export function UserMenu() {
         variant="ghost"
         size="lg"
           type="button"
-          className="h-9 w-9 outline-none ring-accent/40 hover:scale-105"
+          className="h-9 w-9 outline-hidden ring-accent/40 hover:scale-105"
           aria-expanded={open}
           aria-haspopup="menu"
           onClick={() => setOpen((v) => !v)}

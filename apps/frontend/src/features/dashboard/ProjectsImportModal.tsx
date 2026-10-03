@@ -288,7 +288,7 @@ export function ProjectsImportModal({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("dashboard:importSearchRepos")}
-            className="min-w-[200px] flex-1 outline-none"
+            className="min-w-[200px] flex-1 outline-hidden"
           />
           <label className="flex items-center gap-base text-xs text-ink-primary">
             <Checkbox

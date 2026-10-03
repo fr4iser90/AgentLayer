@@ -41,7 +41,7 @@ describe("ui/Field", () => {
     expect(cls).toContain("bg-transparent");
     expect(cls).not.toContain("border-line");
     // The composer's whole point: dropping the box must not drop the affordance.
-    expect(cls).toContain("focus:outline-none");
+    expect(cls).toContain("focus:outline-hidden");
     expect(cls).not.toContain("read-only:");
   });
 

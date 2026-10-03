@@ -34,7 +34,7 @@ export type ButtonTone = "accent" | "success" | "warning" | "danger";
 const BASE = [
   "inline-flex select-none font-medium",
   "transition-colors duration-fast ease-standard",
-  "focus-visible:outline-none focus-visible:shadow-focus",
+  "focus-visible:outline-hidden focus-visible:shadow-focus",
   "disabled:pointer-events-none disabled:opacity-45",
 ].join(" ");
 

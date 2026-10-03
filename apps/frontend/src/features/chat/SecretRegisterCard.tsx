@@ -89,7 +89,7 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
         : null;
 
   return (
-    <div className="w-full max-w-measure rounded-sheet border border-warning/45 bg-warning-subtle px-soft py-soft text-sm shadow-sm">
+    <div className="w-full max-w-measure rounded-sheet border border-warning/45 bg-warning-subtle px-soft py-soft text-sm shadow-xs">
       <div className="flex items-start gap-base">
         <KeyRound aria-hidden className="mt-hair h-4 w-4 shrink-0" />
         <div className="min-w-0 flex-1">
@@ -122,7 +122,7 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
                       onChange={(e) =>
                         setFieldValues((prev) => ({ ...prev, [f.name]: e.target.value }))
                       }
-                      className="mt-hair w-full rounded-card border border-line bg-field px-firm py-snug text-sm text-ink-primary outline-none focus:border-warning/50"
+                      className="mt-hair w-full rounded-card border border-line bg-field px-firm py-snug text-sm text-ink-primary outline-hidden focus:border-warning/50"
                     />
                   </label>
                 ))
@@ -135,7 +135,7 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
                     disabled={disabled}
                     value={rawSecret}
                     onChange={(e) => setRawSecret(e.target.value)}
-                    className="mt-hair outline-none"
+                    className="mt-hair outline-hidden"
                   />
                 </label>
               )}

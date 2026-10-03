@@ -119,7 +119,7 @@ export function ProjectWorkspaceControls({
               value={workspaceId}
               disabled={readOnly}
               onChange={(e) => linkExisting(e.target.value)}
-              className="mt-tight text-xs outline-none"
+              className="mt-tight text-xs outline-hidden"
             >
               <option value="">{t("dashboard:workspacePickerNone")}</option>
               {workspaces.map((w) => (

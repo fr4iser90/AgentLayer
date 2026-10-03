@@ -3960,7 +3960,7 @@ export function ChatPage() {
                   chatMessageHasVisibleContent(displayMessages[displayMessages.length - 1]!)
                 ) ? (
                   <li className="flex w-full justify-end">
-                    <div className="max-w-measure rounded-sheet border border-accent/50 bg-accent-subtle px-wide py-soft text-sm text-badge-accent shadow-sm">
+                    <div className="max-w-measure rounded-sheet border border-accent/50 bg-accent-subtle px-wide py-soft text-sm text-badge-accent shadow-xs">
                       <span className="mb-tight flex items-center gap-base text-meta font-medium uppercase tracking-wide text-badge-accent">
                         <span className="inline-flex h-2 w-2 animate-pulse rounded-pill bg-accent" />
                         {t("chat:roleAssistant")}

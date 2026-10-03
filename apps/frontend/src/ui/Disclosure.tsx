@@ -91,7 +91,7 @@ export function Disclosure({
 
   const trigger = [
     "inline-flex cursor-pointer items-center gap-snug rounded-tile",
-    "focus:outline-none focus-visible:shadow-focus",
+    "focus:outline-hidden focus-visible:shadow-focus",
     variant === "chip" ? `border px-base py-tight text-meta ${CHIP_TONES[tone]}` : "",
     variant === "row" ? "w-full justify-between gap-base px-soft py-base text-body" : "",
   ]
