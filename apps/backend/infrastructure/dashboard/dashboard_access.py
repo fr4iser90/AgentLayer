@@ -146,32 +146,34 @@ def user_may_use_dashboards(
     user_id: uuid.UUID | None = None,
     user: Any | None = None,
 ) -> bool:
-    """Global operator gate + admin/site_admin always + per-user grant.
+    """Global operator gate + site admin always + per-user grant.
 
     Mirrors ``infrastructure/scheduling/schedules_access``: the global operator flag gates
-    everyone, then the pure rule in ``domain/dashboards/access`` decides using the
-    authoritative role/site_role resolved from the DB (falling back to ``user.role``) and the
-    per-user ``dashboards_allowed`` grant.
+    everyone, then the pure rule in ``domain/dashboards/access`` decides using the site role
+    resolved from the DB and the per-user ``dashboards_allowed`` grant.
+
+    Both of its former fallbacks are gone on purpose. This read ``db.user_role`` and passed
+    ``user_role=db_role or role``, where ``role`` came off the request's user object — the
+    legacy ``users.role``, which a demotion does not rewrite (ADR 0011 §1). A demoted account
+    therefore kept its dashboards, and an account whose lookup failed fell back onto the same
+    column. Without an id, or after a failed lookup, there is nothing to elevate on: deny.
     """
     if not global_dashboards_enabled():
         return False
-    role = str(getattr(user, "role", None) if user is not None else "").strip().lower()
     uid = _resolve_uid(user_id, user)
     if uid is None:
-        return evaluate_dashboards_access(user_role=role, dashboards_allowed=False)
+        return False
     try:
         from apps.backend.infrastructure.db import db
 
-        db_role = db.user_role(uid)
-        site = db.user_site_role(uid)
-        return evaluate_dashboards_access(
-            user_role=db_role or role,
-            site_role=site,
-            dashboards_allowed=_load_user_dashboards_allowed(uid),
-        )
+        site_role = db.user_site_role(uid)
     except Exception:
         logger.warning("failed to resolve dashboard access (user_id=%s)", uid, exc_info=True)
-        return evaluate_dashboards_access(user_role=role, dashboards_allowed=False)
+        return False
+    return evaluate_dashboards_access(
+        site_role=site_role,
+        dashboards_allowed=_load_user_dashboards_allowed(uid),
+    )
 
 
 def dashboards_feature_permission_error(
