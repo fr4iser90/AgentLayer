@@ -25,7 +25,7 @@ const BOX = [
   "relative shrink-0 cursor-pointer appearance-none",
   "border border-line bg-field",
   "transition-colors duration-fast ease-standard",
-  "focus-visible:outline-none focus-visible:shadow-focus",
+  "focus-visible:outline-hidden focus-visible:shadow-focus",
   "disabled:cursor-not-allowed disabled:opacity-45",
 ].join(" ");
 

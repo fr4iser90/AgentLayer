@@ -195,7 +195,7 @@ export function KanbanBlockBody(props: {
               {col.cards.map((card) => (
                 <div
                   key={card.id}
-                  className="rounded-tile border border-line-subtle bg-raised p-base shadow-sm"
+                  className="rounded-tile border border-line-subtle bg-raised p-base shadow-xs"
                 >
                   {readOnly ? (
                     <p className="text-sm text-ink-primary">{card.title || t("dashboard:kanbanCardTitleEmpty")}</p>
@@ -348,7 +348,7 @@ export function RichMarkdownBlockBody(props: {
           <label className="mb-tight block text-meta uppercase text-ink-muted">{t("dashboard:markdownLabel")}</label>
           <TextArea
             mono
-            className="dashboard-grid-no-drag min-h-[220px] resize-y outline-none"
+            className="dashboard-grid-no-drag min-h-[220px] resize-y outline-hidden"
             placeholder={placeholder}
             value={text}
             onChange={(e) => setData((d) => setPath(d, dp, e.target.value))}

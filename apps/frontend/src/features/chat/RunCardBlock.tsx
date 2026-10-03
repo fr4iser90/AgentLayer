@@ -265,7 +265,7 @@ export function RunCardBlock({
 
   return (
     <div
-      className={`w-full max-w-measure rounded-sheet border ${borderForKind(card.kind)} ${bgForKind(card.kind)} px-soft py-firm text-sm shadow-sm`}
+      className={`w-full max-w-measure rounded-sheet border ${borderForKind(card.kind)} ${bgForKind(card.kind)} px-soft py-firm text-sm shadow-xs`}
     >
       <div className="flex items-start gap-base">
         <span className="mt-hair text-base leading-none" aria-hidden>

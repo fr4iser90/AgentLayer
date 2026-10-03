@@ -541,7 +541,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
                 key={b.id}
                 data-block-id={b.id}
                 className={[
-                  "absolute cursor-auto overflow-hidden rounded-sheet border bg-card shadow-sm",
+                  "absolute cursor-auto overflow-hidden rounded-sheet border bg-card shadow-xs",
                   dragging ? "select-none" : "",
                   isSelected && editMode
                     ? "border-accent/60 ring-1 ring-accent/30"

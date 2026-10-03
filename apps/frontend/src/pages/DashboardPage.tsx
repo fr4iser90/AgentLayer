@@ -1411,7 +1411,7 @@ export function DashboardPage() {
             value={catalogQuery}
             onChange={(e) => setCatalogQuery(e.target.value)}
             placeholder={t("dashboard:filterByNamePlaceholder")}
-            className="outline-none"
+            className="outline-hidden"
           />
         </div>
         <div>
@@ -1564,7 +1564,7 @@ export function DashboardPage() {
                     <label className="mb-tight block text-xs text-ink-muted">{t("dashboard:dashboardTitleLabel")}</label>
                     <TextInput
                       readOnly={!canEditStructure}
-                      className="outline-none"
+                      className="outline-hidden"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                     />
@@ -1976,7 +1976,7 @@ export function DashboardPage() {
                   });
                 }}
                 placeholder={t("dashboard:agentPromptExtraPlaceholder")}
-                className="mt-tight resize-y leading-relaxed outline-none"
+                className="mt-tight resize-y leading-relaxed outline-hidden"
               />
               <p className="mt-base text-meta text-ink-muted">{t("dashboard:agentPromptExtraSavedHint")}</p>
               <p className="mt-soft text-meta text-ink-muted">{t("dashboard:agentPromptScrollHint")}</p>
@@ -2025,7 +2025,7 @@ export function DashboardPage() {
                     <Select
                       id="ws-tool-pick"
                       disabled={pickableCatalogTools.length === 0}
-                      className="outline-none"
+                      className="outline-hidden"
                       defaultValue=""
                       onChange={(e) => {
                         const v = e.currentTarget.value;
@@ -2061,7 +2061,7 @@ export function DashboardPage() {
                           }
                         }}
                         placeholder={t("dashboard:shareToolNamePlaceholder")}
-                        className="min-w-0 flex-1 outline-none"
+                        className="min-w-0 flex-1 outline-hidden"
                       />
                       <Button
                         type="button"
@@ -2100,7 +2100,7 @@ export function DashboardPage() {
                       value={memberEmail}
                       onChange={(e) => setMemberEmail(e.target.value)}
                       placeholder={t("dashboard:shareEmailPlaceholder")}
-                      className="outline-none"
+                      className="outline-hidden"
                     />
                   </div>
                   <div>
@@ -2174,7 +2174,7 @@ export function DashboardPage() {
                       value={blockShareEmail}
                       onChange={(e) => setBlockShareEmail(e.target.value)}
                       placeholder={t("dashboard:shareEmailPlaceholder")}
-                      className="outline-none"
+                      className="outline-hidden"
                     />
                   </div>
                   <div className="min-w-[140px]">
@@ -2186,7 +2186,7 @@ export function DashboardPage() {
                       onChange={(e) =>
                         setBlockSharePermission(e.target.value === "edit" ? "edit" : "view")
                       }
-                      className="outline-none"
+                      className="outline-hidden"
                     >
                       <option value="view">{t("dashboard:blockShareViewOnly")}</option>
                       <option value="edit">{t("dashboard:blockShareEdit")}</option>
@@ -2299,7 +2299,7 @@ export function DashboardPage() {
                       value={publicShareLabel}
                       onChange={(e) => setPublicShareLabel(e.target.value)}
                       placeholder={t("dashboard:publicShareLabelPlaceholder")}
-                      className="outline-none"
+                      className="outline-hidden"
                     />
                   </div>
                   <div className="min-w-[180px]">
@@ -2310,7 +2310,7 @@ export function DashboardPage() {
                       type="datetime-local"
                       value={publicShareExpiresAt}
                       onChange={(e) => setPublicShareExpiresAt(e.target.value)}
-                      className="outline-none"
+                      className="outline-hidden"
                     />
                   </div>
                   <div className="min-w-[160px]">
@@ -2322,7 +2322,7 @@ export function DashboardPage() {
                       value={publicSharePassword}
                       onChange={(e) => setPublicSharePassword(e.target.value)}
                       placeholder={t("dashboard:publicSharePasswordOptional")}
-                      className="outline-none"
+                      className="outline-hidden"
                       autoComplete="new-password"
                     />
                   </div>

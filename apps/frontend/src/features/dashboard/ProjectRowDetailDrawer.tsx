@@ -218,7 +218,7 @@ export function ProjectRowDetailDrawer(props: {
                   mono
                   value={runNowWorkspaceId}
                   onChange={(e) => setRunNowWorkspaceId(e.target.value)}
-                  className="mt-tight text-xs outline-none"
+                  className="mt-tight text-xs outline-hidden"
                   placeholder={t("dashboard:workspaceUuidPlaceholder")}
                 />
               </label>
@@ -230,7 +230,7 @@ export function ProjectRowDetailDrawer(props: {
             <TextArea
               value={runNowInstructions}
               onChange={(e) => setRunNowInstructions(e.target.value)}
-              className="min-h-[110px] resize-y text-xs outline-none"
+              className="min-h-[110px] resize-y text-xs outline-hidden"
               placeholder={t("dashboard:describeWhatToDo")}
             />
             {runNowMsg ? <div className="mt-base text-xs text-ink-muted">{runNowMsg}</div> : null}

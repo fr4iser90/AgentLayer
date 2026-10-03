@@ -22,7 +22,7 @@ const FIELD_BASE = [
   "w-full rounded-card border border-line bg-field px-soft py-snug text-body text-ink-primary",
   "placeholder:text-field-placeholder",
   "transition-colors duration-fast ease-standard",
-  "focus:border-line-focus focus:outline-none focus:shadow-focus",
+  "focus:border-line-focus focus:outline-hidden focus:shadow-focus",
   "disabled:cursor-not-allowed disabled:opacity-45",
   "read-only:cursor-default read-only:border-transparent read-only:bg-transparent",
 ].join(" ");
@@ -42,7 +42,7 @@ const FIELD_MONO = "font-mono";
 const FIELD_BARE = [
   "w-full bg-transparent text-ink-primary",
   "placeholder:text-field-placeholder",
-  "focus:outline-none",
+  "focus:outline-hidden",
   "disabled:cursor-not-allowed disabled:opacity-45",
 ].join(" ");
 

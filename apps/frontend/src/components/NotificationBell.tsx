@@ -58,7 +58,7 @@ export function NotificationBell() {
         variant="ghost"
         size="lg"
           type="button"
-          className="relative h-9 w-9 outline-none ring-accent/40 hover:bg-white/10"
+          className="relative h-9 w-9 outline-hidden ring-accent/40 hover:bg-white/10"
           aria-expanded={open}
           aria-haspopup="menu"
           onClick={() => setOpen((v) => !v)}

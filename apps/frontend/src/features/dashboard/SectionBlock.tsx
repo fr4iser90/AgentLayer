@@ -90,7 +90,7 @@ export function SectionBlockBody(props: {
         {editMode && !contentReadOnly ? (
           <TextInput
             type="text"
-            className="min-w-0 flex-1 outline-none"
+            className="min-w-0 flex-1 outline-hidden"
             value={block.props.title ?? ""}
             placeholder={t("dashboard:sectionTitlePlaceholder")}
             onChange={(e) => patchSectionProps({ title: e.target.value })}

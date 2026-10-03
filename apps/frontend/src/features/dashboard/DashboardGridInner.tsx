@@ -325,7 +325,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                 key={b.id}
                 data-block-id={b.id}
                 className={[
-                  "relative overflow-hidden rounded-sheet border bg-card shadow-sm transition-colors",
+                  "relative overflow-hidden rounded-sheet border bg-card shadow-xs transition-colors",
                   isSelected && editMode
                     ? "border-accent/60 ring-1 ring-accent/30"
                     : isHighlighted

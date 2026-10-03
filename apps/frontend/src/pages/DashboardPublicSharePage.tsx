@@ -151,7 +151,7 @@ export function DashboardPublicSharePage() {
             value={passwordInput}
             onChange={(e) => setPasswordInput(e.target.value)}
             placeholder={t("dashboard:publicSharePasswordPlaceholder")}
-            className="outline-none"
+            className="outline-hidden"
             autoComplete="current-password"
           />
           {passwordError ? <p className="text-xs text-badge-danger">{passwordError}</p> : null}

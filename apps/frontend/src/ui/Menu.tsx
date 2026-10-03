@@ -38,7 +38,7 @@ interface MenuProps {
 const ITEM = [
   "flex w-full items-center gap-base px-soft py-base text-left text-body",
   "text-ink-secondary hover:bg-white/[0.06] hover:text-ink-primary",
-  "focus:outline-none focus-visible:bg-white/10 focus-visible:text-ink-primary",
+  "focus:outline-hidden focus-visible:bg-white/10 focus-visible:text-ink-primary",
   "disabled:pointer-events-none disabled:opacity-45",
 ].join(" ");
 

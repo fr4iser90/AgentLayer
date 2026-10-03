@@ -103,7 +103,7 @@ export function Modal({
         tabIndex={-1}
         className={[
           "z-modal flex max-h-full w-full flex-col overflow-hidden",
-          "rounded-sheet border border-line bg-card shadow-overlay outline-none",
+          "rounded-sheet border border-line bg-card shadow-overlay outline-hidden",
           SIZES[size],
           className,
         ]

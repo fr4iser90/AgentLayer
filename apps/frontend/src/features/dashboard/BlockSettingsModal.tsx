@@ -308,7 +308,7 @@ export function BlockSettingsModal({
                   {t("dashboard:blockSettingsTitleLabel")}
                 </span>
                 <TextInput
-                  className="outline-none"
+                  className="outline-hidden"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
@@ -328,7 +328,7 @@ export function BlockSettingsModal({
                 <span className="text-meta text-ink-muted">{t("dashboard:blockSettingsDataPath")}</span>
                 <TextInput
                   mono
-                  className="text-xs outline-none"
+                  className="text-xs outline-hidden"
                   value={dataPath}
                   onChange={(e) => setDataPath(e.target.value)}
                   placeholder={t("dashboard:blockSettingsDataPathPlaceholder")}
@@ -383,7 +383,7 @@ export function BlockSettingsModal({
                   </label>
                   <Select
                     id="block-settings-share-target"
-                    className="outline-none"
+                    className="outline-hidden"
                     value={shareKey}
                     onChange={(e) => setShareKey(e.target.value)}
                   >

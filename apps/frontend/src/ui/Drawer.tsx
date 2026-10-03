@@ -161,7 +161,7 @@ export function Drawer({
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         className={[
-          "absolute flex max-h-full flex-col overflow-hidden shadow-overlay outline-none",
+          "absolute flex max-h-full flex-col overflow-hidden shadow-overlay outline-hidden",
           SURFACES[surface],
           "border-line md:border",
           ANCHOR[side],

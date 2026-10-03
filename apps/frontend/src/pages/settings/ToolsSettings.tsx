@@ -423,7 +423,7 @@ export function ToolsSettings() {
                       return (
                         <div
                           key={pid}
-                          className="flex flex-col rounded-sheet border border-line bg-black/25 p-wide shadow-sm shadow-black/20"
+                          className="flex flex-col rounded-sheet border border-line bg-black/25 p-wide shadow-xs shadow-black/20"
                         >
                           <div className="mb-base flex flex-wrap items-start justify-between gap-base">
                             <div className="min-w-0">

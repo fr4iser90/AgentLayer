@@ -133,7 +133,7 @@ export function CardGridBlockBody(props: {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={searchPlaceholder}
-            className="min-w-[12rem] max-w-control text-xs outline-none sm:w-56"
+            className="min-w-[12rem] max-w-control text-xs outline-hidden sm:w-56"
           />
         ) : null}
       </div>
@@ -157,7 +157,7 @@ export function CardGridBlockBody(props: {
                 type="button"
                 disabled={!enableRowDetail}
                 className={[
-                  "dashboard-grid-no-drag flex min-h-[120px] flex-col rounded-sheet border border-line bg-gradient-to-br from-slate-900/90 to-black/60 p-wide text-left shadow-sm transition-colors",
+                  "dashboard-grid-no-drag flex min-h-[120px] flex-col rounded-sheet border border-line bg-gradient-to-br from-slate-900/90 to-black/60 p-wide text-left shadow-xs transition-colors",
                   enableRowDetail ? "hover:border-accent/40 hover:bg-slate-900" : "cursor-default",
                 ].join(" ")}
                 onClick={() => {

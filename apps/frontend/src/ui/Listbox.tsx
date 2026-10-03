@@ -44,7 +44,7 @@ interface ListboxProps {
 
 const OPTION = [
   "flex w-full cursor-pointer items-start gap-base rounded-tile px-base py-snug text-left",
-  "hover:bg-white/[0.06] focus:outline-none focus-visible:ring-1 focus-visible:ring-accent/50",
+  "hover:bg-white/[0.06] focus:outline-hidden focus-visible:ring-1 focus-visible:ring-accent/50",
   "aria-disabled:pointer-events-none aria-disabled:opacity-45",
 ].join(" ");
 

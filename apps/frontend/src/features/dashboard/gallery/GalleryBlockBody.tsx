@@ -307,7 +307,7 @@ function GalleryPhotoCard(props: {
 
   if (readOnly) {
     return (
-      <div className="overflow-hidden rounded-sheet border border-line bg-black/25 shadow-sm">
+      <div className="overflow-hidden rounded-sheet border border-line bg-black/25 shadow-xs">
         {imageArea}
         {caption ? (
           <p className="border-t border-line-subtle p-soft text-xs text-ink-primary">{caption}</p>
@@ -318,7 +318,7 @@ function GalleryPhotoCard(props: {
 
   return (
     <div
-      className={`overflow-hidden rounded-sheet border bg-black/25 shadow-sm transition-colors ${
+      className={`overflow-hidden rounded-sheet border bg-black/25 shadow-xs transition-colors ${
         isDragOver ? "border-violet-400/70 ring-1 ring-violet-400/40" : "border-line"
       }`}
       draggable

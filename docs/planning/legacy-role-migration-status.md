@@ -12,7 +12,9 @@ status: in-progress
 Task-Freigabe geschlossen, committet 03.10. 00:01), **03.10. bis 13:55** (Familie 5 = Dashboards
 geschlossen) und **03.10. 15:2x–15:3x** (Familie 5: alle fünf Mutationen mit Testnamen nachgemessen,
 Rest-Metrik neu gezählt, Precommit gelaufen — **rot durch `node_cve_full`, Commit deshalb ausstehend**,
-Abschnitt D). Quelle: Session
+Abschnitt D), **03.10. ab 16:0x** (auf Entscheidung des Owners: `tailwindcss` 3→4 als eigener Schwung —
+das Gate ist damit wieder grün, Abschnitt D) **und 03.10. 16:5x–17:0x** (Familie 5 committet,
+Tailwind-Schwung committet). Quelle: Session
 `9910e7a2-88ab-4521-9d46-d96dd404d97d` (28.09. 19:52 → 02.10. 20:12, 5 843 Records, beim Commit
 abgebrochen) **plus** Live-Messung im Working Tree am 02.10. Jeder Hacken unten ist entweder durch
 Code/Command belegt oder als *nicht nachgemessen* gekennzeichnet.
@@ -277,12 +279,77 @@ samt ihrem Anhängsel `auto_workspace` — und die Lüge steckt in dem Träger, 
       03.10. 15:4x: der Hook hat den Commit zu Familie 5 mit `[check:node_cve_full] FAILED - exit code 1`
       abgelehnt (`.qwen/tmp/fam5/commit_attempt.txt`). Der Record hält einen grünen Lauf 02.10. 23:52;
       zwischen dem und heute änderte nichts am Lockfile — der Advisory-Feed ist der Bewegende (einzige
-      tragfähige Erklärung, keine Messung). Zu entscheiden ist dieselbe Klasse wie bei Bandit: **Gate-Form,
-      nicht Fleiß** — (a) `tailwindcss` 3→4 ziehen, ein eigener Schwung, der mitten in der UI-Umgestaltung
-      das Design-System anfasst; (b) Provider wechseln (`CVE_PROVIDER=osv|snyk`, config.json:650-660);
-      (c) warten — nach der Messung oben aber auf etwas, das es für `braces` nicht gibt. **Kein Skip ist
-      benutzt worden** — die Änderung zu Familie 5 liegt darum **gestaged, aber nicht committet**;
-      Entscheidung bei ihm.
+      tragfähige Erklärung, keine Messung). Drei Kandidaten standen: (a) `tailwindcss` 3→4 ziehen, ein
+      eigener Schwung, der mitten in der UI-Umgestaltung das Design-System anfasst; (b) Provider wechseln
+      (`CVE_PROVIDER=osv|snyk`, config.json:650-660); (c) warten — nach der Messung oben aber auf etwas,
+      das es für `braces` nicht gibt. **Kein Skip ist benutzt worden** — die Änderung zu Familie 5 lag
+      darum **gestaged, aber nicht committet**.
+- [x] **Entschieden und gezogen: `tailwindcss` 3 → 4 (Variante (a)), eigener Schwung 03.10.** Der Owner
+      wollte die echte Reparatur, nicht die Gate-Quelle — weder (b) noch (c). Was sich änderte:
+      `tailwindcss ^4.3.3`, neu `@tailwindcss/postcss ^4.3.3`, `postcss ^8.5.25`, **`autoprefixer`
+      deinstalliert** (lightningcss übernimmt es im v4-Compiler), `postcss.config.js` nennt nur noch
+      `@tailwindcss/postcss`. Damit ist die gesamte v3-Kette aus dem Lock: `braces 3.0.3`, `chokidar 3.6.0`,
+      `fast-glob`, `micromatch`, `anymatch`, `commander 4.1.1`, `dlv`, `didyoumean`, `cssesc`,
+      `glob-parent`, `arg`. Ergebnis: `npm audit --audit-level=high` → **Exit 0**, noch **2 moderate**
+      (`react-router`), die nach `--audit-level=high` nicht blockieren. Das Gate ist grün, **ohne** dass
+      `scripts/checks/` oder eine Config angefasst wurde.
+    - **Warum `@config` und kein `@theme`:** vier Guard-Skripte importieren die JS-Config zur Laufzeit —
+      `check-z-index.mjs:34`, `check-fill-token.mjs:34-35`, `check-border-token.mjs:35`, `width-scan.mjs:23`
+      — und `src/ui/fill-token-guard.test.ts` liest zusätzlich `tailwindcss/colors.js`. Ein `@theme` hätte
+      eine zweite Quelle der Wahrheit für ~1 200 Token-Aufrufe erzeugt; die Guards und der Compiler würden
+      bei der nächsten Config-Änderung auseinanderlaufen. `tailwind.config.js` ist **unverändert**.
+    - **Die Falle, die beinahe durchgerutscht wäre.** v4s automatische Source-Erkennung **ignoriert** das
+      negated glob (`!src/**/*.{test,...}`) in der JS-Config. Der erste Build compilierte die Guard-Fixtures
+      darum mit: **107** Rohtoken-Klassen standen im ausgelieferten Stylesheet, einzeln gemessen
+      `bg-red-500`, `bg-indigo-500`, `border-rose-500`, `text-rose-400`, `z-[999]`, `max-w-6xl`. Das ist der
+      Moment, in dem die Token-Skala aufhört erzwingbar zu sein — der Guard meldet grün, weil *er* die
+      Fixtures ausschließt, während das Bundle sie enthält. Fix: `@import "tailwindcss" source(none)` +
+      drei `@source`-Zeilen, davon eine `@source not "../src/**/*.test.{js,ts,jsx,tsx}"`; im finalen Build
+      sind alle sechs Klassen **0×**.
+    - **Zwei Preflight-Regeln, die v4 nicht mehr hat**, sind in `@layer base` zurückgeholt
+      (`apps/frontend/src/index.css`) statt als stille Umgestaltung hingenommen: `cursor: pointer` auf
+      Buttons (v4s Fallback ist `default`; `src/ui` enthält **59** nackte `<button>`, alle Primitive wären
+      vom Zeiger zum Pfeil geworden, ohne dass eine Call-Site sich geändert hätte) und
+      `-webkit-appearance: textfield` + `outline-offset: -2px` auf `[type=search]` — das hielt Chrome davon
+      ab, sein eigenes Einfallfeld über `bg-field` zu malen; v4 neutralisiert nur
+      `::-webkit-search-decoration`, das ist die andere Hälfte. Die Margen von
+      `blockquote/dl/dd/figure/fieldset`, die v3 dort noch einzeln setzte, deckt v4s universeller Reset
+      breiter ab — nicht zurückgeholt.
+    - **Umbenannt, weil dieselbe Klasse in v4 etwas anderes meint** (jeweils aus den zwei Builds gelesen,
+      nicht aus dem Changelog): `shadow-sm`→`shadow-xs` (**14**), `outline-none`→`outline-hidden` (**44**) —
+      zusammen **58 Vorkommen auf 57 Zeilen in 36 Dateien**. v4s `shadow-sm` *ist* v3s `shadow`, und
+      `outline-hidden` ist die einzige Fokus-Kontrolle, die ein Forced-Colors-Theme übrig lässt, wenn es
+      alle `shadow-focus`-Ringe streicht. Bewusst **nicht** geändert, weil identisch gemessen: `shadow`
+      (`0 1px 3px 0 …`), `rounded` (`.25rem`), `backdrop-blur` (`blur(8px)`). `ring` (3px→1px) und `blur`
+      kommen in `src/` nirgends blank vor.
+    - **Größe, erklärt statt hingenommen:** roh **70 380 → 100 430 B**, gzip **13 544 → 16 927 B**
+      (+3 383 B, **+25 %**). Mechanismen gezählt: **70 `@property`-Blöcke** (4 403 B = 4,4 %), **275
+      `color-mix()`-Fallback-Paare**, `calc(var(--spacing) * N)` statt ausgeschriebener Werte, `:where()`
+      bei space-*/divide-*. Vendor-Präfixe überleben autoprefixer: `-webkit-backdrop-filter` 6/6,
+      `-webkit-user-select` 3/3, `-webkit-line-clamp` 1/1, `-webkit-font-smoothing` 1/1.
+    - **Festgenagelt** wird das in `apps/frontend/src/ui/preflight-compat.test.ts` (neu, 10 Vitest-Fälle):
+      die vier wegbenannten Utilities dürfen in keiner `.ts/.tsx` unter `src/` stehen (Tests ausgenommen —
+      die *pflanzen* Violations absichtlich), der Matcher darf dabei weder Prosa („the focus ring") noch ein
+      Datenwort (`extras: ["ring"]` in `mascotArt.ts`) noch die identischen Utilities erwischen, und die
+      drei Atomsowie die beiden Preflight-Regeln müssen in `index.css` stehen. **Sechs Mutationen** machten
+      ihn jeweils rot, jede einzeln zurückgeholt und per `md5sum -c` belegt.
+- [ ] **Zwei root-owned Ordner in `apps/frontend/node_modules` blockieren jede künftige `npm install`
+      (03.10., beim Major-Lauf gefunden).** Nach dem Container vom 21.09. liegen dort `playwright` und
+      `playwright-core`, beide **1.49.1**, `root:root` — in `package.json` **und** im Lock **nicht erklärt**,
+      von **12** Skripten unter `scripts/probe/` und `scripts/e2e/` aber importiert. `npm install` wollte sie
+      entfernen und fiel mit `ENOTEMPTY: directory not empty, rename '.../node_modules/playwright'` ab;
+      `rm -r` scheitert mit `EACCES`, weil ein `rename()` über Elternordner hinweg Schreibrecht auf dem
+      `..`-Eintrag des **Zielverzeichnisses** braucht und dessen Einträge root gehören, während der
+      Vaterordner dem Nutzer gehört. Für den Migrationslauf habe ich beide **umbenannt**
+      (`.stray-playwright{,-core,-staging,-core-staging}`) und nach dem Lauf **unter ihre ursprünglichen
+      Namen zurückgesetzt** — live geprüft: beide `1.49.1`, Stand 03.10. Die zwei `-staging`-Reste von npm
+      mussten liegen bleiben, ihr Vater ist root. **Dauerhafte Beseitigung braucht erhöhte Rechte**
+      (`sudo rm -rf apps/frontend/node_modules/playwright apps/frontend/node_modules/playwright-core`) —
+      bewusst **nicht** ausgeführt, Entscheidung beim Owner. Solange sie da sind, meldet
+      `npm install --dry-run` „removed 2 packages" und der nächste echte Install läuft wieder auf
+      `ENOTEMPTY`. Aufgehängt werden kann das dauerhaft nur, indem die beiden entweder sauber deinstalliert
+      oder als echte (dev-)Abhängigkeit erklärt werden — letzeres wäre eine eigene Entscheidung, weil die
+      1.49.1 nicht die Version ist, die die Skripte erwarten würden.
 - [ ] **Frontend-Tests und Produktions-Build sind in CI nicht gecastet.** Das `ci`-Profil enthält die
       `frontend_*`-Guard-Skripte und `frontend_i18n`, aber **weder** `npm run test:unit` (Vitest) **noch**
       `npm run build`. Beides ist lokal grün gemessen (01.10. in der Session), nur eben nirgends Pflicht.
@@ -296,10 +363,10 @@ samt ihrem Anhängsel `auto_workspace` — und die Lüge steckt in dem Träger, 
 
 - [ ] **PR → main steht aus.** Alle Commits vom 02.10. (ab `8312afaf` inklusive dieses Dokuments) sind
       **noch nicht gepusht** — Maßzahl statt Zahl: `git rev-list --count origin/feat/chat-persist-queue-goal-strip..HEAD`
-      → **4** (gemessen 03.10. 15:25 an HEAD `f80b44bb` = Familie 6; mit dem Commit zu Familie 5 sind es
-      **5**, und `git rev-list --count main..HEAD` steigt von 181 auf 182). Der Branch läuft **181 Commits**
-      vor `main` her (Snapshot 177); `main` zuletzt `9aa96e19`. (Stand Snapshot: HEAD war `4ba62ca8`, 2 vor
-      `origin`.)
+      → **5** (gemessen 03.10. nach dem Commit zu Familie 5, `7384e917`; `git rev-list --count main..HEAD`
+      dazu **182**). Nach dem Tailwind-Schwung gemessen: **6** bzw. **183** — der Branch läuft damit
+      **183 Commits** vor `main` her (Snapshot 177); `main` zuletzt `9aa96e19`. (Stand Snapshot: HEAD war
+      `4ba62ca8`, 2 vor `origin`.)
     - `.github/workflows/ci.yml` triggert nur `pull_request` und `push: [main]` → **auf diesem Branch ist
       CI nie gelaufen.** Der erste Lauf ist gleichzeitig der erste Test von D (Bandit) — vorher mit ihm
       die Gate-Form klären, sonst ist der PR rot, bevor er gelesen wurde.
@@ -347,8 +414,17 @@ samt ihrem Anhängsel `auto_workspace` — und die Lüge steckt in dem Träger, 
 | **`db.user_role(` nach Familie 5** (03.10. 15:2x) | **21 Vorkommen in 15 Dateien** — siehe Messgröße oben (15 getragen / 3 Fallback-Argument / 3 dokumentarisch) |
 | **Familie 5 — precommit-Profil** (03.10. 15:3x) | **FAILED**: 26 Checks grün, **`node_cve_full` exit 1** (npm-audit-Kette `braces`→`micromatch`→`fast-glob`→`chokidar`/`tailwindcss`, 5 high — Details in D). Backend-Suite im Lauf: **2 397 passed, 3 skipped, 2 deselected**. Kein Skip benutzt, Commit bleibt aus |
 | **Familie 5 — Commit-Versuch** (03.10. 15:4x) | `git commit -F .qwen/tmp/fam5/msg.txt` → `[check:node_cve_full] FAILED - exit code 1`, `[pre-commit] FAILED`, **EXIT=1**: kein Commit. Die sechs Pfade bleiben **gestaged** (neue Testdatei als `A`), die fertige Message liegt als `.qwen/tmp/fam5/msg.txt`; der Gegencheck auf `git ls-tree -r HEAD` steht darum noch aus |
+| **Tailwind — Baseline v3** (03.10., vor dem Major) | `npm run build` Exit 0, ausgeliefertes Stylesheet **70 380 B** roh / **13 544 B** gzip (`.qwen/tmp/tw4/v3.css`) |
+| **Tailwind — erster v4-Build** (03.10.) | kompiliert, **aber** Guard-Fixtures mit drin: **107** Rohtoken-/Arbitrary-Klassen im ausgelieferten Stylesheet (gezählt über `bg-*-*`, `z-[…]`, `max-w-6xl` u. ä.); Auslöser: negated glob wird ignoriert |
+| **Tailwind — finaler Build** (03.10.) | `npm run build` **EXIT=0**, **20/20 Design-Guards** OK, Stylesheet **100 430 B** roh / **16 927 B** gzip; die sechs nachgeprüften Klassen (`bg-red-500`, `bg-indigo-500`, `border-rose-500`, `text-rose-400`, `z-[999]`, `max-w-6xl`) **0×**; `.shadow-xs` vorhanden, `.shadow-sm` **0**, `.outline-hidden` **2 Regeln** (Basis + `@media (forced-colors:active)`), `cursor:pointer` **2**, `appearance:textfield` **1** |
+| **Tailwind — Vitest** (03.10.) | **55 Dateien / 625 Tests passed** (Baseline vorher: 54 / 615 — genau die neue Datei und ihre 10 Fälle) |
+| **Tailwind — Mutationen an `preflight-compat.test.ts`** (03.10.) | **sechs**: `shadow-sm` in eine Klasse schreiben, `outline-none` wieder einsetzen, `cursor: pointer` aus `index.css` nehmen, die `@source not`-Zeile löschen, `@config` löschen, den `[type=search]`-Block löschen — jeweils **1 failed**, zurück per `cp` + `md5sum -c` OK, danach wieder grün |
+| **`node_cve_full` nach dem Major** (03.10.) | `npm audit --audit-level=high` → **EXIT=0**, nur **2 moderate** (`react-router-dom`/`react-router`, `deserializeErrors()`) |
+| **Familie 5 — precommit-Profil nach dem Major** (03.10.) | `python3 scripts/checks/run.py --profile precommit` → **all checks passed**, **EXIT=0** (alle 26 des Profils, `node_cve_full` inklusive) |
+| **Familie 5 — Commit** (03.10.) | `git commit -F .qwen/tmp/fam5/msg.txt` → Hook **all checks passed**, **`7384e917`**, **6 files changed, 358 insertions(+), 77 deletions(-)**; Gegencheck: `git ls-tree -r HEAD --name-only \| grep -c test_dashboard_rights_use_site_role` → **1**, `git show --stat` führt die neue Testdatei mit `create mode 100644` |
 
-**Nicht ausgeführt:** das `ci`-Profil, Vitest und `npm run build` (laufen beide nirgends Pflicht — D).
+**Nicht ausgeführt:** das `ci`-Profil (läuft nirgends Pflicht — D). Vitest und `npm run build` sind am
+03.10. für den Tailwind-Schwung gelaufen und gemessen (oben); sie bleiben trotzdem ungecastet.
 „21 passed" sind die drei Dateien, die den Block abdecken; die **ganze** Backend-Suite lief dagegen im
 Hook: 2 376 passed.
 
@@ -359,8 +435,9 @@ Hook: 2 376 passed.
 1. ~~**Block fertig committen** (A)~~ **erledigt 02.10. 23:14**: Profil → `8312afaf` → `git
    ls-tree`-Gegenprobe → `4ba62ca8` für `shell.nix`. Die halbe Lücke (1–4) ist im Baum, die Doku ehrlich.
 2. ~~**Familie 6 dann 5**~~ **beide erledigt.** Familie 6: 02.10. ~23:55, committet 03.10. 00:01
-   (`f80b44bb`). Familie 5 (Dashboards): 03.10. 13:55 fertig, **der Commit fehlt noch — das Gate ist rot
-   (D), nicht die Änderung**: Regel ohne `user_role`-Parameter, `dashboard_access.py` nur noch über
+   (`f80b44bb`). Familie 5 (Dashboards): 03.10. 13:55 fertig, **committet 03.10. in `7384e917`** — der
+   erste Versuch war am Gate gescheitert (`node_cve_full`), nicht an der Änderung: Regel ohne
+   `user_role`-Parameter, `dashboard_access.py` nur noch über
    `db.user_site_role`, die drei Request-Fallbacks weg, der aufruferlose Zwilling
    `dashboard_permission_error_from_flags` gelöscht statt umgebaut; 32 passed, fünf Mutationen mit Namen
    und Zahlen in Abschnitt 4. Die Regel hier öffnete die **ganze Funktion**, nicht nur einen Status.
@@ -368,8 +445,8 @@ Hook: 2 376 passed.
    in 11 Dateien um den Träger `bearer_user_role` herum, Anhänger `auto_workspace`, **null Testabdeckung**
    auf `domain/model_routing/resolution.py::_override_allowed`. Erst die Abdeckung, dann die Aufrufer.
    Eine einzige Stelle entscheidet bis heute ohne jeden Site-Check: `bridge_agent_session.py:311`.
-4. **Zwei Gate-Formen entscheiden, bevor der PR eröffnet wird** (D + E): Bandit (`-lll` gegen 83 B608) und
-   seit 03.10. 15:3x auch **`node_cve_full`** — die `braces`-Kette ist nur über ein tailwindcss-Major zu
-   verlassen, der Provider-Wechsel wäre die andere Hand. Beides rotiert unabhängig von diesem Change, und
-   der Hook lässt im momentanen Zustand **keinen Commit** durch.
+4. **Eine Gate-Form bleibt zu entscheiden, bevor der PR eröffnet wird** (D): **Bandit** (`-lll` gegen 83
+   B608). Die zweite — **`node_cve_full`** — ist entschieden und erledigt: der Owner wollte das
+   tailwindcss-Major statt des Provider-Wechsels, es ist 03.10. gezogen (D, Maße in Abschnitt 4). Der
+   Hook lässt wieder jeden Commit durch.
 5. **Push + PR** sind derselbe sichtbare Schritt und liegen bei ihm (E).
