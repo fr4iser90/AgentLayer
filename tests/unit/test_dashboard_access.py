@@ -73,14 +73,13 @@ def _stub_db_pool(value) -> object:
 # --- pure policy (no IO) ---
 
 
-def test_admin_and_site_admin_always_allowed() -> None:
-    assert evaluate_dashboards_access(user_role="admin", dashboards_allowed=False) is True
+def test_site_admin_bypasses_the_per_user_grant() -> None:
     assert evaluate_dashboards_access(site_role="site_admin", dashboards_allowed=False) is True
 
 
-def test_non_admin_follows_per_user_flag() -> None:
-    assert evaluate_dashboards_access(user_role="user", dashboards_allowed=True) is True
-    assert evaluate_dashboards_access(user_role="user", dashboards_allowed=False) is False
+def test_member_follows_per_user_flag() -> None:
+    assert evaluate_dashboards_access(site_role="site_user", dashboards_allowed=True) is True
+    assert evaluate_dashboards_access(site_role="site_user", dashboards_allowed=False) is False
 
 
 def test_denied_and_quota_messages_nonempty() -> None:
@@ -96,14 +95,32 @@ def test_global_flag_off_denies() -> None:
         assert mod.user_may_use_dashboards(user=_fake_user("user")) is False
 
 
-def test_admin_bypass_ignores_per_user_flag() -> None:
+def test_demoted_account_does_not_bypass_the_per_user_grant() -> None:
+    """The legacy column no longer opens dashboards.
+
+    This test asserted ``True`` while the resolver read ``db.user_role``: an account with
+    ``site_role='site_user'`` and ``users.role='admin'`` — the state a demotion leaves
+    behind — kept dashboards against a revoked per-user grant. The pinned per-actor version
+    and the source scan are in ``test_dashboard_rights_use_site_role.py``.
+    """
     with (
         patch.object(mod, "global_dashboards_enabled", return_value=True),
         patch.object(mod, "_load_user_dashboards_allowed", return_value=False),
-        patch.object(db, "user_site_role", lambda _uid: None),
+        patch.object(db, "user_site_role", lambda _uid: "site_user"),
         patch.object(db, "user_role", lambda _uid: "admin"),
     ):
-        assert mod.user_may_use_dashboards(user=_fake_user("admin")) is True
+        assert mod.user_may_use_dashboards(user=_fake_user("admin")) is False
+
+
+def test_failed_site_role_lookup_denies() -> None:
+    """A lookup that raised used to fall back onto ``users.role`` — deny instead."""
+    with (
+        patch.object(mod, "global_dashboards_enabled", return_value=True),
+        patch.object(mod, "_load_user_dashboards_allowed", return_value=True),
+        patch.object(db, "user_site_role", side_effect=RuntimeError("db down")),
+        patch.object(db, "user_role", lambda _uid: "admin"),
+    ):
+        assert mod.user_may_use_dashboards(user_id=uuid.uuid4()) is False
 
 
 def test_site_admin_bypass_via_db() -> None:
