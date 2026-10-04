@@ -375,6 +375,12 @@ samt ihrem Anhängsel `auto_workspace` — und die Lüge steckt in dem Träger, 
       Vorher standen dieselben Messungen **5** bzw. **182** (nach `7384e917`) und **6** bzw. **183**
       (nach `d53a0950`) — die ältere Zeile „noch nicht gepusht, HEAD war `4ba62ca8`, 2 vor `origin`"
       beschreibt den Stand des Snapshots und ist überholt.
+    - **Die Zahl oben gilt für `d53a0950`, nicht für diesen Text.** `cf670560` hat diesen Abschnitt
+      geschrieben; nach ihm gemessen: **184** auf `main`, **0** ungepusht. Der Commit, in dem
+      dieser Nachsatz steht, ist schon der nächste, und jeder danach zählt weiter. Maßgeblich ist darum
+      das Kommando, nicht die Zahl: `git rev-list --count main..HEAD` für den Abstand zu `main`,
+      `git rev-list --count origin/feat/chat-persist-queue-goal-strip..HEAD` für die Frage, ob der
+      letzte Stand draußen ist — nach jedem Push wieder **0**.
     - **Der Push ändert nichts an der CI-Lage:** `.github/workflows/ci.yml` triggert nur `pull_request`
       und `push: [main]`, ein Push auf diesen Branch also **kein Lauf**. (Live nachzusehen war das hier
       nicht — auf diesem Rechner ist kein `gh`-CLI; die Aussage steht auf der Workflow-Konfiguration.)
