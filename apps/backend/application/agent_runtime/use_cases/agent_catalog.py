@@ -32,18 +32,16 @@ _PUBLIC_AGENT_KEYS: tuple[str, ...] = (
 
 
 def _agent_access_role(user: Any) -> str:
-    """Agent-access role derived from the canonical ``site_role`` (P1), not legacy ``role``."""
-    user_id = getattr(user, "id", None)
-    if user_id is not None:
-        try:
-            from apps.backend.infrastructure.db import db
+    """The caller's agent-access role, resolved from ``users.site_role`` (ADR 0011 §1).
 
-            site_flag = db.user_site_admin(user_id)
-        except Exception:
-            site_flag = None
-        if site_flag is not None:
-            return "admin" if site_flag else "user"
-    return (getattr(user, "role", None) or "user").strip().lower() or "user"
+    Always the resolver's answer: an identity without an id or an unreadable row answers
+    ``user``, which is what every invocation door will say for the same caller, so the
+    picker cannot offer an agent the caller may not invoke. The caller object's own ``role``
+    attribute is deliberately not consulted — a carried claim is not a source of elevation.
+    """
+    from apps.backend.infrastructure.db import db
+
+    return "admin" if db.user_site_admin(getattr(user, "id", None)) else "user"
 
 
 def _public_agent_view(agent: dict[str, Any], invokable: bool) -> dict[str, Any]:

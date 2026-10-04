@@ -127,7 +127,7 @@ def bridge_agent_session_reset(
             cid = row[0]
             conv_id = cid if isinstance(cid, uuid.UUID) else uuid.UUID(str(cid))
             cur.execute("DELETE FROM chat_messages WHERE conversation_id = %s", (conv_id,))
-            cur.execute(
+            cur.execute(  # tenant-scope: guarded by user_id — only the caller's own conversation
                 """
                 UPDATE chat_conversations
                 SET agent_log = %s::jsonb, updated_at = NOW()
@@ -196,7 +196,7 @@ def bridge_chat_completion_extras(
     if isinstance(wid, str) and wid.strip():
         out["workspace_id"] = wid.strip()
     aid = prefs.get("default_agent_id")
-    role = db.user_role(user_id) or "user"
+    role = db.user_effective_role(user_id)
     if isinstance(aid, str) and aid.strip():
         out["agent_id"] = aid.strip()
     elif out.get("workspace_id"):
@@ -205,28 +205,13 @@ def bridge_chat_completion_extras(
 
 
 def _bridge_user_like(user_id: uuid.UUID):
-    role = (db.user_role(user_id) or "user").strip().lower()
-    try:
-        site_flag = db.user_site_admin(user_id)
-    except Exception:
-        site_flag = None
-    if site_flag is not None:
-        role = "admin" if site_flag else "user"
-    return SimpleNamespace(id=user_id, role=role if role in ("admin", "user", "guest") else "user")
+    return SimpleNamespace(id=user_id, role=db.user_effective_role(user_id))
 
 
 def _user_may_use_agent(user_id: uuid.UUID, agent_id: str) -> tuple[bool, str]:
     from apps.backend.domain.agent_runtime.access import user_may_invoke_agent
 
-    try:
-        site_flag = db.user_site_admin(user_id)
-    except Exception:
-        site_flag = None
-    role = (
-        "admin" if site_flag
-        else ("user" if site_flag is not None else (db.user_role(user_id) or "user"))
-    )
-    return user_may_invoke_agent(role, agent_id.strip())
+    return user_may_invoke_agent(db.user_effective_role(user_id), agent_id.strip())
 
 
 def _bridge_update_session_columns(
@@ -308,7 +293,7 @@ def _bridge_list_agent_lines(user_id: uuid.UUID) -> list[str]:
     from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
     reg = get_agent_registry()
-    ur = (db.user_role(user_id) or "user").strip().lower()
+    ur = db.user_effective_role(user_id)
     lines: list[str] = []
     for aid in sorted(reg.agent_ids()):
         ag = reg.get_agent(aid)

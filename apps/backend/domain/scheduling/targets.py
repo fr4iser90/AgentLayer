@@ -118,9 +118,11 @@ def schedule_permission_error(
        and the ``agent_access_policies`` rows (global → tenant → user). Without this
        a schedule could reach an agent the caller is denied in chat.
 
-    ``user_role`` must already reflect ``users.site_role`` — pass
-    ``request_auth.agent_effective_role()``, not ``db.user_role()``, or the legacy
-    ``role='admin'`` escalation reopens here.
+    ``user_role`` must already be the resolved word — pass
+    ``request_auth.agent_effective_role(user_id, ...)``, which resolves it from
+    ``users.site_role``. A role read off a token or a row reopens the legacy
+    ``role='admin'`` escalation here, and ``db.user_role()`` is gone so it cannot even be
+    asked by mistake any more.
     """
     t = normalize_execution_target(execution_target)
     if not t or not is_agent_schedulable(t):

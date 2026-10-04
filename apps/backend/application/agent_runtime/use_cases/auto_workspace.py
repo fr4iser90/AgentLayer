@@ -65,31 +65,18 @@ def is_elevated_admin(
     user_id: Any,
 ) -> bool:
     """
-    Site-admin resolution.
+    Site-admin resolution: ``users.site_role``, nothing else.
 
-    Canonical signal is ``users.site_role`` (see :func:`db.user_site_admin`);
-    a legacy ``users.role='admin'`` is honoured only when ``site_role`` is
-    unknown, so ``role='admin'`` with ``site_role='site_user'`` does NOT
-    elevate.
+    ``users.role`` decides nothing here (ADR 0011 §1): an account demoted through
+    ``site_role='site_user'`` that still carries ``role='admin'``, an identity whose row
+    cannot be read, and a caller without an identity all answer ``False``. The two
+    remaining parameters stay in the signature for its callers; they are deliberately not
+    consulted, so the answer cannot depend on a token's claim.
     """
-    try:
-        site_flag = db.user_site_admin(user_id)
-    except Exception:
-        site_flag = None
-    if site_flag is not None:
-        return bool(site_flag)
-    # Legacy fallback (site_role unknown): raw role signal.
-    if (bearer_user_role or "").strip().lower() == "admin":
-        return True
-    if user_obj is not None and getattr(user_obj, "role", None) == "admin":
-        return True
-    if user_id:
-        try:
-            if db.user_role(user_id) == "admin":
-                return True
-        except Exception:
-            pass
-    return False
+    del bearer_user_role  # see docstring: the carried role is not an elevation source
+    if user_id is None:
+        return False
+    return db.user_site_admin(user_id)
 
 
 def try_auto_create_workspace_from_git_url(
@@ -123,10 +110,7 @@ def try_auto_create_workspace_from_git_url(
                 self.role = "user"
 
         u = UserLike(user_id)
-        try:
-            u.role = db.user_role(user_id) or "user"
-        except Exception:
-            pass
+        u.role = db.user_effective_role(user_id)
     if u is None or not is_elevated_admin(u, None, user_id):
         return None
     try:

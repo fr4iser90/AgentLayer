@@ -15,6 +15,8 @@ from typing import Any, Literal, Protocol
 import httpx
 from fastapi import HTTPException, Request
 
+from apps.backend.domain.identity.roles import ELEVATED_SQL
+
 logger = logging.getLogger(__name__)
 
 _SETUP_LOCK_ID = 872814001
@@ -303,8 +305,8 @@ def create_first_admin(*, email: str, password: str) -> User:
         with conn.cursor() as cur:
             cur.execute("SELECT pg_advisory_xact_lock(%s)", (_SETUP_LOCK_ID,))
             # tenant-scope: site-wide first-start bootstrap — no tenant exists yet,
-            # so "has any admin been created" is necessarily an instance question.
-            cur.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'")
+            # so "has anyone been elevated" is necessarily an instance question.
+            cur.execute(f"SELECT COUNT(*) FROM users WHERE {ELEVATED_SQL}")
             if cur.fetchone()[0] > 0:
                 conn.rollback()
                 raise HTTPException(

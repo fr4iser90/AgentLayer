@@ -251,8 +251,7 @@ async def _run_polling_session(cfg: _BridgeCfg) -> None:
                 scope_thread_id=getattr(msg, "message_thread_id", None),
             )
         )
-        role = db.user_role(user_id).lower()
-        bearer_role = role if role in ("user", "admin") else None
+        role = db.user_effective_role(user_id)
         id_token = set_identity(tenant_id, user_id)
 
         async def _typing_heartbeat() -> None:
@@ -273,7 +272,7 @@ async def _run_polling_session(cfg: _BridgeCfg) -> None:
         typing_task = asyncio.create_task(_typing_heartbeat())
         try:
             try:
-                result = await chat_completion(work, bearer_user_role=bearer_role)
+                result = await chat_completion(work, bearer_user_role=role)
                 reply_text = _extract_reply(result if isinstance(result, dict) else {})
                 if not conversation_append_message(
                     user_id, conv_id, role="user", content=prompt

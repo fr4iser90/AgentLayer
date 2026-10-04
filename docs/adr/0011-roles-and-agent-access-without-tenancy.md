@@ -67,9 +67,13 @@ A user with `role='admin'` and `site_role='site_user'` therefore sees no admin a
 reach `/v1/admin/*`, and is subject to the end-user default set like anyone else.
 
 **Why this direction and not deleting `users.role`:** the column is still written on user creation
-and read by legacy surfaces. Repointing the *checks* is a small, reviewable change that closes
-the privilege-escalation path; removing the column is a migration with a much wider blast radius
-and no additional safety. The column is now inert with respect to authorization.
+(`infrastructure/identity/auth.py:542`) and was, at the time of this decision, still read by legacy
+surfaces. That last clause is gone as of 2026-10-04: `grep -rn 'db\.user_role(' apps plugins
+--include='*.py'` answers two prose lines and no call, and the only SQL naming the column is the
+three identity pair readers that hand it to the domain rule. Repointing the *checks* is the small,
+reviewable change that closes the privilege-escalation path; removing the column is a migration with
+a much wider blast radius and no additional safety. The column is now inert with respect to
+authorization.
 
 ### 2. Delegated administration is capabilities, not booleans (Weg B)
 

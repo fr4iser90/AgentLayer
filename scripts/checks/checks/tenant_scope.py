@@ -35,6 +35,7 @@ from .common import (
     print_skip,
     candidate_python_files,
     repo_root,
+    string_literals,
 )
 
 SITE_WIDE_MARKER = "tenant-scope: site-wide"
@@ -66,53 +67,6 @@ def _verb_anchored(table: str) -> list[re.Pattern[str]]:
         re.compile(rf"\bDELETE\s+FROM\s+{esc}\b", re.IGNORECASE),
         re.compile(rf"\bUPDATE\s+{esc}\b", re.IGNORECASE),
     ]
-
-
-def _docstring_node_ids(tree: ast.AST) -> set[int]:
-    """Node ids of docstring constants — prose about a table is not a query."""
-    out: set[int] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
-            if ast.get_docstring(node, clean=False) is None:
-                continue
-            body = getattr(node, "body", [])
-            if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant):
-                out.add(id(body[0].value))
-    return out
-
-
-def _string_literals(tree: ast.AST) -> list[tuple[int, str, bool]]:
-    """``(line, text, interpolated)`` for every non-docstring string in the file.
-
-    f-strings contribute their literal text with interpolations blanked to a
-    space; ``interpolated`` records that something was blanked out. A JoinedStr
-    is treated as a leaf — descending into it would report each literal fragment
-    a second time as an uninterpolated string.
-    """
-    found: list[tuple[int, str, bool]] = []
-    docstrings = _docstring_node_ids(tree)
-
-    def visit(node: ast.AST) -> None:
-        for child in ast.iter_child_nodes(node):
-            if isinstance(child, ast.JoinedStr):
-                parts: list[str] = []
-                interpolated = False
-                for value in child.values:
-                    if isinstance(value, ast.Constant) and isinstance(value.value, str):
-                        parts.append(value.value)
-                    else:
-                        parts.append(" ")
-                        interpolated = True
-                found.append((child.lineno, "".join(parts), interpolated))
-                continue
-            if isinstance(child, ast.Constant):
-                if isinstance(child.value, str) and id(child) not in docstrings:
-                    found.append((child.lineno, child.value, False))
-                continue
-            visit(child)
-
-    visit(tree)
-    return found
 
 
 #: A literal that stops mid-clause was built by concatenation — the rest of the
@@ -170,7 +124,7 @@ def scan_text(rel: Path, source: str, tables: list[str]) -> ScanOutput:
     function_ranges = _function_line_ranges(tree)
     out = ScanOutput()
 
-    for lineno, text, interpolated in _string_literals(tree):
+    for lineno, text, interpolated in string_literals(tree):
         if TENANT_COLUMN in text:
             continue
         if _marker_near(lines, lineno, function_ranges):

@@ -66,20 +66,17 @@ def agent_effective_role(user_id: Any, fallback_role: str | None = None) -> str:
 
     Delegates to :func:`db.user_effective_role`, the same resolver behind the tool
     ``min_role`` door, so a legacy ``users.role='admin'`` paired with
-    ``site_role='site_user'`` cannot elevate on either surface. ``fallback_role``
-    is used only when the ``site_role`` lookup is unavailable.
+    ``site_role='site_user'`` cannot elevate on either surface.
 
-    Callers that feed a role into ``user_may_invoke_agent`` /
-    ``schedule_permission_error`` should pass this instead of ``db.user_role()``,
-    otherwise the pre-P1 privilege-escalation path reopens on that surface.
+    ``fallback_role`` is a claim a caller carries rather than something it read, so it
+    answers only when there is no user id to look up at all. A row that cannot be read
+    denies instead of falling back to that claim — trusting it is exactly the fail-open
+    this resolver exists to close.
     """
     from apps.backend.infrastructure.db import db
 
     if user_id is not None:
-        try:
-            return db.user_effective_role(user_id)
-        except Exception:
-            pass
+        return db.user_effective_role(user_id)
     return (str(fallback_role or "user").strip().lower()) or "user"
 
 

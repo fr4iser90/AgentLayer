@@ -107,7 +107,6 @@ def test_demoted_account_does_not_bypass_the_per_user_grant() -> None:
         patch.object(mod, "global_dashboards_enabled", return_value=True),
         patch.object(mod, "_load_user_dashboards_allowed", return_value=False),
         patch.object(db, "user_site_role", lambda _uid: "site_user"),
-        patch.object(db, "user_role", lambda _uid: "admin"),
     ):
         assert mod.user_may_use_dashboards(user=_fake_user("admin")) is False
 
@@ -118,7 +117,6 @@ def test_failed_site_role_lookup_denies() -> None:
         patch.object(mod, "global_dashboards_enabled", return_value=True),
         patch.object(mod, "_load_user_dashboards_allowed", return_value=True),
         patch.object(db, "user_site_role", side_effect=RuntimeError("db down")),
-        patch.object(db, "user_role", lambda _uid: "admin"),
     ):
         assert mod.user_may_use_dashboards(user_id=uuid.uuid4()) is False
 
@@ -128,7 +126,6 @@ def test_site_admin_bypass_via_db() -> None:
         patch.object(mod, "global_dashboards_enabled", return_value=True),
         patch.object(mod, "_load_user_dashboards_allowed", return_value=False),
         patch.object(db, "user_site_role", lambda _uid: "site_admin"),
-        patch.object(db, "user_role", lambda _uid: "user"),
     ):
         assert mod.user_may_use_dashboards(user_id=uuid.uuid4()) is True
 
@@ -138,7 +135,6 @@ def test_non_admin_grant_allows() -> None:
         patch.object(mod, "global_dashboards_enabled", return_value=True),
         patch.object(mod, "_load_user_dashboards_allowed", return_value=True),
         patch.object(db, "user_site_role", lambda _uid: "site_user"),
-        patch.object(db, "user_role", lambda _uid: "user"),
     ):
         assert mod.user_may_use_dashboards(user_id=uuid.uuid4()) is True
 
@@ -148,7 +144,6 @@ def test_non_admin_grant_revoked_denies() -> None:
         patch.object(mod, "global_dashboards_enabled", return_value=True),
         patch.object(mod, "_load_user_dashboards_allowed", return_value=False),
         patch.object(db, "user_site_role", lambda _uid: "site_user"),
-        patch.object(db, "user_role", lambda _uid: "user"),
     ):
         assert mod.user_may_use_dashboards(user_id=uuid.uuid4()) is False
 

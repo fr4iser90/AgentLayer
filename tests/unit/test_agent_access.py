@@ -109,7 +109,9 @@ def test_user_site_admin_follows_site_role() -> None:
         assert identity_tenants.user_site_admin("some-uuid") is False
     with patch.object(identity_tenants, "user_site_role", return_value="site_admin"):
         assert identity_tenants.user_site_admin("some-uuid") is True
-    assert identity_tenants.user_site_admin(None) is None
+    # No third answer any more: an identity that cannot be read is not an admin, so no
+    # caller gets to treat "unknown" as a reason to ask the legacy column.
+    assert identity_tenants.user_site_admin(None) is False
 
 
 def test_is_elevated_admin_prefers_site_role_over_legacy_role() -> None:
@@ -131,7 +133,12 @@ def test_is_elevated_admin_prefers_site_role_over_legacy_role() -> None:
     with patch("apps.backend.infrastructure.db.db.user_site_admin", return_value=True):
         assert aw_mod.is_elevated_admin(None, None, uuid.uuid4()) is True
 
-    # Legacy fallback: site_role unknown (None) → raw role signal counts.
-    with patch("apps.backend.infrastructure.db.db.user_site_admin", return_value=None):
-        assert aw_mod.is_elevated_admin(None, "admin", uuid.uuid4()) is True
-        assert aw_mod.is_elevated_admin(None, "user", uuid.uuid4()) is False
+    # Nothing to look up → deny. The carried role and ``user_obj.role`` are both admin
+    # here and the DB is patched to say nothing, so an answer other than False could only
+    # come from one of those claims.
+    with patch("apps.backend.infrastructure.db.db.user_site_admin") as never_asked:
+        class _AdminClaim:
+            role = "admin"
+
+        assert aw_mod.is_elevated_admin(_AdminClaim(), "admin", None) is False
+        never_asked.assert_not_called()

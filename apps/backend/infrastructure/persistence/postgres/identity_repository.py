@@ -8,6 +8,7 @@ from psycopg.rows import dict_row
 
 from apps.backend.domain.identity.entities import Tenant, User
 from apps.backend.domain.identity.repositories import TenantRepository, UserRepository
+from apps.backend.domain.identity.roles import effective_role
 from apps.backend.domain.identity.value_objects import EmailAddress, TenantId
 from apps.backend.infrastructure.db import db
 
@@ -17,7 +18,7 @@ class PostgresUserRepository(UserRepository):
         with db.pool().connection() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 cur.execute(
-                    "SELECT id, tenant_id, email, role, created_at FROM users WHERE id = %s",
+                    "SELECT id, tenant_id, email, role, site_role, created_at FROM users WHERE id = %s",
                     (user_id,),
                 )
                 row = cur.fetchone()
@@ -28,7 +29,7 @@ class PostgresUserRepository(UserRepository):
         with db.pool().connection() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 cur.execute(
-                    "SELECT id, tenant_id, email, role, created_at FROM users WHERE lower(email) = %s",
+                    "SELECT id, tenant_id, email, role, site_role, created_at FROM users WHERE lower(email) = %s",
                     (str(email),),
                 )
                 row = cur.fetchone()
@@ -40,7 +41,7 @@ class PostgresUserRepository(UserRepository):
             with conn.cursor(row_factory=dict_row) as cur:
                 cur.execute(
                     """
-                    SELECT id, tenant_id, email, role, created_at
+                    SELECT id, tenant_id, email, role, site_role, created_at
                     FROM users
                     WHERE tenant_id = %s
                     ORDER BY created_at DESC
@@ -53,16 +54,22 @@ class PostgresUserRepository(UserRepository):
         return [_user_from_row(dict(row)) for row in rows]
 
     def save(self, user: User) -> User:
+        """Persist the mutable profile columns. Elevation is not one of them.
+
+        ``users.role`` is never written and never decides the returned ``role``: elevation
+        changes go through the identity surfaces that own ``users.site_role``, and the row
+        read back here is normalized by the domain rule like every other identity read.
+        """
         with db.pool().connection() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 cur.execute(
                     """
                     UPDATE users
-                    SET email = %s, role = %s, tenant_id = %s
+                    SET email = %s, tenant_id = %s
                     WHERE id = %s
-                    RETURNING id, tenant_id, email, role, created_at
+                    RETURNING id, tenant_id, email, role, site_role, created_at
                     """,
-                    (str(user.email), user.role, int(user.tenant_id), user.id),
+                    (str(user.email), int(user.tenant_id), user.id),
                 )
                 row = cur.fetchone()
             conn.commit()
@@ -84,6 +91,6 @@ def _user_from_row(row: dict[str, Any]) -> User:
         id=uuid.UUID(str(row["id"])),
         tenant_id=TenantId(int(row.get("tenant_id") or 1)),
         email=EmailAddress.parse(str(row.get("email") or "")),
-        role="admin" if str(row.get("role") or "").lower() == "admin" else "user",
+        role=effective_role(row.get("site_role"), row.get("role")),
         created_at=row.get("created_at"),
     )

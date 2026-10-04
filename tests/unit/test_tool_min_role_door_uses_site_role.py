@@ -154,7 +154,9 @@ def test_the_consoles_sit_behind_an_admin_door() -> None:
 def test_demoted_legacy_admin_no_longer_opens_the_door() -> None:
     uid = uuid.uuid4()
     with _db_row(_rows(site_role="site_user", legacy_role="admin")):
-        assert identity_db.user_role(uid) == "admin", "the legacy column still says admin"
+        assert identity_db._role_columns(uid) == ("site_user", "admin"), (
+            "the row still carries role='admin', so a door that honours it would open"
+        )
         role = identity_db.user_effective_role(uid)
         assert role == "user"
         assert caller_fulfills_effective_policy(role, 1, {"min_role": "admin"}) is False

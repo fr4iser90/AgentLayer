@@ -23,6 +23,7 @@ from typing import Any
 import pytest
 
 from apps.backend.domain.access.capabilities import CAP_AGENT_ASSIGN, CAP_OBSERVABILITY_READ
+from apps.backend.infrastructure.db import identity_tenants
 from apps.backend.infrastructure.identity import console_access as console_guard
 from plugins.tools.platform.reviewer import audit as reviewer
 
@@ -258,24 +259,25 @@ def _signed_in(
     actor: uuid.UUID,
     *,
     site_role: str,
+    legacy_role: str = "user",
     capabilities: tuple[str, ...] = (),
     tenant_id: int = OWNER_TENANT,
 ) -> None:
     """The identity the shared in-process guard reads for this call.
 
-    ``users.role`` is deliberately left unset: the console must not consult it, so nothing
-    here has to set it for these callers to work.
+    The row pair is the fixture, not one reader's verdict: patching ``_role_columns`` lets
+    the real resolver decide, so a console that started asking the compatibility column
+    instead of ``site_role`` would answer from ``legacy_role`` and fail these tests.
     """
     monkeypatch.setattr(console_guard, "get_identity", lambda: (tenant_id, actor))
-    monkeypatch.setattr(console_guard.db, "user_site_role", lambda _uid: site_role)
+    monkeypatch.setattr(identity_tenants, "_role_columns", lambda _uid: (site_role, legacy_role))
     monkeypatch.setattr(console_guard.db, "user_capabilities", lambda _uid: set(capabilities))
     monkeypatch.setattr(console_guard.db, "user_tenant_id", lambda _uid: tenant_id)
 
 
 def _legacy_admin_row(monkeypatch: pytest.MonkeyPatch, actor: uuid.UUID) -> None:
     """The old gate's only requirement, with a canonical identity that says otherwise."""
-    monkeypatch.setattr(console_guard.db, "user_role", lambda _uid: "admin")
-    _signed_in(monkeypatch, actor, site_role="site_user")
+    _signed_in(monkeypatch, actor, site_role="site_user", legacy_role="admin")
 
 
 def _delegated(monkeypatch: pytest.MonkeyPatch, actor: uuid.UUID, *capabilities: str) -> None:

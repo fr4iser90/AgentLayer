@@ -39,6 +39,7 @@ from apps.backend.api.scheduling.controllers.scheduler_jobs_user_api import (
     SchedulerJobPatchBody,
     SchedulerJobSetEnabledBody,
 )
+from apps.backend.infrastructure.db import identity_tenants
 from apps.backend.infrastructure.scheduling import schedules_access as schedules_gate
 from apps.backend.infrastructure.workspace import workspace_service
 
@@ -100,25 +101,30 @@ class _Pool:
         return False
 
 
-def _site_roles() -> dict[str, str]:
-    return {str(DEMETED): "site_user", str(SITE_ADMIN): "site_admin", str(PLAIN): "site_user"}
-
-
-def _user_effective_role(user_id: Any) -> str:
-    return "admin" if _site_roles().get(str(user_id)) == "site_admin" else "user"
+def _rows() -> dict[str, tuple[str, str]]:
+    """``(users.site_role, users.role)`` per actor; every row still claims ``role='admin'``."""
+    return {
+        str(DEMETED): ("site_user", "admin"),
+        str(SITE_ADMIN): ("site_admin", "admin"),
+        str(PLAIN): ("site_user", "user"),
+    }
 
 
 @contextmanager
 def _identity_patches(grant: bool = False) -> Iterator[None]:
-    """All readers live; the legacy one answers ``admin`` for every id, on purpose."""
+    """The per-actor row pair, patched below the resolver.
+
+    Patching the columns and not a reader keeps the resolver in the test: the compatibility
+    column answers ``admin`` for every id, so a door that still honours it opens for the
+    demoted actor and the assertions below cannot be satisfied.
+    """
     with ExitStack() as stack:
         for patcher in (
-            patch(
-                "apps.backend.infrastructure.db.db.user_site_role",
-                side_effect=lambda uid, **_kw: _site_roles().get(str(uid), "site_user"),
+            patch.object(
+                identity_tenants,
+                "_role_columns",
+                lambda uid, **_kw: _rows().get(str(uid), ("site_user", "admin")),
             ),
-            patch("apps.backend.infrastructure.db.db.user_role", return_value="admin"),
-            patch("apps.backend.infrastructure.db.db.user_effective_role", side_effect=_user_effective_role),
             patch("apps.backend.infrastructure.db.db.pool", return_value=_Pool(grant)),
         ):
             stack.enter_context(patcher)
@@ -174,7 +180,11 @@ def _drive(handler_name: str, user_id: uuid.UUID, store: _JobsStore) -> dict[str
         patch.object(jobs_api, "scheduler_jobs_store", store),
         patch.object(jobs_api, "schedule_feature_permission_error", return_value=None),
         patch.object(jobs_api.db, "user_tenant_id", return_value=TENANT),
-        patch.object(jobs_api.db, "user_effective_role", side_effect=_user_effective_role),
+        patch.object(
+            identity_tenants,
+            "_role_columns",
+            lambda uid, **_kw: _rows().get(str(uid), ("site_user", "admin")),
+        ),
     ):
         asyncio.run(_call(handler_name, store))
     assert store.calls and store.calls[0][0] == handler_name, f"{handler_name} never reached the store"
@@ -246,7 +256,11 @@ def _drive_runs(handler: Any, user_id: uuid.UUID, store: _RunsStore) -> _RunsSto
         patch.object(runs_api, "get_current_user", _async_user(user_id)),
         patch.object(runs_api, "scheduler_job_runs_store", store),
         patch.object(runs_api.db, "user_tenant_id", return_value=TENANT),
-        patch.object(runs_api.db, "user_effective_role", side_effect=_user_effective_role),
+        patch.object(
+            identity_tenants,
+            "_role_columns",
+            lambda uid, **_kw: _rows().get(str(uid), ("site_user", "admin")),
+        ),
     ):
         asyncio.run(handler(MagicMock(), str(JOB)))
     return store
@@ -286,9 +300,10 @@ def _self_editing(user_id: uuid.UUID, *, grant: bool) -> bool:
             "apps.backend.infrastructure.settings.operator_settings.public_dict",
             return_value={"workspace_allow_self_editing": True},
         ),
-        patch(
-            "apps.backend.infrastructure.db.db.user_site_role",
-            side_effect=lambda uid, **_kw: _site_roles().get(str(uid), "site_user"),
+        patch.object(
+            identity_tenants,
+            "_role_columns",
+            lambda uid, **_kw: _rows().get(str(uid), ("site_user", "admin")),
         ),
         patch("apps.backend.infrastructure.db.db.pool", return_value=_Pool(grant)),
     ):
@@ -307,7 +322,7 @@ def test_the_context_user_carries_no_role_at_all() -> None:
     with (
         # ``workspace_common`` imported ``get_identity`` by name, so that is the binding to patch.
         patch.object(workspace_common, "get_identity", return_value=(TENANT, DEMETED)),
-        patch("apps.backend.infrastructure.db.db.user_role", return_value="admin"),
+        patch.object(identity_tenants, "_role_columns", lambda _uid: ("site_user", "admin")),
     ):
         user = workspace_common.user_from_context(None)
     assert getattr(user, "role", "<unset>") == "<unset>"

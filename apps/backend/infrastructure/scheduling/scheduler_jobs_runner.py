@@ -56,7 +56,7 @@ async def _run_chat_agent_job(row: dict[str, Any], *, agent_id: str) -> None:
     tenant_id = _tenant_id(row)
     user_id = _uid(row, "execution_user_id")
     job_id = _uid(row, "id")
-    role = db.user_role(user_id)
+    role = db.user_effective_role(user_id)
 
     title = (str(row.get("title") or "").strip()) or None
     instr = str(row.get("instructions") or "").strip()

@@ -30,6 +30,7 @@ from unittest.mock import patch
 
 import plugins.tools.platform.tasks.agent_tasks as task_tool
 from apps.backend.domain.agent_runtime import task_approval
+from apps.backend.infrastructure.db import identity_tenants
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -51,15 +52,21 @@ _SCANNED = (
 )
 
 
-def _site_roles() -> dict[str, str]:
-    return {str(DEMETED): "site_user", str(SITE_ADMIN): "site_admin", str(PLAIN): "site_user"}
+def _rows() -> dict[str, tuple[str, str]]:
+    """``(users.site_role, users.role)`` per actor; every row still claims ``role='admin'``."""
+    return {
+        str(DEMETED): ("site_user", "admin"),
+        str(SITE_ADMIN): ("site_admin", "admin"),
+        str(PLAIN): ("site_user", "user"),
+    }
 
 
 def _create_task_status(user_id: uuid.UUID) -> tuple[str, str | None]:
     """Run the real ``task_create`` body and report what status reached the store.
 
-    The legacy reader answers ``admin`` for every id: a create that still consults it
-    queues for all three actors and this assertion cannot be satisfied.
+    The row pair is the fixture, so the resolver itself decides what the compatibility
+    column is worth: a create that still queues on it queues for all three actors and this
+    assertion cannot be satisfied.
     """
     captured: dict[str, Any] = {}
 
@@ -69,11 +76,11 @@ def _create_task_status(user_id: uuid.UUID) -> tuple[str, str | None]:
 
     with (
         patch.object(task_tool, "get_identity", return_value=(TENANT, user_id)),
-        patch(
-            "apps.backend.infrastructure.db.db.user_site_role",
-            side_effect=lambda uid, **_kw: _site_roles().get(str(uid), "site_user"),
+        patch.object(
+            identity_tenants,
+            "_role_columns",
+            lambda uid, **_kw: _rows().get(str(uid), ("site_user", "admin")),
         ),
-        patch("apps.backend.infrastructure.db.db.user_role", return_value="admin"),
         patch.object(task_tool.agent_tasks_store, "create_task", side_effect=_create_task),
         patch.object(task_tool.agent_tasks_store, "row_to_public", return_value={}),
     ):

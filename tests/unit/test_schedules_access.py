@@ -61,8 +61,7 @@ def test_infra_user_without_grant_denied() -> None:
     pool.connection.return_value = _Conn()
 
     with (
-        patch("apps.backend.infrastructure.db.db.user_role", return_value="user"),
-        patch("apps.backend.infrastructure.db.db.user_site_role", return_value=None),
+        patch("apps.backend.infrastructure.db.db.user_site_role", return_value="site_user"),
         patch("apps.backend.infrastructure.db.db.pool", return_value=pool),
     ):
         assert infra.user_may_use_schedules(user_id=uid) is False
@@ -101,8 +100,7 @@ def test_infra_user_with_grant_allowed() -> None:
     pool.connection.return_value = _Conn()
 
     with (
-        patch("apps.backend.infrastructure.db.db.user_role", return_value="user"),
-        patch("apps.backend.infrastructure.db.db.user_site_role", return_value=None),
+        patch("apps.backend.infrastructure.db.db.user_site_role", return_value="site_user"),
         patch("apps.backend.infrastructure.db.db.pool", return_value=pool),
     ):
         assert infra.user_may_use_schedules(user_id=uid) is True

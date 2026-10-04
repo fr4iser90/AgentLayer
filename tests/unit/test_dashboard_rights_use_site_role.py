@@ -29,6 +29,7 @@ from unittest.mock import patch
 
 from apps.backend.domain.dashboards import access as rule
 from apps.backend.infrastructure.dashboard import dashboard_access as mod
+from apps.backend.infrastructure.db import identity_tenants
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -42,24 +43,30 @@ _SCANNED = (
 )
 
 
-def _site_roles() -> dict[str, str]:
-    return {str(DEMOTED): "site_user", str(SITE_ADMIN): "site_admin", str(MEMBER): "site_user"}
+def _rows() -> dict[str, tuple[str, str]]:
+    """``(users.site_role, users.role)`` per actor; every row still claims ``role='admin'``."""
+    return {
+        str(DEMOTED): ("site_user", "admin"),
+        str(SITE_ADMIN): ("site_admin", "admin"),
+        str(MEMBER): ("site_user", "user"),
+    }
 
 
 def _may(uid: uuid.UUID, *, grant: bool) -> bool:
-    """Ask the real resolver with the legacy reader answering ``admin`` for every id.
+    """Ask the real resolver with a compatibility column answering ``admin`` for every id.
 
-    A resolver that still consults it returns True for all three actors and the demoted
-    assertions below cannot be satisfied.
+    The row pair is the fixture, so the resolver itself decides what that column is worth:
+    one that still honours it returns True for all three actors and the demoted assertions
+    below cannot be satisfied.
     """
     with (
         patch.object(mod, "global_dashboards_enabled", return_value=True),
         patch.object(mod, "_load_user_dashboards_allowed", return_value=grant),
-        patch(
-            "apps.backend.infrastructure.db.db.user_site_role",
-            side_effect=lambda uid_, **_kw: _site_roles().get(str(uid_), "site_user"),
+        patch.object(
+            identity_tenants,
+            "_role_columns",
+            lambda uid_, **_kw: _rows().get(str(uid_), ("site_user", "admin")),
         ),
-        patch("apps.backend.infrastructure.db.db.user_role", return_value="admin"),
     ):
         return mod.user_may_use_dashboards(user_id=uid)
 

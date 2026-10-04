@@ -14,9 +14,14 @@ geschlossen) und **03.10. 15:2x–15:3x** (Familie 5: alle fünf Mutationen mit 
 Rest-Metrik neu gezählt, Precommit gelaufen — **rot durch `node_cve_full`, dieser Commit bleibt aus**,
 Abschnitt D), `tailwindcss` 3→4 als eigener Schwung (Entscheidung des Owners nach dem abgelehnten Commit;
 Abschnitt D), **committet 03.10. 23:35 Familie 5 (`7384e917`) und 23:43 der Major (`fa3dddbe`, per amend
-04.10. 00:13 → `d53a0950`)**, **gepusht 04.10. 01:02 (Abschnitt E)**. **Die Zeiten dieses Satzes sind
-gemessen, nicht erinnert** — `mtime` der Artefakte und `git reflog`: grün-Lauf des Profils 23:27, Baseline-
-Backups des Majors 21:02, `commit_attempt.txt` 19:28, `precommit.txt` (rot) 15:56. Die Uhrzeiten, die vor
+04.10. 00:13 → `d53a0950`)**, **gepusht 04.10. 01:02 (Abschnitt E)** und **04.10. 13:45–21:20
+(Familie 7: der `bearer_user_role`-Träger ist closed, die Legacy-Lesstelle `db.user_role` ist gelöscht,
+Gate und Akteur-Tests sind neu — B/7, Messgröße in B, Doku in C, Maße in Abschnitt 4)**. **Die Zeiten
+dieses Satzes sind gemessen, nicht erinnert** — `mtime` der Artefakte und `git reflog`: grün-Lauf des
+Profils 23:27, Baseline-Backups des Majors 21:02, `commit_attempt.txt` 19:28, `precommit.txt` (rot)
+15:56; für Familie 7 `auto_workspace.py` 13:45, `domain/identity/roles.py` 17:34, `config.json` 18:19,
+`checks/legacy_role_reads.py` 18:22, `test_legacy_role_reads.py` 18:31, `auth.py` 19:38,
+`test_remaining_role_carriers_use_site_role.py` 20:54, `identity_tenants.py` 20:58. Die Uhrzeiten, die vor
 dieser Korrektur im Kopfstand dastanden (15:4x, 16:0x, 16:5x–17:0x), waren zu früh und sind ersetzt.
 Quelle: Session
 `9910e7a2-88ab-4521-9d46-d96dd404d97d` (28.09. 19:52 → 02.10. 20:12, 5 843 Records, beim Commit
@@ -97,7 +102,7 @@ Belegt:
       --version` läuft in dem Shell). Bewusst **nicht** als `nix_shell_command` in
       `scripts/checks/config.json` verdrahtet — siehe D, das ist eine Gate-Entscheidung.
 
-### B. Legacy-Rolle: die 7 Stellen aus der Messung — 6 zu, 1 offen
+### B. Legacy-Rolle: die 7 Stellen aus der Messung — **alle 7 zu (04.10.)**
 
 Die Tabelle ist die Messung vom 02.10. (16:44), jede Zeile war einzeln nachgelesen. Der Stand unten
 ist am 02.10. erneut gegen den Code geprüft.
@@ -185,7 +190,7 @@ ist am 02.10. erneut gegen den Code geprüft.
       nicht die Freigabe selbst. `task_update` setzt jedes Task, das der Aufrufer sehen darf, für **jeden**
       auf `queued`; eine approbation-pflichtige Kette ist das nicht (Gap-Zeile in
       `docs/features/operator-agent.md` sagt das).
-- [ ] **7 — `bearer_user_role`-Familie (größte Fläche, null Testabdeckung).** ~10 Aufrufer
+- [x] **7 — `bearer_user_role`-Familie (größte Fläche, null Testabdeckung).** ~10 Aufrufer
       (`chat_completions_api.py:31`, `chat_websocket.py:331`, `voice_realtime_websocket.py:85`,
       `domain/voice/realtime_turn.py:110-112`, `telegram_bridge.py:254`, `discord_bridge.py:377`,
       `bridge_agent_session.py` (4 Lesstellen), `bridge_agent_turn.py:99`, `scheduler.py:149`,
@@ -195,6 +200,104 @@ ist am 02.10. erneut gegen den Code geprüft.
       Limit) greifen. In beide Richtungen kaputt.
       Zugehörig: `application/agent_runtime/use_cases/auto_workspace.py:82-88,127` verastelt sich selbst
       auf `db.user_role(user_id) == "admin"` **und** stempelt `u.role` auf das übergebene Objekt.
+      **04.10. geschlossen — die Familie ist zugunsten einer Regel aufgelöst, nicht Aufrufer für
+      Aufrufer.** Der Befund von unten hat sich bestätigt: die Lüge steckt im **Träger**, nicht in den
+      Einzelzeilen. Also vier Schritte:
+      1. **Reine Regel:** `apps/backend/domain/identity/roles.py` (neu) — `SITE_ADMIN`/`SITE_USER`,
+         `ADMIN`/`USER`, `normalize_site_role`, `effective_role(site_role, legacy_role)`, `ELEVATED_SQL`.
+         Der Legacy-Wert spricht **genau dann**, wenn `site_role` NULL ist — und `schema_111` beschränkt
+         `site_role` auf `site_admin`/`site_user`, „NULL" **ist** also der Fall „nie migriert". Keine DB,
+         keine Settings, kein Log.
+      2. **Ein Resolver:** `infrastructure/db/identity_tenants.py::_role_columns(user_id) ->
+         (site_role, legacy_role)` ist die **einzige** Stellenlesung des Paares; `user_site_role`
+         (:123), `user_site_admin` (:129) und `user_effective_role` (:142) sitzen alle darauf.
+         Fehlende id, fehlende Zeile, fehlgeschlagene Query → `(None, None)` → die Regel antwortet
+         unerhöht. **`db.user_role` ist gelöscht**, nicht entmutigt: `grep -rn 'db\.user_role(' apps
+         plugins --include='*.py'` → 2 Treffer, beide Prosa (`domain/scheduling/targets.py:124`,
+         `domain/workspace/workspace_common.py:118`), 0 Aufrufe.
+      3. **Choke Point:** `infrastructure/identity/auth.py` normalisiert **jede** `User(...)`-Konstruktion
+         (`:186`, `:275`, `:320`, `:561`), auch `get_user_by_id` (`role=effective_role(row[3], row[2])`).
+         Daraus folgt der Satz, der die halbe Familie überflüssig macht: **`.role` auf einem
+         authentifizierten Objekt ist bereits die Auflösung** — die bearer-Fütterungen von Bridges,
+         Runnern und `chat_completions_api` tragen also nicht die Spalte weiter, sondern das Wort.
+      4. **Träger dicht gemacht:** `auto_workspace.py` astet über `db.user_site_admin` und stempelt kein
+         `u.role` mehr; das Catalog-Tool nimmt sein Role vom Resolver statt aus einem Context-Key
+         (`plugins/tools/platform/agents/catalog.py`); die Bridge-Agent-Tür und das Chat-Run-Objekt
+         laufen über dieselbe Auflösung; `agent_effective_role(user_id, fallback_role)` antwortet aus dem
+         Fallback **nur noch ohne id** — eine nicht lesbare Zeile verweigert, statt dem Claim zu glauben.
+      **Getestet:** `tests/unit/test_remaining_role_carriers_use_site_role.py` (neu, **17 Tests**) —
+      jede Fixture ist ein **Zeilenpaar** `(users.site_role, users.role)`, gepatcht an
+      `identity_tenants._role_columns`, **nie** das Urteil eines Lesers. Vier Akteure (herabgestufter
+      Legacy-Admin / Site-Admin / nie migriert / Zeile nicht lesbar) × Träger: Chat-Run-Objekt
+      (`bootstrap_chat_run` wirklich aufgerufen, Run-Store geparkt), Agent-Tür der Application-Schicht,
+      Catalog-Tool, Bridge-`/agent list`, Modell-Override-Tür, `User.role` des authentifizierten
+      Objekts, Bearer-Carrier des OpenAI-Endpoints. Dazu „ein `x-role: admin`-Header ändert nichts" und
+      „ein mitgetragener bearer-Claim macht den Träger nicht erhöht".
+      Zwei Tests davon hängen nicht an einem Träger, sondern am Resolver selbst:
+      `test_every_role_reader_costs_the_paired_statement_and_nothing_else` pinnt an einem
+      aufzeichnenden Fake-Pool die **SQL**, die eine Rollenfrage kosten darf — ein Statement, beide
+      Spalten (`SELECT site_role, role FROM users WHERE id = %s`) — und
+      `test_the_legacy_reader_is_gone_from_the_facade` hält `user_role` von `identity_tenants` und der
+      `db`-Fassade fern. An Sonde M4 (unten) trifft beide Schichten dieselbe Regression, und der
+      Unterschied ist den Notiz wert: die drei Träger-Tests fallen dort **als Crash**
+      (`RuntimeError: database pool not initialized`) weil die Sonde ihren Patchpunkt
+      `_role_columns` umgeht, der Statement-Test fällt **sachlich** — er kennt kein Expected-Wort und
+      meldet deshalb jede andere Statement-Folge.
+      **Gate (neu):** `scripts/checks/checks/legacy_role_reads.py`, eingetragen in `fast`, `precommit`,
+      `security`, `architecture`, `ci` (`python3 scripts/checks/run.py --check legacy_role_reads`);
+      `scope: all` über `apps/backend`, `plugins`, `scripts`, Migrationen ausgenommen.
+      Drei Regeln: `legacy-alone` (eine Statement, die `users` nennt und die Legacy-Spalte, ohne
+      `site_role` dabeizuhaben), `pair-outside-identity` (eine Paar-Lesung außerhalb der drei
+      Identitäts-Leser), `claim-read` (`getattr(obj, "role")` — ein Claim, der vom Objekt abgelesen
+      wird, ist keine Elevation). Die Spalte wird an die `users`-Relation **ihrer eigenen** Statement
+      gebunden, ein `m.role` neben `JOIN users u` bleibt unberührt. Ausnahmen liegen als **drei Pfade
+      mit Begründung** in `scripts/checks/config.json` (`identity_pair_readers`: `identity_tenants.py`,
+      `auth.py`, `persistence/postgres/identity_repository.py`), nicht als Zeilen-Freigabe. Der
+      Repo-eigene Zustand ist selbst gepinnt: `tests/unit/test_legacy_role_reads.py` (neu, **19 Tests**)
+      enthält `test_the_repository_is_clean` und `test_every_exemption_is_still_earned` — eine
+      Ausnahme darf nicht ihren Anlass überleben.
+      **Mutation Proof (04.10., vier Sonden; jede Datei danach per `cp` aus einer Vorab-Kopie zurück,
+      Byte-Gleichheit mit `sha256sum` gegen die vorher gespeicherte Summe geprüft):**
+      · **M1** — `auth.get_user_by_id` antwortet `role=row[2]`: **3 failures**, ausschließlich in der
+      neuen Datei (`test_the_authenticated_user_object_carries_the_resolved_word`,
+      `…bearer_carrier_forwards_the_authenticated_word_and_nothing_more`,
+      `test_a_header_claiming_a_role_is_not_the_authenticated_word`). Der Index-Read ist dem AST-Gate
+      **unsichtbar** — die beiden Schichten ergänzen sich, keine allein reicht.
+      · **M2** — Chat-Run stempelt `bearer_user_role or _role_for_agent`: exakt
+      `test_a_carried_bearer_claim_still_does_not_make_the_carrier_elevated` fällt.
+      · **M3** — neue Datei mit `SELECT id, role FROM users WHERE id = %s`: `--check legacy_role_reads`
+      → `FAILED - 1 legacy role-column read(s) in 974 file(s)` mit Regel `legacy-alone` und Fix-Hinweis;
+      parallel fällt `test_the_repository_is_clean`. Sonde danach gelöscht.
+      · **M4** — `user_site_admin` umgebaut auf eine eigene Single-Column-Query
+      (`SELECT role FROM users WHERE id = %s`) am Resolver vorbei: `--check legacy_role_reads` →
+      `FAILED` mit `identity_tenants.py:143 [legacy-alone]` — die Ausnahme der Datei gilt **nur** für
+      die Paar-Lesung. In `tests/unit/test_remaining_role_carriers_use_site_role.py` fallen vier Tests:
+      der Statement-Pin sachlich, `test_the_chat_run_carrier_carries_the_resolved_word`,
+      `test_a_carried_bearer_claim_still_does_not_make_the_carrier_elevated` und
+      `test_the_agent_door_ignores_a_role_claim_on_the_caller_object` als Crash. Datei per `cp`
+      zurück, `sha256sum -c` → `OK`.
+      **Was die Sonden trafen:** M1 und M2 saßen in Dateien, die **vor** Familie 7 geändert wurden
+      (`auth.py` = Familie 4, `chat_run_bootstrap.py` = der Träger selbst) — die neuen Tests schlagen
+      also auf bestehendem Code zurück, nicht nur auf dem neuen. M3 traf den Fall „neue Datei", M4 den
+      Fall „Resolver umgebaut".
+      **Ehrliche Restlücken:** (a) **der App fehlt der Weg, `site_role` zu *ändern*.** Geschrieben wird
+      die Spalte an zwei Stellen: beim **Anlegen** eines Kontos — `auth.py:539` leitet sie aus dem
+      Wort ab, das der Admin im Formular wählt, `auth.py:542` schreibt sie ins `INSERT` — und beim
+      Backfill `schema_111_identity_roles_deployment_mode.py:43-44`. **Kein** `UPDATE` erreicht sie:
+      `grep -rn "UPDATE users SET" --include='*.py' apps/backend plugins | grep -i site_role` → nur die
+      zwei Migrations-Zeilen; `PATCH /v1/admin/users/{id}` kennt kein `site_role`-Feld
+      (`api/platform/controllers/admin_users_api.py`, die Feldkette endet bei `llm_queue_priority`;
+      `:160` **liest** die Spalte nur für die Scope-Frage). Herabstufen bleibt ein SQL-Vorgang des
+      Operators — dieses Werk nimmt dem zurückgelassenen `role='admin'` die Entscheidungskraft, nicht
+      den Wert. Nebenbei, ehrlich: **beim Anlegen entscheidet das Formularwort `role` immer noch über
+      `site_role`** (`role='admin'` → `site_admin`); die Kopplung ist gewollt (sonst legt niemand mehr
+      Admins an), aber sie ist die eine Stelle, wo das Legacy-Feld noch nach *vorn* wirkt.
+      (b) Der E2E-Stack läuft nicht (Abschnitt F), ein Nachweis an einer echten DB steht aus.
+      (c) `tenant_scope` meldete beim Commit **vier** weitere ungestonte Statements (drei davon
+      **vorbestehend**, hochgekommen, weil `scope: staged` den dirty Tree liest):
+      `chat_run_bootstrap.py:105/:303`, `bridge_agent_session.py:131` — alle drei durch `user_id`
+      abgesichert und jetzt mit `# tenant-scope: guarded by user_id …` markiert; der vierte ist meine
+      eigene `_role_columns`-Lese, markiert als `site-wide` wie ihr Zwilling `auth.get_user_by_id`.
 
 Zwei Dinge, die den Befund schärfer machen als „nur ein falsches Feld":
 
@@ -206,7 +309,12 @@ Zwei Dinge, die den Befund schärfer machen als „nur ein falsches Feld":
 
 **Messgröße für den Rest:** nach Block 1 standen 23 `db.user_role(`-Vorkommen in 17 Dateien, nach
 Familie 6 **22 in 16 Dateien** (02.10. 23:52), nach Familie 5 **21 in 15 Dateien** (03.10. 13:52; jeweils
-`grep -rn 'db\.user_role(' apps plugins --include='*.py'`). Die 21 teilen sich genau: **15 decisive
+`grep -rn 'db\.user_role(' apps plugins --include='*.py'`). Nach Familie 7 (04.10.) steht dasselbe
+Kommando mit **2 Treffern in 2 Dateien — beide Prosa, 0 Aufrufe** (`domain/scheduling/targets.py:124`,
+`domain/workspace/workspace_common.py:118`); die Funktion selbst ist aus
+`infrastructure/db/identity_tenants.py` und der `db`-Fassade entfernt, und
+`test_the_legacy_reader_is_gone_from_the_facade` hält sie fern. Die Zahlen unterhalb bleiben als Messung
+vom 03.10. stehen. Die 21 teilen sich genau: **15 decisive
 Lesstellen in 11 Dateien** — Runner und Bridges: `bridge_agent_session.py` 4, `auto_workspace.py` 2, je eine
 in `scheduler.py`, `scheduler_jobs_runner.py`, `coding_schedule_execution.py`, `agent_tasks_runner.py`,
 `bridge_agent_turn.py`, `telegram_bridge.py`, `discord_bridge.py`, `voice_realtime_turn_service.py`,
@@ -247,6 +355,25 @@ samt ihrem Anhängsel `auto_workspace` — und die Lüge steckt in dem Träger, 
       Geschlossenen: Parameter weg, `db.user_site_role`, die zwei Request-Fallbacks weg, gelöschte zweite
       Tür, Name des neuen Tests, und der Unterschied zur Task-Regel — hier öffnet die Regel die **ganze
       Funktion**, nicht nur den Status einer Zeile.
+- [x] Gap-Zeile **viertens** fortgeschrieben (04.10.): sie behauptet keine offene Familie mehr. Beide
+      Familien stehen in der Vergangenheit, als „04.10. geschlossen — und mit ihnen die Lesstelle", mit
+      der Messung im Text (`grep -rn 'db\.user_role(' apps plugins --include='*.py'` → zwei Prosa-Zeilen,
+      0 Aufrufe), dem Choke-Point-Satz („`.role` auf einem authentifizierten Objekt ist die Auflösung"),
+      dem, was die Familie entschied (`_override_allowed`, Bridge-`min_role`-Tür, Chat-Run-Objekt), dem
+      Versagen beim nicht lesbaren Akteur, dem neuen Test, dem Gate und seinen Mutationen. Der
+      Schlusssatz der Sektion ist ersetzt: der `agent_effective_role`-Fallback antwortet **nur ohne id**,
+      und die drei Scheduler-Tools lösen seit diesem Schwung selbst (`db.user_effective_role(caller_uid)`
+      in `plugins/tools/platform/scheduler/jobs.py:93,188,219`).
+- [x] **ADR 0011 §1 berichtigt (04.10.).** Der Halbsatz, die Spalte werde „noch von Legacy-Flächen
+      gelesen", war eine **Aussage über heute** und damit falsch, nicht Geschichte — zurückgezogen auf den
+      Stand der Entscheidung, ergänzt um die heutige Messung. Der Consequences-Teil ist nachgelesen und
+      korrekt; dort ist nichts geändert.
+- [x] **P1–P8 nachgemessen (04.10.).** `docs/planning/roles-and-agent-assignment-analysis.md` behauptete
+      „komplett erledigt am 16.09." — sein neuer **Abschnitt 9** hält den heutigen Stand pro Paket fest,
+      jeweils mit dem **Kommando**, das ihn misst: sechs Pakete fertig, **P3** ohne Bulk über mehrere
+      Personen, **P5** ohne Tenants-Tab, **P7** ohne KI-Vorfilter (gebaut ist nur die regelbasierte
+      Tool-Warnung `_tool_warnings`), und als Rest dieselbe `site_role`-Schreiblücke wie (a) oben.
+      Frontmatter-Status dort: `done-with-gaps-see-section-9`.
 
 ### D. CI- und Gate-Lücken (am 02.10. gemessen)
 
@@ -443,6 +570,15 @@ samt ihrem Anhängsel `auto_workspace` — und die Lüge steckt in dem Träger, 
 | **Major — Commit + Amend** | `git commit` **03.10. 23:43** → `fa3dddbe`, Ausgabe: **42 files changed, 637 insertions(+), 1057 deletions(-)** und `create mode 100644 apps/frontend/src/ui/preflight-compat.test.ts` (`.qwen/tmp/tw4/commit_tw.txt`); Gegencheck im Baum: `git ls-tree -r HEAD --name-only \| grep -c src/ui/preflight-compat.test.ts` → **1**. Amend nach dieser Doku-Korrektur **04.10. 00:13** → **`d53a0950`** (da ungepusht, darum zulässig). Gegen den alten Hash: `grep -rn "fa3dddbe" docs/` → **kein Treffer** |
 | **Vitest auf dem committeten Stand** (03.10. 23:46) | `npm run test` → **55 files / 625 tests passed**, **VITEST_EXIT=0** |
 | **Push** (`git reflog` der Remote-Ref) | **04.10. 01:02:10 +0200 — „update by push"**, Fast-Forward `e920fbf3..d53a0950`; danach nachgemessen: `git rev-list --count origin/feat/chat-persist-queue-goal-strip..HEAD` → **0**, `git status -sb` → **keine** ahead/behind-Markierung |
+| **Familie 7 — Tests** (`python3 -m pytest tests/unit/test_remaining_role_carriers_use_site_role.py tests/unit/test_legacy_role_reads.py -q`) | **36 passed** — 17 Actor-×-Träger- bzw. Resolver-Tests und 19 Selbstpinnen des Gates |
+| **Familie 7 — einzelne Datei** (`python3 -m pytest tests/unit/test_remaining_role_carriers_use_site_role.py -q`) | **17 passed in 0.22 s** |
+| **Familie 7 — Gate** (`python3 scripts/checks/run.py --check legacy_role_reads`) | `passed` (974 Dateien im Scope) |
+| **Familie 7 — Legacy-Leser** (`grep -rn 'db\.user_role(' apps plugins --include='*.py'`) | **2 Treffer, beide Prosa** (`domain/scheduling/targets.py:124`, `domain/workspace/workspace_common.py:118`) |
+| **Familie 7 — wer schreibt `site_role`?** (`grep -rn "UPDATE users SET" --include='*.py' apps/backend plugins \| grep -i site_role` **und** `grep -rn "INSERT INTO users" --include='*.py' apps/backend plugins`) | kein `UPDATE` erreicht die Spalte (die Updates treffen Entitlement-Spalten, `api/platform/controllers/admin_users_api.py:186,192,198,204,222` u. a.); geschrieben wird sie im `INSERT` beim Anlegen (`identity/auth.py:539,542`, abgeleitet aus dem Formularwort `role`) und im Backfill `schema_111_identity_roles_deployment_mode.py:43-44`. **Ändern kann sie die App nicht** — Herabstufen bleibt SQL |
+| **Familie 7 — Mutationen** | **M1** `auth.get_user_by_id` → `role=row[2]`: **3 failed** (die drei Auth-Träger). **M2** Chat-Run stempelt `bearer_user_role or …`: **1 failed**. **M3** neue Datei mit `SELECT id, role FROM users`: Gate `FAILED - 1 legacy role-column read(s) in 974 file(s)` + `test_the_repository_is_clean`. **M4** `user_site_admin` mit eigener Single-Column-Query: Gate `identity_tenants.py:143 [legacy-alone]` + **4 failed** (1 sachlich, 3 als Crash). Jede Sonde per `cp` zurück, `sha256sum -c` → **OK** |
+| **Familie 7 — ganze Suite** (`python3 -m pytest tests/unit -q`, 04.10.) | **2328 passed, 2 skipped** — zwei Läufe 04.10.: **23.09 s** (vor den Doku-Edits) und **24.76 s** (direkt vor dem Commit, nach dem Resolver-Cleanup und §9 der Analyse-Doku). Vor dem Schwung 2 326; die Differenz sind die zwei Resolver-Pins |
+| **Familie 7 — precommit direkt vor dem Commit** (`python3 scripts/checks/run.py --profile precommit`, 04.10.) | **`[checks] all checks passed`**, EXIT=0, **real 0m52.860s** — **kein** Skip-Flag (`SKIP_CHECKS`/`SKIP_PRE_COMMIT`) benutzt oder nötig. Der Hook beim `git commit` läuft danach ein zweites Mal; maßgeblich ist sein Ergebnis |
+| **Familie 7 — Umfang der Änderung** (`git diff --staged --shortstat` nach `git add -- apps plugins scripts tests docs`; Pfade mit `git diff --staged --name-status`) | **51 Dateien, 1594(+) / 388(−)** — gemessen 04.10. nach dem Stage; **diese Zeile wird nach dieser Messung geschrieben** und verschiebt den Wert um ihre eigene Länge, maßgeblich für den Schwung ist die Commit-Ausgabe. **Vier** Pfade stehen als `A` (also neu): `domain/identity/roles.py`, `scripts/checks/checks/legacy_role_reads.py`, `tests/unit/test_legacy_role_reads.py`, `tests/unit/test_remaining_role_carriers_use_site_role.py`. Gegenprobe auf Löschungen: `git diff --staged --name-status \| grep -c "^D"` → **0**. Nötig war sie: `application/identity/commands/__init__.py` stand vor dem Stage als **Löschung** im Index, während die Datei auf Platte lag (Zustand nach `git rm --cached`) — ohne das eine `git add` hätte der Commit das Modul gelöscht; nach dem Stage steht es als `M` |
 
 **Nicht ausgeführt:** das `ci`-Profil (läuft nirgends Pflicht — D). Vitest und `npm run build` sind am
 03.10. für den Tailwind-Schwung gelaufen und gemessen (oben); sie bleiben trotzdem ungecastet.
@@ -462,10 +598,17 @@ Hook: 2 376 passed.
    `db.user_site_role`, die drei Request-Fallbacks weg, der aufruferlose Zwilling
    `dashboard_permission_error_from_flags` gelöscht statt umgebaut; 32 passed, fünf Mutationen mit Namen
    und Zahlen in Abschnitt 4. Die Regel hier öffnete die **ganze Funktion**, nicht nur einen Status.
-3. **Familie 7 als nächster Schwung** (war „zuletzt", ist jetzt der einzige Rest) — 15 getragene Lesungen
-   in 11 Dateien um den Träger `bearer_user_role` herum, Anhänger `auto_workspace`, **null Testabdeckung**
-   auf `domain/model_routing/resolution.py::_override_allowed`. Erst die Abdeckung, dann die Aufrufer.
-   Eine einzige Stelle entscheidet bis heute ohne jeden Site-Check: `bridge_agent_session.py:311`.
+3. ~~**Familie 7 als nächster Schwung**~~ **erledigt 04.10.** Die 15 getragenen Lesungen sind nicht
+   Aufrufer für Aufrufer umgestellt, sondern **zugunsten einer Regel aufgelöst**: reine Regel in
+   `domain/identity/roles.py`, ein Resolver (`identity_tenants._role_columns`), Choke Point in `auth.py`,
+   dazu `db.user_role` **gelöscht** (2 Prosa-Treffer, 0 Aufrufe). Die `min_role`-Tür der Bridge
+   (`bridge_agent_session.py`) fragt jetzt denselben Resolver; `auto_workspace` astet über
+   `db.user_site_admin` und stempelt kein `u.role` mehr. Null Testabdeckung ist sie nicht mehr: 17 Tests
+   mit Zeilenpaaren als Fixture, dazu ein AST-Gate (`legacy_role_reads`) mit Selbstpinnen und vier
+   Sonden — alles in Abschnitt B/7 und Abschnitt 4.
+   **Was von diesem Punkt übrig bleibt:** (a) **der Schreibpfad** — keine Runtime-Codezeile setzt
+   `users.site_role`, Herabstufen ist ein SQL-Vorgang des Operators; (b) **der E2E-Nachweis** an einer
+   echten Instanz (Abschnitt F); (c) der PR (Punkt 5).
 4. **Eine Gate-Form bleibt zu entscheiden, bevor der PR eröffnet wird** (D): **Bandit** (`-lll` gegen 83
    B608). Die zweite — **`node_cve_full`** — ist entschieden und erledigt: der Owner wollte das
    tailwindcss-Major statt des Provider-Wechsels, es ist 03.10. gezogen (D, Maße in Abschnitt 4). Der

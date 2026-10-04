@@ -2,12 +2,15 @@
 doc_id: roles-and-agent-assignment-analysis
 domain: agentlayer_docs
 tags: [planning, rbac, tenant, identity, site-admin, agent-access, people-ui]
-status: done
+status: done-with-gaps-see-section-9
 ---
 
 # Rollen, Tenants und Agent-Freigaben — Analyse & zerlegte Arbeitspakete
 
-**Stand:** 12.09.2026 (Analyse) · **Umsetzung:** P1–P8 komplett erledigt am 16.09.2026 (`5284f0e` … `5ef7efc`).
+**Stand:** Analyse 12.09.2026 · Umsetzung P1–P8 ab 16.09.2026 (`5284f0e` … `5ef7efc`) ·
+**Nachmessung 04.10.2026 (Abschnitt 9): „komplett erledigt" war zu weit.** Sechs von acht Paketen sind
+vollständig, **P3** und **P5** sind teilweise, und der **KI-Vorfilter aus P7 existiert nicht**. Abschnitt 9
+steht jedes Paket mit dem **Kommando**, das seinen Stand misst — nicht mit einem Wert, der vergilzt.
 
 **Maßgeblich heute ist nicht dieses Dokument**, sondern
 [`ADR 0011`](../adr/0011-roles-and-agent-access-without-tenancy.md) (die Entscheidung und ihre
@@ -224,3 +227,73 @@ Quota begrenzt die Anzahl sichtbar.
 - Ad hoc: ein zweiter Account ohne Admin-Rechte ist das schnellste Prüfmittel für P1/P2/P3 — Picker,
   Chat-Senden und `/v1/admin/*` gemeinsam durchgehen.
 - Beide `deployment_mode`-Stellungen testen, sobald P5 landet.
+
+---
+
+## 9. Nachmessung P1–P8 (04.10.2026)
+
+**Warum dieser Abschnitt:** die Zeile oben behauptete „P1–P8 komplett erledigt". Das war zu weit. Nachgemessen
+sind sechs Pakete fertig, **P3** und **P5** haben jeweils eine echte Lücke, und der **KI-Vorfilter aus P7
+existiert nicht**. Jede Aussage hat das **Kommando**, das sie prüft (Arbeitsbaum
+`feat/chat-persist-queue-goal-strip`, Werte vom Lauf 04.10. 21:2x); die Kommandos stehen unter der Tabelle.
+
+| Paket | Stand | Was trägt (Anker, 04.10.) | Was fehlt |
+|-------|-------|---------------------------|-----------|
+| **P1** Rollen entflechten | **Kern ✓** | Eine Regel an einer Stelle: `domain/identity/roles.py:31` (`ELEVATED_SQL`), `:45` `normalize_site_role`, `:59` `effective_role`; eine gelesene Paar-Zeile `infrastructure/db/identity_tenants.py` (`_role_columns`); jedes `User(...)` normalisiert in `infrastructure/identity/auth.py`; AST-Gate `scripts/checks/checks/legacy_role_reads.py` | Die App kann `site_role` **nicht ändern** — kein `UPDATE` erreicht die Spalte (Kommando 2), geschrieben wird sie nur im `INSERT` beim Anlegen (`identity/auth.py:539,542`) und im Backfill `schema_111_…:43-44`. Herabstufen bleibt ein SQL-Vorgang des Operators |
+| **P2** Autoritative Agent-Sicht | **✓ im Code** | Beide Routen hinter `get_current_user` (`api/agents/controllers/agents_api.py:23,30`); Nutzdaten aus `application/agent_runtime/use_cases/agent_catalog.py` — `invokable_by_caller` `:55`, Filter `:69,:83` = `user_may_invoke_agent`, dazu `domain/agent_runtime/catalog.py:56`; `system_prompt` kommt in der Nutzdaten-Datei nicht mehr vor (Kommando 4); FE: `lib/api.ts:70` → `pages/ChatPage.tsx:422`, `DEEP_LINK_AGENT_IDS` nur Fallback (`features/chat/chatAgentSelection.ts:49`) | Der „Done when"-Satz ist ein **UI**-Satz und sein Nachweis (Abschnitt 8: zweiter Account, Picker + Senden gemeinsam) ist nirgends dokumentiert |
+| **P3** People → Agents | **teilweise** | Batch-Endpoint `api/agents/controllers/agents_admin_api.py:360-369` (`batch_upsert_user_agent_policies`, `scope='user'`); People-Seite lädt Freigaben (`pages/admin/AdminUsers.tsx:418`), Checkboxen `:789,796,804,841`, Aufruf `:455` | **Bulk über mehrere Personen** fehlt (Kommando 5: kein *selected/bulk* in der Datei). Der Aufruf setzt pro Klick **einen** Agent für **eine** Person — „ein Vorgang in einem Dialog" (§7) ist damit nicht erreicht |
+| **P4** Dashboards regelbar | **✓** | Operator-Default `infrastructure/settings/operator_settings.py:230,447`, Patch-Writer `operator_settings_patch_persistence.py:277-278`, Formular `operator_settings_forms.py:139`; reine Regel `domain/dashboards/access.py:25`; Auflösung `infrastructure/dashboard/dashboard_access.py:152,173`; per-User `dashboards_allowed`/`dashboard_quota` gelesen in `infrastructure/identity/auth.py:230,288`; **Auto-Dashboard gekoppelt**: `infrastructure/dashboards/dashboard_persistence.py:240-242` kehrt ohne Recht zurück; `schema_129_…py`; `tests/unit/test_dashboard_access.py`, `test_dashboard_rights_use_site_role.py` | — (Restrisiko: kein Nachweis an einer echten DB, Abschnitt F der Status-Doku) |
+| **P5** Tenant-Sichtbarkeit | **eine von zwei Hälften** | `pages/admin/AdminUsers.tsx:97` `showTenantUi = hasOrgSurface(user)` (Helfer `src/auth/deploymentMode.ts:35`), Spaltanzahl `:108` — im Modus `agent_system` ist nichts Tenant-bezogenes sichtbar | Der `multi_tenant`-Zweig: **kein „Tenants"-Tab** im Admin-Bereich (Kommando 6). §7 verlangt beide Modi |
+| **P6** RBAC ohne Tenants | **✓ (Weg B)** | `domain/access/capabilities.py:27` `CAP_AGENT_ASSIGN = "agent.assign"`, Konsumenten `api/agents/controllers/agents_admin_api.py` + `agent_config_admin_api.py`; `users.capabilities` (`schema_130`) gelesen in `infrastructure/db/identity_tenants.py`; FE-Sicht `AdminUsers.tsx:100-105` | — ; der §7-Verify-Fall ist als Test vorhanden: `tests/unit/test_p6_capabilities_rbac.py:177` `test_patch_delegated_cannot_touch_site_admin` |
+| **P7** Einreichung + Review | **Kern ✓, KI ✗** | `schema_131_agent_submissions.py:37-38` (`pending/approved/rejected`) + partieller Unique auf `pending` (`:10`); Store `infrastructure/agent_runtime/agent_submission_store.py`; `review_submission` materialisiert **nur bei `approve`** (`application/agent_runtime/use_cases/agent_submission_services.py:145-147`) → `agent_submission_materialize.py:35` schreibt `plugins/agents/<slug>/agent.yaml` + `system_prompt.md` und lädt die Registry neu; Endpunkt `api/agents/controllers/agent_submissions_api.py` (`api/main.py:33`), UI `pages/admin/AdminAgentSubmissions.tsx` (+ `test_agent_submission.py`) | **Der KI-Vorfilter aus §6 existiert nicht** (Kommando 8). Nächstes ist `_tool_warnings` (`agent_submission_services.py:54`) — **regelbasiert** (unbekannte Tool-Namen), advisory, kein LLM. ADR 0011 §5 (menschliches Gate) ist davon unabhängig erfüllt |
+| **P8** Doku & ADR | **✓** | `docs/features/agent-registry-and-allowlists.md:14` nennt `domain/agent_runtime/registry.py` (B10 ist raus); `docs/benchmarks/knob-registry.yaml:663` `- id: chat.allowed_agent_ids`; `docs/adr/0011-…md` + `0012-admin-tenant-scope.md` | — |
+
+**Kommandos** (jeweils aus dem Repo-Root; Auswertung als `wc -l` oder `head`, wie dabeisteht):
+
+```bash
+# 1 — P1: die Legacy-Lesstelle ist weg (04.10.: 2 Treffer, beide Prosa, 0 Aufrufe)
+grep -rn 'db\.user_role(' apps plugins --include='*.py'
+# 2 — P1: kein UPDATE erreicht site_role (Treffer = nur schema_111_identity_roles_deployment_mode.py:43,44)
+grep -rn "UPDATE users SET" --include='*.py' apps/backend plugins | grep -i site_role
+# 3 — P1: geschrieben wird die Spalte im INSERT beim Anlegen
+grep -rn "INSERT INTO users" --include='*.py' apps/backend plugins
+# 4 — P2: system_prompt verlässt die Katalog-Schicht nicht (erwartet: 0)
+grep -c '"system_prompt"' apps/backend/application/agent_runtime/use_cases/agent_catalog.py
+# 5 — P3: Bulk über mehrere Personen (erwartet: 0 Treffer = Lücke)
+grep -in "bulk\|multiple\|selected" apps/frontend/src/pages/admin/AdminUsers.tsx
+# 6 — P5: Tenants-Tab (leere Ausgabe = Lücke)
+ls apps/frontend/src/pages/admin/ | grep -i tenant
+# 7 — P2: die Serverliste sagt, wer invoken darf
+grep -n "invokable_by_caller" apps/backend/domain/agent_runtime/catalog.py \
+  apps/backend/application/agent_runtime/use_cases/agent_catalog.py
+# 8 — P7: KI-Vorfilter im Endpunkt (erwartet: 0 = Lücke)
+grep -c "llm\|auditor\|model" apps/backend/api/agents/controllers/agent_submissions_api.py
+# 9 — P7: Materialisierung hängt ausschließlich an der Freigabe
+grep -rn "materialize_submission" --include='*.py' apps/backend
+# 10 — Nebenbefund: die zweite, ungegate Fassung des Auto-Dashboards ist tot
+grep -rn "ensure_default_dashboard" --include='*.py' apps/backend | grep dashboard_db
+# 11 — Tests: Referenzbestand heute (04.10.: 2328 passed / 2 skipped — §7/§8 nennen 1238 vom 12.09.)
+python3 -m pytest tests/unit -q
+```
+
+**Offen, nach Nutzen sortiert:**
+
+1. **P1 — `site_role` ändern können.** Solange die App die Spalte nicht schreiben kann, ist jede
+   Herabstufung ein SQL-Griff des Operators; die Sicherheitsentscheidung, die dieses Werk trifft, wird
+   dadurch nicht unsicher, aber sie bleibt handarbeitig. (`PATCH /v1/admin/users/{id}` kennt kein
+   `site_role`-Feld — `api/platform/controllers/admin_users_api.py`, Feldkette endet bei
+   `llm_queue_priority`.)
+2. **P3 — Bulk.** Mehrere Personen gleichzeitig freigeben ist der Fall, den ~10 Personen mit
+   wechselnden Gruppen wirklich haben.
+3. **P7 — KI-Vorfilter.** §6 sagt ihn als *danach* an; gebaut ist er nicht. Ein `security_auditor`-Lauf
+   über `agent_yaml` + `system_prompt`, dessen Ergebnis **neben** das menschliche Gate tritt (ADR 0011 §5).
+4. **P5 — Tenants-Tab** für `multi_tenant`. Solange die Instanz `agent_system` läuft, ist das die
+   billigste der Lücken — und die einzige, die nur sichtbar wird, wenn jemand den Modus wechselt.
+5. **Der Manuell-/E2E-Nachweis** für P2/P3/P4 an einem zweiten Account. Er fehlt seit der Analyse und ist
+   durch Unit-Tests nicht ersetzbar (kein Stack, `legacy-role-migration-status.md` Abschnitt F).
+
+**Nebenbefund beim Nachmessen (P4, nicht Gegenstand dieses Schwungs):** `infrastructure/dashboards/
+dashboard_db.py:173` ist eine zweite, **ungegate** Fassung von `ensure_default_dashboard_for_new_user`.
+Keiner der drei Importe (`admin_setup.py:11`, `auth.py:30`, `instance_setup_service.py:7`) nutzt sie —
+Kommando 10 liefert nur Definition und Logzeile. Tot, aber die Stelle, an der ein künftiger P4-Fix leicht
+übersehen wird.

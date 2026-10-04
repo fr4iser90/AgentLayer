@@ -86,7 +86,6 @@ from apps.backend.infrastructure.db.identity_tenants import (
     tenants_list,
     user_external_sub,
     user_first_admin_id,
-    user_role,
     user_tenant_id,
     user_site_role,
     user_site_admin,

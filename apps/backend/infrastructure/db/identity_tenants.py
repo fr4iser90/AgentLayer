@@ -7,6 +7,13 @@ from typing import Any
 
 from psycopg.rows import dict_row
 
+from apps.backend.domain.identity.roles import (
+    ADMIN as ROLE_ADMIN,
+    ELEVATED_SQL,
+    SITE_ADMIN,
+    USER as ROLE_USER,
+    normalize_site_role,
+)
 from apps.backend.infrastructure.db.db import pool
 
 logger = logging.getLogger(__name__)
@@ -94,11 +101,16 @@ def user_tenant_id(user_id: uuid.UUID) -> int:
 
 
 def user_first_admin_id() -> uuid.UUID | None:
-    """Oldest user with ``role = 'admin'`` (for bootstrap jobs that need an owning user id)."""
+    """Oldest elevated user (for bootstrap jobs that need an owning user id).
+
+    Elevation is the domain rule, not the compatibility column: ``ELEVATED_SQL`` lets
+    ``users.role`` speak only for a row that was never migrated, so an account demoted
+    through ``site_role='site_user'`` cannot become the owner of new work.
+    """
     with pool().connection() as conn:  # tenant-scope: site-wide — bootstrap has no tenant context
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id FROM users WHERE role = 'admin' ORDER BY created_at ASC LIMIT 1"
+                f"SELECT id FROM users WHERE {ELEVATED_SQL} ORDER BY created_at ASC LIMIT 1"
             )
             row = cur.fetchone()
         conn.commit()
@@ -108,23 +120,61 @@ def user_first_admin_id() -> uuid.UUID | None:
     return uid if isinstance(uid, uuid.UUID) else uuid.UUID(str(uid))
 
 
-def user_role(user_id: uuid.UUID | None) -> str:
-    """Return the raw legacy ``users.role`` (``user`` or ``admin``).
+def user_site_role(user_id: uuid.UUID | None) -> str:  # tenant-scope: site-wide (pk lookup)
+    """The one read behind every role answer: ``users.site_role``, legacy column only when unmigrated."""
+    site, _legacy = _role_columns(user_id)
+    return normalize_site_role(site, _legacy)
 
-    Not an elevation source: use :func:`user_effective_role` for the tool
-    ``min_role`` door and :func:`user_site_admin` for admin/workspace gates.
+
+def user_site_admin(user_id: uuid.UUID | None) -> bool:
     """
-    if user_id is None:  # tenant-scope: site-wide (pk lookup)
-        return "user"
-    with pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
-            row = cur.fetchone()
-        conn.commit()
-    if not row or row[0] is None:
-        return "user"
-    r = str(row[0]).strip().lower()
-    return r if r in ("user", "admin") else "user"
+    Canonical site-admin flag derived from ``users.site_role``.
+
+    A definitive ``True``/``False`` for any user: ``users.role='admin'`` is honoured only
+    when ``site_role`` is NULL/unknown, matching :func:`user_site_role`, so
+    ``role='admin'`` with ``site_role='site_user'`` never elevates. An identity that
+    cannot be read — no id, no row, a failing query — is not an admin either. Used by
+    agent-elevation and workspace/admin gates.
+    """
+    return user_site_role(user_id) == SITE_ADMIN
+
+
+def user_effective_role(user_id: uuid.UUID | None) -> str:
+    """``user``/``admin`` for every role-word door, read from ``users.site_role``.
+
+    ``users.role`` decides nothing here: :func:`user_site_role` lets the compatibility
+    column speak only for a row that was never migrated, so a demoted account still
+    carrying ``role='admin'`` loses the operator consoles.
+    """
+    return ROLE_ADMIN if user_site_role(user_id) == SITE_ADMIN else ROLE_USER
+
+
+def _role_columns(user_id: uuid.UUID | None) -> tuple[str | None, str | None]:
+    """``(users.site_role, users.role)`` for one row — the pair behind every role answer.
+
+    Both columns travel together so no reader has to know which of them a rule prefers;
+    a missing row, a missing id and a failing query all read ``(None, None)``, which the
+    domain rule normalizes to the unelevated answer.
+    """
+    if user_id is None:
+        return (None, None)
+    try:
+        with pool().connection() as conn:
+            with conn.cursor() as cur:
+                # tenant-scope: site-wide — canonical identity lookup by pk; callers decide
+                # what the user's tenant permits, exactly as ``auth.get_user_by_id`` does.
+                cur.execute(
+                    "SELECT site_role, role FROM users WHERE id = %s",
+                    (user_id,),
+                )
+                row = cur.fetchone()
+            conn.commit()
+    except Exception:  # noqa: BLE001 - an unreadable identity is never an elevation
+        logger.exception("role columns unread for user=%s", user_id)
+        return (None, None)
+    if not row:
+        return (None, None)
+    return (str(row[0]) if row[0] is not None else None, str(row[1]) if row[1] is not None else None)
 
 
 def scheduler_outbound_count_today_utc(user_id: uuid.UUID) -> int:
@@ -172,54 +222,6 @@ def scheduler_outbound_increment_utc(user_id: uuid.UUID) -> int:
 
 
 _TENANT_ADMIN_ROLES = frozenset({"tenant_owner", "tenant_admin"})
-
-
-def user_site_role(user_id: uuid.UUID | None) -> str:  # tenant-scope: site-wide (pk lookup)
-    if user_id is None:
-        return "site_user"
-    with pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT site_role, role FROM users WHERE id = %s",
-                (user_id,),
-            )
-            row = cur.fetchone()
-        conn.commit()
-    if not row:
-        return "site_user"
-    site = str(row[0] or "").strip().lower()
-    if site in ("site_admin", "site_user"):
-        return site
-    legacy = str(row[1] or "").strip().lower()
-    return "site_admin" if legacy == "admin" else "site_user"
-
-
-def user_site_admin(user_id: uuid.UUID | None) -> bool | None:
-    """
-    Canonical site-admin flag derived from ``users.site_role``.
-
-    Returns a definitive ``True``/``False`` for any user whose ``site_role``
-    is known (legacy ``users.role='admin'`` is honoured only when
-    ``site_role`` is NULL/unknown, matching :func:`user_site_role`).
-    Returns ``None`` when ``user_id`` is unknown so callers can fall back to
-    the raw role signal. Used by agent-elevation and workspace/admin gates so
-    that ``role='admin'`` with ``site_role='site_user'`` never elevates.
-    """
-    if user_id is None:
-        return None
-    return user_site_role(user_id) == "site_admin"
-
-
-def user_effective_role(user_id: uuid.UUID | None) -> str:
-    """``user``/``admin`` for the tool ``min_role`` door, read from ``users.site_role``.
-
-    :func:`user_role` reads the legacy ``users.role`` column. ADR 0011 §1 makes
-    ``site_role`` the only source of elevation, so anything feeding
-    ``caller_fulfills_effective_policy`` — which opens every
-    ``TOOL_MIN_ROLE = "admin"`` tool — must ask here instead: a demoted account
-    still carrying ``role='admin'`` would otherwise keep the operator consoles.
-    """
-    return "admin" if user_site_admin(user_id) else "user"
 
 
 def user_capabilities(user_id: uuid.UUID | None) -> list[str]:

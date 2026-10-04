@@ -135,7 +135,7 @@ async def _run_task_row(row: dict[str, Any]) -> None:
 
     from apps.backend.domain.shared.identity import llm_queue_source_scope, reset_identity, set_identity
 
-    role = db.user_role(user_id)
+    role = db.user_effective_role(user_id)
     id_tok = set_identity(tenant_id, user_id)
     failed = False
     try:

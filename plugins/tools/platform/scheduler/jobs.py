@@ -90,7 +90,7 @@ def create(arguments: dict[str, Any]) -> str:
     if not idt:
         return _err("missing identity — not authenticated")
     tenant_id, caller_uid = idt
-    role = agent_effective_role(caller_uid, db.user_role(caller_uid))
+    role = db.user_effective_role(caller_uid)
     is_admin = role == "admin"
 
     raw_target = normalize_execution_target(arguments.get("execution_target"))
@@ -185,7 +185,7 @@ def list(arguments: dict[str, Any]) -> str:
     if not idt:
         return _err("missing identity — not authenticated")
     tenant_id, caller_uid = idt
-    is_admin = agent_effective_role(caller_uid, db.user_role(caller_uid)) == "admin"
+    is_admin = db.user_effective_role(caller_uid) == "admin"
 
     ws = _parse_uuid(arguments.get("dashboard_id"), field="dashboard_id")
     if arguments.get("dashboard_id") is not None and str(arguments.get("dashboard_id")).strip() and ws is None:
@@ -216,7 +216,7 @@ def set_enabled(arguments: dict[str, Any]) -> str:
     if not idt:
         return _err("missing identity — not authenticated")
     tenant_id, caller_uid = idt
-    role = agent_effective_role(caller_uid, db.user_role(caller_uid))
+    role = db.user_effective_role(caller_uid)
     is_admin = role == "admin"
     feat_err = schedule_feature_permission_error(user_id=caller_uid)
     if feat_err:

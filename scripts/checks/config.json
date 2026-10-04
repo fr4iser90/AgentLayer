@@ -1,13 +1,36 @@
 {
   "profiles": {
-    "fast": ["ddd_layers", "ddd_quality", "agent_governance", "tenant_scope", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder"],
-    "precommit": ["ddd_layers", "ddd_quality", "agent_governance", "tenant_scope", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder", "frontend_ink_color", "frontend_border_token", "frontend_radius", "frontend_spacing", "frontend_content_width", "frontend_fill_token", "frontend_z_index", "frontend_icon_label", "frontend_font_license", "frontend_silent_catch", "frontend_nav_depth", "frontend_dialog", "frontend_click_outside", "frontend_control_primitive", "frontend_primitive_coverage", "frontend_loading_placeholder", "node_cve_full", "python_cve"],
-    "security": ["node_cve_full", "python_cve", "tenant_scope_all"],
-    "architecture": ["ddd_layers_report", "ddd_quality", "agent_governance", "tenant_scope_all"],
+    "fast": ["ddd_layers", "ddd_quality", "agent_governance", "tenant_scope", "legacy_role_reads", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder"],
+    "precommit": ["ddd_layers", "ddd_quality", "agent_governance", "tenant_scope", "legacy_role_reads", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder", "frontend_ink_color", "frontend_border_token", "frontend_radius", "frontend_spacing", "frontend_content_width", "frontend_fill_token", "frontend_z_index", "frontend_icon_label", "frontend_font_license", "frontend_silent_catch", "frontend_nav_depth", "frontend_dialog", "frontend_click_outside", "frontend_control_primitive", "frontend_primitive_coverage", "frontend_loading_placeholder", "node_cve_full", "python_cve"],
+    "security": ["node_cve_full", "python_cve", "tenant_scope_all", "legacy_role_reads"],
+    "architecture": ["ddd_layers_report", "ddd_quality", "agent_governance", "tenant_scope_all", "legacy_role_reads"],
     "quality": ["agent_governance", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder", "bandit"],
-    "ci": ["ddd_layers_all", "ddd_quality", "agent_governance", "tenant_scope", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder", "frontend_ink_color", "frontend_border_token", "frontend_radius", "frontend_spacing", "frontend_content_width", "frontend_fill_token", "frontend_z_index", "frontend_icon_label", "frontend_font_license", "frontend_silent_catch", "frontend_nav_depth", "frontend_dialog", "frontend_click_outside", "frontend_control_primitive", "frontend_primitive_coverage", "frontend_loading_placeholder", "node_cve_full", "python_cve", "bandit"]
+    "ci": ["ddd_layers_all", "ddd_quality", "agent_governance", "tenant_scope", "legacy_role_reads", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder", "frontend_ink_color", "frontend_border_token", "frontend_radius", "frontend_spacing", "frontend_content_width", "frontend_fill_token", "frontend_z_index", "frontend_icon_label", "frontend_font_license", "frontend_silent_catch", "frontend_nav_depth", "frontend_dialog", "frontend_click_outside", "frontend_control_primitive", "frontend_primitive_coverage", "frontend_loading_placeholder", "node_cve_full", "python_cve", "bandit"]
   },
   "checks": {
+    "legacy_role_reads": {
+      "module": "legacy_role_reads",
+      "scope": "all",
+      "include": ["apps/backend", "plugins", "scripts"],
+      "ignore": [
+        "apps/backend/infrastructure/db/migrations/**"
+      ],
+      "summary_limit": 20,
+      "identity_pair_readers": [
+        {
+          "path": "apps/backend/infrastructure/db/identity_tenants.py",
+          "reason": "the identity resolver: _role_columns() is the single paired read behind every role answer"
+        },
+        {
+          "path": "apps/backend/infrastructure/identity/auth.py",
+          "reason": "the identity choke point: the two user loads, the People list and provisioning, all normalized by effective_role()"
+        },
+        {
+          "path": "apps/backend/infrastructure/persistence/postgres/identity_repository.py",
+          "reason": "the identity ORM slice: paired read normalized by effective_role(), never writes the legacy column"
+        }
+      ]
+    },
     "tenant_scope": {
       "module": "tenant_scope",
       "scope": "staged",

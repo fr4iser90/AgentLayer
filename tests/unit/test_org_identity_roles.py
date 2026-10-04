@@ -128,10 +128,11 @@ def test_agent_effective_role_follows_site_admin() -> None:
         assert agent_effective_role(uid, "user") == "admin"
 
 
-def test_agent_effective_role_falls_back_when_lookup_fails() -> None:
+def test_agent_effective_role_denies_when_the_row_cannot_be_read() -> None:
+    """A failing lookup is a deny, not a reason to trust the role the caller carries."""
     uid = uuid.uuid4()
-    with patch.object(identity_db, "user_site_role", side_effect=RuntimeError("db down")):
-        assert agent_effective_role(uid, "admin") == "admin"
+    with patch.object(identity_db, "pool", side_effect=RuntimeError("db down")):
+        assert agent_effective_role(uid, "admin") == "user"
         assert agent_effective_role(uid, None) == "user"
 
 

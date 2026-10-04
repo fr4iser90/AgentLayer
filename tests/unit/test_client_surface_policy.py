@@ -131,9 +131,7 @@ class ClientSurfacePolicyTests(unittest.TestCase):
             "apps.backend.infrastructure.platform.client_surface_policy.server_workspaces_admin_only",
             return_value=True,
         ), patch(
-            "apps.backend.infrastructure.db.db.user_role", return_value="user"
-        ), patch(
-            "apps.backend.infrastructure.db.db.user_site_role", return_value="member"
+            "apps.backend.infrastructure.db.db.user_site_role", return_value="site_user"
         ), patch(
             "apps.backend.infrastructure.db.db.user_is_tenant_admin",
             return_value=tenant_admin,

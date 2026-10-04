@@ -101,7 +101,7 @@ async def bootstrap_chat_run(
                     _cid_pref = uuid.UUID(_cid_pref_s)
                     with db.pool().connection() as conn:
                         with conn.cursor() as cur:
-                            cur.execute(
+                            cur.execute(  # tenant-scope: guarded by user_id — only the caller's own conversation
                                 """
                                 SELECT pref_workspace_id FROM chat_conversations
                                 WHERE id = %s AND user_id = %s
@@ -118,44 +118,24 @@ async def bootstrap_chat_run(
                 except Exception as e:
                     logger.debug("pref_workspace load skipped: %s", e)
 
-    # Load DB user first so workspace resolution (e.g. agentlayer-self gates) sees real role.
-    user_obj = None
+    # The role word for the agent-visibility door and the tool ``min_role`` door: always
+    # resolved from ``users.site_role``, never from a carried claim (ADR 0011 §1). A caller
+    # whose identity cannot be resolved is not elevated.
+    _role_for_agent = db.user_effective_role(user_id)
+
+    # The identity context for the workspace gates and the tools. Its role is the resolved
+    # word, never a column value: an unreadable row answers ``user`` here exactly as it does
+    # at every door, so no consumer can elevate on the compatibility column.
     if user_id:
-        try:
-            with db.pool().connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT id, role FROM users WHERE id = %s", (user_id,))
-                    row = cur.fetchone()
-                    if row:
 
-                        class UserObj:
-                            def __init__(self, uid, role):
-                                self.id = uid
-                                self.role = role
+        class UserObj:
+            def __init__(self, uid, role):
+                self.id = uid
+                self.role = role
 
-                        user_obj = UserObj(user_id, row[1])
-        except Exception:
-            pass
-
-    _role_for_agent = None
-    if user_obj is not None:
-        _role_for_agent = getattr(user_obj, "role", None)
-    if _role_for_agent is None and user_id:
-        try:
-            _role_for_agent = db.user_role(user_id)
-        except Exception:
-            _role_for_agent = bearer_user_role
-    if _role_for_agent is None:
-        _role_for_agent = bearer_user_role
-    # Resolve agent-elevation from the canonical site_role so a legacy
-    # users.role='admin' with site_role='site_user' does not elevate.
-    if user_id:
-        try:
-            site_flag = db.user_site_admin(user_id)
-        except Exception:
-            site_flag = None
-        if site_flag is not None:
-            _role_for_agent = "admin" if site_flag else "user"
+        user_obj = UserObj(user_id, _role_for_agent)
+    else:
+        user_obj = None
 
     if agent_id and not embedded_subagent:
         from apps.backend.domain.agent_runtime.access import user_may_invoke_agent
@@ -319,7 +299,7 @@ async def bootstrap_chat_run(
         try:
             with db.pool().connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute(
+                    cur.execute(  # tenant-scope: guarded by user_id — only the caller's own conversation
                         "SELECT active_task_id FROM chat_conversations WHERE id = %s AND user_id = %s",
                         (conversation_uuid, user_id),
                     )

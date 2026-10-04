@@ -25,6 +25,7 @@ from apps.backend.infrastructure.identity.api_keys import (
     list_api_keys,
     revoke_api_key,
 )
+from apps.backend.domain.identity.roles import effective_role
 from apps.backend.domain.shared.identity import set_identity, reset_identity
 from apps.backend.infrastructure.dashboards.dashboard_persistence import ensure_default_dashboard_for_new_user
 from apps.backend.infrastructure.access.tenant_entity_transfer import guarded_move_user_tenant
@@ -172,7 +173,7 @@ def get_user_by_email(email: str) -> Optional[User]:
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT id, email, role, created_at, password_hash
+                SELECT id, email, role, site_role, created_at, password_hash
                 FROM users
                 WHERE email = %s
             """, (email,))
@@ -182,9 +183,9 @@ def get_user_by_email(email: str) -> Optional[User]:
             return User(
                 id=row[0],
                 email=row[1],
-                role=row[2],
-                created_at=row[3],
-                password_hash=row[4],
+                role=effective_role(row[3], row[2]),
+                created_at=row[4],
+                password_hash=row[5],
             )
 
 
@@ -271,7 +272,7 @@ def list_all_users(tenant_ids: frozenset[int] | None = None) -> list[dict[str, A
             {
                 "id": str(uid),
                 "email": email or "",
-                "role": role,
+                "role": effective_role(site_role, role),
                 "site_role": site_role,
                 "created_at": created_at.isoformat() if created_at else "",
                 "external_sub": external_sub,
@@ -306,7 +307,7 @@ def get_user_by_id(user_id: uuid.UUID) -> Optional[User]:
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT id, email, role, created_at
+                SELECT id, email, role, site_role, created_at
                 FROM users
                 WHERE id = %s
             """, (user_id,))
@@ -316,8 +317,8 @@ def get_user_by_id(user_id: uuid.UUID) -> Optional[User]:
             return User(
                 id=row[0],
                 email=row[1],
-                role=row[2],
-                created_at=row[3],
+                role=effective_role(row[3], row[2]),
+                created_at=row[4],
             )
 
 
@@ -526,7 +527,12 @@ def require_permission(action: str, resource_type: Optional[str] = None) -> Call
 
 
 def insert_user_with_cursor(cur, email: str, password: str, role: str = "user", tenant_id: int = 1) -> User:
-    """Insert a user row using an existing cursor (same transaction as caller)."""
+    """Insert a user row using an existing cursor (same transaction as caller).
+
+    ``site_role`` is written from the requested role — provisioning is the one place a
+    role is *granted*, not read — and the returned user's role word comes from the stored
+    pair, not from the argument.
+    """
     user_id = uuid.uuid4()
     password_hash = hash_password(password)
     external_sub = f"manual:{email}"
@@ -552,7 +558,7 @@ def insert_user_with_cursor(cur, email: str, password: str, role: str = "user", 
     return User(
         id=user_id,
         email=email,
-        role=role,
+        role=effective_role(site_role, role),
         created_at=created_at,
     )
 

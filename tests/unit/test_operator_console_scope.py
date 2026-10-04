@@ -97,19 +97,23 @@ def _identity(
     *,
     site_role: str,
     capabilities: tuple[str, ...],
+    legacy_role: str = "user",
     tenant_id: int = OWNER_TENANT,
 ) -> None:
     """An identity as the console reads it: canonical role, grants, home company.
 
     Patched on the auth layer because that is where the console's guard lives now —
-    ``_scope``/``_site_wide`` delegate to it, exactly as an HTTP request does.
+    ``_scope``/``_site_wide`` delegate to it, exactly as an HTTP request does. The row
+    pair is the fixture, not one reader's verdict, so the real resolver decides what
+    ``legacy_role`` is worth.
     """
+    from apps.backend.infrastructure.db import identity_tenants
     from apps.backend.infrastructure.identity import console_access as console_guard
     from plugins.tools.platform.operator import admin as oa
 
     monkeypatch.setattr(console_guard, "get_identity", lambda: (tenant_id, actor))
     monkeypatch.setattr(oa, "get_identity", lambda: (tenant_id, actor))
-    monkeypatch.setattr(oa.db, "user_site_role", lambda _uid: site_role)
+    monkeypatch.setattr(identity_tenants, "_role_columns", lambda _uid: (site_role, legacy_role))
     monkeypatch.setattr(oa.db, "user_capabilities", lambda _uid: set(capabilities))
     monkeypatch.setattr(oa.db, "user_tenant_id", lambda _uid: tenant_id)
 
@@ -146,9 +150,7 @@ def test_legacy_admin_without_a_grant_gets_nothing(
 
     # ``users.role == 'admin'`` used to be the whole test; the canonical identity says
     # site_user and no capability was granted, so there is nothing to reach.
-    monkeypatch.setattr(oa.db, "user_role", lambda _uid: "admin")
-    _delegated(monkeypatch, actor)
-    monkeypatch.setattr(oa.db, "user_capabilities", lambda _uid: set())
+    _identity(monkeypatch, actor, site_role="site_user", legacy_role="admin", capabilities=())
 
     out = json.loads(oa.users_list({}))
 
