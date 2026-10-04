@@ -11,10 +11,14 @@ status: in-progress
 (Commit des Blocks + Tooling-Commit, Abschnitt A), **02.10. ab 23:40 / 03.10. bis 00:04** (Familie 6 =
 Task-Freigabe geschlossen, committet 03.10. 00:01), **03.10. bis 13:55** (Familie 5 = Dashboards
 geschlossen) und **03.10. 15:2x–15:3x** (Familie 5: alle fünf Mutationen mit Testnamen nachgemessen,
-Rest-Metrik neu gezählt, Precommit gelaufen — **rot durch `node_cve_full`, Commit deshalb ausstehend**,
-Abschnitt D), **03.10. ab 16:0x** (auf Entscheidung des Owners: `tailwindcss` 3→4 als eigener Schwung —
-das Gate ist damit wieder grün, Abschnitt D) **und 03.10. 16:5x–17:0x** (Familie 5 committet,
-Tailwind-Schwung committet). Quelle: Session
+Rest-Metrik neu gezählt, Precommit gelaufen — **rot durch `node_cve_full`, dieser Commit bleibt aus**,
+Abschnitt D), `tailwindcss` 3→4 als eigener Schwung (Entscheidung des Owners nach dem abgelehnten Commit;
+Abschnitt D), **committet 03.10. 23:35 Familie 5 (`7384e917`) und 23:43 der Major (`fa3dddbe`, per amend
+04.10. 00:13 → `d53a0950`)**, **gepusht 04.10. 01:02 (Abschnitt E)**. **Die Zeiten dieses Satzes sind
+gemessen, nicht erinnert** — `mtime` der Artefakte und `git reflog`: grün-Lauf des Profils 23:27, Baseline-
+Backups des Majors 21:02, `commit_attempt.txt` 19:28, `precommit.txt` (rot) 15:56. Die Uhrzeiten, die vor
+dieser Korrektur im Kopfstand dastanden (15:4x, 16:0x, 16:5x–17:0x), waren zu früh und sind ersetzt.
+Quelle: Session
 `9910e7a2-88ab-4521-9d46-d96dd404d97d` (28.09. 19:52 → 02.10. 20:12, 5 843 Records, beim Commit
 abgebrochen) **plus** Live-Messung im Working Tree am 02.10. Jeder Hacken unten ist entweder durch
 Code/Command belegt oder als *nicht nachgemessen* gekennzeichnet.
@@ -259,7 +263,7 @@ samt ihrem Anhängsel `auto_workspace` — und die Lüge steckt in dem Träger, 
       **Gate-Policy-Entscheidung**, keine Fleißaufgabe — zwei Kandidaten: (a) Schwelle auf `-lll`
       (meldet nur high → heute grün, weil kein HIGH), (b) die 83 B608 bereinigen bzw. begründet
       `#nosec`-en. Seit `4ba62ca8` ist der Lauf lokal möglich, ohne das Gate anzuschalten.
-- [ ] **Das Precommit-Gate ist rot, ohne dass jemand am Frontend etwas geändert hat (03.10. 15:3x).**
+- [ ] **Das Precommit-Gate ist rot, ohne dass jemand am Frontend etwas geändert hat (03.10. 15:5x).**
       `python3 scripts/checks/run.py --profile precommit` → **26 Checks grün, `node_cve_full` exit 1**;
       die Backend-Suite im selben Lauf **2 397 passed, 3 skipped, 2 deselected**. Der Check ist per
       `scripts/checks/config.json:641-648` ein `npm audit --audit-level=high` in `apps/frontend`, liest
@@ -276,7 +280,8 @@ samt ihrem Anhängsel `auto_workspace` — und die Lüge steckt in dem Träger, 
       (`react-router-dom@7.18.4`) und blockieren bei `--audit-level=high` nicht.
       **Folge:** `.git/hooks/pre-commit` → `scripts/pre-commit-check.sh` läuft genau dieses Profil, der
       Fund blockiert also **jeden Commit auf diesem Branch**, auch einen aus Python und Doku — nachgesehen
-      03.10. 15:4x: der Hook hat den Commit zu Familie 5 mit `[check:node_cve_full] FAILED - exit code 1`
+      03.10. 19:28 (mtime von `.qwen/tmp/fam5/commit_attempt.txt`; die erste Notiz hier sagte 15:4x und war
+      falsch): der Hook hat den Commit zu Familie 5 mit `[check:node_cve_full] FAILED - exit code 1`
       abgelehnt (`.qwen/tmp/fam5/commit_attempt.txt`). Der Record hält einen grünen Lauf 02.10. 23:52;
       zwischen dem und heute änderte nichts am Lockfile — der Advisory-Feed ist der Bewegende (einzige
       tragfähige Erklärung, keine Messung). Drei Kandidaten standen: (a) `tailwindcss` 3→4 ziehen, ein
@@ -361,15 +366,21 @@ samt ihrem Anhängsel `auto_workspace` — und die Lüge steckt in dem Träger, 
 
 ### E. Merge-Lage
 
-- [ ] **PR → main steht aus.** Alle Commits vom 02.10. (ab `8312afaf` inklusive dieses Dokuments) sind
-      **noch nicht gepusht** — Maßzahl statt Zahl: `git rev-list --count origin/feat/chat-persist-queue-goal-strip..HEAD`
-      → **5** (gemessen 03.10. nach dem Commit zu Familie 5, `7384e917`; `git rev-list --count main..HEAD`
-      dazu **182**). Nach dem Tailwind-Schwung gemessen: **6** bzw. **183** — der Branch läuft damit
-      **183 Commits** vor `main` her (Snapshot 177); `main` zuletzt `9aa96e19`. (Stand Snapshot: HEAD war
-      `4ba62ca8`, 2 vor `origin`.)
-    - `.github/workflows/ci.yml` triggert nur `pull_request` und `push: [main]` → **auf diesem Branch ist
-      CI nie gelaufen.** Der erste Lauf ist gleichzeitig der erste Test von D (Bandit) — vorher mit ihm
-      die Gate-Form klären, sonst ist der PR rot, bevor er gelesen wurde.
+- [ ] **PR → main steht aus; der Push nicht mehr.** **04.10. 01:02 auf ausdrückliche Weisung gepusht**
+      (`git reflog` der Remote-Ref: „update by push"), Fast-Forward `e920fbf3..d53a0950` — sechs Commits:
+      `8312afaf`, `4ba62ca8`, `ff894966`, `f80b44bb`,
+      `7384e917` (Familie 5), `d53a0950` (Tailwind-Major). Nachgemessen nach dem Push:
+      `git rev-list --count origin/feat/chat-persist-queue-goal-strip..HEAD` → **0**,
+      `git rev-list --count main..HEAD` → **183**; `origin/…` = `d53a0950`, `main` = `9aa96e19`.
+      Vorher standen dieselben Messungen **5** bzw. **182** (nach `7384e917`) und **6** bzw. **183**
+      (nach `d53a0950`) — die ältere Zeile „noch nicht gepusht, HEAD war `4ba62ca8`, 2 vor `origin`"
+      beschreibt den Stand des Snapshots und ist überholt.
+    - **Der Push ändert nichts an der CI-Lage:** `.github/workflows/ci.yml` triggert nur `pull_request`
+      und `push: [main]`, ein Push auf diesen Branch also **kein Lauf**. (Live nachzusehen war das hier
+      nicht — auf diesem Rechner ist kein `gh`-CLI; die Aussage steht auf der Workflow-Konfiguration.)
+      **Auf diesem Branch ist damit weiterhin nie CI gelaufen.** Der
+      erste Lauf ist gleichzeitig der erste Test von D (Bandit) — vorher mit ihm die Gate-Form klären,
+      sonst ist der PR rot, bevor er gelesen wurde.
 - [ ] PR eröffnen ist **extern sichtbar** — braucht sein explizites Go.
 
 ### F. Entscheidungen, die nur er treffen kann
@@ -412,8 +423,8 @@ samt ihrem Anhängsel `auto_workspace` — und die Lüge steckt in dem Träger, 
 | **Familie 5 — Mutation 5** (`except`-Zweig des Resolvers auf `True`) | **1 failed, 31 passed** — `test_failed_site_role_lookup_denies` |
 | **Familie 5 — ganze Suite** (`pytest -q`, 03.10. 14:24) | **2 397 passed, 5 skipped, 53 errors** — Gegenprobe mit `-rfE`: **alle 53** Errors in `tests/e2e/*`, **0** Failures sonst; Grund live nachgelesen: `RuntimeError: Agent Layer not reachable at http://127.0.0.1:8088/health: [Errno 111] Connection refused` (`tests/e2e/support/helpers.py:240` über `tests/e2e/conftest.py:23`). Gegen Familie 6 sind das genau die 13 neuen Tests mehr |
 | **`db.user_role(` nach Familie 5** (03.10. 15:2x) | **21 Vorkommen in 15 Dateien** — siehe Messgröße oben (15 getragen / 3 Fallback-Argument / 3 dokumentarisch) |
-| **Familie 5 — precommit-Profil** (03.10. 15:3x) | **FAILED**: 26 Checks grün, **`node_cve_full` exit 1** (npm-audit-Kette `braces`→`micromatch`→`fast-glob`→`chokidar`/`tailwindcss`, 5 high — Details in D). Backend-Suite im Lauf: **2 397 passed, 3 skipped, 2 deselected**. Kein Skip benutzt, Commit bleibt aus |
-| **Familie 5 — Commit-Versuch** (03.10. 15:4x) | `git commit -F .qwen/tmp/fam5/msg.txt` → `[check:node_cve_full] FAILED - exit code 1`, `[pre-commit] FAILED`, **EXIT=1**: kein Commit. Die sechs Pfade bleiben **gestaged** (neue Testdatei als `A`), die fertige Message liegt als `.qwen/tmp/fam5/msg.txt`; der Gegencheck auf `git ls-tree -r HEAD` steht darum noch aus |
+| **Familie 5 — precommit-Profil** (03.10. 15:56 = mtime von `.qwen/tmp/fam5/precommit.txt`) | **FAILED**: 26 Checks grün, **`node_cve_full` exit 1** (npm-audit-Kette `braces`→`micromatch`→`fast-glob`→`chokidar`/`tailwindcss`, 5 high — Details in D). Backend-Suite im Lauf: **2 397 passed, 3 skipped, 2 deselected**. Kein Skip benutzt, der Versuch bringt keinen Commit |
+| **Familie 5 — Commit-Versuch** (03.10. 19:28 = mtime von `.qwen/tmp/fam5/commit_attempt.txt`) | `git commit -F .qwen/tmp/fam5/msg.txt` → `[check:node_cve_full] FAILED - exit code 1`, `[pre-commit] FAILED`, **EXIT=1**: kein Commit. Die sechs Pfade bleiben **gestaged** (neue Testdatei als `A`), die fertige Message liegt als `.qwen/tmp/fam5/msg.txt`; der Gegencheck auf `git ls-tree -r HEAD` steht darum noch aus — **erledigt 23:35** nach dem grünen Lauf, zwei Zeilen weiter unten |
 | **Tailwind — Baseline v3** (03.10., vor dem Major) | `npm run build` Exit 0, ausgeliefertes Stylesheet **70 380 B** roh / **13 544 B** gzip (`.qwen/tmp/tw4/v3.css`) |
 | **Tailwind — erster v4-Build** (03.10.) | kompiliert, **aber** Guard-Fixtures mit drin: **107** Rohtoken-/Arbitrary-Klassen im ausgelieferten Stylesheet (gezählt über `bg-*-*`, `z-[…]`, `max-w-6xl` u. ä.); Auslöser: negated glob wird ignoriert |
 | **Tailwind — finaler Build** (03.10.) | `npm run build` **EXIT=0**, **20/20 Design-Guards** OK, Stylesheet **100 430 B** roh / **16 927 B** gzip; die sechs nachgeprüften Klassen (`bg-red-500`, `bg-indigo-500`, `border-rose-500`, `text-rose-400`, `z-[999]`, `max-w-6xl`) **0×**; `.shadow-xs` vorhanden, `.shadow-sm` **0**, `.outline-hidden` **2 Regeln** (Basis + `@media (forced-colors:active)`), `cursor:pointer` **2**, `appearance:textfield` **1** |
@@ -421,7 +432,11 @@ samt ihrem Anhängsel `auto_workspace` — und die Lüge steckt in dem Träger, 
 | **Tailwind — Mutationen an `preflight-compat.test.ts`** (03.10.) | **sechs**: `shadow-sm` in eine Klasse schreiben, `outline-none` wieder einsetzen, `cursor: pointer` aus `index.css` nehmen, die `@source not`-Zeile löschen, `@config` löschen, den `[type=search]`-Block löschen — jeweils **1 failed**, zurück per `cp` + `md5sum -c` OK, danach wieder grün |
 | **`node_cve_full` nach dem Major** (03.10.) | `npm audit --audit-level=high` → **EXIT=0**, nur **2 moderate** (`react-router-dom`/`react-router`, `deserializeErrors()`) |
 | **Familie 5 — precommit-Profil nach dem Major** (03.10.) | `python3 scripts/checks/run.py --profile precommit` → **all checks passed**, **EXIT=0** (alle 26 des Profils, `node_cve_full` inklusive) |
-| **Familie 5 — Commit** (03.10.) | `git commit -F .qwen/tmp/fam5/msg.txt` → Hook **all checks passed**, **`7384e917`**, **6 files changed, 358 insertions(+), 77 deletions(-)**; Gegencheck: `git ls-tree -r HEAD --name-only \| grep -c test_dashboard_rights_use_site_role` → **1**, `git show --stat` führt die neue Testdatei mit `create mode 100644` |
+| **Familie 5 — Commit** (03.10. 23:35) | `git commit -F .qwen/tmp/fam5/msg.txt` → Hook **all checks passed**, **`7384e917`**, **6 files changed, 358 insertions(+), 77 deletions(-)**; Gegencheck: `git ls-tree -r HEAD --name-only \| grep -c test_dashboard_rights_use_site_role` → **1**, die Commit-Ausgabe führt die neue Testdatei mit `create mode 100644` |
+| **Tailwind-Schwung — Zeiten** (`mtime`, 03.10.) | Baseline-Backups `package.json`/`lock`/`index.css`/`postcss.config.js`/`tailwind.config.js` **21:02**, v3-Build **21:09**, erster v4-Build **21:30**, `@source`-Build **21:44**, Umbau-Build **21:59**, finaler Build **22:22** und bestätigt **22:37**, Mutationen bis **22:29** |
+| **Major — Commit + Amend** | `git commit` **03.10. 23:43** → `fa3dddbe`, Ausgabe: **42 files changed, 637 insertions(+), 1057 deletions(-)** und `create mode 100644 apps/frontend/src/ui/preflight-compat.test.ts` (`.qwen/tmp/tw4/commit_tw.txt`); Gegencheck im Baum: `git ls-tree -r HEAD --name-only \| grep -c src/ui/preflight-compat.test.ts` → **1**. Amend nach dieser Doku-Korrektur **04.10. 00:13** → **`d53a0950`** (da ungepusht, darum zulässig). Gegen den alten Hash: `grep -rn "fa3dddbe" docs/` → **kein Treffer** |
+| **Vitest auf dem committeten Stand** (03.10. 23:46) | `npm run test` → **55 files / 625 tests passed**, **VITEST_EXIT=0** |
+| **Push** (`git reflog` der Remote-Ref) | **04.10. 01:02:10 +0200 — „update by push"**, Fast-Forward `e920fbf3..d53a0950`; danach nachgemessen: `git rev-list --count origin/feat/chat-persist-queue-goal-strip..HEAD` → **0**, `git status -sb` → **keine** ahead/behind-Markierung |
 
 **Nicht ausgeführt:** das `ci`-Profil (läuft nirgends Pflicht — D). Vitest und `npm run build` sind am
 03.10. für den Tailwind-Schwung gelaufen und gemessen (oben); sie bleiben trotzdem ungecastet.
@@ -449,4 +464,6 @@ Hook: 2 376 passed.
    B608). Die zweite — **`node_cve_full`** — ist entschieden und erledigt: der Owner wollte das
    tailwindcss-Major statt des Provider-Wechsels, es ist 03.10. gezogen (D, Maße in Abschnitt 4). Der
    Hook lässt wieder jeden Commit durch.
-5. **Push + PR** sind derselbe sichtbare Schritt und liegen bei ihm (E).
+5. **PR bleibt bei ihm (E).** Der Push ist erledigt: 04.10. 01:02 auf seine Weisung, Fast-Forward
+   `e920fbf3..d53a0950`, `origin/feat/chat-persist-queue-goal-strip` = `d53a0950`, ungepushte Commits
+   **0**. Der PR ist der Teil, der extern sichtbar ist — und der einzige, der CI auslöst.
