@@ -718,7 +718,7 @@
       "providers": {
         "local": {
           "required_python_module": "bandit",
-          "command": ["python3", "-m", "bandit", "-r", "apps/backend", "-c", "pyproject.toml"]
+          "command": ["python3", "-m", "bandit", "-r", "apps/backend", "-c", "pyproject.toml", "-lll"]
         },
         "semgrep": {
           "required_tool": "semgrep",

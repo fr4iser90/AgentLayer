@@ -58,8 +58,13 @@ def test_ibw_and_map() -> None:
 
 
 def test_private_dashboard_bundles_discoverable() -> None:
+    """Private board kinds live under gitignored plugins/dashboards/_private/."""
+    import pytest
     from apps.backend.infrastructure.dashboards.dashboard_bundle import bundles_by_kind
 
     kinds = bundles_by_kind()
-    for k in ("knowledge", "hygiene", "crisis", "bga", "icu", "meds", "abx"):
-        assert k in kinds, f"missing private kind {k} (is plugins/dashboards/_private present?)"
+    private = ("knowledge", "hygiene", "crisis", "bga", "icu", "meds", "abx")
+    if not any(k in kinds for k in private):
+        pytest.skip("plugins/dashboards/_private not present (local-only checkout)")
+    for k in private:
+        assert k in kinds, f"missing private kind {k}"

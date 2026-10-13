@@ -1,0 +1,6 @@
+# Test fixtures use placeholder credentials; ignore that one adapter unit file so
+# GitGuardian does not fail the PR on historical commits that still contain them.
+version: 2
+secret-detection:
+  paths-ignore:
+    - 'tests/unit/test_external_runtime_qwen_adapter.py'
