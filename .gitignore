@@ -2,8 +2,11 @@
 plugins/tools/agent_created/.tool_backups/
 # Generated local Playwright bundles (export_local_playwright_bundle)
 plugins/tools/capabilities/browser/output/
-# Cache
+# Cache / local tool junk (never commit)
 __pycache__/
+.pytest_cache/
+.venv-cov/
+.coverage
 output/
 
 # Dashboard UX-audit artifacts: regenerated per run against a live instance and
