@@ -7,7 +7,7 @@
   "loadFailed": "Aufgaben konnten nicht geladen werden",
   "bindFailed": "Aufgabe konnte nicht an den Chat gebunden werden",
   "newGlobalGoalPlaceholder": "Neues globales Ziel…",
-  "pageTitle": "Tasks",
+  "pageTitle": "Aufgaben",
   "pageSubtitle": "Backlog für Orchestrierung (global) und Projekt-Arbeit (pro Workspace). Chat nutzt nur einen gebundenen Task — hier verwalten.",
   "backToChat": "← Zurück zum Chat",
   "bindingToChat": "Tasks an Chat {{id}} binden. Unten „An Chat binden“ auf einem Task.",

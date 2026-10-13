@@ -12,7 +12,7 @@ import yaml
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 
 from apps.backend.domain.plugin_system.registry import get_registry
-from apps.backend.application.identity.use_cases.request_auth import require_admin
+from apps.backend.application.identity.use_cases.request_auth import require_site_admin
 
 router = APIRouter(prefix="/v1/admin/agents/import", tags=["agents-import-admin"])
 
@@ -276,7 +276,7 @@ async def analyze_agent_import(
     text: str = Form(""),
     files: list[UploadFile] | None = File(default=None),
 ) -> dict[str, Any]:
-    await require_admin(request)
+    await require_site_admin(request)
     sources: list[dict[str, str]] = []
     if text.strip():
         sources.append({"path": "pasted-agent.md", "content": text})

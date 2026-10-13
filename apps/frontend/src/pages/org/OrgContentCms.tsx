@@ -1,7 +1,11 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
+import type { AuthUser } from "../../auth/AuthContext";
+import { hasOrgSurface } from "../../auth/deploymentMode";
 import { apiFetch } from "../../lib/api";
+import { Button } from "../../ui/Button";
+import { TextArea, TextInput } from "../../ui/Field";
 
 type ContentStatus =
   | "draft"
@@ -45,8 +49,9 @@ type VersionsResponse = {
   items?: VersionRow[];
 };
 
-function apiBase(deploymentMode: string): string {
-  return deploymentMode === "agent_system" ? "/v1/admin/tenant-content" : "/v1/org/tenant-content";
+/** Without an org surface the platform-admin CMS is the only content store. */
+function apiBase(user: AuthUser | null | undefined): string {
+  return hasOrgSurface(user) ? "/v1/org/tenant-content" : "/v1/admin/tenant-content";
 }
 
 function statusBadge(status: string, t: (k: string) => string): string {
@@ -61,20 +66,38 @@ function statusBadge(status: string, t: (k: string) => string): string {
 export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
   const { t } = useTranslation(["org"]);
   const auth = useAuth();
-  const deploymentMode = auth.user?.deployment_mode ?? "multi_tenant";
-  const canPublish =
-    (auth.user?.profession_policy?.can_publish_content ??
-      auth.user?.site_role === "site_admin") ||
-    auth.user?.role?.toLowerCase() === "admin" ||
-    auth.user?.membership_role === "tenant_owner" ||
-    auth.user?.membership_role === "tenant_admin";
-  const canReview =
-    auth.user?.profession_policy?.can_review_content === true ||
-    auth.user?.site_role === "site_admin" ||
-    auth.user?.role?.toLowerCase() === "admin" ||
-    auth.user?.membership_role === "tenant_owner" ||
-    auth.user?.membership_role === "tenant_admin";
-  const base = apiBase(deploymentMode);
+  const base = apiBase(auth.user);
+
+  /*
+    The deployment mode picks which route family `base` aims at, and that choice
+    is who the server lets through.
+
+    `/v1/org/tenant-content` asks a tenant membership and then `content.review` /
+    `content.publish` (`tenant_content_api.py:186,213,252,315`). `profession_policy`
+    is that policy as the wire serves it and already carries both slugs for a tenant
+    admin, so it is the only thing to ask here. It comes only with a membership
+    (`auth_api.py:337`), so the membership role answers when it could not be
+    resolved — otherwise a tenant admin would lose the button while the API still
+    served them. No membership answers neither, which is right: `require_tenant_member`
+    exempts nobody, the platform operator included.
+
+    `/v1/admin/tenant-content` asks `require_site_admin`, which reads `site_role`
+    and nothing else (`auth.py:422`).
+
+    The legacy `users.role` column is neither of those. `agent_effective_role`
+    (`request_auth.py:64`) refuses to elevate an `admin` paired with `site_user`, and
+    that pair was OR'd into both flags: publish and review showed for accounts whose
+    requests the endpoint these buttons aimed at rejected.
+  */
+  const policy = auth.user?.profession_policy;
+  const tenantAdmin =
+    auth.user?.membership_role === "tenant_owner" || auth.user?.membership_role === "tenant_admin";
+  const canReview = hasOrgSurface(auth.user)
+    ? (policy?.can_review_content ?? tenantAdmin)
+    : auth.user?.site_role === "site_admin";
+  const canPublish = hasOrgSurface(auth.user)
+    ? (policy?.can_publish_content ?? tenantAdmin)
+    : auth.user?.site_role === "site_admin";
 
   const [items, setItems] = useState<ContentRow[]>([]);
   const [reviewQueue, setReviewQueue] = useState<ContentRow[]>([]);
@@ -366,27 +389,29 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
   const visibleItems = listFilter === "review" ? reviewQueue : items;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,14rem)_1fr]">
-      <aside className="rounded-xl border border-surface-border bg-surface-raised p-3">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-surface-muted">
+    <div className="grid gap-broad lg:grid-cols-[minmax(0,14rem)_1fr]">
+      <aside className="rounded-sheet border border-line bg-card p-soft">
+        <div className="flex items-center justify-between gap-base">
+          <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
             {t("org:cmsNotes")}
           </p>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             type="button"
-            className="text-xs text-sky-400 hover:text-sky-300"
+            className="text-xs text-accent hover:text-badge-accent"
             onClick={startNew}
           >
             {t("org:cmsNewNote")}
-          </button>
+          </Button>
         </div>
         {canReview ? (
-          <div className="mt-2 flex gap-1 text-[10px]">
+          <div className="mt-base flex gap-tight text-meta">
             <button
               type="button"
               className={[
-                "rounded px-2 py-1",
-                listFilter === "all" ? "bg-white/10 text-white" : "text-surface-muted hover:bg-white/5",
+                "rounded-tile px-base py-tight",
+                listFilter === "all" ? "bg-white/10 text-ink-primary" : "text-ink-muted hover:bg-white/5",
               ].join(" ")}
               onClick={() => setListFilter("all")}
             >
@@ -395,8 +420,8 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
             <button
               type="button"
               className={[
-                "rounded px-2 py-1",
-                listFilter === "review" ? "bg-white/10 text-white" : "text-surface-muted hover:bg-white/5",
+                "rounded-tile px-base py-tight",
+                listFilter === "review" ? "bg-white/10 text-ink-primary" : "text-ink-muted hover:bg-white/5",
               ].join(" ")}
               onClick={() => setListFilter("review")}
             >
@@ -404,67 +429,68 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
             </button>
           </div>
         ) : null}
-        <ul className="mt-3 max-h-[28rem] space-y-1 overflow-y-auto">
+        <ul className="mt-soft max-h-[28rem] space-y-tight overflow-y-auto">
           {visibleItems.map((item) => (
             <li key={item.id}>
               <button
                 type="button"
                 className={[
-                  "w-full rounded-md px-2 py-2 text-left text-sm",
+                  "w-full rounded-tile px-base py-base text-left text-sm",
                   item.id === selectedId
-                    ? "bg-white/10 text-white"
-                    : "text-neutral-300 hover:bg-white/5",
+                    ? "bg-white/10 text-ink-primary"
+                    : "text-ink-secondary hover:bg-white/5",
                 ].join(" ")}
                 onClick={() => setSelectedId(item.id)}
               >
                 <span className="block truncate font-medium">{item.title}</span>
-                <span className="text-[10px] text-surface-muted">
+                <span className="text-meta text-ink-muted">
                   {statusBadge(item.status, t)} · v{item.version}
                 </span>
               </button>
             </li>
           ))}
           {visibleItems.length === 0 ? (
-            <li className="px-2 py-4 text-xs text-surface-muted">{t("org:cmsEmpty")}</li>
+            <li className="px-base py-wide text-xs text-ink-muted">{t("org:cmsEmpty")}</li>
           ) : null}
         </ul>
       </aside>
 
-      <form onSubmit={(e) => void saveDraft(e)} className="rounded-xl border border-surface-border bg-surface-raised p-5">
-        <h2 className="text-sm font-medium text-white">
+      <form onSubmit={(e) => void saveDraft(e)} className="rounded-sheet border border-line bg-card p-roomy">
+        <h2 className="text-sm font-medium text-ink-primary">
           {selectedId ? t("org:cmsEditNote") : t("org:cmsNewNote")}
         </h2>
-        <p className="mt-1 text-xs text-surface-muted">{t("org:cmsIntro")}</p>
+        <p className="mt-tight text-xs text-ink-muted">{t("org:cmsIntro")}</p>
 
         {selected ? (
-          <p className="mt-2 text-xs text-surface-muted">
+          <p className="mt-base text-xs text-ink-muted">
             {t("org:cmsStatusLabel")}: {statusBadge(status, t)}
             {selected.last_review_comment ? (
-              <span className="mt-1 block text-amber-400/90">
+              <span className="mt-tight block text-warning">
                 {t("org:cmsLastReviewComment")}: {selected.last_review_comment}
               </span>
             ) : null}
           </p>
         ) : null}
 
-        <label className="mt-4 block text-xs text-surface-muted" htmlFor="cms-title">
+        <label className="mt-wide block text-xs text-ink-muted" htmlFor="cms-title">
           {t("org:knowledgeTitleLabel")}
         </label>
-        <input
+        <TextInput
           id="cms-title"
-          className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white disabled:opacity-60"
+          className="mt-tight"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           required
           disabled={readOnly}
         />
 
-        <label className="mt-4 block text-xs text-surface-muted" htmlFor="cms-body">
+        <label className="mt-wide block text-xs text-ink-muted" htmlFor="cms-body">
           {t("org:knowledgeTextLabel")}
         </label>
-        <textarea
+        <TextArea
+          mono
           id="cms-body"
-          className="mt-1 min-h-56 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white disabled:opacity-60"
+          className="mt-tight min-h-56"
           value={bodyMd}
           onChange={(e) => setBodyMd(e.target.value)}
           required
@@ -472,87 +498,96 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
         />
 
         {status === "in_review" && canReview ? (
-          <label className="mt-4 block text-xs text-surface-muted" htmlFor="cms-reject-comment">
+          <label className="mt-wide block text-xs text-ink-muted" htmlFor="cms-reject-comment">
             {t("org:cmsRejectCommentLabel")}
           </label>
         ) : null}
         {status === "in_review" && canReview ? (
-          <textarea
+          <TextArea
             id="cms-reject-comment"
-            className="mt-1 min-h-20 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+            className="mt-tight min-h-20"
             value={rejectComment}
             onChange={(e) => setRejectComment(e.target.value)}
             placeholder={t("org:cmsRejectCommentPlaceholder")}
           />
         ) : null}
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button
+        <div className="mt-wide flex flex-wrap gap-base">
+          <Button
+            size="lg"
             type="submit"
             disabled={busy || readOnly}
-            className="rounded-md border border-surface-border px-4 py-1.5 text-sm text-neutral-200 hover:bg-white/5 disabled:opacity-50"
+            className="px-wide py-snug text-sm hover:bg-white/5"
           >
             {busy ? t("org:cmsSaving") : t("org:cmsSaveDraft")}
-          </button>
+          </Button>
           {status === "draft" ? (
-            <button
+            <Button
+              size="lg"
               type="button"
               disabled={busy}
-              className="rounded-md border border-sky-500/40 px-4 py-1.5 text-sm text-sky-300 hover:bg-sky-500/10 disabled:opacity-50"
+              className="border-accent/40 px-wide py-snug text-sm text-badge-accent"
               onClick={() => void submitForReview()}
             >
               {t("org:cmsSubmitForReview")}
-            </button>
+            </Button>
           ) : null}
           {status === "in_review" && canReview ? (
             <>
-              <button
+              <Button
+                variant="primary"
+                tone="success"
+                size="lg"
                 type="button"
                 disabled={busy}
-                className="rounded-md bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+                className="px-wide py-snug text-sm"
                 onClick={() => void approveSelected()}
               >
                 {t("org:cmsApprove")}
-              </button>
-              <button
+              </Button>
+              <Button
+                size="lg"
                 type="button"
                 disabled={busy}
-                className="rounded-md border border-amber-500/40 px-4 py-1.5 text-sm text-amber-300 hover:bg-amber-500/10 disabled:opacity-50"
+                className="border-warning/40 px-wide py-snug text-sm text-badge-warning"
                 onClick={() => void rejectSelected()}
               >
                 {t("org:cmsReject")}
-              </button>
+              </Button>
             </>
           ) : null}
           {status === "approved" && canPublish ? (
-            <button
+            <Button
+              variant="primary"
+              size="lg"
               type="button"
               disabled={busy}
-              className="rounded-md bg-sky-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+              className="px-wide py-snug text-sm"
               onClick={() => void publishSelected()}
             >
               {busy ? t("org:knowledgePublishing") : t("org:cmsPublish")}
-            </button>
+            </Button>
           ) : null}
           {!canPublish && status === "approved" ? (
-            <p className="w-full text-xs text-surface-muted">{t("org:cmsPublishRequiresApprover")}</p>
+            <p className="w-full text-xs text-ink-muted">{t("org:cmsPublishRequiresApprover")}</p>
           ) : null}
           {selected?.status === "published" && canPublish ? (
-            <button
+            <Button
               type="button"
+              variant="danger"
+              size="lg"
               disabled={busy}
-              className="rounded-md border border-red-500/40 px-4 py-1.5 text-sm text-red-300 hover:bg-red-500/10 disabled:opacity-50"
               onClick={() => void archiveSelected()}
             >
               {t("org:cmsArchive")}
-            </button>
+            </Button>
           ) : null}
         </div>
 
         {versions.length > 0 ? (
-          <div className="mt-4 rounded-md border border-surface-border/60 bg-black/10 p-3">
-            <p className="text-xs font-medium text-surface-muted">{t("org:cmsVersionHistory")}</p>
-            <ul className="mt-2 space-y-1 text-xs text-neutral-300">
+          <div className="mt-wide rounded-tile border border-line/60 bg-black/10 p-soft">
+            <p className="text-xs font-medium text-ink-muted">{t("org:cmsVersionHistory")}</p>
+            <ul className="mt-base space-y-tight text-xs text-ink-secondary">
               {versions.map((v) => (
                 <li key={v.version}>
                   v{v.version} — {v.title}
@@ -563,8 +598,8 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
           </div>
         ) : null}
 
-        {msg ? <p className="mt-3 text-sm text-emerald-400/90">{msg}</p> : null}
-        {err ? <p className="mt-3 text-sm text-red-400/90">{err}</p> : null}
+        {msg ? <p className="mt-soft text-sm text-success">{msg}</p> : null}
+        {err ? <p className="mt-soft text-sm text-danger">{err}</p> : null}
       </form>
     </div>
   );

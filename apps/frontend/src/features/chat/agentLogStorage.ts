@@ -155,6 +155,7 @@ export function appendTimelineEntry(
       ...(entry.stepPhase != null ? { stepPhase: entry.stepPhase } : {}),
       ...(entry.toolOk != null ? { toolOk: entry.toolOk } : {}),
       ...(entry.toolError != null ? { toolError: entry.toolError } : {}),
+      ...(entry.resultDisplay != null ? { resultDisplay: entry.resultDisplay } : {}),
       ...(entry.toolRound != null ? { toolRound: entry.toolRound } : {}),
       ...(entry.nested === true ? { nested: true } : {}),
       ...(entry.indexMode != null ? { indexMode: entry.indexMode } : {}),
@@ -176,6 +177,18 @@ export function appendTimelineEntry(
         ? { streamOffset: entry.streamOffset }
         : {}),
       ...(entry.secretPrompt != null ? { secretPrompt: entry.secretPrompt } : {}),
+      ...(entry.injectKind != null ? { injectKind: entry.injectKind } : {}),
+      ...(entry.injectLabel != null ? { injectLabel: entry.injectLabel } : {}),
+      ...(entry.injectBody != null ? { injectBody: entry.injectBody } : {}),
+      ...(entry.injectChars != null ? { injectChars: entry.injectChars } : {}),
+      ...(entry.messagesCompacted != null
+        ? { messagesCompacted: entry.messagesCompacted }
+        : {}),
+      ...(entry.queueAhead != null ? { queueAhead: entry.queueAhead } : {}),
+      ...(entry.queueSize != null ? { queueSize: entry.queueSize } : {}),
+      ...(entry.estimatedTimeSeconds != null
+        ? { estimatedTimeSeconds: entry.estimatedTimeSeconds }
+        : {}),
     },
   ];
 }

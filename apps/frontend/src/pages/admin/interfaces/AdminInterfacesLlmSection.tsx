@@ -12,7 +12,11 @@ import {
 } from "../../../lib/modelCatalog";
 import { apiFetch } from "../../../lib/api";
 import { useAuth } from "../../../auth/AuthContext";
+import { hasOrgSurface } from "../../../auth/deploymentMode";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "../../../ui/Button";
+import { Checkbox } from "../../../ui/Checkbox";
+import { Select, TextInput } from "../../../ui/Field";
 
 type AdminModelCatalogPref = {
   provider_id?: string;
@@ -204,9 +208,9 @@ function ProviderModelSelect({
   const current = value.trim();
   const options = current && !models.includes(current) ? [current, ...models] : models;
   return (
-    <select
+    <Select
       id={id}
-      className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
+      className="mt-tight"
       value={current}
       disabled={options.length === 0}
       onChange={(e) => onChange(e.target.value)}
@@ -219,7 +223,7 @@ function ProviderModelSelect({
           {model}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
@@ -234,19 +238,19 @@ function AccessStateControl({
 }) {
   const states: AccessState[] = ["inherit", "allow", "deny"];
   return (
-    <div className="flex shrink-0 overflow-hidden rounded-md border border-surface-border bg-black/30 text-xs">
+    <div className="flex shrink-0 overflow-hidden rounded-tile border border-line bg-black/30 text-xs">
       {states.map((state) => (
         <button
           key={state}
           type="button"
-          className={`px-2 py-1 ${
+          className={`px-base py-tight ${
             value === state
               ? state === "allow"
-                ? "bg-emerald-500/25 text-emerald-100"
+                ? "bg-success-subtle text-badge-success"
                 : state === "deny"
-                  ? "bg-rose-500/25 text-rose-100"
-                  : "bg-white/15 text-white"
-              : "text-neutral-300 hover:bg-white/10"
+                  ? "bg-danger-subtle text-badge-danger"
+                  : "bg-white/15 text-ink-primary"
+              : "text-ink-secondary hover:bg-white/10"
           }`}
           onClick={() => onChange(state)}
         >
@@ -274,6 +278,9 @@ export function AdminInterfacesLlmSection({
   const [users, setUsers] = useState<UserRow[]>([]);
   const [accessScope, setAccessScope] = useState<AccessScope>("global");
   const [accessTenantId, setAccessTenantId] = useState("1");
+  // Tenant-scoped model access is a tenant-selection surface: with no org surface
+  // there is one tenant and nothing to scope against, so the option is not offered.
+  const showTenantScope = hasOrgSurface(auth.user);
   const [accessUserId, setAccessUserId] = useState("");
   const [modelAccess, setModelAccess] = useState<Record<string, AccessState>>({});
   const [modelDefaults, setModelDefaults] = useState<Record<ModelProfile, string>>({
@@ -727,58 +734,58 @@ export function AdminInterfacesLlmSection({
     }
   }
   if (s.loading) {
-    return <p className="text-sm text-surface-muted">{t("admin:loading")}</p>;
+    return <p className="text-sm text-ink-muted">{t("admin:loading")}</p>;
   }
   return (
     <>
           {showProviders ? (
-          <section className="rounded-xl border border-surface-border bg-surface-raised p-5">
-            <h2 className="text-sm font-medium text-white">{t("admin:ifLlmEndpointsTitle")}</h2>
-            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifLlmEndpointsIntro")}</p>
-            <div className="mt-4 rounded-lg border border-sky-400/25 bg-sky-500/10 p-4">
-              <h3 className="text-sm font-medium text-sky-100">{t("admin:ifLlmActiveCatalogTitle")}</h3>
-              <p className="mt-1 text-xs text-sky-100/75">{t("admin:ifLlmActiveCatalogIntro")}</p>
-              <div className="mt-3 grid gap-3 xl:grid-cols-2">
+          <section className="rounded-sheet border border-line bg-card p-roomy">
+            <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifLlmEndpointsTitle")}</h2>
+            <p className="mt-base text-xs text-ink-muted">{t("admin:ifLlmEndpointsIntro")}</p>
+            <div className="mt-wide rounded-card border border-accent/25 bg-accent-subtle p-wide">
+              <h3 className="text-sm font-medium text-badge-accent">{t("admin:ifLlmActiveCatalogTitle")}</h3>
+              <p className="mt-tight text-xs text-badge-accent">{t("admin:ifLlmActiveCatalogIntro")}</p>
+              <div className="mt-soft grid gap-soft xl:grid-cols-2">
                 {accessProviderGroups.map((group) => (
-                  <div key={group.id} className="rounded-md border border-white/10 bg-black/25 p-3">
-                    <div className="flex items-start justify-between gap-3">
+                  <div key={group.id} className="rounded-tile border border-line bg-black/25 p-soft">
+                    <div className="flex items-start justify-between gap-soft">
                       <div>
-                        <h4 className="text-xs font-semibold text-white">{group.title}</h4>
-                        <p className="mt-1 text-[11px] text-sky-100/70">{group.intro}</p>
+                        <h4 className="text-xs font-semibold text-ink-primary">{group.title}</h4>
+                        <p className="mt-tight text-meta text-badge-accent">{group.intro}</p>
                       </div>
-                      <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-neutral-300">
+                      <span className="rounded-tile bg-white/10 px-snug py-hair font-mono text-meta text-ink-secondary">
                         {group.providers.length}
                       </span>
                     </div>
                     {group.providers.length === 0 ? (
-                      <p className="mt-3 text-xs text-amber-200">{group.empty}</p>
+                      <p className="mt-soft text-xs text-badge-warning">{group.empty}</p>
                     ) : (
-                      <div className="mt-3 space-y-2">
+                      <div className="mt-soft space-y-base">
                         {group.providers.map((provider) => {
                           const visibleModels = provider.models ?? [];
                           return (
-                            <div key={capabilityAccessKey(provider.capability, provider.providerId)} className="rounded-md border border-white/10 bg-black/25 p-3">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-xs font-semibold text-white">{provider.label}</span>
-                                <span className="font-mono text-xs text-surface-muted">{provider.providerId}</span>
+                            <div key={capabilityAccessKey(provider.capability, provider.providerId)} className="rounded-tile border border-line bg-black/25 p-soft">
+                              <div className="flex flex-wrap items-center gap-base">
+                                <span className="text-xs font-semibold text-ink-primary">{provider.label}</span>
+                                <span className="font-mono text-xs text-ink-muted">{provider.providerId}</span>
                                 {provider.source ? (
-                                  <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-neutral-300">
+                                  <span className="rounded-tile bg-white/10 px-snug py-hair text-meta uppercase tracking-wide text-ink-secondary">
                                     {provider.source}
                                   </span>
                                 ) : null}
                                 {provider.meta ? (
-                                  <span className="text-[10px] text-neutral-300">{provider.meta}</span>
+                                  <span className="text-meta text-ink-secondary">{provider.meta}</span>
                                 ) : null}
                               </div>
                               {provider.baseUrl ? (
-                                <p className="mt-1 break-all font-mono text-[11px] text-surface-muted">{provider.baseUrl}</p>
+                                <p className="mt-tight break-all font-mono text-meta text-ink-muted">{provider.baseUrl}</p>
                               ) : null}
                               {visibleModels.length > 0 ? (
-                                <div className="mt-2 flex flex-wrap gap-1">
+                                <div className="mt-base flex flex-wrap gap-tight">
                                   {visibleModels.map((model) => (
                                     <span
                                       key={model}
-                                      className="rounded border border-white/10 bg-black/30 px-1.5 py-0.5 font-mono text-[10px] text-neutral-200"
+                                      className="rounded-tile border border-line bg-black/30 px-snug py-hair font-mono text-meta text-ink-primary"
                                     >
                                       {model}
                                     </span>
@@ -795,34 +802,36 @@ export function AdminInterfacesLlmSection({
               </div>
             </div>
             {operatorEnvImportGroups.map((group) => (
-              <div key={group.kind} className="mt-4 rounded-lg border border-amber-400/25 bg-amber-500/10 p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div key={group.kind} className="mt-wide rounded-card border border-warning/25 bg-warning-subtle p-wide">
+                <div className="flex flex-col gap-soft sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <h3 className="text-sm font-medium text-amber-100">
+                    <h3 className="text-sm font-medium text-badge-warning">
                       {t("admin:envProviderFoundTitle", { count: group.providers.length })}
                     </h3>
-                    <p className="mt-1 text-xs text-amber-100/75">
+                    <p className="mt-tight text-xs text-badge-warning">
                       {t("admin:envProviderFoundIntro", { prefix: group.envPrefix })}
                     </p>
                   </div>
-                  <button
+                  <Button
+                    variant="primary"
+                    tone="warning"
                     type="button"
                     disabled={s.envOperatorImporting === group.kind}
-                    className="rounded-md bg-amber-500 px-3 py-1.5 text-sm font-medium text-black hover:bg-amber-400 disabled:opacity-50"
+                    className="px-soft py-snug text-sm text-black"
                     onClick={() => void s.importOperatorEnvProviders(group.kind)}
                   >
                     {s.envOperatorImporting === group.kind ? t("admin:envLlmImporting") : t("admin:envLlmImportButton")}
-                  </button>
+                  </Button>
                 </div>
-                <div className="mt-3 space-y-2">
+                <div className="mt-soft space-y-base">
                   {group.providers.map((p) => (
-                    <details key={p.provider_id} className="rounded-md border border-white/10 bg-black/25 p-3">
-                      <summary className="cursor-pointer text-xs text-amber-100">
+                    <details key={p.provider_id} className="rounded-tile border border-line bg-black/25 p-soft">
+                      <summary className="cursor-pointer text-xs text-badge-warning">
                         <span className="font-mono">{p.provider_id}</span> · {p.label}
                         {p.already_in_db ? ` · ${t("admin:envLlmAlreadyInDb")}` : ""}
                       </summary>
-                      <p className="mt-2 break-all font-mono text-[11px] text-surface-muted">{p.base_url}</p>
-                      <div className="mt-2 grid gap-2 text-[11px] text-neutral-300 sm:grid-cols-2">
+                      <p className="mt-base break-all font-mono text-meta text-ink-muted">{p.base_url}</p>
+                      <div className="mt-base grid gap-base text-meta text-ink-secondary sm:grid-cols-2">
                         <p>
                           {t("admin:envLlmModels")}: <span className="font-mono">{p.model_default || "—"}</span>
                         </p>
@@ -836,13 +845,13 @@ export function AdminInterfacesLlmSection({
                           {t("admin:envLlmHeader")}: <span className="font-mono">{p.api_header_name}</span>
                         </p>
                       </div>
-                      <details className="mt-2">
-                        <summary className="cursor-pointer text-[11px] text-amber-100/80">
+                      <details className="mt-base">
+                        <summary className="cursor-pointer text-meta text-badge-warning">
                           {t("admin:envLlmCleanupChecklist")}
                         </summary>
-                        <ul className="mt-1 grid gap-1 sm:grid-cols-2">
+                        <ul className="mt-tight grid gap-tight sm:grid-cols-2">
                           {p.cleanup_keys.map((key) => (
-                            <li key={key} className="font-mono text-[10px] text-amber-100/70">
+                            <li key={key} className="font-mono text-meta text-badge-warning">
                               {key}
                             </li>
                           ))}
@@ -852,33 +861,35 @@ export function AdminInterfacesLlmSection({
                   ))}
                 </div>
                 {s.envOperatorCleanupNotes[group.kind] ? (
-                  <p className="mt-3 text-xs text-amber-100/75">{s.envOperatorCleanupNotes[group.kind]}</p>
+                  <p className="mt-soft text-xs text-badge-warning">{s.envOperatorCleanupNotes[group.kind]}</p>
                 ) : null}
               </div>
             ))}
             {operatorDbEndpointGroups.length > 0 ? (
-              <div className="mt-6 grid gap-4 xl:grid-cols-2">
+              <div className="mt-broad grid gap-wide xl:grid-cols-2">
                 {operatorDbEndpointGroups.map((group) => (
-                  <div key={group.kind} className="rounded-lg border border-white/10 bg-black/15 p-4">
-                    <div className="flex items-start justify-between gap-3">
+                  <div key={group.kind} className="rounded-card border border-line bg-black/15 p-wide">
+                    <div className="flex items-start justify-between gap-soft">
                       <div>
-                        <h4 className="text-sm font-medium text-white">{group.title}</h4>
-                        <p className="mt-1 text-xs text-surface-muted">{group.intro}</p>
+                        <h4 className="text-sm font-medium text-ink-primary">{group.title}</h4>
+                        <p className="mt-tight text-xs text-ink-muted">{group.intro}</p>
                       </div>
-                      <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-neutral-300">
+                      <span className="rounded-tile bg-white/10 px-snug py-hair font-mono text-meta text-ink-secondary">
                         {group.endpoints.length}
                       </span>
                     </div>
-                    <button
+                    <Button
+                      variant="primary"
+                      size="sm"
                       type="button"
-                      className="mt-3 rounded-md border border-sky-500/40 bg-sky-500/10 px-3 py-1.5 text-xs text-sky-200 hover:bg-sky-500/20"
+                      className="mt-soft border-accent/40 px-soft py-snug text-xs text-badge-accent"
                       onClick={() => addOperatorEndpoint(group.kind)}
                     >
                       {t("admin:ifMemAddEndpoint")}
-                    </button>
-                    <div className="mt-3 space-y-3">
+                    </Button>
+                    <div className="mt-soft space-y-soft">
                       {group.endpoints.length === 0 ? (
-                        <p className="rounded-md border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                        <p className="rounded-tile border border-warning/20 bg-warning-subtle px-soft py-base text-xs text-badge-warning">
                           {adminText(group.metadata.empty_i18n_key)}
                         </p>
                       ) : null}
@@ -891,80 +902,81 @@ export function AdminInterfacesLlmSection({
                         return (
                         <div
                           key={`${group.kind}-${endpoint.id ?? endpointIdx}`}
-                          className="rounded-md border border-white/10 bg-black/25 p-3"
+                          className="rounded-tile border border-line bg-black/25 p-soft"
                         >
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-xs font-semibold text-white">
+                          <div className="flex flex-wrap items-center justify-between gap-base">
+                            <div className="flex flex-wrap items-center gap-base">
+                            <span className="text-xs font-semibold text-ink-primary">
                               {endpoint.label || endpoint.baseUrl || t("admin:ifMemEndpointN", { n: endpointIdx + 1 })}
                             </span>
                             {endpoint.id != null ? (
-                              <span className="font-mono text-[10px] text-surface-muted">
+                              <span className="font-mono text-meta text-ink-muted">
                                 {t("admin:dbEndpointBadge", { id: endpoint.id })}
                               </span>
                             ) : null}
-                            <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-neutral-300">
+                            <span className="rounded-tile bg-white/10 px-snug py-hair text-meta uppercase tracking-wide text-ink-secondary">
                               db
                             </span>
                             {endpoint.enabled ? null : (
-                              <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-100">
+                              <span className="rounded-tile bg-warning-subtle px-snug py-hair text-meta text-badge-warning">
                                 {t("admin:off")}
                               </span>
                             )}
                             </div>
-                            <button
+                            <Button
                               type="button"
-                              className="text-xs text-rose-400 hover:text-rose-200"
+                              variant="danger"
+                              size="sm"
                               onClick={() => removeOperatorEndpoint(group.kind, endpointIdx)}
                             >
                               {t("admin:ifLlmRemove")}
-                            </button>
+                            </Button>
                           </div>
-                          <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs text-white">
-                            <input
-                              type="checkbox"
-                              className="rounded border-surface-border"
+                          <label className="mt-soft flex cursor-pointer items-center gap-base text-xs text-ink-primary">
+                            <Checkbox
                               checked={endpoint.enabled}
                               onChange={(e) => updateOperatorEndpoint(group.kind, endpointIdx, { enabled: e.target.checked })}
                             />
                             {t("admin:on")}
                           </label>
-                          <label className="mt-2 block text-xs text-surface-muted" htmlFor={`provider-label-${group.kind}-${endpointIdx}`}>
+                          <label className="mt-base block text-xs text-ink-muted" htmlFor={`provider-label-${group.kind}-${endpointIdx}`}>
                             {t("admin:ifLlmLabelOptional")}
                           </label>
-                          <input
+                          <TextInput
                             id={`provider-label-${group.kind}-${endpointIdx}`}
-                            className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+                            className="mt-tight"
                             value={endpoint.label}
                             onChange={(e) => updateOperatorEndpoint(group.kind, endpointIdx, { label: e.target.value })}
                             placeholder={group.title}
                           />
-                          <label className="mt-3 block text-xs text-surface-muted" htmlFor={`provider-url-${group.kind}-${endpointIdx}`}>
+                          <label className="mt-soft block text-xs text-ink-muted" htmlFor={`provider-url-${group.kind}-${endpointIdx}`}>
                             {t("admin:ifMemBaseUrlLabel")}
                           </label>
-                          <input
+                          <TextInput
+                            mono
                             id={`provider-url-${group.kind}-${endpointIdx}`}
-                            className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                            className="mt-tight"
                             value={endpoint.baseUrl}
                             onChange={(e) => updateOperatorEndpoint(group.kind, endpointIdx, { baseUrl: e.target.value })}
                             placeholder={t("admin:ifLlmBaseUrlPlaceholder")}
                             autoComplete="off"
                           />
-                          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                          <div className="mt-soft grid gap-soft sm:grid-cols-2">
                             <div>
-                              <label className="block text-xs text-surface-muted" htmlFor={`provider-header-${group.kind}-${endpointIdx}`}>
+                              <label className="block text-xs text-ink-muted" htmlFor={`provider-header-${group.kind}-${endpointIdx}`}>
                                 {t("admin:envLlmHeader")}
                               </label>
-                              <input
+                              <TextInput
+                                mono
                                 id={`provider-header-${group.kind}-${endpointIdx}`}
-                                className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                                className="mt-tight"
                                 value={endpoint.apiHeaderName}
                                 onChange={(e) => updateOperatorEndpoint(group.kind, endpointIdx, { apiHeaderName: e.target.value })}
                                 placeholder={endpoint.apiHeaderName || "Authorization"}
                               />
                             </div>
                             <div>
-                              <label className="block text-xs text-surface-muted" htmlFor={`provider-model-${group.kind}-${endpointIdx}`}>
+                              <label className="block text-xs text-ink-muted" htmlFor={`provider-model-${group.kind}-${endpointIdx}`}>
                                 {adminText(group.metadata.model_label_i18n_key, "Model")}
                               </label>
                               <ProviderModelSelect
@@ -976,16 +988,17 @@ export function AdminInterfacesLlmSection({
                               />
                             </div>
                           </div>
-                          <label className="mt-3 block text-xs text-surface-muted" htmlFor={`provider-parallel-${group.kind}-${endpointIdx}`}>
+                          <label className="mt-soft block text-xs text-ink-muted" htmlFor={`provider-parallel-${group.kind}-${endpointIdx}`}>
                             {t("admin:ifLlmMaxParallelLabel")}
                           </label>
-                          <input
+                          <TextInput
+                            mono
                             id={`provider-parallel-${group.kind}-${endpointIdx}`}
                             type="number"
                             min={1}
                             max={64}
                             step={1}
-                            className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                            className="mt-tight max-w-control"
                             value={endpoint.maxParallel}
                             onChange={(e) =>
                               updateOperatorEndpoint(group.kind, endpointIdx, {
@@ -993,8 +1006,8 @@ export function AdminInterfacesLlmSection({
                               })
                             }
                           />
-                          <p className="mt-1 text-xs text-surface-muted">{t("admin:ifLlmMaxParallelHint")}</p>
-                          <p className="mt-3 text-xs text-surface-muted">
+                          <p className="mt-tight text-xs text-ink-muted">{t("admin:ifLlmMaxParallelHint")}</p>
+                          <p className="mt-soft text-xs text-ink-muted">
                             {t("admin:envLlmKey")}:{" "}
                             {endpoint.apiKeyConfigured
                               ? t("admin:envLlmKeyRedacted", {
@@ -1002,14 +1015,15 @@ export function AdminInterfacesLlmSection({
                                 })
                               : t("admin:envLlmKeyEmpty")}
                           </p>
-                          <label className="mt-2 block text-xs text-surface-muted" htmlFor={`provider-key-${group.kind}-${endpointIdx}`}>
+                          <label className="mt-base block text-xs text-ink-muted" htmlFor={`provider-key-${group.kind}-${endpointIdx}`}>
                             {t("admin:ifMemApiKeyLabel")}
                           </label>
-                          <input
+                          <TextInput
+                            mono
                             id={`provider-key-${group.kind}-${endpointIdx}`}
                             type="password"
                             autoComplete="off"
-                            className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                            className="mt-tight"
                             value={endpoint.apiKey ?? ""}
                             onChange={(e) => updateOperatorEndpoint(group.kind, endpointIdx, { apiKey: e.target.value })}
                             placeholder={endpoint.apiKeyConfigured ? t("admin:tokenReplacePlaceholder") : t("admin:ifMemPasteKey")}
@@ -1026,34 +1040,36 @@ export function AdminInterfacesLlmSection({
           ) : null}
 
           {showPolicies ? (
-          <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">
-            <h2 className="text-sm font-medium text-white">{t("admin:ifLlmChatVisibilityTitle")}</h2>
-            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifLlmChatVisibilityIntro")}</p>
-            <div className="mt-4 rounded-lg border border-white/10 bg-black/15 p-3">
-              <div className="grid gap-3 lg:grid-cols-3">
+          <section className="mt-broad rounded-sheet border border-line bg-card p-roomy">
+            <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifLlmChatVisibilityTitle")}</h2>
+            <p className="mt-base text-xs text-ink-muted">{t("admin:ifLlmChatVisibilityIntro")}</p>
+            <div className="mt-wide rounded-card border border-line bg-black/15 p-soft">
+              <div className="grid gap-soft lg:grid-cols-3">
                 <div>
-                  <label className="block text-xs text-surface-muted" htmlFor="model-access-scope">
+                  <label className="block text-xs text-ink-muted" htmlFor="model-access-scope">
                     {t("admin:modelAccessScope")}
                   </label>
-                  <select
+                  <Select
                     id="model-access-scope"
-                    className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+                    className="mt-tight"
                     value={accessScope}
                     onChange={(e) => setAccessScope(e.target.value as AccessScope)}
                   >
                     <option value="global">{t("admin:modelAccessScopeGlobal")}</option>
-                    <option value="tenant">{t("admin:modelAccessScopeTenant")}</option>
+                    {showTenantScope ? (
+                      <option value="tenant">{t("admin:modelAccessScopeTenant")}</option>
+                    ) : null}
                     <option value="user">{t("admin:modelAccessScopeUser")}</option>
-                  </select>
+                  </Select>
                 </div>
-                {accessScope === "tenant" ? (
+                {showTenantScope && accessScope === "tenant" ? (
                   <div>
-                    <label className="block text-xs text-surface-muted" htmlFor="model-access-tenant">
+                    <label className="block text-xs text-ink-muted" htmlFor="model-access-tenant">
                       {t("admin:modelAccessTenant")}
                     </label>
-                    <select
+                    <Select
                       id="model-access-tenant"
-                      className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+                      className="mt-tight"
                       value={accessTenantId}
                       onChange={(e) => setAccessTenantId(e.target.value)}
                     >
@@ -1062,17 +1078,17 @@ export function AdminInterfacesLlmSection({
                           {tenantLabel(row, t("admin:modelAccessTenant"))}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                 ) : null}
                 {accessScope === "user" ? (
                   <div>
-                    <label className="block text-xs text-surface-muted" htmlFor="model-access-user">
+                    <label className="block text-xs text-ink-muted" htmlFor="model-access-user">
                       {t("admin:modelAccessUser")}
                     </label>
-                    <select
+                    <Select
                       id="model-access-user"
-                      className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+                      className="mt-tight"
                       value={accessUserId}
                       onChange={(e) => setAccessUserId(e.target.value)}
                     >
@@ -1081,19 +1097,19 @@ export function AdminInterfacesLlmSection({
                           {userLabel(row)}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                 ) : null}
               </div>
-              <div className="mt-4 grid gap-3 lg:grid-cols-4">
+              <div className="mt-wide grid gap-soft lg:grid-cols-4">
                 {catalogRuntimeModelDefaults.map(({ metadata, profile }) => (
                   <div key={metadata.profile}>
-                    <label className="block text-xs text-surface-muted" htmlFor={`model-default-${profile}`}>
+                    <label className="block text-xs text-ink-muted" htmlFor={`model-default-${profile}`}>
                       {adminText(metadata.title_i18n_key, profile)}
                     </label>
-                    <select
+                    <Select
                       id={`model-default-${profile}`}
-                      className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-xs text-white"
+                      className="mt-tight text-xs"
                       value={modelDefaults[profile]}
                       onChange={(e) => setModelDefaults((prev) => ({ ...prev, [profile]: e.target.value }))}
                     >
@@ -1103,20 +1119,20 @@ export function AdminInterfacesLlmSection({
                           {row.providerId}: {row.modelId}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                 ))}
               </div>
               {nonChatRuntimeModelDefaults.length > 0 ? (
-                <div className="mt-4 grid gap-3 lg:grid-cols-4">
+                <div className="mt-wide grid gap-soft lg:grid-cols-4">
                   {nonChatRuntimeModelDefaults.map(({ metadata, profile, models }) => (
                     <div key={metadata.kind}>
-                      <label className="block text-xs text-surface-muted" htmlFor={`runtime-default-${metadata.kind}`}>
+                      <label className="block text-xs text-ink-muted" htmlFor={`runtime-default-${metadata.kind}`}>
                         {adminText(metadata.model_label_i18n_key, metadata.kind)}
                       </label>
-                      <select
+                      <Select
                         id={`runtime-default-${metadata.kind}`}
-                        className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-xs text-white"
+                        className="mt-tight text-xs"
                         value={modelDefaults[profile] ?? ""}
                         onChange={(e) => setModelDefaults((prev) => ({ ...prev, [profile]: e.target.value }))}
                       >
@@ -1126,70 +1142,71 @@ export function AdminInterfacesLlmSection({
                             {row.label}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     </div>
                   ))}
                 </div>
               ) : null}
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <button
+              <div className="mt-wide flex flex-wrap items-center gap-soft">
+                <Button
+                  variant="primary"
                   type="button"
-                  className="rounded-md bg-sky-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-400 disabled:opacity-50"
+                  className="px-soft py-snug text-sm"
                   disabled={policySaving || policyLoading}
                   onClick={() => void saveModelAccessPolicy()}
                 >
                   {policySaving ? t("admin:modelAccessSaving") : t("admin:modelAccessSave")}
-                </button>
+                </Button>
                 {policyMsg ? (
-                  <span className={`text-xs ${policyMsg.ok ? "text-emerald-300" : "text-amber-300"}`}>
+                  <span className={`text-xs ${policyMsg.ok ? "text-badge-success" : "text-badge-warning"}`}>
                     {policyMsg.text}
                   </span>
                 ) : null}
               </div>
             </div>
-            <div className="mt-4 grid gap-3 xl:grid-cols-2">
+            <div className="mt-wide grid gap-soft xl:grid-cols-2">
               {accessProviderGroups.map((group) => (
-                <div key={group.id} className="rounded-lg border border-white/10 bg-black/15 p-3">
-                  <div className="flex items-start justify-between gap-3">
+                <div key={group.id} className="rounded-card border border-line bg-black/15 p-soft">
+                  <div className="flex items-start justify-between gap-soft">
                     <div>
-                      <h3 className="text-sm font-medium text-white">{group.title}</h3>
-                      <p className="mt-1 text-xs text-surface-muted">{group.intro}</p>
+                      <h3 className="text-sm font-medium text-ink-primary">{group.title}</h3>
+                      <p className="mt-tight text-xs text-ink-muted">{group.intro}</p>
                     </div>
-                    <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-neutral-300">
+                    <span className="rounded-tile bg-white/10 px-snug py-hair font-mono text-meta text-ink-secondary">
                       {group.providers.length}
                     </span>
                   </div>
                   {group.providers.length === 0 ? (
-                    <p className="mt-3 rounded-md border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                    <p className="mt-soft rounded-tile border border-warning/20 bg-warning-subtle px-soft py-base text-xs text-badge-warning">
                       {group.empty}
                     </p>
                   ) : (
-                    <div className="mt-3 space-y-2">
+                    <div className="mt-soft space-y-base">
                       {group.providers.map((provider) => {
                         const key = capabilityAccessKey(provider.capability, provider.providerId);
                         const state = capabilityAccess[key] ?? defaultProviderCapabilityState;
                         return (
                           <div
                             key={key}
-                            className="flex items-center gap-3 rounded-lg border border-white/5 bg-black/20 px-3 py-2"
+                            className="flex items-center gap-soft rounded-card border border-line-subtle bg-black/20 px-soft py-base"
                           >
                             <span className="min-w-0 flex-1">
-                              <span className="flex flex-wrap items-center gap-2 text-xs font-medium text-white">
+                              <span className="flex flex-wrap items-center gap-base text-xs font-medium text-ink-primary">
                                 <span>{provider.label}</span>
-                                <span className="font-mono text-[10px] text-surface-muted">{provider.providerId}</span>
+                                <span className="font-mono text-meta text-ink-muted">{provider.providerId}</span>
                                 {provider.source ? (
-                                  <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-neutral-300">
+                                  <span className="rounded-tile bg-white/10 px-snug py-hair text-meta uppercase tracking-wide text-ink-secondary">
                                     {provider.source}
                                   </span>
                                 ) : null}
                               </span>
                               {provider.baseUrl ? (
-                                <span className="mt-1 block truncate font-mono text-[10px] text-surface-muted">
+                                <span className="mt-tight block truncate font-mono text-meta text-ink-muted">
                                   {provider.baseUrl}
                                 </span>
                               ) : null}
                               {provider.meta ? (
-                                <span className="mt-1 block truncate text-[10px] text-neutral-300">{provider.meta}</span>
+                                <span className="mt-tight block truncate text-meta text-ink-secondary">{provider.meta}</span>
                               ) : null}
                             </span>
                             <AccessStateControl
@@ -1215,25 +1232,25 @@ export function AdminInterfacesLlmSection({
               ))}
             </div>
             {modelAccessProviderGroups.length === 0 ? (
-              <p className="mt-4 text-xs text-amber-300/90">{t("admin:ifLlmChatVisibilityEmpty")}</p>
+              <p className="mt-wide text-xs text-badge-warning">{t("admin:ifLlmChatVisibilityEmpty")}</p>
             ) : (
-              <div className="mt-4 max-h-96 space-y-3 overflow-auto rounded-lg border border-white/10 bg-black/15 p-2">
+              <div className="mt-wide max-h-96 space-y-soft overflow-auto rounded-card border border-line bg-black/15 p-base">
                 {modelAccessProviderGroups.map((provider) => {
                   return (
-                    <div key={provider.providerId} className="rounded-lg border border-white/10 bg-black/20 p-3">
-                      <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-semibold text-white">{provider.label}</span>
-                        <span className="font-mono text-[11px] text-surface-muted">{provider.providerId}</span>
-                        <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-neutral-300">
+                    <div key={provider.providerId} className="rounded-card border border-line bg-black/20 p-soft">
+                      <div className="mb-base flex flex-wrap items-center gap-base">
+                        <span className="text-xs font-semibold text-ink-primary">{provider.label}</span>
+                        <span className="font-mono text-meta text-ink-muted">{provider.providerId}</span>
+                        <span className="rounded-tile bg-white/10 px-snug py-hair text-meta uppercase tracking-wide text-ink-secondary">
                           {provider.source}
                         </span>
                         {provider.endpointId != null ? (
-                          <span className="font-mono text-[10px] text-surface-muted">
+                          <span className="font-mono text-meta text-ink-muted">
                             {t("admin:dbEndpointBadge", { id: provider.endpointId })}
                           </span>
                         ) : null}
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-base">
                         {provider.rows.map((row) => {
                           const providerId = (row.owned_by ?? provider.providerId).trim().toLowerCase();
                           const modelId = row.id.trim();
@@ -1247,11 +1264,11 @@ export function AdminInterfacesLlmSection({
                           return (
                             <div
                               key={key}
-                              className="flex items-start gap-3 rounded-lg border border-white/5 bg-black/20 px-3 py-2"
+                              className="flex items-start gap-soft rounded-card border border-line-subtle bg-black/20 px-soft py-base"
                             >
                               <span className="min-w-0 flex-1">
-                                <span className="block truncate font-mono text-xs text-neutral-100">{modelId}</span>
-                                <span className="block truncate text-[10px] text-surface-muted">{provider.label}</span>
+                                <span className="block truncate font-mono text-xs text-ink-primary">{modelId}</span>
+                                <span className="block truncate text-meta text-ink-muted">{provider.label}</span>
                               </span>
                               <AccessStateControl
                                 value={accessState}
@@ -1267,11 +1284,11 @@ export function AdminInterfacesLlmSection({
                                   }))
                                 }
                               />
-                              <span className="flex max-w-[48%] shrink-0 flex-wrap justify-end gap-1 pt-0.5">
+ <span className="flex shrink-0 flex-wrap justify-end gap-tight pt-hair">
                                 {profileBadges.map((badge) => (
                                   <span
                                     key={badge}
-                                    className="inline-flex rounded-full border border-sky-400/30 bg-sky-500/10 px-1.5 py-0.5 text-[9px] font-medium text-sky-100"
+                                    className="inline-flex rounded-pill border border-accent/30 bg-accent-subtle px-snug py-hair text-meta font-medium text-badge-accent"
                                   >
                                     {badge}
                                   </span>
@@ -1279,16 +1296,16 @@ export function AdminInterfacesLlmSection({
                                 {modelCapabilityBadges(row).map((badge) => (
                                   <span
                                     key={badge.key}
-                                    className="inline-flex rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-[9px] font-medium text-neutral-200"
+                                    className="inline-flex rounded-pill border border-line bg-white/5 px-snug py-hair text-meta font-medium text-ink-primary"
                                   >
                                     {badge.label}
                                   </span>
                                 ))}
                                 <span
-                                  className={`inline-flex rounded-full border px-1.5 py-0.5 text-[9px] font-medium ${
+                                  className={`inline-flex rounded-pill border px-snug py-hair text-meta font-medium ${
                                     visible
-                                      ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
-                                      : "border-rose-400/30 bg-rose-500/10 text-rose-100"
+                                      ? "border-success/30 bg-success-subtle text-badge-success"
+                                      : "border-danger/30 bg-danger-subtle text-badge-danger"
                                   }`}
                                 >
                                   {t(`admin:modelAccessState_${accessState}`)}
@@ -1303,30 +1320,28 @@ export function AdminInterfacesLlmSection({
                 })}
               </div>
             )}
-            <p className="mt-2 text-xs text-surface-muted">{t("admin:modelAccessSaveHint")}</p>
+            <p className="mt-base text-xs text-ink-muted">{t("admin:modelAccessSaveHint")}</p>
           </section>
           ) : null}
 
           {showRouting ? (
           <>
-          <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">
-            <h2 className="text-sm font-medium text-white">{t("admin:ifLlmSmartRoutingTitle")}</h2>
-            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifLlmSmartRoutingIntro")}</p>
-            <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
-              <input
-                type="checkbox"
-                className="rounded border-surface-border"
+          <section className="mt-broad rounded-sheet border border-line bg-card p-roomy">
+            <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifLlmSmartRoutingTitle")}</h2>
+            <p className="mt-base text-xs text-ink-muted">{t("admin:ifLlmSmartRoutingIntro")}</p>
+            <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+              <Checkbox
                 checked={s.llmSmartRouting}
                 onChange={(e) => s.setLlmSmartRouting(e.target.checked)}
               />
               {t("admin:ifLlmSmartRoutingEnable")}
             </label>
-            <label className="mt-4 block text-xs text-surface-muted" htmlFor="llm-router-model">
+            <label className="mt-wide block text-xs text-ink-muted" htmlFor="llm-router-model">
               {t("admin:ifLlmRouterModel")}
             </label>
-            <select
+            <Select
               id="llm-router-model"
-              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
+              className="mt-tight max-w-controlWide"
               value={
                 s.llmRouterModelProvider && s.llmRouterModel
                   ? `${s.llmRouterModelProvider}:${s.llmRouterModel}`
@@ -1350,90 +1365,96 @@ export function AdminInterfacesLlmSection({
                   </option>
                 );
               })}
-            </select>
-            <div className="mt-4 grid max-w-xl gap-3 sm:grid-cols-2">
+            </Select>
+            <div className="mt-wide grid max-w-measure gap-soft sm:grid-cols-2">
               <div>
-                <label className="block text-xs text-surface-muted" htmlFor="llm-router-conf">
+                <label className="block text-xs text-ink-muted" htmlFor="llm-router-conf">
                   {t("admin:ifLlmRouterConfMin")}
                 </label>
-                <input
+                <TextInput
+                  mono
                   id="llm-router-conf"
                   type="number"
                   step="0.05"
                   min={0}
                   max={1}
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-tight"
                   value={s.llmRouterConfMin}
                   onChange={(e) => s.setLlmRouterConfMin(e.target.value)}
                 />
               </div>
               <div>
-                <label className="block text-xs text-surface-muted" htmlFor="llm-router-to">
+                <label className="block text-xs text-ink-muted" htmlFor="llm-router-to">
                   {t("admin:ifLlmRouterTimeout")}
                 </label>
-                <input
+                <TextInput
+                  mono
                   id="llm-router-to"
                   type="number"
                   min={1}
                   max={120}
                   step="1"
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-tight"
                   value={s.llmRouterTimeoutSec}
                   onChange={(e) => s.setLlmRouterTimeoutSec(e.target.value)}
                 />
               </div>
               <div>
-                <label className="block text-xs text-surface-muted" htmlFor="llm-route-long">
+                <label className="block text-xs text-ink-muted" htmlFor="llm-route-long">
                   {t("admin:ifLlmRouteLongChars")}
                 </label>
-                <input
+                <TextInput
+                  mono
                   id="llm-route-long"
                   type="number"
                   min={100}
                   max={500000}
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-tight"
                   value={s.llmRouteLongChars}
                   onChange={(e) => s.setLlmRouteLongChars(e.target.value)}
                 />
               </div>
               <div>
-                <label className="block text-xs text-surface-muted" htmlFor="llm-route-short">
+                <label className="block text-xs text-ink-muted" htmlFor="llm-route-short">
                   {t("admin:ifLlmRouteShortChars")}
                 </label>
-                <input
+                <TextInput
+                  mono
                   id="llm-route-short"
                   type="number"
                   min={1}
                   max={50000}
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-tight"
                   value={s.llmRouteShortChars}
                   onChange={(e) => s.setLlmRouteShortChars(e.target.value)}
                 />
               </div>
               <div>
-                <label className="block text-xs text-surface-muted" htmlFor="llm-route-fences">
+                <label className="block text-xs text-ink-muted" htmlFor="llm-route-fences">
                   {t("admin:ifLlmRouteFences")}
                 </label>
-                <input
+                <TextInput
+                  mono
                   id="llm-route-fences"
                   type="number"
                   min={1}
                   max={100}
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-tight"
                   value={s.llmRouteManyFences}
                   onChange={(e) => s.setLlmRouteManyFences(e.target.value)}
                 />
               </div>
               <div>
-                <label className="block text-xs text-surface-muted" htmlFor="llm-route-msgs">
+                <label className="block text-xs text-ink-muted" htmlFor="llm-route-msgs">
                   {t("admin:ifLlmRouteManyMsgs")}
                 </label>
-                <input
+                <TextInput
+                  mono
                   id="llm-route-msgs"
                   type="number"
                   min={1}
                   max={500}
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-tight"
                   value={s.llmRouteManyMsgs}
                   onChange={(e) => s.setLlmRouteManyMsgs(e.target.value)}
                 />
@@ -1441,17 +1462,17 @@ export function AdminInterfacesLlmSection({
             </div>
           </section>
 
-          <section className="rounded-xl border border-surface-border bg-surface-raised p-5">
-            <h2 className="text-sm font-medium text-white">{t("admin:ifLlmQueueTitle")}</h2>
-            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifLlmQueueIntro")}</p>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <section className="rounded-sheet border border-line bg-card p-roomy">
+            <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifLlmQueueTitle")}</h2>
+            <p className="mt-base text-xs text-ink-muted">{t("admin:ifLlmQueueIntro")}</p>
+            <div className="mt-wide grid gap-wide sm:grid-cols-2">
               <div>
-                <label className="block text-xs text-surface-muted" htmlFor="llm-queue-policy">
+                <label className="block text-xs text-ink-muted" htmlFor="llm-queue-policy">
                   {t("admin:ifLlmQueuePolicyLabel")}
                 </label>
-                <select
+                <Select
                   id="llm-queue-policy"
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+                  className="mt-tight"
                   value={s.llmQueuePolicy}
                   onChange={(e) =>
                     s.setLlmQueuePolicy(
@@ -1462,48 +1483,51 @@ export function AdminInterfacesLlmSection({
                   <option value="priority">{t("admin:ifLlmQueuePolicyPriority")}</option>
                   <option value="fifo">{t("admin:ifLlmQueuePolicyFifo")}</option>
                   <option value="round_robin">{t("admin:ifLlmQueuePolicyRoundRobin")}</option>
-                </select>
-                <p className="mt-1 text-xs text-surface-muted">{t("admin:ifLlmQueuePolicyHint")}</p>
+                </Select>
+                <p className="mt-tight text-xs text-ink-muted">{t("admin:ifLlmQueuePolicyHint")}</p>
               </div>
               <div>
-                <label className="block text-xs text-surface-muted" htmlFor="llm-queue-user-prio">
+                <label className="block text-xs text-ink-muted" htmlFor="llm-queue-user-prio">
                   {t("admin:ifLlmQueueUserPriority")}
                 </label>
-                <input
+                <TextInput
+                  mono
                   id="llm-queue-user-prio"
                   type="number"
                   min={0}
                   max={1000}
-                  className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-tight max-w-control"
                   value={s.llmQueueUserPriority}
                   onChange={(e) => s.setLlmQueueUserPriority(e.target.value)}
                 />
               </div>
               <div>
-                <label className="block text-xs text-surface-muted" htmlFor="llm-queue-bench-prio">
+                <label className="block text-xs text-ink-muted" htmlFor="llm-queue-bench-prio">
                   {t("admin:ifLlmQueueBenchmarkPriority")}
                 </label>
-                <input
+                <TextInput
+                  mono
                   id="llm-queue-bench-prio"
                   type="number"
                   min={0}
                   max={1000}
-                  className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-tight max-w-control"
                   value={s.llmQueueBenchmarkPriority}
                   onChange={(e) => s.setLlmQueueBenchmarkPriority(e.target.value)}
                 />
-                <p className="mt-1 text-xs text-surface-muted">{t("admin:ifLlmQueueBenchmarkHint")}</p>
+                <p className="mt-tight text-xs text-ink-muted">{t("admin:ifLlmQueueBenchmarkHint")}</p>
               </div>
               <div>
-                <label className="block text-xs text-surface-muted" htmlFor="llm-queue-sched-prio">
+                <label className="block text-xs text-ink-muted" htmlFor="llm-queue-sched-prio">
                   {t("admin:ifLlmQueueSchedulerPriority")}
                 </label>
-                <input
+                <TextInput
+                  mono
                   id="llm-queue-sched-prio"
                   type="number"
                   min={0}
                   max={1000}
-                  className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-tight max-w-control"
                   value={s.llmQueueSchedulerPriority}
                   onChange={(e) => s.setLlmQueueSchedulerPriority(e.target.value)}
                 />

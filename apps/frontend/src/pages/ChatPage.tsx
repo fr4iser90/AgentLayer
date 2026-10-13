@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { fetchTask, setConversationActiveTask } from "../lib/tasksApi";
 import { ConfirmModal } from "../components/ConfirmModal";
-import { apiFetch, addUsageTotals, emptyTokenUsage, fetchChatRuntime, type ChatContextMeta, type ConversationGoal, type ChatRuntimePayload, type ConversationTodo, type TokenUsageTotals, type WorkspaceApiRecord } from "../lib/api";
-import { OngoingGoalBar, PlanModeBanner, ConversationTodosPanel } from "../features/chat/ConversationGoalPanels";
+import { apiFetch, addUsageTotals, emptyTokenUsage, fetchAgents, fetchChatRuntime, type ChatContextMeta, type ConversationGoal, type ChatRuntimePayload, type ConversationTodo, type TokenUsageTotals, type WorkspaceApiRecord } from "../lib/api";
+import { PlanModeBanner, SessionGoalTodosStrip } from "../features/chat/ConversationGoalPanels";
 import {
   PermissionAskCard,
   type PermissionAskPayload,
@@ -55,11 +55,12 @@ import { getAgentChatSession } from "../features/chat/agentChatSession";
 import { deferredWaitMessage, llmSlotWaitMessage } from "../features/chat/agentChatWsCore";
 import {
   persistDetachedAgentCompletion,
-  persistDetachedAgentLog,
 } from "../features/chat/detachedTurnPersist";
 import { indexActivityToTimeline, type IndexActivityEvent } from "../features/chat/indexActivity";
 import { compactionEventToTimeline } from "../features/chat/compactionActivity";
+import { appendContextInjectionsFromSession } from "../features/chat/contextInjectionTimeline";
 import { buildInterleavedTurnSegments } from "../features/chat/interleavedTurnSegments";
+import { resolveComposerAgentId, type DeepLinkableAgent } from "../features/chat/chatAgentSelection";
 import { timelineForTurn, userTurnIdBeforeAssistant } from "../features/chat/turnRunCards";
 import {
   formatOptionSelection,
@@ -86,21 +87,23 @@ function DashboardChatVisibilityBadge({ thread }: { thread: Pick<ChatThread, "da
   const shared = thread.shared === true;
   if (shared) {
     return (
-      <span
-        className="inline-flex shrink-0 items-center rounded-full border border-amber-400/40 bg-amber-950/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-100/95"
+      <Badge
+        tone="warning"
+        className="shrink-0 uppercase tracking-wide"
         title={t("chat:visibilitySharedTitle")}
       >
         {t("chat:visibilitySharedLabel")}
-      </span>
+      </Badge>
     );
   }
   return (
-    <span
-      className="inline-flex shrink-0 items-center rounded-full border border-emerald-500/35 bg-emerald-950/45 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-100/90"
+    <Badge
+      tone="success"
+      className="shrink-0 uppercase tracking-wide"
       title={t("chat:visibilityPersonalTitle")}
     >
       {t("chat:visibilityPersonalLabel")}
-    </span>
+    </Badge>
   );
 }
 import {
@@ -111,7 +114,23 @@ import {
   mapListItemToThread,
   mergeServerThreadWithLocal,
   putConversation,
+  putConversationAgentLog,
 } from "../features/chat/conversationsApi";
+import {
+  reportAgentLogFailure,
+  reportDelegatePrefFailure,
+  saveConversation,
+} from "../features/chat/chatSave";
+import {
+  chatPerfBeginPoll,
+  chatPerfBeginTurn,
+  chatPerfEndTurn,
+  chatPerfNoteFirstDelta,
+  chatPerfNotePollAssistant,
+  chatPerfRecord,
+  chatPerfTimeAsync,
+  installChatPerfConsole,
+} from "../features/chat/chatPerfMetrics";
 import {
   fetchConversationFeedback,
   patchDelegatePrefs,
@@ -162,6 +181,11 @@ import { shouldIsolateWorkspaceThread } from "../features/workspace/chatWorkspac
 import { confirmNewChatForWorkspace } from "../features/workspace/confirmWorkspaceScope";
 import { streamOpenAiChatChunks } from "../features/chat/openaiSseStream";
 import { formatMessageTime, inferMissingMessageTimestamps } from "../features/chat/messageTimestamps";
+import { Button } from "../ui/Button";
+import { Tooltip } from "../ui/Tooltip";
+import { Badge } from "../ui/Badge";
+import { Select, TextInput } from "../ui/Field";
+import { Checkbox } from "../ui/Checkbox";
 /** `?dashboard=<uuid>` — validated; server re-checks access. */
 function parseDashboardQueryParam(raw: string | null): string | null {
   if (!raw || !raw.trim()) return null;
@@ -293,13 +317,11 @@ type SendTurnOptions = {
   resendUserMsgId?: string;
 };
 
-type ApplyInFlightRestoreOpts = {
-  restoreComposer?: boolean;
-  rewindUserMessage?: boolean;
-};
-
 type AbortInFlightOpts = {
-  /** Cancel without restoring the in-flight draft; keep user message and strip partial assistant. */
+  /**
+   * Interrupt the current turn and (via pendingForceSend) start a new one.
+   * Same transcript UX as cancel: keep user + streamed assistant, mark cancelled.
+   */
   forceSend?: boolean;
 };
 
@@ -329,7 +351,7 @@ function assistantMessage(
 ): UiMessage {
   const createdAt =
     prior?.role === "assistant" && prior.createdAt != null ? prior.createdAt : Date.now();
-  const msg: UiMessage = { role: "assistant", content, createdAt };
+  const msg: UiMessage = { role: "assistant", content, createdAt, id: newMessageId() };
   const reasoning = reasoningContent?.trim();
   if (reasoning) msg.reasoningContent = reasoning;
   return msg;
@@ -346,19 +368,31 @@ function stripTrailingEmptyAssistantMessages(msgs: UiMessage[]): UiMessage[] {
   return out;
 }
 
-function stripTrailingAssistantsAfterLastUser(msgs: UiMessage[]): UiMessage[] {
-  let out = [...msgs];
-  while (out.length > 0 && out[out.length - 1]?.role === "assistant") {
-    out = out.slice(0, -1);
-  }
-  return out;
-}
-
 function lastUserMessageIndex(msgs: UiMessage[]): number {
   for (let i = msgs.length - 1; i >= 0; i -= 1) {
     if (msgs[i]?.role === "user") return i;
   }
   return -1;
+}
+
+function composerModEnterLabel(): string {
+  if (typeof navigator === "undefined") return "Ctrl+Enter";
+  const ua = navigator.userAgent || "";
+  const platform = (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData
+    ?.platform;
+  const mac =
+    /Mac|iPhone|iPad|iPod/i.test(platform || "") ||
+    /Mac|iPhone|iPad|iPod/i.test(navigator.platform || "") ||
+    (/Macintosh|Mac OS X/i.test(ua) && !/Windows/i.test(ua));
+  return mac ? "⌘↵" : "Ctrl+Enter";
+}
+
+function ComposerKbd({ children }: { children: string }) {
+  return (
+    <kbd className="ml-snug inline-flex items-center rounded-tile border border-line-strong bg-black/35 px-tight py-px font-mono text-meta font-normal leading-none text-white/65">
+      {children}
+    </kbd>
+  );
 }
 
 function turnHasAssistantAfter(msgs: UiMessage[], userMsgId: string): boolean {
@@ -376,8 +410,26 @@ export function ChatPage() {
   const auth = useAuth();
   const authRef = useRef(auth);
   authRef.current = auth;
-  const { accessToken, user } = auth;
+  const { accessToken, refresh, user } = auth;
   const userId = user?.id ?? "";
+  // Authoritative, access-filtered agent catalog from ``/v1/agents`` (P2). Until it
+  // resolves, deep links fall back to the built-in set — the server still re-checks
+  // access before a turn runs, so this only decides whether a ``?agent=`` link is honoured.
+  const [invokableAgents, setInvokableAgents] = useState<readonly DeepLinkableAgent[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!accessToken) return;
+    fetchAgents({ accessToken, refresh })
+      .then((agents) => {
+        if (!cancelled) setInvokableAgents(agents);
+      })
+      .catch(() => {
+        // Leave the legacy default in place on a failed registry read.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, refresh]);
   const agentChatSession = getAgentChatSession();
   const globalMedia = useOptionalGlobalMedia();
   const globalMediaRef = useRef(globalMedia);
@@ -434,13 +486,13 @@ export function ChatPage() {
     (voiceStatus.prefs.mode_web === "hands_free" || voiceStatus.prefs.mode_web === "realtime");
 
   const isAdminUser = (user?.role ?? "").toLowerCase() === "admin";
-  /** Single Chat UI: General by default; Dashboard when ?dashboard=; ?agent= for specialists. */
+  /** Single Chat UI: General by default; Dashboard when ?dashboard=; ?agent= for deep-linked agents. */
   const agentParam = (searchParams.get("agent") ?? "").trim().toLowerCase();
-  const composerAgentId = dashboardChatId
-    ? "dashboard"
-    : agentParam === "knowledge_companion"
-      ? "knowledge_companion"
-      : "general";
+  const composerAgentId = resolveComposerAgentId({
+    dashboardChatId,
+    agentParam,
+    invokableAgents,
+  });
 
   const [workspaces, setWorkspaces] = useState<WorkspaceApiRecord[]>([]);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
@@ -472,6 +524,11 @@ export function ChatPage() {
   const skipQueueDrainOnFinishRef = useRef(false);
   /** After interrupting a turn, send this message as soon as the in-flight turn finishes. */
   const pendingForceSendRef = useRef<QueuedComposerMessage | null>(null);
+  /**
+   * After force-send, ignore stale ``agent.cancelled`` / cancel ``chat.completion`` frames
+   * from the interrupted turn until the new turn gets ``agent.session``.
+   */
+  const suppressWsCancelEchoRef = useRef(false);
   /** Soft goal-round continue prompt from ``agent.goal_round`` (sent after turn finishes). */
   const pendingGoalRoundRef = useRef<string | null>(null);
   const tryDispatchPendingForceSendRef = useRef<() => boolean>(() => false);
@@ -511,7 +568,11 @@ export function ChatPage() {
     const live = agentLiveTurnRef.current;
     const agentLog =
       live.isActive() ? live.takeAgentLogSnapshot() : (th.agentLog ?? []);
-    void putConversation(authRef.current, { ...th, agentLog }).catch(() => {});
+    // agent_log-only — never rewrite messages mid-turn (completion PUT race).
+    void putConversationAgentLog(authRef.current, tid, {
+      agentLog,
+      turnLogs: th.turnLogs ?? [],
+    }).catch(reportAgentLogFailure);
   }, []);
 
   const schedulePersistAgentLog = useCallback(() => {
@@ -782,14 +843,15 @@ export function ChatPage() {
       return null;
     }
     return (
-      <button
-        type="button"
-        className="ml-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded border border-white/15 px-1 text-[11px] font-medium text-sky-300/95 hover:bg-white/10"
-        title={t("workspace:editMcpServersWorkspaceOnlyTitle")}
-        onClick={() => setShowWorkspaceMcpModal(true)}
+      <Tooltip label={t("workspace:editMcpServersWorkspaceOnlyTitle")}>
+      <Button
+          type="button"
+          className="ml-hair h-5 min-w-[1.25rem] px-tight text-meta text-badge-accent hover:bg-white/10"
+          onClick={() => setShowWorkspaceMcpModal(true)}
       >
-        +
-      </button>
+          +
+        </Button>
+      </Tooltip>
     );
   }, [selectedWorkspaceId, selectedWorkspace, t]);
 
@@ -988,7 +1050,9 @@ export function ChatPage() {
     let cancelled = false;
     void (async () => {
       try {
-        const listRaw = await fetchConversationList(authRef.current);
+        const listRaw = await chatPerfTimeAsync("conversations_list", { phase: "hydrate" }, () =>
+          fetchConversationList(authRef.current)
+        );
         if (cancelled) return;
         if (listRaw.length === 0) {
           setThreads([]);
@@ -1012,7 +1076,11 @@ export function ChatPage() {
           return;
         }
         setActiveThreadId(pick);
-        const full = await fetchConversationDetail(authRef.current, pick);
+        const full = await chatPerfTimeAsync(
+          "conversation_detail",
+          { phase: "hydrate", threadId: pick },
+          () => fetchConversationDetail(authRef.current, pick)
+        );
         if (cancelled) return;
         setThreads((prev) =>
           prev.map((th) => (th.id === full.id ? mergeServerThreadWithLocal(full, th) : th))
@@ -1088,35 +1156,177 @@ export function ChatPage() {
   }, [workspaces, hydrated, threads, searchParams, setSearchParams, t]);
 
   useEffect(() => {
-    agentChatSession.setPageMounted(true);
-    return () => agentChatSession.setPageMounted(false);
-  }, [agentChatSession]);
+    const onWarn = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ title?: string; body?: string }>).detail;
+      const title = detail?.title?.trim() || t("chat:storageWarnTitle");
+      const body = detail?.body?.trim() || "";
+      setError(body ? `${title}: ${body}` : title);
+    };
+    window.addEventListener("agentlayer:chat-storage-warn", onWarn as EventListener);
+    return () => window.removeEventListener("agentlayer:chat-storage-warn", onWarn as EventListener);
+  }, [t]);
 
+  // Flush activity log on refresh/close so run cards aren't lost with the tab.
   useEffect(() => {
-    if (!hydrated || !activeThreadId) return;
-    const turn = agentChatSession.getActiveTurn();
-    if (
-      turn &&
-      turn.threadId === activeThreadId &&
-      agentChatSession.liveTurn.isActive()
-    ) {
+    const onHide = () => {
+      if (!agentChatSession.getActiveTurn()) return;
+      flushPersistAgentLog();
+    };
+    window.addEventListener("pagehide", onHide);
+    return () => window.removeEventListener("pagehide", onHide);
+  }, [agentChatSession, flushPersistAgentLog]);
+
+  // After navigating away mid-turn, remount may miss the optimistic completion —
+  // re-fetch the open thread when the page is shown again.
+  useEffect(() => {
+    if (!hydrated || !activeThreadId || !auth.accessToken) return;
+    const onVis = () => {
+      if (document.visibilityState !== "visible") return;
+      const id = activeThreadIdRef.current;
+      if (!id) return;
+      void fetchConversationDetail(authRef.current, id)
+        .then((full) => {
+          setThreads((prev) =>
+            prev.map((th) => (th.id === id ? mergeServerThreadWithLocal(full, th) : th))
+          );
+        })
+        .catch(() => {});
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [hydrated, activeThreadId, auth.accessToken]);
+
+  // Resume UI + poll after hard refresh / unexpected WS drop. Previously WS onclose
+  // called finish() which cleared sessionStorage — refresh looked "cancelled".
+  useEffect(() => {
+    if (!hydrated || !activeThreadId || !auth.accessToken) return;
+
+    let cancelled = false;
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
+    let polling = false;
+
+    const turnForThread = () => {
+      const turn = agentChatSession.getActiveTurn();
+      return turn && turn.threadId === activeThreadId ? turn : null;
+    };
+
+    const stopPolling = () => {
+      polling = false;
+      if (pollTimer != null) {
+        clearTimeout(pollTimer);
+        pollTimer = null;
+      }
+    };
+
+    const clearActiveTurnUi = () => {
+      stopPolling();
+      try {
+        sessionStorage.removeItem("agentlayer:active-agent-turn");
+      } catch {
+        /* ignore */
+      }
+      agentChatSession.endTurn();
+      agentChatSession.liveTurn.resetAfterCommit();
+      setLoading(false);
+      setAgentTurnStartedAtMs(null);
+    };
+
+    const startPoll = (baselineAssistantCount: number, reason: string) => {
+      if (polling || cancelled) return;
+      polling = true;
+      chatPerfBeginPoll(activeThreadId, reason);
+      const started = Date.now();
+      const maxMs = 15 * 60 * 1000;
+      const tick = async () => {
+        if (cancelled) return;
+        if (Date.now() - started >= maxMs) {
+          clearActiveTurnUi();
+          return;
+        }
+        // Live WS handler is attached again — stop polling.
+        if (
+          agentChatSession.liveTurn.isActive() &&
+          agentChatSession.getSocket()?.readyState === WebSocket.OPEN
+        ) {
+          stopPolling();
+          return;
+        }
+        try {
+          const full = await fetchConversationDetail(authRef.current, activeThreadId);
+          if (cancelled) return;
+          setThreads((prev) =>
+            prev.map((th) =>
+              th.id === activeThreadId ? mergeServerThreadWithLocal(full, th) : th
+            )
+          );
+          const assistantCount = full.messages.filter((m) => m.role === "assistant").length;
+          const last = full.messages[full.messages.length - 1];
+          const lastAssistantHasText =
+            last?.role === "assistant" &&
+            (typeof last.content === "string"
+              ? last.content.trim().length > 0
+              : last.content != null);
+          if (assistantCount > baselineAssistantCount && lastAssistantHasText) {
+            chatPerfNotePollAssistant(activeThreadId);
+            clearActiveTurnUi();
+            return;
+          }
+        } catch {
+          /* keep polling */
+        }
+        if (!cancelled && polling) {
+          pollTimer = setTimeout(() => {
+            void tick();
+          }, 2000);
+        }
+      };
+      void tick();
+    };
+
+    const resumeIfNeeded = () => {
+      const turn = turnForThread();
+      if (!turn) return;
+
       setLoading(true);
       setAgentTurnStartedAtMs(turn.startedAtMs);
-      setSelectedTurnId(turn.userMsgId);
-      return;
-    }
-    try {
-      const raw = sessionStorage.getItem("agentlayer:active-agent-turn");
-      if (raw) {
-        const stored = JSON.parse(raw) as { threadId?: string };
-        if (stored.threadId === activeThreadId) {
-          sessionStorage.removeItem("agentlayer:active-agent-turn");
-        }
+      if (turn.userMsgId) setSelectedTurnId(turn.userMsgId);
+
+      const socketOpen = agentChatSession.getSocket()?.readyState === WebSocket.OPEN;
+      if (agentChatSession.liveTurn.isActive() && socketOpen) {
+        // Soft remount: stream still live via singleton.
+        return;
       }
-    } catch {
-      /* ignore */
-    }
-  }, [hydrated, activeThreadId, agentChatSession]);
+
+      const th = threadsRef.current.find((t) => t.id === activeThreadId);
+      const baseline = th?.messages.filter((m) => m.role === "assistant").length ?? 0;
+      startPoll(baseline, "hard_refresh_or_resume");
+    };
+
+    resumeIfNeeded();
+
+    const unsub = agentChatSession.subscribeDisconnect(() => {
+      if (cancelled) return;
+      if (!turnForThread()) return;
+      setLoading(true);
+      const th = threadsRef.current.find((t) => t.id === activeThreadId);
+      const baseline = th?.messages.filter((m) => m.role === "assistant").length ?? 0;
+      startPoll(baseline, "ws_disconnect");
+    });
+
+    return () => {
+      cancelled = true;
+      stopPolling();
+      unsub();
+    };
+  }, [hydrated, activeThreadId, auth.accessToken, agentChatSession]);
+
+  useEffect(() => {
+    agentChatSession.setPageMounted(true);
+    installChatPerfConsole();
+    return () => {
+      agentChatSession.setPageMounted(false);
+    };
+  }, [agentChatSession]);
 
   useEffect(() => {
     if (mode !== "agent") {
@@ -1141,7 +1351,11 @@ export function ChatPage() {
       setSearchParams({ c: id });
       setError(null);
       try {
+        const t0 = performance.now();
         const full = await fetchConversationDetail(auth, id);
+        const ms = performance.now() - t0;
+        chatPerfRecord("conversation_detail", ms, { phase: "thread_switch", threadId: id });
+        chatPerfRecord("thread_switch", ms, { threadId: id });
         setThreads((prev) =>
           prev.map((th) => (th.id === id ? mergeServerThreadWithLocal(full, th) : th))
         );
@@ -1225,7 +1439,7 @@ export function ChatPage() {
           t.id === activeThreadId ? { ...t, mode: m, updatedAt: Date.now() } : t
         );
         const th = next.find((x) => x.id === activeThreadId);
-        if (th) void putConversation(auth, th).catch(() => {});
+        if (th) void saveConversation(auth, th);
         return next;
       });
     },
@@ -1244,7 +1458,7 @@ export function ChatPage() {
             : t
         );
         const th = next.find((x) => x.id === activeThreadId);
-        if (th) void putConversation(auth, th).catch(() => {});
+        if (th) void saveConversation(auth, th);
         return next;
       });
     },
@@ -1278,7 +1492,7 @@ export function ChatPage() {
           t.id === activeThreadId ? { ...t, workspaceId: wsId, updatedAt: Date.now() } : t
         );
         const th = next.find((x) => x.id === activeThreadId);
-        if (th) void putConversation(auth, th).catch(() => {});
+        if (th) void saveConversation(auth, th);
         return next;
       });
     },
@@ -1387,47 +1601,6 @@ export function ChatPage() {
     [appendAgentLine, assistantStreamOffset]
   );
 
-  const applyInFlightRestore = useCallback(
-    (snapshot: InFlightTurnSnapshot, opts?: ApplyInFlightRestoreOpts) => {
-      const tid = snapshot.threadId;
-      const rewind =
-        opts?.rewindUserMessage ?? snapshot.rewindUserMessage;
-      const restoreComposer = opts?.restoreComposer ?? rewind;
-      if (restoreComposer) {
-        setDraft(snapshot.draft);
-        setPendingAttachments([...snapshot.attachments]);
-      }
-      const priorUsers = snapshot.priorMessages.filter((m) => m.role === "user" && m.id);
-      setSelectedTurnId(
-        priorUsers[priorUsers.length - 1]?.id ?? snapshot.userMsgId ?? null
-      );
-
-      setThreads((prev) => {
-        const next = prev.map((th) => {
-          if (th.id !== tid) return th;
-          const messages = rewind
-            ? [...snapshot.priorMessages]
-            : stripTrailingAssistantsAfterLastUser(
-                th.messages.length ? th.messages : snapshot.priorMessages
-              );
-          const updated: ChatThread = {
-            ...th,
-            messages,
-            title: snapshot.priorTitle,
-            agentLog: rewind ? [...snapshot.priorAgentLog] : [],
-            turnLogs: rewind ? [...snapshot.priorTurnLogs] : th.turnLogs,
-            messageCount: messages.length,
-            updatedAt: Date.now(),
-          };
-          void putConversation(auth, updated).catch(() => {});
-          return updated;
-        });
-        return next;
-      });
-    },
-    [auth]
-  );
-
   const tryDispatchPendingForceSend = useCallback(() => {
     const pending = pendingForceSendRef.current;
     if (!pending) return false;
@@ -1435,9 +1608,15 @@ export function ChatPage() {
     cancelAgentTurnRef.current = false;
     skipQueueDrainOnFinishRef.current = false;
     const tid = activeThreadIdRef.current;
-    if (!tid) return true;
+    if (!tid) {
+      suppressWsCancelEchoRef.current = false;
+      return true;
+    }
     const thread = threadsRef.current.find((x) => x.id === tid);
     const chatMode = thread?.mode ?? "agent";
+    if (chatMode === "chat") {
+      suppressWsCancelEchoRef.current = false;
+    }
     queueMicrotask(() => {
       void (chatMode === "chat"
         ? runChatHttpRef.current(pending)
@@ -1504,17 +1683,24 @@ export function ChatPage() {
       archivePatch = archiveTurnBeforeNewPrompt(thread);
     }
 
-    if (!isResend && (thread.agentLog?.length ?? 0) > 0) {
-      void putConversation(auth, {
-        ...thread,
-        messages: nextMessages,
-        ...archivePatch,
-        title: nextTitle,
-        model: routed.model,
-        modelProvider: routed.provider,
-        messageCount: nextMessages.length,
-        updatedAt: Date.now(),
-      }).catch(() => {});
+    // Always persist the user row before the turn starts (not only when agentLog
+    // is non-empty). Otherwise a first-turn / empty-log completion fetch+append
+    // can leave the server with assistant-only history and wipe the local user msg.
+    if (!isResend) {
+      try {
+        await putConversation(auth, {
+          ...thread,
+          messages: nextMessages,
+          ...archivePatch,
+          title: nextTitle,
+          model: routed.model,
+          modelProvider: routed.provider,
+          messageCount: nextMessages.length,
+          updatedAt: Date.now(),
+        });
+      } catch {
+        /* best-effort; local UI still has the user row */
+      }
     }
 
     const apiPayload = buildAgentRequestUserContent(
@@ -1637,7 +1823,7 @@ export function ChatPage() {
               messageCount: nextMessages.length + 1,
               updatedAt: Date.now(),
             };
-            void putConversation(auth, updated).catch(() => {});
+            void saveConversation(auth, updated);
             return updated;
           });
           return next;
@@ -1668,7 +1854,7 @@ export function ChatPage() {
             messageCount: th.messages.length + 1,
             updatedAt: Date.now(),
           };
-          void putConversation(auth, updated).catch(() => {});
+          void saveConversation(auth, updated);
           return updated;
         });
         return next;
@@ -1717,7 +1903,8 @@ export function ChatPage() {
   const runAgentWs = useCallback(async (queued?: QueuedComposerMessage, opts?: SendTurnOptions) => {
     if (!accessToken || !activeThreadId) return;
     const tid = activeThreadId;
-    const thread = threads.find((x) => x.id === tid);
+    // Prefer ref so force-send after cancel sees the just-written cancelled transcript.
+    const thread = threadsRef.current.find((x) => x.id === tid) ?? threads.find((x) => x.id === tid);
     const routed = resolveSendModelRouting(modelRows, {
       lastSelection: lastModelSelectionRef.current,
       modelSelectValue,
@@ -1727,6 +1914,12 @@ export function ChatPage() {
     });
     if (!thread || !routed) {
       setError(t("errors:resolveModelProviderFailed"));
+      if (queued) {
+        setDraft(queued.draft);
+        setPendingAttachments([...queued.attachments]);
+      }
+      suppressWsCancelEchoRef.current = false;
+      setLoading(false);
       return;
     }
     lastModelSelectionRef.current = routed.selectValue;
@@ -1761,7 +1954,15 @@ export function ChatPage() {
       sendDraft = queued?.draft ?? draft;
       sendAttachments = queued?.attachments ?? pendingAttachments;
       const userContent = buildUserMessageContent(sendDraft, sendAttachments);
-      if (!userContent) return;
+      if (!userContent) {
+        if (queued) {
+          setDraft(queued.draft);
+          setPendingAttachments([...queued.attachments]);
+        }
+        suppressWsCancelEchoRef.current = false;
+        setLoading(false);
+        return;
+      }
       const firstUser = thread.messages.length === 0;
       userMsgId = newMessageId();
       nextMessages = [
@@ -1772,17 +1973,24 @@ export function ChatPage() {
       archivePatch = archiveTurnBeforeNewPrompt(thread);
     }
 
-    if (!isResend && (thread.agentLog?.length ?? 0) > 0) {
-      void putConversation(auth, {
-        ...thread,
-        messages: nextMessages,
-        ...archivePatch,
-        title: nextTitle,
-        model: routed.model,
-        modelProvider: routed.provider,
-        messageCount: nextMessages.length,
-        updatedAt: Date.now(),
-      }).catch(() => {});
+    // Always persist the user row before the turn starts (not only when agentLog
+    // is non-empty). Otherwise a first-turn / empty-log completion fetch+append
+    // can leave the server with assistant-only history and wipe the local user msg.
+    if (!isResend) {
+      try {
+        await putConversation(auth, {
+          ...thread,
+          messages: nextMessages,
+          ...archivePatch,
+          title: nextTitle,
+          model: routed.model,
+          modelProvider: routed.provider,
+          messageCount: nextMessages.length,
+          updatedAt: Date.now(),
+        });
+      } catch {
+        /* best-effort; local UI still has the user row */
+      }
     }
 
     const requestPayload = buildAgentRequestUserContent(
@@ -1794,7 +2002,15 @@ export function ChatPage() {
     storageOnlyImages = requestPayload.storageOnlyImages;
     const omitHistoryImagesForApi = isImageStorageRequest(sendDraft);
     const requestAgentId = agentIdForRequest(composerAgentId, sendDraft);
-    if (!requestUserContent) return;
+    if (!requestUserContent) {
+      if (queued) {
+        setDraft(queued.draft);
+        setPendingAttachments([...queued.attachments]);
+      }
+      suppressWsCancelEchoRef.current = false;
+      setLoading(false);
+      return;
+    }
 
     inFlightTurnRef.current = {
       threadId: tid,
@@ -1845,11 +2061,29 @@ export function ChatPage() {
       startedAtMs: turnStartedAtMs,
       streamEnabled: getAgentStreamLlm(),
     });
+    chatPerfBeginTurn(tid, userMsgId);
+
+    // Escalate the wait hint while a long turn runs. `onSlow` was built for the
+    // embedded dashboard chat and ChatPage keeps its own socket, so the
+    // transcript used to sit on the static "Agent läuft" through runs that take
+    // minutes — the surface with the long work was the one surface that never
+    // said it was still working.
+    const slowHintTimers: number[] = [];
+    const armSlowHint = (atMs: number, key: string) => {
+      slowHintTimers.push(
+        window.setTimeout(() => {
+          if (finished) return;
+          agentLiveTurnRef.current.setWaitHint(t(key));
+        }, atMs)
+      );
+    };
 
     let finished = false;
     const finish = () => {
       if (finished) return;
       finished = true;
+      for (const id of slowHintTimers) window.clearTimeout(id);
+      chatPerfEndTurn(tid, userMsgId);
       agentTurnFinishRef.current = null;
       agentChatSession.setFinishCallback(null);
       agentChatSession.endTurn();
@@ -1862,15 +2096,16 @@ export function ChatPage() {
       }
       const id = activeThreadIdRef.current;
       const live = agentLiveTurnRef.current;
-      let pendingAgentLog: AgentTimelineEntry[] | null = null;
       if (id && live.isActive()) {
         const log = live.takeAgentLogSnapshot();
-        pendingAgentLog = log;
         const th = threadsRef.current.find((t) => t.id === id);
-        if (th && log.length > 0) {
-          void putConversation(authRef.current, { ...th, agentLog: log }).catch(() => {});
-        } else if (!agentChatSession.isPageMounted() && log.length > 0) {
-          void persistDetachedAgentLog(authRef.current, id, log).catch(() => {});
+        if (log.length > 0) {
+          // Never PUT messages here — threadsRef may still lack the assistant
+          // row that chat.completion just scheduled; a full replace would wipe it.
+          void putConversationAgentLog(authRef.current, id, {
+            agentLog: log,
+            turnLogs: th?.turnLogs ?? [],
+          }).catch(reportAgentLogFailure);
         }
         if (agentChatSession.isPageMounted()) {
           setThreads((prev) =>
@@ -1881,9 +2116,7 @@ export function ChatPage() {
         }
         live.endTurn();
       }
-      if (agentChatSession.isPageMounted()) {
-        setLoading(false);
-      }
+      setLoading(false);
       if (tryDispatchPendingForceSendRef.current()) {
         return;
       }
@@ -1891,7 +2124,6 @@ export function ChatPage() {
       pendingGoalRoundRef.current = null;
       if (
         goalContinue &&
-        agentChatSession.isPageMounted() &&
         !cancelAgentTurnRef.current
       ) {
         const tid = activeThreadIdRef.current;
@@ -1912,12 +2144,14 @@ export function ChatPage() {
       const skipDrain = skipQueueDrainOnFinishRef.current;
       if (skipDrain) {
         skipQueueDrainOnFinishRef.current = false;
-      } else if (agentChatSession.isPageMounted()) {
+      } else {
+        // Always drain the composer queue after a finished turn (do not gate on
+        // isPageMounted — that previously left queued messages stuck forever).
         scheduleDrainComposerQueue();
       }
       if (id && !skipDrain && agentChatSession.isPageMounted()) {
-        setThreads((prev) => {
-          const next = prev.map((th) => {
+        setThreads((prev) =>
+          prev.map((th) => {
             if (th.id !== id) return th;
             const messages = stripTrailingEmptyAssistantMessages(th.messages);
             if (messages.length === th.messages.length) return th;
@@ -1927,21 +2161,14 @@ export function ChatPage() {
               messageCount: messages.length,
               updatedAt: Date.now(),
             };
-          });
-          const th = next.find((x) => x.id === id);
-          if (th) {
-            const toSave =
-              pendingAgentLog && pendingAgentLog.length > 0
-                ? { ...th, agentLog: pendingAgentLog }
-                : th;
-            void putConversation(authRef.current, toSave).catch(() => {});
-          }
-          return next;
-        });
+          })
+        );
       }
     };
     agentTurnFinishRef.current = finish;
     agentChatSession.setFinishCallback(finish);
+    armSlowHint(20_000, "chat:slowHintRunning");
+    armSlowHint(60_000, "chat:slowHintLong");
 
     agentHandlerRef.current = (ev: MessageEvent) => {
       try {
@@ -1949,16 +2176,25 @@ export function ChatPage() {
         const typ = typeof msg.type === "string" ? msg.type : String(msg.type ?? "");
         if (typ === "pong") return;
         if (typ === "error") {
+          if (finished) return;
           setError(typeof msg.detail === "string" ? msg.detail : t("errors:agentError"));
           finish();
           return;
         }
         if (typ === "chat.completion") {
           if (msg.error) {
-            setError(typeof msg.detail === "string" ? msg.detail : t("chat:cancelledOrFailed"));
+            const detail = typeof msg.detail === "string" ? msg.detail : "";
+            const cancelEcho =
+              suppressWsCancelEchoRef.current &&
+              /cancel|abort/i.test(detail || "cancelled");
+            if (cancelEcho || finished) {
+              return;
+            }
+            setError(detail || t("chat:cancelledOrFailed"));
             finish();
             return;
           }
+          suppressWsCancelEchoRef.current = false;
           const data = msg.data;
           if (data && typeof data === "object" && "usage" in data) {
             setTokenUsage((prev) => addUsageTotals(prev, (data as { usage?: unknown }).usage));
@@ -1977,32 +2213,50 @@ export function ChatPage() {
           const liveLog = agentLiveTurnRef.current.takeAgentLogSnapshot();
           if (id && content.trim()) {
             inFlightTurnRef.current = null;
+            // Always persist via fetch+append so a stale local message list cannot wipe
+            // the assistant row (also covers ChatPage remount mid-turn).
+            void persistDetachedAgentCompletion(
+              authRef.current,
+              id,
+              content,
+              liveLog,
+              reasoningContent
+            )
+              .then(async () => {
+                if (!agentChatSession.isPageMounted()) return;
+                try {
+                  const full = await fetchConversationDetail(authRef.current, id);
+                  setThreads((prev) =>
+                    prev.map((th) =>
+                      th.id === id ? mergeServerThreadWithLocal(full, th) : th
+                    )
+                  );
+                } catch {
+                  /* keep optimistic UI */
+                }
+              })
+              .catch(() => {});
             if (agentChatSession.isPageMounted()) {
-              setThreads((prev) => {
-                const next = prev.map((th) => {
+              setThreads((prev) =>
+                prev.map((th) => {
                   if (th.id !== id) return th;
-                  const prevMsgs = th.messages;
                   const messages: UiMessage[] = [
-                    ...prevMsgs,
+                    ...th.messages,
                     assistantMessage(content, undefined, reasoningContent),
                   ];
-                  const updated: ChatThread = {
+                  return {
                     ...th,
                     messages,
                     agentLog: liveLog,
                     messageCount: messages.length,
                     updatedAt: Date.now(),
                   };
-                  void putConversation(authRef.current, updated).catch(() => {});
-                  return updated;
-                });
-                return next;
-              });
-            } else {
-              void persistDetachedAgentCompletion(authRef.current, id, content, liveLog).catch(
-                () => {}
+                })
               );
             }
+            // Finish (loading=false) before resetting live turn so useSyncExternalStore
+            // cannot paint an empty in-flight "Agent running…" over the streamed text.
+            finish();
             agentLiveTurnRef.current.resetAfterCommit();
             const vs = voiceStatusRef.current;
             const speechText = extractSpeechTextFromCompletion(data);
@@ -2012,35 +2266,41 @@ export function ChatPage() {
                 preferServer: Boolean(vs.api_configured),
               });
             }
+            return;
           } else if (id && liveLog.length > 0) {
+            const th = threadsRef.current.find((t) => t.id === id);
+            void putConversationAgentLog(authRef.current, id, {
+              agentLog: liveLog,
+              turnLogs: th?.turnLogs ?? [],
+            }).catch(reportAgentLogFailure);
             if (agentChatSession.isPageMounted()) {
               setThreads((prev) =>
-                prev.map((th) => {
-                  if (th.id !== id) return th;
-                  const updated: ChatThread = {
-                    ...th,
+                prev.map((row) => {
+                  if (row.id !== id) return row;
+                  return {
+                    ...row,
                     agentLog: liveLog,
                     updatedAt: Date.now(),
                   };
-                  void putConversation(authRef.current, updated).catch(() => {});
-                  return updated;
                 })
               );
-            } else {
-              void persistDetachedAgentLog(authRef.current, id, liveLog).catch(() => {});
             }
+            finish();
             agentLiveTurnRef.current.resetAfterCommit();
+            return;
           } else {
             inFlightTurnRef.current = null;
+            finish();
             agentLiveTurnRef.current.resetAfterCommit();
+            return;
           }
-          finish();
-          return;
         }
         if (typ === "agent.session") {
+          suppressWsCancelEchoRef.current = false;
           const em = msg.effective_model != null ? String(msg.effective_model) : "";
           const mr = msg.model_resolution != null ? String(msg.model_resolution) : "";
           appendAgentLine("session", [em && `model: ${em}`, mr && `(${mr})`].filter(Boolean).join(" "));
+          appendContextInjectionsFromSession(appendAgentLine, msg.context_injections);
           void fetchChatRuntime(auth, {
             workspaceId: selectedWorkspaceId,
             model: (em || chatRuntimeQuery.model || "").trim() || null,
@@ -2076,7 +2336,7 @@ export function ChatPage() {
                     th.id === tid ? { ...th, agentId: aid, updatedAt: Date.now() } : th
                   );
                   const th = next.find((x) => x.id === tid);
-                  if (th) void putConversation(auth, th).catch(() => {});
+                  if (th) void saveConversation(auth, th);
                   return next;
                 });
               }
@@ -2104,7 +2364,7 @@ export function ChatPage() {
                     th.id === tid ? { ...th, workspaceId: wid, updatedAt: Date.now() } : th
                   );
                   const th = next.find((x) => x.id === tid);
-                  if (th) void putConversation(auth, th).catch(() => {});
+                  if (th) void saveConversation(auth, th);
                   return next;
                 });
               }
@@ -2182,6 +2442,7 @@ export function ChatPage() {
         }
         if (typ === "agent.llm_slot_wait") {
           const live = agentLiveTurnRef.current;
+          if (!live.isActive()) return;
           const text = llmSlotWaitMessage(msg);
           live.setWaitHint(text);
           const waited = msg.waited_sec != null ? Number(msg.waited_sec) : 0;
@@ -2195,6 +2456,7 @@ export function ChatPage() {
         }
         if (typ === "agent.deferred_wait") {
           const live = agentLiveTurnRef.current;
+          if (!live.isActive()) return;
           const text = deferredWaitMessage(msg);
           const phase = msg.phase != null ? String(msg.phase) : "";
           if (phase === "started" || phase === "waiting") {
@@ -2234,6 +2496,10 @@ export function ChatPage() {
           }
           const d = msg.delta != null ? String(msg.delta) : "";
           if (!d) return;
+          const snap = inFlightTurnRef.current;
+          if (snap?.threadId && snap.userMsgId) {
+            chatPerfNoteFirstDelta(snap.threadId, snap.userMsgId);
+          }
           agentLiveTurnRef.current.appendStreamDelta(d);
           return;
         }
@@ -2295,6 +2561,14 @@ export function ChatPage() {
               promptId,
               serviceKey,
               mode: "authenticated",
+              scope:
+                String(msg.scope ?? "").trim().toLowerCase() === "workspace"
+                  ? "workspace"
+                  : "global",
+              workspaceId:
+                msg.workspace_id != null && String(msg.workspace_id).trim()
+                  ? String(msg.workspace_id).trim()
+                  : undefined,
               title: msg.title != null ? String(msg.title) : undefined,
               help: msg.help != null ? String(msg.help) : undefined,
               reason: msg.reason != null ? String(msg.reason) : undefined,
@@ -2431,11 +2705,13 @@ export function ChatPage() {
           return;
         }
         if (typ === "agent.step_wait") {
+          if (!agentLiveTurnRef.current.isActive()) return;
           appendAgentLine("wait", t("chat:pausedStepMode"));
           setStepPaused(true);
           return;
         }
         if (typ === "agent.permission_ask") {
+          if (!agentLiveTurnRef.current.isActive()) return;
           const requestId = String(msg.request_id ?? "").trim();
           const toolName = String(msg.tool_name ?? "tool").trim() || "tool";
           if (!requestId) return;
@@ -2460,6 +2736,9 @@ export function ChatPage() {
           setStepPaused(false);
         }
         if (typ === "agent.aborted" || typ === "agent.cancelled") {
+          if (suppressWsCancelEchoRef.current || finished) {
+            return;
+          }
           appendAgentLine(String(typ), String(msg.detail ?? ""));
           delegateClearRef.current();
           return;
@@ -2522,6 +2801,11 @@ export function ChatPage() {
       setError(e instanceof Error ? e.message : String(e));
       setAgentTurnStartedAtMs(null);
       setLoading(false);
+      if (queued) {
+        setDraft(queued.draft);
+        setPendingAttachments([...queued.attachments]);
+      }
+      suppressWsCancelEchoRef.current = false;
       scheduleDrainComposerQueue();
     }
   }, [
@@ -2568,6 +2852,8 @@ export function ChatPage() {
   const drainComposerQueue = useCallback(() => {
     const tid = activeThreadIdRef.current;
     if (!tid) return;
+    if (inFlightTurnRef.current) return;
+    if (agentChatSession.isTurnInProgress()) return;
     const q = composerQueueRef.current.get(tid);
     if (!q?.length) return;
     const next = q.shift();
@@ -2578,7 +2864,7 @@ export function ChatPage() {
     const thread = threadsRef.current.find((x) => x.id === tid);
     const chatMode = thread?.mode ?? "agent";
     void (chatMode === "chat" ? runChatHttpRef.current(next) : runAgentWsRef.current(next));
-  }, [bumpComposerQueue]);
+  }, [agentChatSession, bumpComposerQueue]);
   drainComposerQueueRef.current = drainComposerQueue;
 
   const onQueue = useCallback(() => {
@@ -2639,27 +2925,79 @@ export function ChatPage() {
     cancelAgentTurnRef.current = true;
     skipQueueDrainOnFinishRef.current = true;
     pendingGoalRoundRef.current = null;
+    if (forceSend) {
+      // Server will still emit cancel/completion-error for the old turn; ignore until
+      // the replacement turn's agent.session so we don't finish() the new turn.
+      suppressWsCancelEchoRef.current = true;
+    }
 
     const snapshot = inFlightTurnRef.current;
     if (snapshot && snapshot.threadId === activeThreadIdRef.current) {
-      if (forceSend) {
-        applyInFlightRestore(snapshot, { restoreComposer: false, rewindUserMessage: false });
-      } else {
-        applyInFlightRestore(snapshot);
-      }
+      // Keep user + any streamed assistant text; badge via agent.cancelled in the timeline.
+      // Force-send uses the same transcript UX (then pendingForceSend starts the next turn).
+      const tid = snapshot.threadId;
+      const live = agentLiveTurnRef.current;
+      const streamText = live.getStreamText().trim();
+      const streamReasoning = live.getStreamReasoningText().trim();
+      const logBase = live.isActive()
+        ? live.takeAgentLogSnapshot()
+        : (threadsRef.current.find((x) => x.id === tid)?.agentLog ?? []);
+      const cancelledLog = appendTimelineEntry(logBase, {
+        kind: "agent.cancelled",
+        text: t("chat:turnCancelled"),
+      });
+      setThreads((prev) => {
+        const next = prev.map((th) => {
+          if (th.id !== tid) return th;
+          let messages = stripTrailingEmptyAssistantMessages(th.messages);
+          const last = messages[messages.length - 1];
+          if (last?.role === "assistant") {
+            const merged = streamText
+              ? {
+                  ...last,
+                  content: streamText,
+                  ...(streamReasoning ? { reasoningContent: streamReasoning } : {}),
+                }
+              : last;
+            messages = [...messages.slice(0, -1), merged];
+          } else {
+            messages = [
+              ...messages,
+              assistantMessage(streamText, undefined, streamReasoning || undefined),
+            ];
+          }
+          const updated: ChatThread = {
+            ...th,
+            messages,
+            agentLog: cancelledLog,
+            messageCount: messages.length,
+            updatedAt: Date.now(),
+          };
+          void putConversation(authRef.current, updated).catch(() => {});
+          return updated;
+        });
+        // Keep threadsRef in sync for the force-send microtask (before React re-renders).
+        threadsRef.current = next;
+        return next;
+      });
       inFlightTurnRef.current = null;
     }
 
     agentLiveTurnRef.current.resetAfterCommit();
-    agentTurnFinishRef.current?.();
+    const finishFn = agentTurnFinishRef.current;
     agentTurnFinishRef.current = null;
     agentChatSession.setFinishCallback(null);
+    if (finishFn) {
+      finishFn();
+    } else if (forceSend) {
+      tryDispatchPendingForceSendRef.current();
+    }
     agentChatSession.endTurn();
     if (!forceSend) {
       setLoading(false);
     }
     agentChatSession.sendCancel();
-  }, [agentChatSession, applyInFlightRestore]);
+  }, [agentChatSession, t]);
 
   const onCancelInFlight = useCallback(() => {
     abortInFlightTurn();
@@ -2803,7 +3141,7 @@ export function ChatPage() {
     const trimmed = next.trim();
     if (!trimmed) return;
     patchThread(id, { title: trimmed });
-    void putConversation(auth, { ...thread, title: trimmed }).catch(() => {});
+    void saveConversation(auth, { ...thread, title: trimmed });
   };
 
   const shareThread = async (thread: ChatThread) => {
@@ -2841,42 +3179,97 @@ export function ChatPage() {
     return composerHasContent;
   }, [activeThreadId, loading, model, defaultModel, accessToken, composerHasContent]);
 
-  const canForceSend = canQueue;
-
-  const onForceSend = useCallback(() => {
-    if (!activeThreadId || !composerHasContent) return;
-    if (!(model || defaultModel) || !accessToken) return;
-    const item: QueuedComposerMessage = {
-      id: newMessageId(),
-      draft,
-      attachments: [...pendingAttachments],
-    };
-    if (!loading) {
-      void (mode === "chat" ? runChatHttp(item) : runAgentWs(item));
-      return;
-    }
-    pendingForceSendRef.current = item;
-    setDraft("");
-    setPendingAttachments([]);
-    abortInFlightTurn({ forceSend: true });
+  const canForceSend = useMemo(() => {
+    if (!activeThreadId || !loading || !(model || defaultModel) || !accessToken) return false;
+    return composerHasContent || activeComposerQueue.length > 0;
   }, [
-    abortInFlightTurn,
     accessToken,
+    activeComposerQueue.length,
     activeThreadId,
     composerHasContent,
     defaultModel,
-    draft,
     loading,
-    mode,
+    model,
+  ]);
+
+  const composerModEnter = useMemo(() => composerModEnterLabel(), []);
+
+  const forceSendItem = useCallback(
+    (item: QueuedComposerMessage) => {
+      if (!activeThreadId || !(model || defaultModel) || !accessToken) return;
+      if (!loading) {
+        void (mode === "chat" ? runChatHttp(item) : runAgentWs(item));
+        return;
+      }
+      pendingForceSendRef.current = item;
+      setDraft("");
+      setPendingAttachments([]);
+      abortInFlightTurn({ forceSend: true });
+    },
+    [
+      abortInFlightTurn,
+      accessToken,
+      activeThreadId,
+      defaultModel,
+      loading,
+      mode,
+      model,
+      runAgentWs,
+      runChatHttp,
+    ]
+  );
+
+  const onForceSend = useCallback(() => {
+    if (!activeThreadId || !(model || defaultModel) || !accessToken) return;
+    if (composerHasContent) {
+      forceSendItem({
+        id: newMessageId(),
+        draft,
+        attachments: [...pendingAttachments],
+      });
+      return;
+    }
+    const tid = activeThreadId;
+    const q = composerQueueRef.current.get(tid);
+    if (!q?.length) return;
+    const item = q.shift()!;
+    if (q.length) composerQueueRef.current.set(tid, q);
+    else composerQueueRef.current.delete(tid);
+    bumpComposerQueue();
+    forceSendItem(item);
+  }, [
+    accessToken,
+    activeThreadId,
+    bumpComposerQueue,
+    composerHasContent,
+    defaultModel,
+    draft,
+    forceSendItem,
     model,
     pendingAttachments,
-    runAgentWs,
-    runChatHttp,
   ]);
+
+  const onForceSendQueuedItem = useCallback(
+    (itemId: string) => {
+      const tid = activeThreadId;
+      if (!tid) return;
+      const q = composerQueueRef.current.get(tid);
+      if (!q?.length) return;
+      const idx = q.findIndex((item) => item.id === itemId);
+      if (idx < 0) return;
+      const [item] = q.splice(idx, 1);
+      if (!item) return;
+      if (q.length) composerQueueRef.current.set(tid, q);
+      else composerQueueRef.current.delete(tid);
+      bumpComposerQueue();
+      forceSendItem(item);
+    },
+    [activeThreadId, bumpComposerQueue, forceSendItem]
+  );
 
   if (!hydrated || !userId) {
     return (
-      <div className="flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden text-sm text-surface-muted">
+      <div className="flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden text-sm text-ink-muted">
         {t("chat:loadingChats")}
       </div>
     );
@@ -2884,61 +3277,62 @@ export function ChatPage() {
 
   return (
     <CollapsibleSidebarShell
-      className="bg-surface"
+      className="bg-canvas"
       mobileOpen={threadSidebarOpen}
       onMobileOpenChange={setThreadSidebarOpen}
       sidebarAriaLabel={t("chat:sidebarTitle")}
       closeSidebarAriaLabel={t("chat:closeChatsSidebar")}
       sidebar={
         <>
-          <div className="shrink-0 border-b border-surface-border p-3">
-            <button
+          <div className="shrink-0 border-b border-line p-soft">
+            <Button
+              variant="plain"
+              block
               type="button"
               onClick={() => {
                 void startNewChat();
                 setThreadSidebarOpen(false);
               }}
-              className="w-full rounded-lg border border-surface-border bg-white/5 px-3 py-2 text-left text-sm text-neutral-200 hover:bg-white/10"
+              className="w-full rounded-card border border-line bg-white/5 px-soft py-base text-sm text-ink-primary hover:bg-white/10"
             >
               {t("chat:newChat")}
-            </button>
+            </Button>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-2 py-2">
-            <p className="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-surface-muted">
-              {t("chat:sidebarTitle")}
-            </p>
-            <p className="mb-2 px-2 text-[10px] leading-snug text-surface-muted/80">
+          <div className="flex-1 overflow-y-auto px-base py-base">
+            <p className="mb-base px-base text-meta leading-snug text-ink-muted/80">
               {t("chat:sidebarHint")}{" "}
-              <span className="text-amber-200/90">{t("chat:sharedBadge")}</span>
+              <span className="text-badge-warning">{t("chat:sharedBadge")}</span>
             </p>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-soft">
               {sidebarGroups.map((g) => (
                 <section
                   key={g.kind === "dashboard" ? `ws-${g.dashboardId}` : `src-${g.source}`}
                   className="min-w-0"
                 >
-                  <p className="px-2 pb-1 text-[10px] font-medium uppercase tracking-wide text-surface-muted/90">
+                  <p className="px-base pb-tight text-meta font-medium uppercase tracking-wide text-ink-muted/90">
                     {g.label}
                   </p>
-                  <ul className="flex flex-col gap-1">
+                  <ul className="flex flex-col gap-tight">
                     {g.threads.map((thread) => (
                       <li key={thread.id}>
                         <div
-                          className={`group flex items-start gap-1 rounded-md px-2 py-2 ${
+                          className={`group flex items-start gap-tight rounded-tile px-base py-base ${
                             thread.id === activeThreadId ? "bg-white/10" : "hover:bg-white/5"
                           }`}
                         >
-                          <button
+                          <Button
+                            variant="plain"
+                            block
                             type="button"
-                            className="min-w-0 flex-1 text-left text-sm text-neutral-200"
+                            className="min-w-0 flex-1 text-sm text-ink-primary"
                             onClick={() => void handleSelectThread(thread.id)}
                           >
-                            <span className="flex flex-wrap items-start gap-1.5">
+                            <span className="flex flex-wrap items-start gap-snug">
                               <span className="line-clamp-2 min-w-0 flex-1 text-left">{thread.title}</span>
                               <DashboardChatVisibilityBadge thread={thread} />
                             </span>
-                            <span className="mt-0.5 block text-[10px] text-surface-muted">
+                            <span className="mt-hair block text-meta text-ink-muted">
                               {new Date(thread.updatedAt).toLocaleString(undefined, {
                                 month: "short",
                                 day: "numeric",
@@ -2946,32 +3340,37 @@ export function ChatPage() {
                                 minute: "2-digit",
                               })}
                             </span>
-                          </button>
-                          <div className="flex shrink-0 flex-col gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
-                            <button
-                              type="button"
-                              className="rounded px-1 text-[10px] text-surface-muted hover:text-white"
-                              title={t("chat:rename")}
-                              onClick={() => renameThread(thread.id)}
+                          </Button>
+                          <div className="flex shrink-0 flex-col gap-hair opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
+                            <Tooltip label={t("chat:rename")}>
+                            <Button
+                              variant="ghost"
+                                type="button"
+                                className="px-tight text-meta text-ink-muted hover:text-white"
+                                onClick={() => renameThread(thread.id)}
                             >
-                              Ren
-                            </button>
-                            <button
-                              type="button"
-                              className="rounded px-1 text-[10px] text-surface-muted hover:text-white"
-                              title={t("chat:copyLinkJson")}
-                              onClick={() => void shareThread(thread)}
+                                Ren
+                              </Button>
+                            </Tooltip>
+                            <Tooltip label={t("chat:copyLinkJson")}>
+                            <Button
+                              variant="ghost"
+                                type="button"
+                                className="px-tight text-meta text-ink-muted hover:text-white"
+                                onClick={() => void shareThread(thread)}
                             >
-                              Share
-                            </button>
-                            <button
+                                Share
+                              </Button>
+                            </Tooltip>
+                            <Button
                               type="button"
-                              className="rounded px-1 text-[10px] text-red-400/90 hover:text-red-300"
+                              variant="danger"
+                              size="sm"
                               title={t("chat:delete")}
                               onClick={() => void deleteThread(thread.id)}
                             >
                               Del
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       </li>
@@ -2987,90 +3386,93 @@ export function ChatPage() {
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {!activeThreadId ? (
           <>
-            <div className="flex shrink-0 items-center gap-2 border-b border-surface-border px-4 py-2 md:hidden">
-              <button
+            <div className="flex shrink-0 items-center gap-base border-b border-line px-wide py-base md:hidden">
+              <Button
                 type="button"
-                className="rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-[11px] font-medium text-neutral-300 hover:bg-white/10"
+                className="bg-black/30 px-firm py-snug text-meta text-ink-secondary hover:bg-white/10"
                 aria-expanded={threadSidebarOpen}
                 onClick={() => setThreadSidebarOpen(true)}
               >
                 {t("chat:openChatsSidebarShort")}
-              </button>
+              </Button>
             </div>
-            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4 py-12 text-center sm:px-6">
-            <div className="max-w-md">
-              <p className="text-sm font-medium text-white">{t("chat:noConversationOpenTitle")}</p>
-              <p className="mt-1 text-sm text-surface-muted">{t("chat:noConversationOpenBody")}</p>
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-wide px-wide py-grand text-center sm:px-broad">
+            <div className="max-w-measure">
+              <p className="text-sm font-medium text-ink-primary">{t("chat:noConversationOpenTitle")}</p>
+              <p className="mt-tight text-sm text-ink-muted">{t("chat:noConversationOpenBody")}</p>
             </div>
-            <button
+            <Button
+              size="lg"
               type="button"
               onClick={() => {
                 void startNewChat();
                 setThreadSidebarOpen(false);
               }}
-              className="rounded-lg border border-surface-border bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/15"
+              className="bg-white/10 px-wide py-base text-sm hover:bg-white/15"
             >
               {t("chat:newChat")}
-            </button>
+            </Button>
             </div>
           </>
         ) : (
           <>
         <div
           className={[
-            "shrink-0 border-b border-surface-border px-4 sm:px-6",
-            composerHeaderCollapsed ? "py-2" : "py-3",
+            "shrink-0 border-b border-line px-wide sm:px-broad",
+            composerHeaderCollapsed ? "py-base" : "py-soft",
           ].join(" ")}
         >
           <div
             className={[
-              "flex min-w-0 flex-wrap items-center gap-2",
-              composerHeaderCollapsed ? "" : "mb-2",
+              "flex min-w-0 flex-wrap items-center gap-base",
+              composerHeaderCollapsed ? "" : "mb-base",
             ].join(" ")}
           >
-            <button
+            <Button
               type="button"
-              className="shrink-0 rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-[11px] font-medium text-neutral-300 hover:bg-white/10 md:hidden"
+              className="shrink-0 bg-black/30 px-firm py-snug text-meta text-ink-secondary hover:bg-white/10 md:hidden"
               aria-expanded={threadSidebarOpen}
               aria-label={t("chat:openChatsSidebar")}
               onClick={() => setThreadSidebarOpen(true)}
             >
               {t("chat:openChatsSidebarShort")}
-            </button>
-            <p className="min-w-0 flex-1 truncate text-sm font-medium text-white">
+            </Button>
+            <p className="min-w-0 flex-1 truncate text-sm font-medium text-ink-primary">
               {activeThread?.title ?? t("chat:defaultThreadTitle")}
             </p>
             {activeThread ? <DashboardChatVisibilityBadge thread={activeThread} /> : null}
-            <button
-              type="button"
-              className="shrink-0 rounded-lg border border-surface-border bg-black/30 px-2 py-1 text-[10px] font-medium text-neutral-300 hover:bg-white/10"
-              aria-expanded={!composerHeaderCollapsed}
-              aria-controls="chat-composer-header-panel"
-              title={
+            <Tooltip label={
                 composerHeaderCollapsed
                   ? t("chat:expandComposerHeader")
                   : t("chat:collapseComposerHeader")
-              }
-              onClick={toggleComposerHeaderCollapsed}
+              }>
+            <Button
+                type="button"
+                className="shrink-0 bg-black/30 px-base py-tight text-meta text-ink-secondary hover:bg-white/10"
+                aria-expanded={!composerHeaderCollapsed}
+                aria-controls="chat-composer-header-panel"
+                onClick={toggleComposerHeaderCollapsed}
             >
-              {composerHeaderCollapsed ? "▼" : "▲"}
-            </button>
+                {composerHeaderCollapsed ? "▼" : "▲"}
+              </Button>
+            </Tooltip>
           </div>
           {composerHeaderCollapsed ? (
-            <p className="mt-1 truncate text-[10px] leading-snug text-surface-muted" title={composerHeaderSummary}>
+            <p className="mt-tight truncate text-meta leading-snug text-ink-muted" title={composerHeaderSummary}>
               {composerHeaderSummary}
             </p>
           ) : null}
           {composerHeaderCollapsed && workspaceScopeHint && selectedWorkspaceId ? (
-            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-600/40 bg-amber-950/30 px-3 py-2">
-              <p className="min-w-0 flex-1 text-[11px] leading-snug text-amber-100/95">{workspaceScopeHint}</p>
-              <button
+            <div className="mt-base flex flex-wrap items-center gap-base rounded-card border border-warning/40 bg-warning-subtle px-soft py-base">
+              <p className="min-w-0 flex-1 text-meta leading-snug text-badge-warning">{workspaceScopeHint}</p>
+              <Button
+                variant="ghost"
                 type="button"
-                className="shrink-0 text-[11px] text-surface-muted hover:text-neutral-200"
+                className="shrink-0 text-meta text-ink-muted hover:text-neutral-200"
                 onClick={() => setWorkspaceScopeHint(null)}
               >
                 {t("chat:dismiss")}
-              </button>
+              </Button>
             </div>
           ) : null}
           {mode === "agent" ? (
@@ -3080,36 +3482,36 @@ export function ChatPage() {
               contextMeta={chatContextMeta}
               agentRunning={activityLoading}
               agentMode
-              className={composerHeaderCollapsed ? "mt-2 w-full" : "mb-2 w-full lg:hidden"}
+              className={composerHeaderCollapsed ? "mt-base w-full" : "mb-base w-full lg:hidden"}
               mcpAddon={chatRuntimeMcpAddon}
             />
           ) : null}
           {!composerHeaderCollapsed ? (
           <div
             id="chat-composer-header-panel"
-            className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_17.5rem] lg:items-stretch"
+            className="grid gap-soft lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_17.5rem] lg:items-stretch"
           >
-            <div className="min-w-0 space-y-2">
-              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
-                <div className="min-w-0 flex-1 sm:min-w-[10rem] sm:max-w-[20rem]">
-                  <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+            <div className="min-w-0 space-y-base">
+              <div className="flex flex-col gap-base sm:flex-row sm:flex-wrap sm:items-end">
+                <div className="min-w-0 flex-1 sm:min-w-[10rem] sm:max-w-control">
+                  <label className="block text-meta font-medium uppercase tracking-wide text-ink-muted">
                     {t("chat:assistantLabel")}
                   </label>
-                  <p className="mt-0.5 rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-300">
+                  <p className="mt-hair rounded-card border border-line bg-[#1a1a1a] px-firm py-snug text-sm text-ink-secondary">
                     {t("chat:generalAssistant")}
                   </p>
-                  <p className="mt-1 text-[10px] leading-snug text-surface-muted">
+                  <p className="mt-tight text-meta leading-snug text-ink-muted">
                     {t("chat:generalAssistantHint")}
                   </p>
                 </div>
                 {workspaces.length > 0 ? (
-                  <div className="min-w-0 flex-1 sm:min-w-[10rem] sm:max-w-[24rem]">
-                    <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+                  <div className="min-w-0 flex-1 sm:min-w-[10rem] sm:max-w-controlWide">
+                    <label className="block text-meta font-medium uppercase tracking-wide text-ink-muted">
                       {t("chat:projectLabel")}
                     </label>
-                    <div className="mt-0.5 flex flex-wrap gap-1.5">
-                      <select
-                        className="min-w-0 flex-1 rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
+                    <div className="mt-hair flex flex-wrap gap-snug">
+                      <Select
+                        className="min-w-0 flex-1"
                         value={selectedWorkspaceId ?? ""}
                         onChange={(e) => setComposerWorkspace(e.target.value || null)}
                       >
@@ -3120,36 +3522,39 @@ export function ChatPage() {
                             {ws.access_role === "viewer" ? t("chat:projectViewerSuffix") : ""}
                           </option>
                         ))}
-                      </select>
+                      </Select>
+                      <Tooltip label={selectedWorkspaceId ? t("chat:showProjectTree") : t("chat:selectProjectFirst")}>
                       <button
-                        type="button"
-                        className={[
-                          "shrink-0 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium",
-                          projectPanelOpen
-                            ? "border-sky-500/60 bg-sky-950/50 text-sky-100"
-                            : "border-surface-border bg-black/30 text-neutral-300 hover:bg-white/10",
-                        ].join(" ")}
-                        disabled={!selectedWorkspaceId}
-                        title={selectedWorkspaceId ? t("chat:showProjectTree") : t("chat:selectProjectFirst")}
-                        onClick={() => {
-                          const next = !projectPanelOpen;
-                          setProjectPanelOpen(next);
-                          setChatProjectPanelOpen(userId, next);
-                        }}
-                      >
-                        {projectPanelOpen ? t("chat:hideTree") : t("chat:showTree")}
-                      </button>
+                          type="button"
+                          className={[
+                            "shrink-0 rounded-card border px-firm py-snug text-meta font-medium",
+                            projectPanelOpen
+                              ? "border-accent/60 bg-accent-subtle text-badge-accent"
+                              : "border-line bg-black/30 text-ink-secondary hover:bg-white/10",
+                          ].join(" ")}
+                          disabled={!selectedWorkspaceId}
+                          onClick={() => {
+                            const next = !projectPanelOpen;
+                            setProjectPanelOpen(next);
+                            setChatProjectPanelOpen(userId, next);
+                          }}
+                        >
+                          {projectPanelOpen ? t("chat:hideTree") : t("chat:showTree")}
+                        </button>
+                      </Tooltip>
                       {selectedWorkspace &&
                       selectedWorkspace.access_role !== "viewer" &&
                       !isAgentlayerSelfWorkspace(selectedWorkspace) ? (
-                        <button
+                        <Button
                           type="button"
-                          className="shrink-0 rounded-lg border border-red-900/40 bg-red-950/20 px-2.5 py-1.5 text-[11px] font-medium text-red-300/90 hover:bg-red-950/40"
+                          variant="danger"
+                          size="sm"
+                          className="shrink-0"
                           title={t("chat:deleteProject")}
                           onClick={() => requestDeleteProject(selectedWorkspace)}
                         >
                           {t("chat:deleteProject")}
-                        </button>
+                        </Button>
                       ) : null}
                     </div>
                     {selectedWorkspace ? (
@@ -3161,59 +3566,58 @@ export function ChatPage() {
                         onWorkspaceUpdated={(ws) => {
                           setWorkspaces((prev) => prev.map((w) => (w.id === ws.id ? ws : w)));
                         }}
-                        className="mt-2 w-full"
+                        className="mt-base w-full"
                       />
                     ) : null}
                   </div>
                 ) : null}
               </div>
               {workspaces.length === 0 ? (
-                <div className="rounded-lg border border-surface-border bg-black/25 px-3 py-2">
-                  <p className="text-xs leading-snug text-surface-muted">
+                <div className="rounded-card border border-line bg-black/25 px-soft py-base">
+                  <p className="text-xs leading-snug text-ink-muted">
                     {isAdminUser ? t("chat:noProjectsAdmin") : t("chat:noProjectsUser")}
                   </p>
                 </div>
               ) : null}
               {workspaceScopeHint && selectedWorkspaceId ? (
-                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-600/40 bg-amber-950/30 px-3 py-2">
-                  <p className="min-w-0 flex-1 text-[11px] leading-snug text-amber-100/95">{workspaceScopeHint}</p>
-                  <button
+                <div className="flex flex-wrap items-center gap-base rounded-card border border-warning/40 bg-warning-subtle px-soft py-base">
+                  <p className="min-w-0 flex-1 text-meta leading-snug text-badge-warning">{workspaceScopeHint}</p>
+                  <Button
+                    variant="ghost"
                     type="button"
-                    className="shrink-0 text-[11px] text-surface-muted hover:text-neutral-200"
+                    className="shrink-0 text-meta text-ink-muted hover:text-neutral-200"
                     onClick={() => setWorkspaceScopeHint(null)}
                   >
                     {t("chat:dismiss")}
-                  </button>
+                  </Button>
                 </div>
               ) : null}
-              <p className="text-[10px] leading-snug text-surface-muted">{t("chat:titlesHint")}</p>
+              <p className="text-meta leading-snug text-ink-muted">{t("chat:titlesHint")}</p>
               {!activeThread?.shared && activeThreadId ? (
-                <div className="mt-2 rounded-lg border border-violet-500/25 bg-violet-950/15 px-3 py-2">
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-200">
-                    <input
-                      type="checkbox"
-                      className="rounded border-surface-border"
+                <div className="mt-base rounded-card border border-violet-500/25 bg-violet-950/15 px-soft py-base">
+                  <label className="flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+                    <Checkbox
                       checked={!!activeThread?.delegateAutoRespondEnabled}
                       onChange={(e) => {
                         const enabled = e.target.checked;
                         patchThread(activeThreadId, { delegateAutoRespondEnabled: enabled });
                         void patchDelegatePrefs(auth, activeThreadId, {
                           delegate_auto_respond_enabled: enabled,
-                        }).catch(() => {});
+                        }).catch(reportDelegatePrefFailure);
                         if (!enabled) delegateClearRef.current();
                       }}
                     />
                     {t("chat:delegateAutoRespond")}
                   </label>
-                  <p className="mt-1 text-[10px] text-surface-muted">{t("chat:delegateAutoRespondHint")}</p>
+                  <p className="mt-tight text-meta text-ink-muted">{t("chat:delegateAutoRespondHint")}</p>
                   {activeThread?.delegateAutoRespondEnabled ? (
-                    <label className="mt-2 block text-[10px] text-surface-muted">
+                    <label className="mt-base block text-meta text-ink-muted">
                       {t("chat:delegateAutoRespondDelay")}
-                      <input
+                      <TextInput
                         type="number"
                         min={15}
                         max={600}
-                        className="ml-2 w-16 rounded border border-surface-border bg-black/30 px-1.5 py-0.5 text-sm text-white"
+                        className="ml-base w-16"
                         value={activeThread.delegateAutoRespondAfterSec ?? 60}
                         onChange={(e) => {
                           const sec = Number(e.target.value);
@@ -3225,7 +3629,7 @@ export function ChatPage() {
                           if (!Number.isFinite(sec) || !activeThreadId) return;
                           void patchDelegatePrefs(auth, activeThreadId, {
                             delegate_auto_respond_after_sec: sec,
-                          }).catch(() => {});
+                          }).catch(reportDelegatePrefFailure);
                         }}
                       />
                       s
@@ -3235,8 +3639,8 @@ export function ChatPage() {
               ) : null}
             </div>
             {mode === "agent" ? (
-              <div className="flex min-h-0 w-full flex-col gap-1.5">
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5">
+              <div className="flex min-h-0 w-full flex-col gap-snug">
+                <div className="flex flex-wrap items-center justify-between gap-base rounded-card border border-line bg-black/30 px-firm py-snug">
                   <Link
                     to={
                       activeThreadId
@@ -3247,12 +3651,12 @@ export function ChatPage() {
                           }`
                         : "/tasks"
                     }
-                    className="text-[11px] text-sky-400/90 hover:text-sky-300 hover:underline"
+                    className="text-meta text-accent hover:text-badge-accent hover:underline"
                   >
                     {t("chat:tasksLink")}
                     {activeTaskId ? t("chat:tasksBoundHint") : ""}
                   </Link>
-                  <span className="text-[10px] text-surface-muted">{t("chat:tasksBacklogHint")}</span>
+                  <span className="text-meta text-ink-muted">{t("chat:tasksBacklogHint")}</span>
                 </div>
                 <ChatLiveActivityPanel
                   store={agentLiveTurn}
@@ -3267,16 +3671,15 @@ export function ChatPage() {
                     persistShowSubagentsPref(userId, on);
                   }}
                 />
-                <ConversationTodosPanel todos={sessionTodos} />
               </div>
             ) : (
-              <div className="flex min-h-0 items-center rounded-lg border border-white/10 bg-black/30 px-2.5 py-2">
-                <p className="text-[10px] leading-snug text-surface-muted">
+              <div className="flex min-h-0 items-center rounded-card border border-line bg-black/30 px-firm py-base">
+                <p className="text-meta leading-snug text-ink-muted">
                   {t("chat:switchToAgentModeHint")}
                 </p>
               </div>
             )}
-            <div className="flex min-w-0 flex-col gap-2 lg:border-l lg:border-surface-border lg:pl-4">
+            <div className="flex min-w-0 flex-col gap-base lg:border-l lg:border-line lg:pl-wide">
               {mode === "agent" ? (
                 <ChatRuntimeBar
                   runtime={chatRuntime}
@@ -3289,25 +3692,23 @@ export function ChatPage() {
                 />
               ) : null}
               <div className="w-full">
-                <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+                <label className="block text-meta font-medium uppercase tracking-wide text-ink-muted">
                   {t("chat:replyModeLabel")}
                 </label>
-                <select
-                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
+                <Select
+                  className="mt-hair"
                   value={mode}
                   onChange={(e) => setMode(e.target.value as ChatMode)}
                   title={t("chat:replyModeTitle")}
                 >
                   <option value="agent">{t("chat:replyModeAgent")}</option>
                   <option value="chat">{t("chat:replyModeChat")}</option>
-                </select>
-                <p className="mt-1 text-[10px] leading-snug text-surface-muted">{t("chat:replyModeChatHint")}</p>
+                </Select>
+                <p className="mt-tight text-meta leading-snug text-ink-muted">{t("chat:replyModeChatHint")}</p>
               </div>
               <div className="w-full">
-                <label className="flex cursor-pointer items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-surface-muted">
-                  <input
-                    type="checkbox"
-                    className="rounded border-surface-border bg-[#1a1a1a] text-sky-500"
+                <label className="flex cursor-pointer items-center gap-base text-meta font-medium uppercase tracking-wide text-ink-muted">
+                  <Checkbox
                     checked={agentStreamLlmUi}
                     disabled={mode === "chat"}
                     onChange={(e) => {
@@ -3323,7 +3724,7 @@ export function ChatPage() {
                   />
                   <span>{t("chat:agentLlmStreamLabel")}</span>
                 </label>
-                <p className="mt-1 pl-6 text-[10px] leading-snug text-surface-muted">
+                <p className="mt-tight pl-broad text-meta leading-snug text-ink-muted">
                   {t("chat:agentLlmStreamHint")}
                 </p>
               </div>
@@ -3333,7 +3734,7 @@ export function ChatPage() {
                 onVoiceStatusChange={setVoiceStatus}
               />
               <div className="w-full">
-                <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+                <label className="block text-meta font-medium uppercase tracking-wide text-ink-muted">
                   {t("chat:modelLabel")}
                 </label>
                 <ModelCatalogSelect
@@ -3352,7 +3753,7 @@ export function ChatPage() {
                   }
                 />
                 {modelsCatalogReady && modelsCatalogHint ? (
-                  <p className="mt-1 text-xs text-amber-300/90">{modelsCatalogHint}</p>
+                  <p className="mt-tight text-xs text-badge-warning">{modelsCatalogHint}</p>
                 ) : null}
               </div>
             </div>
@@ -3361,11 +3762,11 @@ export function ChatPage() {
         </div>
 
         {dashboardChatId ? (
-          <div className="shrink-0 border-b border-sky-900/40 bg-sky-950/25 px-6 py-2 text-sm text-sky-100/90">
-            <span className="font-medium text-sky-200">{t("chat:dashboardContextLabel")}</span>
+          <div className="shrink-0 border-b border-accent/40 bg-accent-subtle px-broad py-base text-sm text-badge-accent">
+            <span className="font-medium text-badge-accent">{t("chat:dashboardContextLabel")}</span>
             {": "}
             {dashboardChatTitle ?? dashboardChatId}
-            <span className="ml-2 text-xs text-sky-300/80">
+            <span className="ml-base text-xs text-badge-accent">
               {t("chat:dashboardContextHint")}
             </span>
           </div>
@@ -3373,10 +3774,10 @@ export function ChatPage() {
 
         {activeThread?.dashboardId && activeThread.shared ? (
           <div
-            className="shrink-0 border-b border-amber-900/45 bg-amber-950/40 px-6 py-2.5 text-sm text-amber-50/95"
+            className="shrink-0 border-b border-warning/45 bg-warning-subtle px-broad py-firm text-sm text-badge-warning"
             role="status"
           >
-            <span className="font-medium text-amber-200">{t("chat:sharedBannerTitle")}</span>
+            <span className="font-medium text-badge-warning">{t("chat:sharedBannerTitle")}</span>
             {" — "}
             {t("chat:sharedBannerBody")}
           </div>
@@ -3384,17 +3785,17 @@ export function ChatPage() {
 
         {activeThread?.dashboardId && activeThread.shared !== true ? (
           <div
-            className="shrink-0 border-b border-emerald-900/35 bg-emerald-950/25 px-6 py-2 text-sm text-emerald-100/90"
+            className="shrink-0 border-b border-success/35 bg-success-subtle px-broad py-base text-sm text-badge-success"
             role="status"
           >
-            <span className="font-medium text-emerald-200">{t("chat:personalBannerTitle")}</span>
+            <span className="font-medium text-badge-success">{t("chat:personalBannerTitle")}</span>
             {" — "}
             {t("chat:personalBannerBody")}
           </div>
         ) : null}
 
         {error ? (
-          <div className="shrink-0 border-b border-red-900/50 bg-red-950/40 px-6 py-2 text-sm text-red-300">
+          <div className="shrink-0 border-b border-danger/50 bg-danger-subtle px-broad py-base text-sm text-badge-danger">
             {error}
           </div>
         ) : null}
@@ -3405,7 +3806,7 @@ export function ChatPage() {
               userTurns={userTurns}
               activeId={selectedTurnId}
               onSelect={handleSelectTurn}
-              className="shrink-0 border-b border-surface-border px-4 py-2"
+              className="shrink-0 border-b border-line px-wide py-base"
             />
           ) : null}
           <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -3420,7 +3821,7 @@ export function ChatPage() {
               />
             ) : null}
             {userTurns.length > 0 ? (
-              <aside className="hidden w-44 shrink-0 overflow-y-auto border-r border-surface-border px-2 py-4 lg:block">
+              <aside className="hidden w-44 shrink-0 overflow-y-auto border-r border-line px-base py-wide lg:block">
                 <TurnNavigator
                   userTurns={userTurns}
                   activeId={selectedTurnId}
@@ -3430,31 +3831,31 @@ export function ChatPage() {
             ) : null}
             <div
               ref={scrollContainerRef}
-              className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-6 sm:px-6"
+              className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-wide py-broad sm:px-broad"
             >
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-surface-border bg-white/5 text-lg font-semibold text-neutral-300">
+              <div className="flex flex-col items-center justify-center py-grand text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-pill border border-line bg-white/5 text-lg font-semibold text-ink-secondary">
                   AL
                 </div>
-                <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white">
+                <h1 className="mt-wide text-2xl font-semibold tracking-tight text-ink-primary">
                   {t("chat:emptyHello", { name: displayName })}
                 </h1>
-                <p className="mt-2 max-w-md text-sm text-surface-muted">{t("chat:emptyIntro")}</p>
-                <ul className="mt-6 max-w-md space-y-2 text-left text-sm text-surface-muted">
-                  <li className="rounded-md border border-surface-border/80 bg-black/20 px-3 py-2">
+                <p className="mt-base max-w-measure text-sm text-ink-muted">{t("chat:emptyIntro")}</p>
+                <ul className="mt-broad max-w-measure space-y-base text-left text-sm text-ink-muted">
+                  <li className="rounded-tile border border-line/80 bg-black/20 px-soft py-base">
                     {t("chat:emptyStarterBind")}
                   </li>
-                  <li className="rounded-md border border-surface-border/80 bg-black/20 px-3 py-2">
+                  <li className="rounded-tile border border-line/80 bg-black/20 px-soft py-base">
                     {t("chat:emptyStarterContinue")}
                   </li>
-                  <li className="rounded-md border border-surface-border/80 bg-black/20 px-3 py-2">
+                  <li className="rounded-tile border border-line/80 bg-black/20 px-soft py-base">
                     {t("chat:suggested1")}
                   </li>
                 </ul>
               </div>
             ) : (
-              <ul className="mx-auto flex w-full max-w-3xl flex-col gap-3">
+              <ul className="mx-auto flex w-full max-w-thread flex-col gap-soft">
                 {displayMessages.map((m, i) => {
                   if (m.role === "user") {
                     if (!chatMessageHasVisibleContent(m)) return null;
@@ -3496,9 +3897,13 @@ export function ChatPage() {
                     (s) =>
                       (s.type === "text" && s.text.trim().length > 0) ||
                       s.type === "card" ||
-                      s.type === "secret_prompt"
+                      s.type === "secret_prompt" ||
+                      s.type === "context_inject_group"
                   );
-                  if (!hasStreamBody && !inFlight) return null;
+                  const turnCancelled = timelineEntries.some(
+                    (e) => e.kind === "agent.cancelled" || e.kind === "agent.aborted"
+                  );
+                  if (!hasStreamBody && !inFlight && !turnCancelled) return null;
                   const prevUser =
                     i > 0 && displayMessages[i - 1]?.role === "user"
                       ? displayMessages[i - 1]
@@ -3555,12 +3960,12 @@ export function ChatPage() {
                   chatMessageHasVisibleContent(displayMessages[displayMessages.length - 1]!)
                 ) ? (
                   <li className="flex w-full justify-end">
-                    <div className="max-w-[min(100%,42rem)] rounded-2xl border border-sky-900/50 bg-sky-950/25 px-4 py-3 text-sm text-sky-100/90 shadow-sm">
-                      <span className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-sky-300/80">
-                        <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-sky-400" />
+                    <div className="max-w-measure rounded-sheet border border-accent/50 bg-accent-subtle px-wide py-soft text-sm text-badge-accent shadow-xs">
+                      <span className="mb-tight flex items-center gap-base text-meta font-medium uppercase tracking-wide text-badge-accent">
+                        <span className="inline-flex h-2 w-2 animate-pulse rounded-pill bg-accent" />
                         {t("chat:roleAssistant")}
                       </span>
-                      <p className="text-neutral-300">{t("chat:generatingReply")}</p>
+                      <p className="text-ink-secondary">{t("chat:generatingReply")}</p>
                     </div>
                   </li>
                 ) : null}
@@ -3571,17 +3976,18 @@ export function ChatPage() {
           </div>
         </div>
 
-        <div className="shrink-0 border-t border-surface-border bg-[#0c0c0c] px-4 py-4 sm:px-6">
-          <div className="relative mx-auto max-w-3xl">
+        <div className="shrink-0 border-t border-line bg-[#0c0c0c] px-wide py-wide sm:px-broad">
+          <div className="relative mx-auto max-w-thread">
             {showScrollFab ? (
-              <button
+              <Button
+                size="sm"
                 type="button"
                 onClick={() => scrollToBottom("smooth")}
-                className="absolute -top-12 right-0 z-10 rounded-full border border-surface-border bg-[#1a1a1a] px-3 py-1.5 text-xs text-neutral-200 shadow-lg hover:bg-[#252525]"
+                className="absolute -top-12 right-0 z-lift bg-[#1a1a1a] px-soft py-snug text-xs shadow-lg hover:bg-[#252525]"
                 aria-label={t("chat:scrollToBottomAria")}
               >
                 {t("chat:newMessages")}
-              </button>
+              </Button>
             ) : null}
             <input
               ref={fileInputRef}
@@ -3601,7 +4007,7 @@ export function ChatPage() {
             />
             <PlanModeBanner active={sessionPlanMode} />
             {pendingPermissionAsk ? (
-              <div className="mb-3">
+              <div className="mb-soft">
                 <PermissionAskCard
                   request={pendingPermissionAsk}
                   onReply={handlePermissionReply}
@@ -3609,19 +4015,22 @@ export function ChatPage() {
               </div>
             ) : null}
             {stepPaused ? (
-              <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-sky-500/40 bg-sky-500/10 px-4 py-2.5 text-sm text-white">
-                <span className="text-surface-muted">{t("chat:pausedStepModeHint")}</span>
-                <button
+              <div className="mb-soft flex items-center justify-between gap-soft rounded-card border border-accent/40 bg-accent-subtle px-wide py-firm text-sm text-ink-primary">
+                <span className="text-ink-muted">{t("chat:pausedStepModeHint")}</span>
+                <Button
+                  variant="primary"
+                  size="sm"
                   type="button"
-                  className="shrink-0 rounded-md bg-sky-500/90 px-3 py-1.5 text-xs font-medium text-black"
+                  className="shrink-0 px-soft py-snug text-xs text-black"
                   onClick={handleContinueStep}
                 >
                   {t("chat:continueStep")}
-                </button>
+                </Button>
               </div>
             ) : null}
-            <OngoingGoalBar
+            <SessionGoalTodosStrip
               goal={sessionGoal}
+              todos={sessionTodos}
               disabled={!activeThreadId || loading}
               onPause={() => {
                 if (!activeThreadId || !sessionGoal) return;
@@ -3691,10 +4100,10 @@ export function ChatPage() {
             <div
               role="group"
               aria-label={t("chat:composerAria")}
-              className={`relative rounded-2xl border bg-[#141414] p-3 shadow-xl transition-colors ${
+              className={`relative rounded-sheet border bg-[#141414] p-soft shadow-xl transition-colors ${
                 composerDragActive
-                  ? "border-sky-500/70 ring-2 ring-sky-500/25"
-                  : "border-surface-border"
+                  ? "border-accent/70 ring-2 ring-accent/25"
+                  : "border-line"
               }`}
               onDragEnter={(e) => {
                 e.preventDefault();
@@ -3718,24 +4127,24 @@ export function ChatPage() {
             >
               {composerDragActive ? (
                 <div
-                  className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-sky-950/50 backdrop-blur-[1px]"
+                  className="pointer-events-none absolute inset-0 z-lift flex items-center justify-center rounded-sheet bg-accent-subtle backdrop-blur-[1px]"
                   aria-hidden
                 >
-                  <p className="rounded-lg border border-sky-500/40 bg-black/50 px-4 py-2 text-sm font-medium text-sky-100">
+                  <p className="rounded-card border border-accent/40 bg-black/50 px-wide py-base text-sm font-medium text-badge-accent">
                     {t("chat:dropFilesToAttach")}
                   </p>
                 </div>
               ) : null}
               {voiceTranscribing ? (
                 <div
-                  className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-black/60 backdrop-blur-[2px]"
+                  className="absolute inset-0 z-lift flex items-center justify-center rounded-sheet bg-black/60 backdrop-blur-[2px]"
                   role="status"
                   aria-live="polite"
                   aria-busy="true"
                 >
-                  <div className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-black/70 px-4 py-2.5 text-sm text-neutral-100">
+                  <div className="flex items-center gap-soft rounded-card border border-line bg-black/70 px-wide py-firm text-sm text-ink-primary">
                     <svg
-                      className="h-4 w-4 shrink-0 animate-spin text-sky-400"
+                      className="h-4 w-4 shrink-0 animate-spin text-accent"
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
@@ -3769,50 +4178,65 @@ export function ChatPage() {
                 />
               ) : null}
               {activeComposerQueue.length > 0 ? (
-                <ul className="mb-2 space-y-1 rounded-lg border border-violet-500/25 bg-violet-950/20 px-2 py-1.5">
-                  <li className="text-[9px] font-medium uppercase tracking-wide text-violet-200/80">
+                <ul className="mb-base space-y-tight rounded-card border border-violet-500/25 bg-violet-950/20 px-base py-snug">
+                  <li className="text-meta font-medium uppercase tracking-wide text-violet-200/80">
                     {t("chat:composerQueueTitle", { count: activeComposerQueue.length })}
                   </li>
                   {activeComposerQueue.map((item, idx) => (
                     <li
                       key={item.id}
-                      className="flex items-start gap-2 text-[11px] text-neutral-300"
+                      className="flex items-start gap-base text-meta text-ink-secondary"
                     >
                       <span className="shrink-0 tabular-nums text-violet-300/70">{idx + 1}.</span>
                       <span className="min-w-0 flex-1 truncate" title={queueItemPreview(item)}>
                         {queueItemPreview(item)}
                       </span>
-                      <button
+                      {loading ? (
+                        <Tooltip label={t("chat:composerQueueSendNow")}>
+                        <Button
+                          variant="ghost"
+                            type="button"
+                            className="shrink-0 px-snug text-meta uppercase tracking-wide text-badge-accent hover:text-badge-accent"
+                            aria-label={t("chat:composerQueueSendNow")}
+                            onClick={() => onForceSendQueuedItem(item.id)}
+                        >
+                            {t("chat:composerForceSend")}
+                          </Button>
+                        </Tooltip>
+                      ) : null}
+                      <Button
+                        variant="ghost"
                         type="button"
-                        className="shrink-0 rounded px-1 text-surface-muted hover:text-white"
+                        className="shrink-0 px-tight text-ink-muted hover:text-white"
                         aria-label={t("chat:composerQueueRemove")}
                         onClick={() => removeFromComposerQueue(item.id)}
                       >
                         ×
-                      </button>
+                      </Button>
                     </li>
                   ))}
                 </ul>
               ) : null}
               {pendingAttachments.length > 0 ? (
-                <ul className="mb-2 flex flex-wrap gap-2">
+                <ul className="mb-base flex flex-wrap gap-base">
                   {pendingAttachments.map((a, idx) => (
                     <li
                       key={`${a.name}-${idx}`}
-                      className="flex max-w-full items-center gap-1 rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-xs text-neutral-300"
+                      className="flex max-w-full items-center gap-tight rounded-card border border-line bg-black/30 px-base py-tight text-xs text-ink-secondary"
                     >
                       <span className="truncate" title={a.kind === "unsupported" ? a.hint : a.name}>
                         {a.name}
                         {a.kind === "unsupported" ? t("chat:attachmentNotSent") : ""}
                       </span>
-                      <button
+                      <Button
+                        variant="ghost"
                         type="button"
-                        className="shrink-0 rounded px-1 text-surface-muted hover:text-white"
+                        className="shrink-0 px-tight text-ink-muted hover:text-white"
                         aria-label={t("chat:removeAttachment")}
                         onClick={() => setPendingAttachments((prev) => prev.filter((_, i) => i !== idx))}
                       >
                         ×
-                      </button>
+                      </Button>
                     </li>
                   ))}
                 </ul>
@@ -3821,7 +4245,11 @@ export function ChatPage() {
                 ref={composerTextareaRef}
                 value={draft}
                 disabled={voiceTranscribing}
-                placeholder={t("chat:composerPlaceholder")}
+                placeholder={
+                  loading
+                    ? t("chat:composerPlaceholderBusy", { modEnter: composerModEnter })
+                    : t("chat:composerPlaceholder")
+                }
                 onChange={setDraft}
                 canForceSend={loading && canForceSend}
                 onEnterForceSend={() => onForceSend()}
@@ -3830,32 +4258,41 @@ export function ChatPage() {
                   else if (canQueue) onQueue();
                 }}
               />
-              <div className="mt-2 flex items-center justify-between gap-2">
-                <button
-                  type="button"
-                  disabled={
-                    voiceTranscribing ||
-                    (chatRuntime?.vision?.available === false &&
-                      /* still allow non-image files */ false)
-                  }
-                  className="rounded-lg border border-white/10 bg-black/20 p-2 text-surface-muted hover:bg-white/5 hover:text-neutral-200 disabled:opacity-40"
-                  title={
+              {loading ? (
+                <p className="mt-snug text-meta leading-snug text-ink-muted">
+                  {t("chat:composerBusyHint", {
+                    enter: "↵",
+                    modEnter: composerModEnter,
+                  })}
+                </p>
+              ) : null}
+              <div className="mt-base flex items-center justify-between gap-base">
+                <Tooltip label={
                     chatRuntime?.vision?.available === false
                       ? t("chat:attachVisionUnavailable")
                       : t("chat:attachTitle")
-                  }
-                  aria-label={t("chat:attachFiles")}
-                  onClick={() => {
-                    if (chatRuntime?.vision?.available === false) {
-                      // Images disabled; still open picker for text/zip via accept filter.
+                  }>
+                <Button
+                    type="button"
+                    disabled={
+                      voiceTranscribing ||
+                      (chatRuntime?.vision?.available === false &&
+                        /* still allow non-image files */ false)
                     }
-                    fileInputRef.current?.click();
-                  }}
+                    className="bg-black/20 p-base text-ink-muted hover:bg-white/5 hover:text-neutral-200"
+                    aria-label={t("chat:attachFiles")}
+                    onClick={() => {
+                      if (chatRuntime?.vision?.available === false) {
+                        // Images disabled; still open picker for text/zip via accept filter.
+                      }
+                      fileInputRef.current?.click();
+                    }}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                  </svg>
-                </button>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                    </svg>
+                  </Button>
+                </Tooltip>
                 {mode === "agent" &&
                 voiceStatus?.input_web &&
                 (voiceStatus.prefs.mode_web === "push_to_talk" ||
@@ -3885,63 +4322,75 @@ export function ChatPage() {
                   />
                 ) : null}
                 {loading ? (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-base">
                     {canQueue ? (
-                      <button
-                        type="button"
-                        className="rounded-lg border border-violet-500/50 bg-violet-950/40 px-4 py-2 text-sm font-medium text-violet-100 hover:bg-violet-900/50"
-                        title={t("chat:composerQueueAddTitle")}
-                        onClick={() => onQueue()}
+                      <Tooltip label={t("chat:composerQueueAddTitle")}>
+                      <Button
+                          type="button"
+                          className="border-violet-500/50 bg-violet-950/40 px-soft py-base text-sm text-violet-100 hover:bg-violet-900/50"
+                          onClick={() => onQueue()}
                       >
-                        {t("chat:composerQueueAdd")}
-                      </button>
+                          {t("chat:composerQueueAdd")}
+                          <ComposerKbd>↵</ComposerKbd>
+                        </Button>
+                      </Tooltip>
                     ) : null}
                     {canForceSend ? (
-                      <button
-                        type="button"
-                        className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
-                        title={t("chat:composerForceSendTitle")}
-                        onClick={() => onForceSend()}
+                      <Tooltip label={t("chat:composerForceSendTitle", { modEnter: composerModEnter })}>
+                      <Button
+                        variant="primary"
+                          type="button"
+                          className="px-soft py-base text-sm"
+                          onClick={() => onForceSend()}
                       >
-                        {t("chat:composerForceSend")}
-                      </button>
+                          {t("chat:composerForceSend")}
+                          <ComposerKbd>{composerModEnter}</ComposerKbd>
+                        </Button>
+                      </Tooltip>
                     ) : null}
-                    <button
+                    <Button
+                      size="lg"
                       type="button"
-                      className="rounded-lg border border-amber-500/60 bg-amber-950/50 px-4 py-2 text-sm font-medium text-amber-100 hover:bg-amber-900/40"
+                      className="border-warning/60 px-wide py-base text-sm text-badge-warning"
                       onClick={() => onCancelInFlight()}
                     >
                       {t("admin:cancel")}
-                    </button>
+                    </Button>
                   </div>
                 ) : (
-                  <button
-                    type="button"
-                    disabled={!canSend || voiceTranscribing}
-                    className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-40"
-                    onClick={() => onSend()}
+                  <Tooltip label={t("chat:composerSendTitle")}>
+                  <Button
+                    variant="primary"
+                      type="button"
+                      disabled={!canSend || voiceTranscribing}
+                      className="px-soft py-base text-sm"
+                      onClick={() => onSend()}
                   >
-                    {t("dashboard:send")}
-                  </button>
+                      {t("chat:composerSend")}
+                      <ComposerKbd>↵</ComposerKbd>
+                    </Button>
+                  </Tooltip>
                 )}
               </div>
             </div>
 
             {messages.length === 0 ? (
-              <div className="mt-6">
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-surface-muted">
+              <div className="mt-broad">
+                <p className="mb-base text-xs font-medium uppercase tracking-wide text-ink-muted">
                   Suggested
                 </p>
-                <ul className="flex flex-col gap-2">
+                <ul className="flex flex-col gap-base">
                   {suggested.map((s) => (
                     <li key={s}>
-                      <button
+                      <Button
+                        variant="plain"
+                        block
                         type="button"
-                        className="w-full rounded-lg border border-surface-border bg-[#141414] px-4 py-3 text-left text-sm text-neutral-300 hover:bg-white/5"
+                        className="w-full rounded-card border border-line bg-[#141414] px-wide py-soft text-sm text-ink-secondary hover:bg-white/5"
                         onClick={() => setDraft(s)}
                       >
                         {s}
-                      </button>
+                      </Button>
                     </li>
                   ))}
                 </ul>

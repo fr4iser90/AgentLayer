@@ -70,11 +70,16 @@ def test_general_agent_has_no_bash_or_push_tools() -> None:
             "bind",
             "catalog",
             "delegate",
+            "env_bindings",
             "exit_plan_mode",
             "goal_create",
             "goal_get",
             "goal_update",
             "plan_mode_set",
+            "register_secrets",
+            "request_user_secret",
+            "save_user_secret",
+            "secrets_help",
             "todo_read",
             "todo_write",
             "user_secrets_status",
@@ -90,3 +95,50 @@ def test_general_agent_has_no_bash_or_push_tools() -> None:
     assert "bash" not in names
     assert "edit" not in names
     assert "git_push" not in names
+
+
+# --- P1: site_role drives elevation (not the legacy ``users.role='admin'``) ---
+
+
+def test_user_site_admin_follows_site_role() -> None:
+    from unittest.mock import patch
+
+    from apps.backend.infrastructure.db import identity_tenants
+
+    with patch.object(identity_tenants, "user_site_role", return_value="site_user"):
+        assert identity_tenants.user_site_admin("some-uuid") is False
+    with patch.object(identity_tenants, "user_site_role", return_value="site_admin"):
+        assert identity_tenants.user_site_admin("some-uuid") is True
+    # No third answer any more: an identity that cannot be read is not an admin, so no
+    # caller gets to treat "unknown" as a reason to ask the legacy column.
+    assert identity_tenants.user_site_admin(None) is False
+
+
+def test_is_elevated_admin_prefers_site_role_over_legacy_role() -> None:
+    import uuid
+
+    from unittest.mock import patch
+
+    from apps.backend.application.agent_runtime.use_cases import auto_workspace as aw_mod
+
+    # role='admin' but site_role='site_user' → NOT elevated, even if the JWT
+    # bearer claims admin. This is the P1 Done-When core.
+    with patch("apps.backend.infrastructure.db.db.user_site_admin", return_value=False):
+        class _U:
+            role = "admin"
+
+        assert aw_mod.is_elevated_admin(_U(), "admin", uuid.uuid4()) is False
+
+    # site_role='site_admin' → elevated regardless of the legacy role field.
+    with patch("apps.backend.infrastructure.db.db.user_site_admin", return_value=True):
+        assert aw_mod.is_elevated_admin(None, None, uuid.uuid4()) is True
+
+    # Nothing to look up → deny. The carried role and ``user_obj.role`` are both admin
+    # here and the DB is patched to say nothing, so an answer other than False could only
+    # come from one of those claims.
+    with patch("apps.backend.infrastructure.db.db.user_site_admin") as never_asked:
+        class _AdminClaim:
+            role = "admin"
+
+        assert aw_mod.is_elevated_admin(_AdminClaim(), "admin", None) is False
+        never_asked.assert_not_called()

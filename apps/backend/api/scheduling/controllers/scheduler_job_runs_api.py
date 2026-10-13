@@ -6,9 +6,14 @@ import uuid
 
 from fastapi import APIRouter, HTTPException, Request
 
-from apps.backend.application.identity.use_cases.request_auth import get_current_user, require_admin
+from apps.backend.application.identity.use_cases.request_auth import (
+    get_current_user,
+    require_admin_scope,
+)
+from apps.backend.domain.access.capabilities import AdminScopeError, CAP_SCHEDULE_MANAGE
 from apps.backend.application.platform.use_cases.platform_controller_services import db
 from apps.backend.application.scheduling.use_cases.scheduling_controller_services import scheduler_job_runs_store
+from apps.backend.application.scheduling.use_cases.scheduling_controller_services import scheduler_jobs_store
 
 user_router = APIRouter(prefix="/v1/user", tags=["scheduler-job-runs-user"])
 admin_router = APIRouter(prefix="/v1/admin", tags=["scheduler-job-runs-admin"])
@@ -39,7 +44,9 @@ async def user_list_scheduler_job_runs(
         job_id=jid,
         tenant_id=tenant_id,
         user_id=user.id,
-        is_admin=(user.role == "admin"),
+        # Run history of another account's schedule is an admin view, and the admin
+        # behind it is ``users.site_role`` — not ``user.role``, the legacy column.
+        is_admin=(db.user_effective_role(user.id) == "admin"),
     ):
         raise HTTPException(status_code=404, detail="job not found or not allowed")
     rows = scheduler_job_runs_store.list_runs_for_job(
@@ -66,7 +73,7 @@ async def user_get_scheduler_job_run(request: Request, run_id: str) -> dict:
         job_id=jid,
         tenant_id=tenant_id,
         user_id=user.id,
-        is_admin=(user.role == "admin"),
+        is_admin=(db.user_effective_role(user.id) == "admin"),
     ):
         raise HTTPException(status_code=404, detail="run not found or not allowed")
     return {"ok": True, "run": scheduler_job_runs_store.row_to_public(row)}
@@ -76,10 +83,15 @@ async def user_get_scheduler_job_run(request: Request, run_id: str) -> dict:
 async def admin_list_scheduler_job_runs(
     request: Request, job_id: str, limit: int = 20
 ) -> dict:
-    await require_admin(request)
-    user = await get_current_user(request)
-    tenant_id = db.user_tenant_id(user.id)
+    scope = await require_admin_scope(request, CAP_SCHEDULE_MANAGE)
     jid = _parse_job_id(job_id)
+    job = scheduler_jobs_store.get_job_any_tenant(jid)
+    if not job:
+        raise HTTPException(status_code=404, detail="job not found")
+    try:
+        tenant_id = scope.require_tenant(job.get("tenant_id"), what="job")
+    except AdminScopeError as e:
+        raise HTTPException(status_code=404, detail="job not found") from e
     rows = scheduler_job_runs_store.list_runs_for_job(
         scheduler_job_id=jid, tenant_id=tenant_id, limit=limit
     )
@@ -88,11 +100,13 @@ async def admin_list_scheduler_job_runs(
 
 @admin_router.get("/scheduler-job-runs/{run_id}")
 async def admin_get_scheduler_job_run(request: Request, run_id: str) -> dict:
-    await require_admin(request)
-    user = await get_current_user(request)
-    tenant_id = db.user_tenant_id(user.id)
+    scope = await require_admin_scope(request, CAP_SCHEDULE_MANAGE)
     rid = _parse_run_id(run_id)
-    row = scheduler_job_runs_store.get_run(run_id=rid, tenant_id=tenant_id)
+    row = scheduler_job_runs_store.get_run_any_tenant(run_id=rid)
     if not row:
         raise HTTPException(status_code=404, detail="run not found")
+    try:
+        scope.require_tenant(row.get("tenant_id"), what="run")
+    except AdminScopeError as e:
+        raise HTTPException(status_code=404, detail="run not found") from e
     return {"ok": True, "run": scheduler_job_runs_store.row_to_public(row)}

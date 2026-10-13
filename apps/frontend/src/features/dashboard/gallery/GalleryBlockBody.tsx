@@ -1,6 +1,7 @@
 import type { ChangeEvent, Dispatch, DragEvent, SetStateAction } from "react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "../../../ui/Button";
 import { useAuth } from "../../../auth/AuthContext";
 import { GalleryImage } from "../GalleryImage";
 import { getPath, setPath } from "../dashboardDataPaths";
@@ -15,6 +16,7 @@ import {
 } from "./galleryLayout";
 import { GALLERY_IMAGE_ACCEPT, uploadDashboardGalleryFile } from "./galleryUpload";
 import type { UiBlock } from "../types";
+import { TextInput } from "../../../ui/Field";
 
 type Row = Record<string, unknown>;
 
@@ -132,12 +134,12 @@ export function GalleryBlockBody(props: {
   };
 
   return (
-    <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-4">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-medium text-white">{sectionTitle}</h3>
+    <section className="rounded-sheet border border-line bg-card p-wide">
+      <div className="mb-wide flex flex-wrap items-center justify-between gap-base">
+        <h3 className="text-sm font-medium text-ink-primary">{sectionTitle}</h3>
         {!readOnly ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="dashboard-grid-no-drag cursor-pointer rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/15">
+          <div className="flex flex-wrap items-center gap-base">
+            <label className="dashboard-grid-no-drag cursor-pointer rounded-tile bg-white/10 px-soft py-snug text-xs font-medium text-ink-primary hover:bg-white/15">
               {bulkUploading ? "…" : t("dashboard:photosUploadMultiple")}
               <input
                 type="file"
@@ -148,26 +150,28 @@ export function GalleryBlockBody(props: {
                 onChange={onPickMultiple}
               />
             </label>
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               type="button"
-              className="dashboard-grid-no-drag rounded-md bg-violet-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-500"
+              className="dashboard-grid-no-drag bg-violet-600/80 px-soft py-snug text-xs hover:bg-violet-500"
               onClick={addPhoto}
             >
               {t("dashboard:photosAdd")}
-            </button>
+            </Button>
           </div>
         ) : null}
       </div>
-      {bulkUploadErr ? <p className="mb-2 text-xs text-red-400">{bulkUploadErr}</p> : null}
+      {bulkUploadErr ? <p className="mb-base text-xs text-danger">{bulkUploadErr}</p> : null}
       {!readOnly && !dashboardId ? (
-        <p className="mb-2 text-[10px] text-amber-200/90">{t("dashboard:saveForUpload")}</p>
+        <p className="mb-base text-meta text-badge-warning">{t("dashboard:saveForUpload")}</p>
       ) : null}
       {!readOnly ? (
-        <p className="mb-3 text-[10px] text-surface-muted">{t("dashboard:photosDragHint")}</p>
+        <p className="mb-soft text-meta text-ink-muted">{t("dashboard:photosDragHint")}</p>
       ) : null}
 
       {photos.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-white/15 py-10 text-center text-sm text-surface-muted">
+        <p className="rounded-card border border-dashed border-line-strong py-page text-center text-sm text-ink-muted">
           {readOnly
             ? t("dashboard:photosEmptyReadOnly")
             : t("dashboard:photosEmptyEditable")}
@@ -283,16 +287,18 @@ function GalleryPhotoCard(props: {
       }`}
     >
       {url ? (
-        <button
+        <Button
+          variant="plain"
+          block
           type="button"
-          className="block h-full w-full text-left"
+          className="block h-full w-full"
           onClick={onOpenLightbox}
           aria-label={t("dashboard:galleryOpenLightbox")}
         >
           <GalleryImage url={url} alt={caption} />
-        </button>
+        </Button>
       ) : (
-        <div className="flex h-full min-h-[80px] items-center justify-center text-xs text-surface-muted">
+        <div className="flex h-full min-h-[80px] items-center justify-center text-xs text-ink-muted">
           {readOnly ? t("dashboard:noImage") : t("dashboard:urlOrUpload")}
         </div>
       )}
@@ -301,10 +307,10 @@ function GalleryPhotoCard(props: {
 
   if (readOnly) {
     return (
-      <div className="overflow-hidden rounded-xl border border-surface-border bg-black/25 shadow-sm">
+      <div className="overflow-hidden rounded-sheet border border-line bg-black/25 shadow-xs">
         {imageArea}
         {caption ? (
-          <p className="border-t border-white/5 p-3 text-xs text-neutral-200">{caption}</p>
+          <p className="border-t border-line-subtle p-soft text-xs text-ink-primary">{caption}</p>
         ) : null}
       </div>
     );
@@ -312,8 +318,8 @@ function GalleryPhotoCard(props: {
 
   return (
     <div
-      className={`overflow-hidden rounded-xl border bg-black/25 shadow-sm transition-colors ${
-        isDragOver ? "border-violet-400/70 ring-1 ring-violet-400/40" : "border-surface-border"
+      className={`overflow-hidden rounded-sheet border bg-black/25 shadow-xs transition-colors ${
+        isDragOver ? "border-violet-400/70 ring-1 ring-violet-400/40" : "border-line"
       }`}
       draggable
       onDragStart={(e) => {
@@ -332,20 +338,20 @@ function GalleryPhotoCard(props: {
         onDrop();
       }}
     >
-      <div className="flex items-center gap-1 border-b border-white/5 bg-white/[0.03] px-2 py-1">
+      <div className="flex items-center gap-tight border-b border-line-subtle bg-white/[0.03] px-base py-tight">
         <span
-          className="dashboard-grid-no-drag cursor-grab select-none px-1 text-xs text-surface-muted active:cursor-grabbing"
+          className="dashboard-grid-no-drag cursor-grab select-none px-tight text-xs text-ink-muted active:cursor-grabbing"
           title={t("dashboard:photosDragHandle")}
           aria-hidden
         >
           ⋮⋮
         </span>
-        <span className="text-[10px] text-surface-muted">{t("dashboard:photosDragHandle")}</span>
+        <span className="text-meta text-ink-muted">{t("dashboard:photosDragHandle")}</span>
       </div>
       {imageArea}
-      <div className="space-y-2 p-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="dashboard-grid-no-drag cursor-pointer rounded-md bg-white/10 px-2 py-1 text-xs text-white hover:bg-white/15">
+      <div className="space-y-base p-soft">
+        <div className="flex flex-wrap items-center gap-base">
+          <label className="dashboard-grid-no-drag cursor-pointer rounded-tile bg-white/10 px-base py-tight text-xs text-ink-primary hover:bg-white/15">
             {uploading ? "…" : t("dashboard:upload")}
             <input
               type="file"
@@ -356,28 +362,30 @@ function GalleryPhotoCard(props: {
             />
           </label>
         </div>
-        {uploadErr ? <p className="text-[10px] text-red-400">{uploadErr}</p> : null}
-        <input
+        {uploadErr ? <p className="text-meta text-danger">{uploadErr}</p> : null}
+        <TextInput
           type="url"
           placeholder={t("dashboard:fileUrlPlaceholder")}
-          className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100 placeholder:text-white/25"
+          className="dashboard-grid-no-drag text-xs"
           value={url}
           onChange={(e) => updatePhoto(ri, "url", e.target.value)}
         />
-        <input
+        <TextInput
           type="text"
           placeholder={t("dashboard:captionPlaceholder")}
-          className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100"
+          className="dashboard-grid-no-drag text-xs"
           value={caption}
           onChange={(e) => updatePhoto(ri, "caption", e.target.value)}
         />
-        <button
+        <Button
           type="button"
-          className="dashboard-grid-no-drag w-full rounded-md py-1 text-xs text-red-400 hover:bg-red-950/30"
+          variant="danger"
+          size="sm"
+          className="dashboard-grid-no-drag w-full"
           onClick={() => removePhoto(ri)}
         >
           {t("dashboard:remove")}
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -107,11 +107,8 @@ export type OperatorPublic = {
   scheduler_allowed_tool_packages?: string;
   scheduler_llm_backend?: string;
   scheduler_tools_mode?: string;
-  scheduler_pidea_enabled?: boolean;
   scheduler_instructions?: string;
   scheduler_jobs_worker_enabled?: boolean;
-  scheduler_jobs_ide_pidea_enabled?: boolean;
-  scheduler_jobs_ide_pidea_timeout_sec?: number;
   workspace_allow_self_editing?: boolean;
   workspace_index_on_write_default?: string;
   workspace_reindex_after_git_pull?: boolean;
@@ -135,6 +132,10 @@ export type OperatorPublic = {
   media_effective_upload_max_bytes?: number;
   media_effective_upload_allowed_mime?: string[];
   media_effective_default_quota_mb?: number;
+  chat_max_conversation_mb?: number | null;
+  chat_max_personal_sessions?: number | null;
+  chat_max_dashboard_sessions?: number | null;
+  chat_warn_ratio?: number | null;
   voice_enabled?: boolean;
   voice_api_base_url?: string;
   voice_api_base_source?: "env" | "operator_settings" | null;

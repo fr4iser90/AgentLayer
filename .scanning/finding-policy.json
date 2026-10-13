@@ -249,7 +249,7 @@
   "eslint": {
     "accepted_findings": [
       {
-        "path_regex": "apps/frontend/src/pages/admin/AdminSchedules\\.tsx$|apps/frontend/src/pages/MySchedulesPage\\.tsx$",
+        "path_regex": "apps/frontend/src/pages/MySchedulesPage\\.tsx$",
         "message_regex": "Unused eslint-disable.*no-alert",
         "reason": "False positive: stale no-alert disable when no-alert is not enabled in security-scan eslint config; window.confirm is intentional delete UX (directives removed in source)."
       },
@@ -337,12 +337,6 @@
         "rule_id": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
         "path_regex": "apps/backend/infrastructure/pgvector_embedding_dim\\.py$",
         "reason": "False positive: pgvector dimension migration DDL uses f-strings for table/column/index names from compile-time _PGVECTOR_TARGETS constants and integer dim from operator embedding probe—not request-time user input."
-      },
-      {
-        "rule_id": "javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket",
-        "path_regex": "apps/backend/infrastructure/config\\.py$",
-        "message_regex": "WebSocket|ws",
-        "reason": "False positive: Semgrep matches a comment mentioning ws://; runtime default PIDEA_CDP_HTTP_URL is http://127.0.0.1:9222 (HTTP CDP), not an insecure WebSocket client connection."
       },
       {
         "rule_id": "dockerfile.security.missing-user-entrypoint.missing-user-entrypoint",

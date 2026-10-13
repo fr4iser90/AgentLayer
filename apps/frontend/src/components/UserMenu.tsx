@@ -1,120 +1,72 @@
-import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
-import { SUPPORTED } from "../i18n/config";
+import { Avatar } from "../ui/Avatar";
+import { Menu } from "../ui/Menu";
+import { Tooltip } from "../ui/Tooltip";
+import { useClickOutside } from "../ui/useClickOutside";
+import { Button } from "../ui/Button";
 
+/**
+ * The account control: who you are, in which language, and how to leave.
+ *
+ * It used to carry links to Settings, the organization and the platform admin.
+ * Those were three areas living outside the rail, each with a second copy of the
+ * gate that decides them: `siteAdmin` here duplicated `RequireSiteAdmin` line
+ * for line, and `showOrg` was a *narrower* rule than `RequireOrgAdmin`, so a
+ * content editor who reaches `/org/knowledge` legitimately saw no way in. The
+ * rail is the one list of areas — the doors to the other surfaces are leaves of
+ * `appNav`, and `check-nav-depth.mjs` fails if a surface loses its door there.
+ *
+ * What is left is account-level and has no area equivalent.
+ */
 export function UserMenu() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   const email = user?.email ?? "";
-  const initial = (email.split("@")[0]?.[0] ?? user?.email?.[0] ?? "?").toUpperCase();
-  const siteAdmin =
-    user?.site_role === "site_admin" || user?.role?.toLowerCase() === "admin";
-  const showOrg =
-    user?.deployment_mode === "multi_tenant" &&
-    (user?.membership_role === "tenant_owner" || user?.membership_role === "tenant_admin");
 
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
+  useClickOutside(rootRef, () => setOpen(false), open);
 
   return (
     <div className="relative" ref={rootRef}>
-      <button
-        type="button"
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500/90 text-sm font-medium text-black outline-none ring-sky-500/40 hover:bg-orange-400 focus-visible:ring-2"
-        aria-expanded={open}
-        aria-haspopup="menu"
-        title={email || t("userMenu.account")}
-        onClick={() => setOpen((v) => !v)}
+      <Tooltip label={email || t("userMenu.account")}>
+      <Button
+        variant="ghost"
+        size="lg"
+          type="button"
+          className="h-9 w-9 outline-hidden ring-accent/40 hover:scale-105"
+          aria-expanded={open}
+          aria-haspopup="menu"
+          onClick={() => setOpen((v) => !v)}
       >
-        {initial}
-      </button>
+          <Avatar kind="user" seed={email} state={open ? "happy" : "idle"} size="md" label={email || t("userMenu.account")} />
+        </Button>
+      </Tooltip>
       {open ? (
-        <div
-          role="menu"
-          className="absolute right-0 z-50 mt-1 min-w-[12rem] rounded-lg border border-surface-border bg-[#1a1a1a] py-1 shadow-xl"
-        >
-          {email ? (
-            <p className="truncate border-b border-white/10 px-3 py-2 text-xs text-surface-muted" title={email}>
-              {email}
-            </p>
-          ) : null}
-          <Link
-            role="menuitem"
-            to="/settings"
-            className="block px-3 py-2 text-sm text-neutral-200 hover:bg-white/10"
-            onClick={() => setOpen(false)}
-          >
-            {t("userMenu.settings")}
-          </Link>
-          {showOrg ? (
-            <Link
-              role="menuitem"
-              to="/org"
-              className="block px-3 py-2 text-sm text-neutral-200 hover:bg-white/10"
-              onClick={() => setOpen(false)}
-            >
-              {t("userMenu.organization")}
-            </Link>
-          ) : null}
-          {siteAdmin ? (
-            <Link
-              role="menuitem"
-              to="/admin"
-              className="block px-3 py-2 text-sm text-neutral-200 hover:bg-white/10"
-              onClick={() => setOpen(false)}
-            >
-              {t("userMenu.platformAdmin")}
-            </Link>
-          ) : null}
-          <div className="border-t border-white/10 px-3 py-2">
-            <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-surface-muted">
-              {t("language.label")}
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {SUPPORTED.map((lng) => {
-                const active = i18n.resolvedLanguage?.startsWith(lng) ?? i18n.language.startsWith(lng);
-                const label = lng === "en" ? t("language.en") : t("language.de");
-                return (
-                  <button
-                    key={lng}
-                    type="button"
-                    className={[
-                      "rounded px-2 py-1 text-xs",
-                      active
-                        ? "bg-white/15 text-white"
-                        : "text-surface-muted hover:bg-white/10 hover:text-neutral-200",
-                    ].join(" ")}
-                    onClick={() => void i18n.changeLanguage(lng)}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          <button
-            type="button"
-            role="menuitem"
-            className="w-full px-3 py-2 text-left text-sm text-surface-muted hover:bg-white/10 hover:text-neutral-200"
-            onClick={() => {
-              setOpen(false);
-              void logout();
-            }}
-          >
-            {t("userMenu.signOut")}
-          </button>
-        </div>
+        <Menu
+          onClose={() => setOpen(false)}
+          header={
+            email ? (
+              <p
+                className="truncate border-b border-line px-soft py-base text-label text-ink-muted"
+                title={email}
+              >
+                {email}
+              </p>
+            ) : null
+          }
+          items={[
+            {
+              id: "sign-out",
+              label: t("userMenu.signOut"),
+              tone: "danger",
+              onSelect: () => void logout(),
+            },
+          ]}
+        />
       ) : null}
     </div>
   );

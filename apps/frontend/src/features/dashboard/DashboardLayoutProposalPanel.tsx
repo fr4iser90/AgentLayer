@@ -4,6 +4,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { DashboardGridCanvas } from "./DashboardGridCanvas";
 import { applyLayoutProposal } from "./layoutProposalShared";
 import { useLayoutProposalSet } from "./useLayoutProposalSet";
+import { Button } from "../../ui/Button";
 
 type Props = {
   dashboardId: string;
@@ -72,35 +73,36 @@ export function DashboardLayoutProposalPanel({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4"
+      className="fixed inset-0 z-overlay flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-wide"
       role="dialog"
       aria-modal="true"
       aria-label={t("dashboard:layoutProposalsTitle")}
     >
-      <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-t-2xl border border-surface-border bg-[#111] shadow-2xl sm:rounded-2xl">
-        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-surface-border px-4 py-3">
+      <div className="flex max-h-[92vh] w-full max-w-dialogFull flex-col overflow-hidden rounded-t-sheet border border-line bg-[#111] shadow-2xl sm:rounded-sheet">
+        <header className="flex shrink-0 items-center justify-between gap-soft border-b border-line px-wide py-soft">
           <div>
-            <h2 className="text-sm font-semibold text-white">{t("dashboard:layoutProposalsTitle")}</h2>
-            <p className="text-xs text-neutral-400">{t("dashboard:layoutProposalsSubtitle")}</p>
+            <h2 className="text-sm font-semibold text-ink-primary">{t("dashboard:layoutProposalsTitle")}</h2>
+            <p className="text-xs text-ink-muted">{t("dashboard:layoutProposalsSubtitle")}</p>
           </div>
-          <button
+          <Button
+            size="sm"
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-surface-border px-2.5 py-1 text-xs text-neutral-300 hover:bg-white/5"
+            className="px-firm py-tight text-xs text-ink-secondary hover:bg-white/5"
           >
             {t("dashboard:layoutProposalsClose")}
-          </button>
+          </Button>
         </header>
 
         {loading ? (
-          <div className="px-4 py-8 text-sm text-neutral-400">{t("dashboard:layoutProposalsLoading")}</div>
+          <div className="px-wide py-deep text-sm text-ink-muted">{t("dashboard:layoutProposalsLoading")}</div>
         ) : errText && !proposalSet ? (
-          <div className="mx-4 my-4 rounded-lg border border-red-500/40 bg-red-950/30 px-3 py-2 text-sm text-red-200">
+          <div className="mx-wide my-wide rounded-card border border-danger/40 bg-danger-subtle px-soft py-base text-sm text-badge-danger">
             {errText}
           </div>
         ) : proposalSet ? (
           <>
-            <div className="flex shrink-0 gap-2 overflow-x-auto border-b border-surface-border px-4 py-2">
+            <div className="flex shrink-0 gap-base overflow-x-auto border-b border-line px-wide py-base">
               {proposalSet.proposals.map((p) => (
                 <button
                   key={p.id}
@@ -109,23 +111,23 @@ export function DashboardLayoutProposalPanel({
                     setSelectedId(p.id);
                     setConfirmId(null);
                   }}
-                  className={`shrink-0 rounded-lg border px-3 py-2 text-left text-xs transition ${
+                  className={`shrink-0 rounded-card border px-soft py-base text-left text-xs transition ${
                     selectedId === p.id
-                      ? "border-emerald-500/60 bg-emerald-950/30 text-white"
-                      : "border-surface-border bg-black/20 text-neutral-300 hover:bg-white/5"
+                      ? "border-success/60 bg-success-subtle text-ink-primary"
+                      : "border-line bg-black/20 text-ink-secondary hover:bg-white/5"
                   }`}
                 >
                   <div className="font-medium">{p.title}</div>
                   {p.summary ? (
-                    <div className="mt-0.5 max-w-[14rem] truncate text-neutral-500">{p.summary}</div>
+                    <div className="mt-hair max-w-chipWide truncate text-ink-muted">{p.summary}</div>
                   ) : null}
                 </button>
               ))}
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            <div className="min-h-0 flex-1 overflow-y-auto p-wide">
               {selected ? (
-                <div className="overflow-hidden rounded-xl border border-surface-border bg-[#0a0a0a]">
+                <div className="overflow-hidden rounded-sheet border border-line bg-[#0a0a0a]">
                   <div className="origin-top-left scale-[0.72] sm:scale-[0.82]">
                     <div className="w-[138%] sm:w-[122%]">
                       <DashboardGridCanvas
@@ -145,43 +147,50 @@ export function DashboardLayoutProposalPanel({
             </div>
 
             {applyErr ? (
-              <div className="mx-4 mb-2 rounded border border-red-500/40 bg-red-950/30 px-3 py-2 text-xs text-red-200">
+              <div className="mx-wide mb-base rounded-tile border border-danger/40 bg-danger-subtle px-soft py-base text-xs text-badge-danger">
                 {applyErr}
               </div>
             ) : null}
 
-            <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-surface-border px-4 py-3">
+            <footer className="flex shrink-0 items-center justify-end gap-base border-t border-line px-wide py-soft">
               {confirmId === selectedId && selected ? (
                 <>
-                  <span className="mr-auto text-xs text-amber-200/90">
+                  <span className="mr-auto text-xs text-badge-warning">
                     {t("dashboard:layoutProposalsConfirm", { title: selected.title })}
                   </span>
-                  <button
+                  <Button
                     type="button"
+                    variant="secondary"
+                    size="sm"
                     disabled={applyBusy}
                     onClick={() => setConfirmId(null)}
-                    className="rounded-lg border border-surface-border px-3 py-1.5 text-xs text-neutral-300 hover:bg-white/5"
                   >
                     {t("dashboard:layoutProposalsCancel")}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="primary"
+                    tone="success"
+                    size="sm"
                     type="button"
                     disabled={applyBusy}
                     onClick={() => void applyProposal(selected.id)}
-                    className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+                    className="px-soft py-snug text-xs"
                   >
                     {applyBusy ? t("dashboard:saving") : t("dashboard:layoutProposalsApply")}
-                  </button>
+                  </Button>
                 </>
               ) : (
-                <button
+                <Button
+                  variant="primary"
+                  tone="success"
+                  size="lg"
                   type="button"
                   disabled={!selected || applyBusy}
                   onClick={() => selected && setConfirmId(selected.id)}
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+                  className="px-wide py-base text-sm"
                 >
                   {t("dashboard:layoutProposalsApply")}
-                </button>
+                </Button>
               )}
             </footer>
           </>

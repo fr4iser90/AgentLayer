@@ -1,7 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
+import { Link as LinkIcon } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { useTranslation } from "react-i18next";
+import { Select, TextInput } from "../../ui/Field";
+import { Button } from "../../ui/Button";
+import { TabPanel, Tabs } from "../../ui/Tabs";
 
 type ShareItem = {
   resource_type: string;
@@ -17,6 +21,8 @@ type ShareItem = {
 type SharePolicy = {
   days_ahead?: number;
   expires_at?: string;
+  permission?: string;
+  block_ids?: string[];
 };
 
 type ShareGrant = {
@@ -32,19 +38,65 @@ type FriendShares = {
   incoming_grants?: ShareGrant[];
 };
 
+/**
+ * One shareable resource type, as described by the backend adapter registry.
+ *
+ * The shape is the registry's, not a hand-maintained list: `policy_fields` is
+ * what that type's adapter actually reads, so the editor below renders exactly
+ * those inputs and never offers a value the grant path would reject.
+ * `default_identifier` is null when the type needs an explicit identifier
+ * (a collection slug, a dashboard uuid) rather than a usable default.
+ */
 type CatalogResource = {
   id: string;
   name: string;
-  icon: string;
-  default_identifier: string;
+  default_identifier: string | null;
   policy_fields: string[];
+  listable: boolean;
+  aliases: string[];
+  previewable?: boolean;
 };
+
+/**
+ * One view the caller has published of their own resource.
+ *
+ * Keyed on (resource_type, resource_identifier) and never on a friend.
+ * That is the model, not a simplification: there is one row per resource,
+ * so the shape chosen here is what every grantee of that resource sees.
+ */
+type PublishedProjection = {
+  resource_type: string;
+  resource_identifier: string;
+  projection_kind: string | null;
+  available_kinds: string[];
+  default_kind: string | null;
+  generated_at: string | null;
+  expires_at: string | null;
+  fresh: boolean;
+};
+
+const projectionKey = (resourceType: string, identifier: string) =>
+  `${resourceType}:${identifier}`;
 
 function grantForResource(
   grants: ShareGrant[] | undefined,
   resourceId: string,
 ): ShareGrant | undefined {
   return grants?.find((g) => g.resource_type === resourceId);
+}
+
+/**
+ * Find the catalog entry for a resource id, following legacy aliases.
+ *
+ * A grant stored years ago under "calendar" must still find the
+ * google_calendar entry, or it would render with no policy fields and the
+ * user could not edit a share that is really a calendar share.
+ */
+function catalogEntry(
+  resourceId: string,
+  catalog: CatalogResource[],
+): CatalogResource | undefined {
+  return catalog.find((r) => r.id === resourceId || (r.aliases || []).includes(resourceId));
 }
 
 function resourceTypesForFriend(friendShares: FriendShares): string[] {
@@ -65,7 +117,7 @@ function resourceTypesForFriend(friendShares: FriendShares): string[] {
 }
 
 function displayResourceName(resourceId: string, catalog: CatalogResource[]): string {
-  return catalog.find((r) => r.id === resourceId)?.name || resourceId.replace(/_/g, " ");
+  return catalogEntry(resourceId, catalog)?.name || resourceId.replace(/_/g, " ");
 }
 
 export default function SharesSettings() {
@@ -79,10 +131,15 @@ export default function SharesSettings() {
   const [outgoing, setOutgoing] = useState<ShareItem[]>([]);
   const [incoming, setIncoming] = useState<ShareItem[]>([]);
   const [activeTab, setActiveTab] = useState<"outgoing" | "incoming">("outgoing");
+  const tabsGroup = useId();
   const [selectedFriend, setSelectedFriend] = useState<ShareItem | null>(null);
   const [friendShares, setFriendShares] = useState<FriendShares | null>(null);
   const [policyDraft, setPolicyDraft] = useState<Record<string, SharePolicy>>({});
   const [newResourceType, setNewResourceType] = useState("");
+  const [newResourceIdentifier, setNewResourceIdentifier] = useState("");
+  const [myProjections, setMyProjections] = useState<PublishedProjection[]>([]);
+  const [kindDraft, setKindDraft] = useState<Record<string, string>>({});
+  const [publishing, setPublishing] = useState(false);
 
   const lang = (i18n.language || "en").slice(0, 2);
 
@@ -90,16 +147,30 @@ export default function SharesSettings() {
     setLoading(true);
     setErr(null);
     try {
-      const [catalogRes, outgoingRes, incomingRes, friendsRes] = await Promise.all([
-        apiFetch(`/v1/shares/catalog?lang=${lang}`, auth),
-        apiFetch("/v1/shares/outgoing", auth),
-        apiFetch("/v1/shares/incoming", auth),
-        apiFetch("/v1/friends", auth),
-      ]);
+      const [catalogRes, outgoingRes, incomingRes, friendsRes, projectionRes] =
+        await Promise.all([
+          apiFetch(`/v1/shares/catalog?lang=${lang}`, auth),
+          apiFetch("/v1/shares/outgoing", auth),
+          apiFetch("/v1/shares/incoming", auth),
+          apiFetch("/v1/friends", auth),
+          apiFetch("/v1/shares/projections", auth),
+        ]);
 
       if (catalogRes.ok) {
         const data = await catalogRes.json();
         setCatalog(data.resources || []);
+      }
+
+      if (projectionRes.ok) {
+        const data = await projectionRes.json();
+        const rows: PublishedProjection[] = data.projections || [];
+        setMyProjections(rows);
+        const drafts: Record<string, string> = {};
+        for (const row of rows) {
+          drafts[projectionKey(row.resource_type, row.resource_identifier)] =
+            row.projection_kind || row.default_kind || "";
+        }
+        setKindDraft(drafts);
       }
 
       let outgoingRows: ShareItem[] = [];
@@ -163,6 +234,7 @@ export default function SharesSettings() {
     resourceType: string,
     isAllowed: boolean,
     policy?: SharePolicy,
+    identifier?: string,
   ) {
     if (!selectedFriend || saving) return;
 
@@ -175,7 +247,14 @@ export default function SharesSettings() {
         body: JSON.stringify({
           grantee_user_id: selectedFriend.grantee_user_id,
           resource_type: resourceType,
-          resource_identifier: "primary",
+          // Derived from the adapter rather than hardcoded: a calendar share is
+          // one-per-user and defaults to "primary", a collection needs its
+          // slug and a dashboard its uuid. The caller supplies those when the
+          // type has no usable default.
+          resource_identifier:
+            identifier ??
+            catalogEntry(resourceType, catalog)?.default_identifier ??
+            "primary",
           is_allowed: isAllowed,
           policy: isAllowed ? policy || {} : undefined,
         }),
@@ -204,8 +283,138 @@ export default function SharesSettings() {
     await setShare(resourceType, true, policyDraft[resourceType] || {});
   }
 
+  /**
+   * Republish one of the caller's own resources in a different shape.
+   *
+   * Separate from setShare on purpose: this changes what the view *is*,
+   * not who may read it. Publishing grants nothing, and a view nobody has
+   * been granted stays unreadable.
+   */
+  async function publishKind(row: PublishedProjection) {
+    const key = projectionKey(row.resource_type, row.resource_identifier);
+    const kind = kindDraft[key];
+    if (!kind || publishing) return;
+
+    setPublishing(true);
+    setErr(null);
+    try {
+      const res = await apiFetch("/v1/shares/projection", auth, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resource_type: row.resource_type,
+          resource_identifier: row.resource_identifier,
+          projection_kind: kind,
+        }),
+      });
+      if (!res.ok) {
+        setErr(await res.text());
+        return;
+      }
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : t("settings:sharesPublishFailed"));
+    } finally {
+      setPublishing(false);
+    }
+  }
+
   function catalogName(resourceId: string): string {
     return displayResourceName(resourceId, catalog);
+  }
+
+  function updateDraft(resourceId: string, patch: SharePolicy) {
+    setPolicyDraft((prev) => ({
+      ...prev,
+      [resourceId]: { ...prev[resourceId], ...patch },
+    }));
+  }
+
+  /**
+   * Editor for a single policy field, chosen by the adapter's declared
+   * `policy_fields` rather than rendered unconditionally.
+   *
+   * Before this the editor showed days_ahead and expires_at for every type,
+   * so a user could set days_ahead on a dashboard share — a field the
+   * dashboard adapter does not read and the backend rejects at grant time.
+   * Rendering only what the adapter honours removes that class of dead input.
+   */
+  function renderPolicyField(field: string, resourceId: string, draft: SharePolicy) {
+    const cls =
+      "mt-tight w-full rounded-tile border border-line bg-canvas px-base py-snug text-ink-primary text-sm";
+    switch (field) {
+      case "days_ahead":
+        return (
+          <label className="block text-sm">
+            <span className="text-ink-muted">{t("settings:sharesDaysAhead")}</span>
+            <input
+              type="number"
+              min={1}
+              max={366}
+              value={draft.days_ahead ?? ""}
+              placeholder={t("settings:sharesDaysAheadPlaceholder")}
+              onChange={(e) => {
+                const val = e.target.value;
+                updateDraft(resourceId, { days_ahead: val ? Number(val) : undefined });
+              }}
+              className={cls}
+            />
+          </label>
+        );
+      case "expires_at":
+        return (
+          <label className="block text-sm">
+            <span className="text-ink-muted">{t("settings:sharesExpiresAt")}</span>
+            <input
+              type="datetime-local"
+              value={draft.expires_at ? draft.expires_at.slice(0, 16) : ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                updateDraft(resourceId, {
+                  expires_at: val ? new Date(val).toISOString() : undefined,
+                });
+              }}
+              className={cls}
+            />
+          </label>
+        );
+      case "permission":
+        return (
+          <label className="block text-sm">
+            <span className="text-ink-muted">{t("settings:sharesPermission")}</span>
+            <select
+              value={draft.permission ?? "view"}
+              onChange={(e) => updateDraft(resourceId, { permission: e.target.value })}
+              className={cls}
+            >
+              <option value="view">{t("settings:sharesPermissionView")}</option>
+              <option value="edit">{t("settings:sharesPermissionEdit")}</option>
+            </select>
+          </label>
+        );
+      case "block_ids":
+        return (
+          <label className="block text-sm">
+            <span className="text-ink-muted">{t("settings:sharesBlockIds")}</span>
+            <input
+              type="text"
+              value={(draft.block_ids || []).join(", ")}
+              placeholder={t("settings:sharesBlockIdsPlaceholder")}
+              onChange={(e) =>
+                updateDraft(resourceId, {
+                  block_ids: e.target.value
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                })
+              }
+              className={cls}
+            />
+          </label>
+        );
+      default:
+        return null;
+    }
   }
 
   function groupByUser(shares: ShareItem[]) {
@@ -222,50 +431,45 @@ export default function SharesSettings() {
     void load();
   }, [load]);
 
+  // A type whose adapter has no usable default identifier (a collection needs
+  // a slug, a dashboard a uuid) must be given one explicitly before it can
+  // be shared.
+  const selectedNewType = catalogEntry(newResourceType, catalog);
+  const needsIdentifier =
+    !!selectedNewType && selectedNewType.default_identifier === null;
+  const canAddResource =
+    !!newResourceType && (!needsIdentifier || !!newResourceIdentifier.trim());
+
   return (
-    <div className="mx-auto max-w-4xl space-y-8">
+    <div className="mx-auto max-w-page space-y-deep">
       <div>
-        <h1 className="text-lg font-semibold text-white">🔗 {t("settings:sharesTitle")}</h1>
-        <p className="mt-2 text-sm text-surface-muted">{t("settings:sharesSubtitle")}</p>
+        <h1 className="flex items-center gap-base text-lg font-semibold text-ink-primary">
+          <LinkIcon aria-hidden className="h-5 w-5" />
+          {t("settings:sharesTitle")}
+        </h1>
+        <p className="mt-base text-sm text-ink-muted">{t("settings:sharesSubtitle")}</p>
       </div>
 
-      <div className="flex gap-4 border-b border-surface-border pb-1">
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab("outgoing");
-            setSelectedFriend(null);
-          }}
-          className={`px-3 py-2 text-sm font-medium transition-colors ${
-            activeTab === "outgoing"
-              ? "text-white border-b-2 border-sky-500"
-              : "text-surface-muted hover:text-white"
-          }`}
-        >
-          {t("settings:sharesTabOutgoing")}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab("incoming");
-            setSelectedFriend(null);
-          }}
-          className={`px-3 py-2 text-sm font-medium transition-colors ${
-            activeTab === "incoming"
-              ? "text-white border-b-2 border-sky-500"
-              : "text-surface-muted hover:text-white"
-          }`}
-        >
-          {t("settings:sharesTabIncoming")}
-        </button>
-      </div>
+      <Tabs
+        groupId={tabsGroup}
+        ariaLabel={t("settings:sharesTabsAria")}
+        value={activeTab}
+        onChange={(id) => {
+          setActiveTab(id === "incoming" ? "incoming" : "outgoing");
+          setSelectedFriend(null);
+        }}
+        items={[
+          { id: "outgoing", label: t("settings:sharesTabOutgoing") },
+          { id: "incoming", label: t("settings:sharesTabIncoming") },
+        ]}
+      />
 
       {loading ? (
-        <p className="text-sm text-surface-muted">{t("settings:sharesLoading")}</p>
+        <p className="text-sm text-ink-muted">{t("settings:sharesLoading")}</p>
       ) : err ? (
-        <p className="text-sm text-amber-400">{err}</p>
+        <p className="text-sm text-warning">{err}</p>
       ) : activeTab === "outgoing" ? (
-        <div className="space-y-6">
+        <TabPanel id="outgoing" group={tabsGroup} className="space-y-broad">
           {Object.entries(groupByUser(outgoing)).map(([userId, shares]) => {
             const friend = shares[0];
             const resourceNames = shares
@@ -274,7 +478,7 @@ export default function SharesSettings() {
             return (
               <div
                 key={userId}
-                className="rounded-xl border border-surface-border bg-surface-raised p-4 cursor-pointer hover:bg-white/[0.02] transition-colors"
+                className="rounded-sheet border border-line bg-card p-wide cursor-pointer hover:bg-white/[0.02] transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   void loadFriendShares(friend);
@@ -282,10 +486,10 @@ export default function SharesSettings() {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-medium text-white">{friend.display_name || friend.email}</div>
-                    <div className="text-sm text-neutral-400 mt-1">{resourceNames.join(", ")}</div>
+                    <div className="font-medium text-ink-primary">{friend.display_name || friend.email}</div>
+                    <div className="text-sm text-ink-muted mt-tight">{resourceNames.join(", ")}</div>
                   </div>
-                  <div className="text-sm text-surface-muted">
+                  <div className="text-sm text-ink-muted">
                     {t("settings:sharesResourcesCount", {
                       count: shares.filter((s) => s.resource_type).length,
                     })}
@@ -296,13 +500,13 @@ export default function SharesSettings() {
           })}
 
           {Object.keys(groupByUser(outgoing)).length === 0 && (
-            <div className="p-8 text-center text-surface-muted rounded-xl border border-surface-border bg-surface-raised">
+            <div className="p-deep text-center text-ink-muted rounded-sheet border border-line bg-card">
               {t("settings:sharesNoneOutgoing")}
             </div>
           )}
-        </div>
+        </TabPanel>
       ) : (
-        <div className="space-y-6">
+        <TabPanel id="incoming" group={tabsGroup} className="space-y-broad">
           {Object.entries(groupByUser(incoming)).map(([userId, shares]) => {
             const friend = shares[0];
             const resourceNames = shares
@@ -311,14 +515,14 @@ export default function SharesSettings() {
             return (
               <div
                 key={userId}
-                className="rounded-xl border border-surface-border bg-surface-raised p-4"
+                className="rounded-sheet border border-line bg-card p-wide"
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-medium text-white">{friend.display_name || friend.email}</div>
-                    <div className="text-sm text-neutral-400 mt-1">{resourceNames.join(", ")}</div>
+                    <div className="font-medium text-ink-primary">{friend.display_name || friend.email}</div>
+                    <div className="text-sm text-ink-muted mt-tight">{resourceNames.join(", ")}</div>
                   </div>
-                  <div className="text-sm text-surface-muted">
+                  <div className="text-sm text-ink-muted">
                     {t("settings:sharesResourcesCount", { count: shares.length })}
                   </div>
                 </div>
@@ -327,26 +531,108 @@ export default function SharesSettings() {
           })}
 
           {Object.keys(groupByUser(incoming)).length === 0 && (
-            <div className="p-8 text-center text-surface-muted rounded-xl border border-surface-border bg-surface-raised">
+            <div className="p-deep text-center text-ink-muted rounded-sheet border border-line bg-card">
               {t("settings:sharesNoneIncoming")}
+            </div>
+          )}
+        </TabPanel>
+      )}
+
+      {!loading && (
+        <div className="rounded-sheet border border-line bg-card p-wide">
+          <h3 className="font-medium text-ink-primary">
+            {t("settings:sharesPublishedTitle")}
+          </h3>
+          <p className="mt-tight text-sm text-ink-muted">
+            {t("settings:sharesPublishedHint")}
+          </p>
+
+          {myProjections.length === 0 ? (
+            <p className="mt-wide text-sm text-ink-muted">
+              {t("settings:sharesPublishedNone")}
+            </p>
+          ) : (
+            <div className="mt-wide space-y-soft">
+              {myProjections.map((row) => {
+                const key = projectionKey(row.resource_type, row.resource_identifier);
+                const draft = kindDraft[key] ?? row.projection_kind ?? "";
+                const unchanged = draft === row.projection_kind;
+                return (
+                  <div
+                    key={key}
+                    className="flex flex-wrap items-center justify-between gap-soft rounded-card border border-line/60 p-soft"
+                  >
+                    <div className="min-w-[10rem]">
+                      <div className="text-ink-primary">
+                        {displayResourceName(row.resource_type, catalog)}
+                      </div>
+                      <div className="mt-hair text-xs text-ink-muted">
+                        {t("settings:sharesPublishedIdentifier", {
+                          value: row.resource_identifier,
+                        })}{" "}
+                        ·{" "}
+                        <span className={row.fresh ? "text-success" : "text-warning"}>
+                          {row.fresh
+                            ? t("settings:sharesPublishedFresh")
+                            : t("settings:sharesPublishedStale")}
+                        </span>
+                      </div>
+                    </div>
+                    {row.available_kinds.length > 0 ? (
+                      <div className="flex items-center gap-base">
+                        <Select
+                          value={draft}
+                          disabled={publishing}
+                          aria-label={t("settings:sharesPublishedKind", {
+                            value: displayResourceName(row.resource_type, catalog),
+                          })}
+                          onChange={(e) =>
+                            setKindDraft((prev) => ({ ...prev, [key]: e.target.value }))
+                          }
+                        >
+                          {row.available_kinds.map((kind) => (
+                            <option key={kind} value={kind}>
+                              {kind}
+                            </option>
+                          ))}
+                        </Select>
+                        <Button
+                          variant="primary"
+                          tone="success"
+                          type="button"
+                          disabled={publishing || unchanged || !draft}
+                          onClick={() => void publishKind(row)}
+                          className="px-soft py-snug text-sm"
+                        >
+                          {t("settings:sharesPublishButton")}
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-ink-muted">
+                        {row.projection_kind}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       )}
 
       {selectedFriend && friendShares && (
-        <div className="rounded-xl border border-surface-border bg-surface-raised overflow-hidden mt-8">
-          <div className="p-4 border-b border-surface-border">
-            <h3 className="font-medium text-white">
+        <div className="rounded-sheet border border-line bg-card overflow-hidden mt-deep">
+          <div className="p-wide border-b border-line">
+            <h3 className="font-medium text-ink-primary">
               {selectedFriend.display_name || selectedFriend.email}
             </h3>
-            <p className="text-sm text-surface-muted mt-1">{t("settings:sharesManageFriend")}</p>
+            <p className="text-sm text-ink-muted mt-tight">{t("settings:sharesManageFriend")}</p>
           </div>
 
-          <div className="p-4 space-y-6">
+          <div className="p-wide space-y-broad">
             <div>
-              <h4 className="text-sm font-medium mb-4 text-white">{t("settings:sharesWhatYouShare")}</h4>
-              <div className="space-y-4">
+              <h4 className="text-sm font-medium mb-wide text-ink-primary">{t("settings:sharesWhatYouShare")}</h4>
+              <div className="space-y-wide">
                 {resourceTypesForFriend(friendShares).map((resourceId) => {
                   const enabled = friendShares.outgoing.includes(resourceId);
                   const grant = grantForResource(friendShares.outgoing_grants, resourceId);
@@ -355,10 +641,10 @@ export default function SharesSettings() {
                   return (
                     <div
                       key={resourceId}
-                      className="rounded-lg border border-surface-border/60 p-3 space-y-3"
+                      className="rounded-card border border-line/60 p-soft space-y-soft"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-white">{displayResourceName(resourceId, catalog)}</span>
+                        <span className="text-ink-primary">{displayResourceName(resourceId, catalog)}</span>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input
                             type="checkbox"
@@ -367,130 +653,133 @@ export default function SharesSettings() {
                             disabled={saving}
                             className="sr-only peer"
                           />
-                          <div className="w-9 h-5 bg-neutral-700 peer-checked:bg-emerald-600 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all" />
+                          <div className="w-9 h-5 bg-neutral-700 peer-checked:bg-success rounded-pill peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-pill after:h-4 after:w-4 after:transition-all" />
                         </label>
                       </div>
 
                       {enabled && (
-                        <div className="grid gap-3 sm:grid-cols-2 pl-1">
-                          <label className="block text-sm">
-                            <span className="text-surface-muted">{t("settings:sharesDaysAhead")}</span>
-                            <input
-                              type="number"
-                              min={1}
-                              max={366}
-                              value={draft.days_ahead ?? ""}
-                              placeholder={t("settings:sharesDaysAheadPlaceholder")}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setPolicyDraft((prev) => ({
-                                  ...prev,
-                                  [resourceId]: {
-                                    ...prev[resourceId],
-                                    days_ahead: val ? Number(val) : undefined,
-                                  },
-                                }));
-                              }}
-                              className="mt-1 w-full rounded-md border border-surface-border bg-surface px-2 py-1.5 text-white text-sm"
-                            />
-                          </label>
-                          <label className="block text-sm">
-                            <span className="text-surface-muted">{t("settings:sharesExpiresAt")}</span>
-                            <input
-                              type="datetime-local"
-                              value={
-                                draft.expires_at
-                                  ? draft.expires_at.slice(0, 16)
-                                  : ""
-                              }
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setPolicyDraft((prev) => ({
-                                  ...prev,
-                                  [resourceId]: {
-                                    ...prev[resourceId],
-                                    expires_at: val ? new Date(val).toISOString() : undefined,
-                                  },
-                                }));
-                              }}
-                              className="mt-1 w-full rounded-md border border-surface-border bg-surface px-2 py-1.5 text-white text-sm"
-                            />
-                          </label>
+                        <div className="grid gap-soft sm:grid-cols-2 pl-tight">
+                          {(catalogEntry(resourceId, catalog)?.policy_fields || []).map(
+                            (field) => (
+                              <div
+                                key={field}
+                                className={field === "block_ids" ? "sm:col-span-2" : ""}
+                              >
+                                {renderPolicyField(field, resourceId, draft)}
+                              </div>
+                            ),
+                          )}
                           <div className="sm:col-span-2">
-                            <button
+                            <Button
+                              variant="ghost"
                               type="button"
                               disabled={saving}
                               onClick={() => void savePolicy(resourceId)}
-                              className="text-sm text-sky-400 hover:text-sky-300 disabled:opacity-50"
+                              className="text-sm text-accent hover:text-badge-accent"
                             >
                               {t("settings:sharesSavePolicy")}
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       )}
                     </div>
                   );
                 })}
-                <div className="flex flex-wrap items-end gap-2 pt-2 border-t border-surface-border/60">
+                <div className="flex flex-wrap items-end gap-base pt-base border-t border-line/60">
                   <label className="block text-sm flex-1 min-w-[12rem]">
-                    <span className="text-surface-muted">{t("settings:sharesResourceType")}</span>
-                    <input
-                      type="text"
+                    <span className="text-ink-muted">
+                      {t("settings:sharesSelectResourceType")}
+                    </span>
+                    <Select
                       value={newResourceType}
-                      placeholder="google_calendar, my_notes, …"
                       onChange={(e) => setNewResourceType(e.target.value)}
-                      className="mt-1 w-full rounded-md border border-surface-border bg-surface px-2 py-1.5 text-white text-sm"
-                    />
+                      className="mt-tight"
+                    >
+                      <option value="" disabled>
+                        {t("settings:sharesSelectTypePlaceholder")}
+                      </option>
+                      {catalog.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                    </Select>
                   </label>
-                  <button
+                  {needsIdentifier && (
+                    <label className="block text-sm flex-1 min-w-[12rem]">
+                      <span className="text-ink-muted">
+                        {t("settings:sharesIdentifier")}
+                      </span>
+                      <TextInput
+                        type="text"
+                        value={newResourceIdentifier}
+                        placeholder={t("settings:sharesIdentifierPlaceholder")}
+                        onChange={(e) => setNewResourceIdentifier(e.target.value)}
+                        className="mt-tight"
+                      />
+                    </label>
+                  )}
+                  <Button
+                    variant="primary"
+                    tone="success"
                     type="button"
-                    disabled={saving || !newResourceType.trim()}
+                    disabled={saving || !canAddResource}
                     onClick={() => {
-                      const id = newResourceType.trim().toLowerCase().replace(/\s+/g, "_");
-                      void toggleShare(id, true);
+                      void setShare(
+                        newResourceType,
+                        true,
+                        policyDraft[newResourceType] || {},
+                        needsIdentifier ? newResourceIdentifier.trim() : undefined,
+                      );
                       setNewResourceType("");
+                      setNewResourceIdentifier("");
                     }}
-                    className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+                    className="px-soft py-snug text-sm"
                   >
                     {t("settings:sharesAddResource")}
-                  </button>
+                  </Button>
+                  {catalog.length === 0 && (
+                    <p className="w-full text-sm text-ink-muted">
+                      {t("settings:sharesNoTypesRegistered")}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
 
-            <div className="border-t border-surface-border pt-6">
-              <h4 className="text-sm font-medium mb-4 text-white">{t("settings:sharesWhatTheyShare")}</h4>
-              <div className="space-y-3">
+            <div className="border-t border-line pt-broad">
+              <h4 className="text-sm font-medium mb-wide text-ink-primary">{t("settings:sharesWhatTheyShare")}</h4>
+              <div className="space-y-soft">
                 {resourceTypesForFriend(friendShares).map((resourceId) => {
                   const grant = grantForResource(friendShares.incoming_grants, resourceId);
                   const enabled = friendShares.incoming.includes(resourceId);
                   return (
                     <div
                       key={`in-${resourceId}`}
-                      className="flex items-center justify-between py-2"
+                      className="flex items-center justify-between py-base"
                     >
                       <div>
-                        <span className="text-white">{displayResourceName(resourceId, catalog)}</span>
+                        <span className="text-ink-primary">{displayResourceName(resourceId, catalog)}</span>
                         {enabled && grant?.policy?.days_ahead && (
-                          <div className="text-xs text-surface-muted">
+                          <div className="text-xs text-ink-muted">
                             {t("settings:sharesDaysAheadValue", { count: grant.policy.days_ahead })}
                           </div>
                         )}
                       </div>
                       <div className="text-sm">
                         {enabled ? (
-                          <span className="text-emerald-400 font-medium">
+                          <span className="text-success font-medium">
                             {t("settings:sharesAccessGranted")}
                           </span>
                         ) : (
-                          <span className="text-surface-muted">{t("settings:sharesNotShared")}</span>
+                          <span className="text-ink-muted">{t("settings:sharesNotShared")}</span>
                         )}
                       </div>
                     </div>
                   );
                 })}
                 {resourceTypesForFriend(friendShares).length === 0 && (
-                  <p className="text-sm text-surface-muted">{t("settings:sharesNotShared")}</p>
+                  <p className="text-sm text-ink-muted">{t("settings:sharesNotShared")}</p>
                 )}
               </div>
             </div>

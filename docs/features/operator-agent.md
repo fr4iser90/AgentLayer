@@ -8,111 +8,130 @@ tags: [operator, admin, tools, agent, security]
 
 The **Operator** agent (`agent_id: "operator"`) is an **admin-only** chat assistant for this deployment: interfaces, tool catalog, scheduler jobs, and RAG search over ingested docs. It is **not** the Coding agent and does not use a project workspace by default.
 
-- **Definition:** `plugins/agents/operator.py`
-- **Access control:** `AGENT_MIN_ROLE = "admin"`. Non-admins cannot select this agent: `chat_completion` rejects agents whose `min_role` is `admin` when the DB role is not `admin` (`apps/backend/domain/agent.py`).
+- **Definition:** `plugins/agents/operator/agent.yaml` (`min_role: admin`, `delegatable: false`)
+- **Access control:** `user_may_invoke_agent` (`apps/backend/domain/agent_runtime/access.py`) refuses any agent whose registry `min_role` is `admin` unless `is_elevated_role(user_role)` holds, so a normal account cannot select this agent in chat.
 - **System prompt:** directs the model to prefer reading state, respect tool policy, avoid inventing repo edits under `/code`, and to point at Admin UI or `PATCH /v1/admin/operator-settings` where appropriate.
 
 ## Operator vs personal (user) settings
 
 **Do not fold “I’m Jürgen” into the Operator agent.** Operator is **admin-only** and targets **tenant/deployment** configuration. Personal preferences belong to the **signed-in user** and already have HTTP APIs (no admin role):
 
-- `GET` / `PUT` `/v1/user/persona` — free-form persona text, optional inject into agent (`apps/backend/infrastructure/user_data_api.py`).
+- `GET` / `PUT` `/v1/user/persona` — free-form persona text, optional inject into agent (`apps/backend/api/platform/controllers/user_data_api.py`).
 - `GET` / `PUT` `/v1/user/profile` — structured profile (`display_name`, locale, tone, …) via `AgentProfilePatch` in the same module.
 
 **Product split:**
 
 | Concern | Who | Typical tools / surface |
 |--------|-----|-------------------------|
-| Bridges, LLM endpoints, RAG admin, tenants, tool policies | **Operator** (admin) | Planned `operator_settings_*`, `interfaces_*`, setup links |
-| Name, persona, language, personal prefs | **General** (or a future `personal` agent with `min_role: user`) | New thin tools: e.g. `user_profile_get`, `user_profile_patch`, `user_persona_get`, `user_persona_put` wrapping the same DB/HTTP logic |
+| Bridges, LLM endpoints, RAG admin, tenants, tool policies | **Operator** (admin) | `operator_admin` (`settings_*`, `interfaces_*`, `external_llm_*`, `tenants_*`, `users_*`, `tools_*`, `rag_*`, `scheduler_*`, `project_runs_*`); setup links for raw secrets still missing |
+| Name, persona, language, personal prefs | **General** (or a future `personal` agent with `min_role: user`) | No tools yet — the HTTP routes above are the only surface; thin wrappers (`user_profile_get` / `_patch`, `user_persona_get` / `_put`) would reuse them |
 
 That keeps RBAC obvious: a normal user must not need admin to set their display name.
 
 ## Recommended build order
 
-1. **Operator Tier A tools** (read-only summaries, masked secrets) — high leverage for “what’s configured?” without waiting on a UI redesign.
-2. **Operator Tier B/C** (validated patches + setup-session links for real secrets) — can ship incrementally per bridge.
-3. **Admin UI polish** — in **parallel** or after Tier A; stable routes (`/admin/...`) matter more than pixels for deep links and agent copy.
+1. ~~**Operator Tier A tools**~~ — done as the `operator_admin` console below, and that console now asks the same two questions the routes ask (capability, then reach).
+2. **Operator Tier C** (setup-session links for real secrets) — the only tier never built; until it exists, tokens stay in the Admin UI.
+3. **Admin UI polish** — stable routes (`/admin/...`) matter more than pixels for deep links and agent copy.
 4. **Personal tools on `general`** (or a dedicated low-privilege agent) — separate PR/track from operator; reuse `user_data_api` contracts.
 
 ## Admin configuration surface (code audit)
 
-Everything below is implemented for **admin-authenticated** HTTP (`require_admin`), except routes decorated with `@require_permission` (admins still pass — see `apps/backend/infrastructure/auth.py`). Use this section as the **master checklist** for future Operator tools.
+Three gates, and which one a route uses is the whole answer to *who* can reach it (helpers in `apps/backend/infrastructure/identity/auth.py`, re-exported for controllers by `apps/backend/application/identity/use_cases/request_auth.py`):
 
-**Router wiring:** in the stock `apps/backend/api/main.py`, the **entire scheduler stack** is often commented out (`scheduler_jobs_router`, `scheduler_jobs_admin_router`, `scheduler_job_presets_router`, `scheduler_jobs_user_router`, and presets user router). `project_runs_router` is typically **enabled**. Re-enable routers when you need those HTTP paths live.
+- `require_provider_admin` (`apps/backend/application/providers/use_cases/provider_admin_acl.py`) — **site admin, deliberately**: the operator row, the LLM catalog and the interface hints move every company at once and spend the instance's provider budget, so there is no capability slug for that surface.
+- `require_site_admin` — tenants and their templates, the tool registry, RAG doc-ingest.
+- `require_admin_scope(request, CAP_…)` → an `AdminScope` with role **and** the companies the caller was granted, so a delegated holder sees strictly less than a site admin on the same route. A row by id outside that range answers `404`, never `403` — a `403` would confirm which company owns it.
 
-### HTTP: `apps/backend/api/main.py`
+Use this section as the **master checklist** for future Operator tools.
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| `GET` | `/v1/admin/operator-settings` | Public/masked operator row (`operator_settings_public()`). |
-| `PUT` | `/v1/admin/operator-settings` | **Narrow** replace: `OperatorSettingsPayload` — mainly `discord_application_id`, `integration_notes`. |
-| `PATCH` | `/v1/admin/operator-settings` | Partial update via `OperatorSettingsPatch` (field groups below). |
-| `GET` | `/v1/admin/external-llm/endpoints` | List external OpenAI-compatible endpoints (keys redacted; `api_key_last4`). |
-| `PUT` | `/v1/admin/external-llm/endpoints` | Replace/sync all endpoint rows (`external_llm_endpoints_sync`). |
-| `POST` | `/v1/admin/external-llm/models` | Probe `GET …/v1/models` using body or stored credentials. |
-| `GET` | `/v1/admin/interfaces` | `interface_hints_public()` — application ids + `agent_mode` + effective mode. |
-| `PUT` | `/v1/admin/interfaces` | `InterfaceHintsPayload` — Discord/Telegram application ids + `agent_mode` (clears `optional_connection_key`). |
-| `GET` | `/v1/admin/tenants` | List tenants. |
-| `POST` | `/v1/admin/tenants` | Create tenant. |
-| `GET` | `/v1/admin/users` | List users. |
-| `POST` | `/v1/admin/users` | Create password user (`email`, `password`, `role`, `tenant_id`). |
-| `PATCH` | `/v1/admin/users/{user_id}` | Patch `tenant_id`, `workspace_quota`, `workspace_self_allowed`. |
+**Router wiring:** `apps/backend/api/main.py` mounts the scheduler stack — `scheduler_jobs_admin_router`, `scheduler_jobs_user_router`, both run routers and the presets user router. Presets exist **once** (`/v1/user/scheduler-job-presets`, gated by the `users.schedules_allowed` feature flag); an older site-admin twin read the same directory and answered 403 for delegated `schedule.manage` holders.
 
-### HTTP: tool registry (`apps/backend/api/tools_api.py`)
+### HTTP: operator settings, bridges, tenants (`apps/backend/api/providers/controllers/operator_settings_api.py`, `…/providers/controllers/external_llm_api.py`, `…/providers/controllers/interfaces_api.py`, `apps/backend/api/platform/controllers/admin_users_api.py`)
+
+| Method | Path | Purpose | Gate |
+|--------|------|---------|------|
+| `GET` | `/v1/admin/operator-settings` | Public/masked operator row (`operator_settings_public()`). | provider admin |
+| `PUT` | `/v1/admin/operator-settings` | **Narrow** replace: `OperatorSettingsPayload` — mainly `discord_application_id`, `integration_notes`. | provider admin |
+| `PATCH` | `/v1/admin/operator-settings` | Partial update via `OperatorSettingsPatch` (field groups below). | provider admin |
+| `GET` | `/v1/admin/external-llm/endpoints` | Chat endpoints (keys redacted; `api_key_last4`). Legacy path — storage is `operator_provider_endpoints`. | provider admin |
+| `PUT` | `/v1/admin/external-llm/endpoints` | Replace/sync all chat endpoint rows. Legacy path. | provider admin |
+| `GET` | `/v1/admin/external-llm/env-providers` | Preview `LLM_PROVIDER_N_*` env providers for an explicit import. Legacy path. | provider admin |
+| `POST` | `/v1/admin/external-llm/env-providers/import` | Import the previewed env providers. Legacy path. | provider admin |
+| `POST` | `/v1/admin/external-llm/models` | Probe `GET …/v1/models` using body or stored credentials. | provider admin |
+| `GET` | `/v1/admin/provider-endpoints[/{kind}][/env-providers\|/models]`, `PUT /v1/admin/provider-endpoints/{kind}` | The generic surface those legacy routes forward to (`provider_endpoints_api.py`). | provider admin |
+| `GET` | `/v1/admin/interfaces` | `interface_hints_public()` — application ids + `agent_mode` + effective mode. | provider admin |
+| `PUT` | `/v1/admin/interfaces` | `InterfaceHintsPayload` — Discord/Telegram application ids + `agent_mode` (clears `optional_connection_key`). | provider admin |
+| `GET` | `/v1/admin/tenant-templates` | Provisioning templates for a new tenant. | site admin |
+| `GET` | `/v1/admin/tenants` | List tenants. | site admin |
+| `POST` | `/v1/admin/tenants` | Create tenant (`name`, `template_id`, `seed_demo_content`). | site admin |
+| `GET` | `/v1/admin/users` | List users **inside the caller's scope** — a delegated holder does not get every mailbox on the instance. | `user.manage` |
+| `POST` | `/v1/admin/users` | Create password user (`email`, `password`, `role`, `tenant_id`). | `user.manage` |
+| `PATCH` | `/v1/admin/users/{user_id}` | `tenant_id` (moving between companies is site-admin only), `workspace_quota`, `workspace_self_allowed`, `schedules_allowed`, `dashboards_allowed`, `dashboard_quota`, `media_*`, `llm_queue_priority`, `capabilities`. A delegated holder may never edit a site admin. | `user.manage` |
+
+### HTTP: tool registry (`apps/backend/api/tools/controllers/tools_api.py`)
 
 | Method | Path | Purpose | Notes |
 |--------|------|---------|--------|
-| `GET` | `/v1/admin/tools` | Tool metadata + operator policy rows. | `require_admin` |
-| `POST` | `/v1/admin/reload-tools` | Rescan plugin tool directories. | `require_admin` |
-| `PUT` | `/v1/admin/tool-policies` | Replace entire operator tool policy table. | `require_admin` |
-| `POST` | `/v1/admin/create-tool` | Server-side `create` codegen. | `require_admin` |
+| `GET` | `/v1/admin/tools` | Tool metadata + operator policy rows. | `require_site_admin` |
+| `POST` | `/v1/admin/reload-tools` | Rescan plugin tool directories. | `require_site_admin` |
+| `PUT` | `/v1/admin/tool-policies` | Replace entire operator tool policy table. | `require_site_admin` |
+| `POST` | `/v1/admin/create-tool` | Server-side `create` codegen. | `require_site_admin` |
 
-### HTTP: RAG admin (`apps/backend/api/rag_api.py`, mounted as `rag_router`)
+### HTTP: RAG admin (`apps/backend/api/rag/controllers/rag_api.py`, mounted as `rag_router`)
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| `POST` | `/v1/admin/rag/ingest` | Ingest text into pgvector RAG for admin’s tenant; body: `text`, optional `domain`, `title`, `source_uri`. |
-| `POST` | `/v1/admin/rag/ingest-docs` | Walk `docs_root` for `*.md`; optional `purge_first`, `domain`. |
+The two routes are **not** gated the same way, and the difference is the reason this surface splits at all: text ingest is tenant data, a docs root is a server filesystem. Both answer `503` while RAG is disabled in operator settings.
+
+| Method | Path | Gate | Purpose |
+|--------|------|------|---------|
+| `POST` | `/v1/admin/rag/ingest` | `require_admin_scope(request, CAP_KNOWLEDGE_MANAGE)` | Ingest text into pgvector RAG for a company; body `text`, optional `domain`, `title`, `source_uri`. |
+| `POST` | `/v1/admin/rag/ingest-docs` | `require_site_admin` | Walk `docs_root` (caller-supplied path) for `*.md`; body `docs_root`, `domain` (default `agentlayer_docs`), `purge_first`, `incremental` (default true). |
 
 ### HTTP: persisted scheduler jobs — admin API (`scheduler_jobs_admin_api.py`)
 
-Prefix when mounted: `/v1/admin/scheduler-jobs`
+Prefix when mounted: `/v1/admin/scheduler-jobs` — guarded by `require_admin_scope(request, CAP_SCHEDULE_MANAGE)`, so the reachable companies come from the caller's scope, not their own row.
 
 | Method | Path pattern | Purpose |
 |--------|----------------|---------|
-| `GET` | `/` | List jobs (filters: `dashboard_id`, `include_global`, `include_archived`, `execution_target`, `enabled`, `limit`). |
-| `POST` | `/` | Create job. |
+| `GET` | `/` | List jobs (filters: `tenant_id`, `dashboard_id`, `include_global`, `include_archived`, `execution_target`, `enabled`, `limit`). |
+| `POST` | `/` | Create job (`tenant_id` optional; a delegated holder may only name their own company). |
 | `PATCH` | `/{job_id}` | Update fields. |
 | `PATCH` | `/{job_id}/archived` | Archive / unarchive. |
 | `DELETE` | `/{job_id}` | Hard delete. |
 | `PATCH` | `/{job_id}/enabled` | Enable/disable. |
 
-**Overlap:** Chat tools `schedule_job_*` use the same store but **not** all admin-only actions (e.g. hard delete).
+A site admin (`tenant_filter() is None`) sees every company; a delegated holder is pinned to their own and gets `403` when naming another. Rows outside a caller's scope answer `404` on the by-id routes — a `403` would confirm that another company has that job. Creates run the same two-layer target policy as the user API (registry `min_role` + the company's agent allowlist).
 
-### HTTP: scheduler presets (`scheduler_job_presets_api.py`)
+**Overlap:** the chat plugin's `create` / `list` / `set_enabled` tools and the operator console's `scheduler_job_*` tools hit the same store, but neither exposes every admin-only action (hard delete is console-only).
 
-When mounted: `GET /v1/admin/scheduler-job-presets` — templates from `plugins/schedules/presets/*.json`.
+### HTTP: scheduler presets (`scheduler_job_presets_user_api.py`)
 
-### HTTP: IDE job queue (`scheduler_jobs_api.py`)
+`GET /v1/user/scheduler-job-presets` — templates from `plugins/schedules/presets/*.json`, gated by `schedule_feature_permission_error` like the schedule list itself.
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| `GET` | `/v1/scheduler/jobs/due` | Due `ide_agent` jobs for current user (admin-only handler). |
-| `POST` | `/v1/scheduler/jobs/{job_id}/ack-run` | Ack after IDE execution. |
+### HTTP: schedule runs (`scheduler_job_runs_api.py`)
 
-### HTTP: project runs (`project_runs_api.py`)
-
-Prefix: `/v1/project-runs` (admin-only handlers; not under `/v1/admin/…`).
+A coding or workspace schedule is executed by the server-side worker (`scheduler_jobs_runner`), not by an editor that picks its work up: the due/ack queue an IDE extension used to poll (`GET /v1/scheduler/jobs/due`, `POST /v1/scheduler/jobs/{job_id}/ack-run` in `scheduler_jobs_api.py`) was retired with the `ide_agent` → `coding_agent` change, and both routes are gone rather than moved. What remains of that surface is the run history, `scheduler_job_runs` — read-only, and a job or run outside the caller's reach answers `404` on either side:
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `POST` | `/v1/project-runs` | Enqueue one-shot IDE run. |
-| `GET` | `/v1/project-runs` | List runs. |
+| `GET` | `/v1/user/scheduler-jobs/{job_id}/runs` | Runs of a job the caller may view. |
+| `GET` | `/v1/user/scheduler-job-runs/{run_id}` | One run, after re-checking the run's job. |
+| `GET` | `/v1/admin/scheduler-jobs/{job_id}/runs` | Runs of a job inside the caller's company scope (`schedule.manage`). |
+| `GET` | `/v1/admin/scheduler-job-runs/{run_id}` | One run inside the caller's company scope. |
+
+### HTTP: project runs (`apps/backend/api/projects/controllers/project_runs_api.py`)
+
+Prefix: `/v1/project-runs` — not under `/v1/admin/…`, yet every handler calls `require_admin_scope(request, CAP_DASHBOARD_MANAGE)`, so runs are read and written inside the caller's granted companies only.
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/v1/project-runs` | Enqueue a one-shot coding run: `execution_target` is fixed to `coding` and `coding_workflow` must name a workspace. |
+| `GET` | `/v1/project-runs` | List runs (filters: `dashboard_id`, `project_row_id`, `limit`). |
+| `GET` | `/v1/project-runs/{run_id}` | One run of the caller's company. |
 
 ### `PATCH /v1/admin/operator-settings` — field groups (`OperatorSettingsPatch`)
 
-Source: `apps/backend/infrastructure/operator_settings.py`. `public_dict()` already hides raw bot tokens (`*_token_configured` flags).
+Source: `apps/backend/infrastructure/settings/operator_settings.py`. `public_dict()` already hides raw bot tokens (`*_token_configured` flags).
 
 | Group | PATCH fields (representative) |
 |-------|-------------------------------|
@@ -122,10 +141,9 @@ Source: `apps/backend/infrastructure/operator_settings.py`. `public_dict()` alre
 | **LLM** | `operator_external_llm_endpoints` (catalog providers), optional `llm_smart_routing_enabled`, `llm_router_*`, `llm_route_*` heuristics |
 | **Memory** | `memory_graph_*`, `memory_enabled` |
 | **RAG** | `rag_*`, `docs_root` |
-| **PIDEA** | `pidea_*` |
 | **Diagnostics** | `expose_internal_errors`, `http_client_log_level` |
 | **Legacy server scheduler** | `scheduler_enabled`, `scheduler_interval_minutes`, `scheduler_model`, `scheduler_*` caps and tool modes, `scheduler_instructions`, … |
-| **Scheduler jobs worker** | `scheduler_jobs_worker_enabled`, `scheduler_jobs_ide_pidea_*` |
+| **Scheduler jobs worker** | `scheduler_jobs_worker_enabled` |
 | **Workspaces** | `workspace_allow_self_editing` |
 
 **DB columns not on `OperatorSettingsPatch` today:** `discord_bot_agent_bearer`, `telegram_bot_agent_bearer`, `optional_connection_key` — still in the row / SQL writer; extending PATCH or a **dedicated secret form** may be required before an Operator tool can manage them safely.
@@ -140,56 +158,81 @@ Source: `apps/backend/infrastructure/operator_settings.py`. `public_dict()` alre
 | Tenants / users | `tenants_list`, `users_list` | `tenant_create`, `user_create`, `user_patch` |
 | Tool registry | `tools_catalog` (shape of `GET /v1/admin/tools`) | `tool_policies_put`, `reload_tools`, `admin_create_tool` (high risk — confirm UX) |
 | RAG | `rag_search` (exists) + optional `admin_rag_config_snapshot` | `rag_ingest`, `rag_ingest_docs` |
-| Persisted `scheduler_jobs` | extend listing (archived/filters) vs current `list` | `scheduler_job_patch`, `scheduler_job_delete`, `admin_scheduler_job_archive` |
+| Persisted `scheduler_jobs` | `scheduler_job_list` (archived/filters beyond the chat tool's `list`) | `scheduler_job_patch`, `scheduler_job_delete`, `scheduler_job_set_archived` |
 | Presets | `scheduler_presets_list` | — (read-only) |
-| IDE queue | `admin_ide_jobs_due`, `admin_ide_job_ack` | thin wrappers |
 | Project runs | `project_runs_list` | `run_create` |
 
 Names are **indicative**; align with `TOOL_ID` / plugin layout when implementing.
 
 ## Tools today (allowlist)
 
-The operator’s tool surface is resolved from `plugins/agents/operator.py` (`AGENT_TOOL_CAPABILITY_ANY`, …) and `apps/backend/domain/agent_registry.py` (`get_agent`); admin handlers live in `plugins/tools/capabilities/platform/operator_admin.py`:
+The operator’s tool surface is a **capability grant**, not a tool list. `plugins/agents/operator/agent.yaml` declares `tool_capability_any`: `operator.console`, `knowledge.retrieve`, `scheduler.job.read`, `scheduler.job.write`, `meta.discover`, `meta.inspect` — resolved by `get_agent` (`apps/backend/domain/agent_runtime/registry.py`). A module attaches capabilities per declared tool name (`TOOL_CAPABILITIES`, `AGENT_TOOL_META_BY_NAME`), so one module can carry several capabilities at different `min_role`s:
 
-| Tool | Role |
-|------|------|
-| `list` | List tool names (meta discovery). |
-| `list_available_tools` | Broader listing helper. |
-| `list_tool_categories` | Categories for the catalog. |
-| `list_tools_in_category` | Tools in one category. |
-| `get_tool_help` | JSON Schema / help for a tool name. |
-| `read` | Read tool source (when policy allows). |
-| `rag_search` | Search ingested RAG corpus (respects operator RAG settings). |
-| `list` | List persisted scheduler jobs for the tenant. |
-| `create` | Create a job (`execution_target` = registry `agent_id`; workspace agents need `workspace_id`). |
-| `set_enabled` | Enable/disable a job. |
+| Capability | Unlocks | Source module |
+|------------|---------|---------------|
+| `operator.console` | the 26 admin actions in the table below **and** the 14 tuning/benchmark actions under [Agent-config tuning console](#agent-config-tuning-console-implemented) (`min_role: admin`) | `plugins/tools/platform/operator/admin.py`, `plugins/tools/platform/operator/agent_config_tools.py` |
+| `knowledge.retrieve` | `rag_search` | `plugins/tools/knowledge/rag/rag.py` |
+| `scheduler.job.read` | `list` — persisted jobs for the tenant | `plugins/tools/platform/scheduler/jobs.py` |
+| `scheduler.job.write` | `create` (job; `execution_target` = registry `agent_id`, workspace agents need `workspace_id`), `set_enabled` | `plugins/tools/platform/scheduler/jobs.py` |
+| `meta.discover` | `list` (tool names), `list_available_tools`, `list_tool_categories`, `list_tools_in_category` | `plugins/tools/platform/tool_factory/list.py`, `plugins/tools/platform/tool_help/help.py` |
+| `meta.inspect` | `read` (tool source, when policy allows), `get_tool_help` | `plugins/tools/platform/tool_factory/read.py`, `plugins/tools/platform/tool_help/help.py` |
+
+Names above are the **declared** `function.name`; the registry registers those verbatim and only qualifies with `TOOL_DOMAIN` when a name collides (`apps/backend/domain/plugin_system/registry.py`). `list`, `read` and `create` are declared by several modules, so a deployment can legitimately show `scheduler.list` or `tool_factory.read` — wire new surfaces to the **capability**, never to a bare name.
 
 Implementation pointers:
 
-- Scheduler tools: `plugins/tools/capabilities/platform/scheduler_jobs/scheduler_jobs.py`
-- RAG tool: `plugins/tools/capabilities/knowledge/rag/rag.py` (uses `operator_settings` for enable/top_k, etc.)
-- **Operator admin console:** `plugins/tools/capabilities/platform/operator_admin.py` — `TOOL_MIN_ROLE = "admin"`, capability `operator.console`. Allowlist patterns: `operator_settings_*`, `operator_interfaces_*`, `operator_external_llm_*`, `admin_*`.
+- Scheduler tools: `plugins/tools/platform/scheduler/jobs.py` — `TOOL_ID = "scheduler_jobs"`, `TOOL_DOMAIN = "scheduler"`, declared names `create` / `list` / `set_enabled` (each at `min_role: user`)
+- RAG tool: `plugins/tools/knowledge/rag/rag.py` (uses `operator_settings` for enable/top_k, etc.)
+- **Operator admin console:** `plugins/tools/platform/operator/admin.py` — `TOOL_ID = "operator_admin"`, `TOOL_MIN_ROLE = "admin"`, capability `operator.console`. `plugins/agents/operator/agent.yaml` grants tools by **capability** (`tool_capability_any`), not by tool-name pattern.
 
 ### Operator admin console (implemented)
 
-| Tool | Purpose |
-|------|---------|
-| `settings_get` | Masked settings + interface hints |
-| `settings_patch` | `OperatorSettingsPatch` fields only |
-| `interfaces_get` / `interfaces_put` | Application IDs + `agent_mode` |
-| `external_llm_endpoints_get` / `…_put` | External LLM endpoint rows |
-| `external_llm_models_list` | Probe `GET …/v1/models` (sync HTTP) |
-| `tenants_list` / `tenant_create` | Tenants |
-| `users_list` / `user_create` / `user_patch` | Users |
-| `tools_catalog` / `tool_policies_put` / `reload_tools` | Tool registry + policies |
-| `rag_ingest` / `rag_ingest_docs` | RAG ingest |
-| `admin_scheduler_job_*` | List/create/patch/enable/archive/delete persisted jobs |
-| `scheduler_presets_list` | Preset JSON templates |
-| `project_runs_list` / `run_create` | IDE project runs |
+| Tool | Purpose | Gate inside the handler |
+|------|---------|-------------------------|
+| `settings_get` | Masked settings + interface hints | site admin |
+| `settings_patch` | `OperatorSettingsPatch` fields only | site admin |
+| `interfaces_get` / `interfaces_put` | Application IDs + `agent_mode` | site admin |
+| `external_llm_endpoints_get` / `…_put` | External LLM endpoint rows | site admin |
+| `external_llm_models_list` | Probe `GET …/v1/models` (sync HTTP) | site admin |
+| `tenants_list` / `tenant_create` | Tenants | site admin |
+| `users_list` / `user_create` / `user_patch` | Users | `user.manage`; the listing carries only the caller's companies, a move between them needs site admin |
+| `tools_catalog` / `tool_policies_put` / `reload_tools` | Tool registry + policies | site admin |
+| `rag_ingest` | RAG ingest into an operator domain | `knowledge.manage`, the caller's own company |
+| `rag_ingest_docs` | Whole-tree ingest from a `docs_root` the caller names | site admin |
+| `scheduler_job_list` / `_create` / `_patch` / `_set_enabled` / `_set_archived` / `_delete` | Persisted jobs, admin store API | `schedule.manage`; list/create take an optional `tenant_id`, the mutations read the company off the row |
+| `scheduler_presets_list` | Preset JSON templates | signed in only — the presets route it mirrors asks nothing more |
+| `project_runs_list` / `run_create` | Coding project runs | `dashboard.manage`, the caller's own company |
+
+**Each handler asks its route's two questions.** Never-delegable work (the rows above marked *site admin* — the operator row, provider endpoints, tenants, the tool registry, a caller-supplied path) has no capability slug and goes through `site_scope`; company work names its own slug and goes through `scope_for`, both in `apps/backend/domain/access/capabilities.py`. Those are the same two factories `require_admin_scope` walks per HTTP request, so a handler cannot be looser than the route it mirrors: a delegated `user.manage` holder lists one company, a `job_id` from another company reads as `job not found` rather than `403`, and the create path applies `schedule_permission_error` with the company it is about to write to — the capability says what work, never which agent.
+
+All three admin consoles in the plugin tree — both operator ones and the reviewer's `plugins/tools/platform/reviewer/audit.py` — ask through one guard, `console_scope` (`apps/backend/infrastructure/identity/console_access.py`), the in-process twin of `require_admin_scope`. A tool handler has no `Request` to authenticate — it knows its caller only through the chat identity the runtime left in a contextvar, which is exactly how a console can drift looser than the routes it mirrors — so the guard reads the same three columns in the same order and raises `AdminScopeError` instead of an `HTTPException`. The reviewer's fifteen read-only actions split the way their routes split, not the way their names sound: the nine benchmark, experiment and review actions mirror routes that carry no capability slug and admit a site admin, the config reads and the draft need `agent.assign` inside the caller's company, `agents_get` needs the same slug and no company, and `run_trace_get` needs `observability.read` — which is why `review_submit` (a benchmark route) sits on the site-admin side while `review_recommend_patches` (an `agent-config/draft` route) sits on the capability side. Pinned by `tests/unit/test_operator_console_scope.py`, `tests/unit/test_operator_agent_config_scope.py` and `tests/unit/test_reviewer_audit_scope.py`.
+
+The **door** in front of the console asks the same question the admin routes ask: `TOOL_MIN_ROLE = "admin"` is judged by `caller_fulfills_effective_policy` (`apps/backend/domain/plugin_system/tool_policy.py`) on the role it is handed through the `tool_role` seam (`apps/backend/domain/plugin_system/tools.py`), and every feed resolves that role with `db.user_effective_role` (`apps/backend/infrastructure/db/identity_tenants.py`) — `users.site_role`, the only elevation source under [ADR 0011](../adr/0011-roles-and-agent-access-without-tenancy.md). It used to be fed `db.user_role`, which reads the legacy `users.role`, so all three consoles stayed open for an account that was demoted in `site_role` and still carried `role='admin'` from before the migration. Two things keep the rewiring from drifting back: the seam has no fallback, so an unregistered dependency makes the door raise instead of guessing a role, and the chat feed treats an unresolved role as a plain `user` rather than skipping the filter — the surrounding block degrades to forwarding the unfiltered tool list, which is the one failure mode that would hand the consoles to the model. What differs from HTTP is only *where* the role comes from: a request authenticates once, a tool handler knows its caller through the chat-identity contextvar. The feeds — invoke, the chat tool list (`chat_tool_selection.py`), `GET /v1/tools`, `GET /v1/capabilities`, the admin effective-tools preview, `agents_catalog` and `delegate`'s specialist list — are pinned behaviourally and by source scan in `tests/unit/test_tool_min_role_door_uses_site_role.py`.
+
+### Agent-config tuning console (implemented)
+
+`plugins/tools/platform/operator/agent_config_tools.py` — `TOOL_ID = "operator_agent_config"`, the same capability and the same `min_role: admin` door. These 14 actions mirror `/v1/admin/agent-config/*` and `/v1/admin/benchmarks/*`, so the split follows the routes rather than the theme: tuning is company data, benchmarks are not.
+
+| Tool | Purpose | Gate inside the handler |
+|------|---------|-------------------------|
+| `agent_config_knobs` / `_snapshot` / `_changelog` | Knob schema, current fingerprint, who changed what | `agent.assign`, the caller's own company |
+| `agent_config_apply` | Write knob patches | `agent.assign`, own company — plus the two guards its route puts before any write: a knob on the `operator` layer and `trigger_benchmark` both need site admin, and the knob denial names the knobs so the caller learns what to escalate rather than that the patch failed |
+| `tuning_session_create` / `_validate` / `_close` | Tuning sessions | `agent.assign`, the caller's own company |
+| `agents_list` / `agents_get` | Agent registry rows for the picker | `agent.assign` — the registry is instance-wide, so its route gate is the capability alone |
+| `benchmark_run_start` / `_get` | Benchmark runs | site admin — the benchmark routes carry no capability slug |
+| `benchmark_experiment_create` / `_get` / `_run` | Experiments | site admin |
 
 ## What the operator cannot do yet (Web-UI parity)
 
-Until the **Suggested Operator tool bundles** in [Admin configuration surface](#admin-configuration-surface-code-audit) exist as real `tools[]` entries, the Operator can only **describe** behaviour — not apply it. Chat tools already cover a **subset** of scheduler actions when the plugin tools are allowed; they do not replace admin HTTP for tenants, policies, RAG ingest, etc.
+The admin console above already implements most of the [suggested bundles](#suggested-operator-tool-bundles-http--tools) — reading and patching settings, interfaces, endpoints, tenants/users, tool policies, RAG ingest, jobs, presets, project runs. What is still open:
+
+| Gap | Detail |
+|-----|--------|
+| Secrets out-of-band | `discord_bot_agent_bearer`, `telegram_bot_agent_bearer`, `optional_connection_key` are on neither `OperatorSettingsPatch` nor any tool — there is deliberately no chat path for them, but the setup-link flow that would replace it is unbuilt (`setup_link` / `setup_id` appear nowhere under `plugins/`). |
+| Tool authoring | `POST /v1/admin/create-tool` has no tool counterpart; the console can list and re-policy the catalog, not generate code. |
+| Tenant templates | `GET /v1/admin/tenant-templates` is HTTP-only, so `tenant_create` can be reached without ever seeing a valid `template_id`. |
+| Other provider kinds | the console wraps the **legacy chat** endpoint routes; `/v1/admin/provider-endpoints/{kind}` (embedding and the rest) is HTTP-only. |
+| Company scope and the door | closed for the consoles: every handler of all three asks the scope its own route asks, and the `min_role` door in front of them now reads `users.site_role` the way the routes do (see the door above). Outside the consoles the legacy `users.role` answered the elevation question in two more families. **(1) Runners and bridges** — `infrastructure/scheduling/scheduler.py`, `infrastructure/scheduling/scheduler_jobs_runner.py`, `infrastructure/codebase/coding_schedule_execution.py`, `infrastructure/agent_runtime/agent_tasks_runner.py`, `infrastructure/integrations/bridge_agent_session.py` (four reads), `bridge_agent_turn.py`, `telegram_bridge.py`, `discord_bridge.py`, `infrastructure/voice/voice_realtime_turn_service.py`; most of these only hand the value to `domain/model_routing/resolution.py` as `bearer_user_role`, so what they decide is which model a turn may use. **(2)** `application/agent_runtime/use_cases/auto_workspace.py` — it both branched on `db.user_role(user_id) == "admin"` and stamped `u.role` on the user object it passes on. **Both closed 2026-10-04, and the reader with them:** `db.user_role` no longer exists — `grep -rn 'db\.user_role(' apps plugins --include='*.py'` answers two prose lines and no call — and every role answer now runs through `infrastructure/db/identity_tenants._role_columns`, the single read that hands the *pair* `(users.site_role, users.role)` to the pure rule in `domain/identity/roles.py`. The carriers still carry a role word, but always the resolved one: `infrastructure/identity/auth.py` normalizes every `User(...)` it constructs (so `.role` on an authenticated object is the resolver's answer, and the bearer feeds in the runners, bridges and `chat_completions_api` forward that, not the column), `auto_workspace.py` branches on `db.user_site_admin` instead of stamping a role onto the object, and the catalog tool takes its role from the resolver instead of from a caller-supplied context key. What the family decided: the model-override door `domain/model_routing/resolution.py::_override_allowed`, the bridge's `min_role` agent gate, and the chat run's user object that every tool and workspace gate reads. An unreadable row denies — it never falls back onto the caller's claim. Pinned per actor in `tests/unit/test_remaining_role_carriers_use_site_role.py` (15 tests; every fixture is a row pair patched at `_role_columns`, never a reader's verdict) and kept from drifting back by the gate `scripts/checks/checks/legacy_role_reads.py` — run `python3 scripts/checks/run.py --check legacy_role_reads`. It refuses a bare legacy column read outside the three identity pair readers (each exemption carries its reason in `scripts/checks/config.json`) and refuses a *claim* read (`bearer_user_role`, `user_role` off a context dict) outright; three mutations — the identity lookup answering `role=row[2]`, a bearer claim written onto the run's user object, and a re-added `SELECT id, role FROM users` — each turned tests or the gate red and were reverted byte-exact. **What is left is not a read but a write:** no runtime path touches `users.site_role` (`grep -rn "UPDATE users SET" --include='*.py' apps/backend plugins` hits the entitlement columns only; the column is written in `schema_111_identity_roles_deployment_mode.py:43-44` and nowhere else), so demoting someone is still an operator action in SQL — what this closes is that the stale `role='admin'` left behind by such a demotion decides nothing. Closed 2026-10-02: the schedule HTTP flags (`api/scheduling/controllers/scheduler_jobs_user_api.py`, `scheduler_job_runs_api.py`), the schedules feature gate (`infrastructure/scheduling/schedules_access.py`), the hosted-workspace gate (`infrastructure/platform/client_surface_policy.py`) and the self-workspace gate (`infrastructure/workspace/workspace_service.self_editing_allowed`, whose carrier `domain/workspace/workspace_common.user_from_context` now hands an id and no role at all) — pinned by `tests/unit/test_schedule_and_workspace_rights_use_site_role.py`, which additionally rejects a re-introduced legacy read in those six files by source scan. Closed the same day: the task queueing rule — `domain/agent_runtime/task_approval.normalize_new_task_status` takes `site_role` and its caller `plugins/tools/platform/tasks/agent_tasks.py` resolves that through `db.user_site_role`, so a demoted account no longer creates tasks that start `queued` — pinned per actor and by source scan in `tests/unit/test_task_approval_uses_site_role.py`. What that rule opens is the draft row rather than an approval: `task_update` moves any task the caller may see to `queued` for every account, and the sibling `may_transition_to_queued` was dead code that returned `True` on both branches and is gone. Closed 2026-10-03: the dashboards gate — `domain/dashboards/access.evaluate_dashboards_access` took `user_role` as well and returned `True` for it before ever reaching `site_role`, so a demoted account kept the dashboards it was just denied; the parameter is gone and its only caller `infrastructure/dashboard/dashboard_access.user_may_use_dashboards` resolves `db.user_site_role` and nothing else (an account with no id, or a lookup that raised, fell back onto `user.role` off the request object — both deny now), while the caller-less `dashboard_permission_error_from_flags` took the same parameter and was deleted rather than converted. Pinned per actor and by source scan in `tests/unit/test_dashboard_rights_use_site_role.py`; unlike the task rule this one opens the whole feature — both create routes and `dashboard_persistence.ensure_default_dashboard_for_new_user`. `agent_effective_role` (`application/identity/use_cases/request_auth.py`) — the scheduler tools, the bridge agent gate, `chat_run_bootstrap` — resolves through `db.user_effective_role` whenever there is a user id to look up; its `fallback_role` argument answers only for a caller that has no id at all, which is what keeps a carried claim from replacing a failed read. The three scheduler tools resolve for themselves now — `db.user_effective_role(caller_uid)` at `plugins/tools/platform/scheduler/jobs.py:93,188,219` — where the third argument they used to hand along was the legacy read. |
 
 ## Planned / recommended tools (roadmap)
 
@@ -197,25 +240,25 @@ Goal: **chat-first configuration** with **secrets outside the LLM** where possib
 
 ### Tier A — Read-only and safe status (highest priority)
 
-| Planned tool | Purpose |
-|--------------|---------|
-| `operator_settings_summary` | Return **non-secret** snapshot: flags, URLs, “configured yes/no”, masked tokens (e.g. last 4 chars), integration health hints. Backed by `operator_settings` public/masked dict. |
-| `interfaces_summary` | Read-only view of `/v1/admin/interfaces`-equivalent data the admin is allowed to see (no raw secrets). |
-| `bridge_status` | Per-bridge (Discord, Telegram, …): enabled, webhook/missing fields, last error from logs **if** safe to expose. |
+| Planned tool | Purpose | Status |
+|--------------|---------|--------|
+| `operator_settings_summary` | Return **non-secret** snapshot: flags, URLs, “configured yes/no”, masked tokens (e.g. last 4 chars), integration health hints. | **Shipped** as `settings_get`. |
+| `interfaces_summary` | Read-only view of `/v1/admin/interfaces`-equivalent data the admin is allowed to see (no raw secrets). | **Shipped** as `interfaces_get` (folded into `settings_get` too). |
+| `bridge_status` | Per-bridge (Discord, Telegram, …): enabled, webhook/missing fields, last error from logs **if** safe to expose. | Open — the two above report configuration, not whether the bridge actually works. |
 
 ### Tier B — Structured writes (no raw secrets in tool args)
 
-| Planned tool | Purpose |
-|--------------|---------|
-| `settings_patch` | Strictly validated subset of `OperatorSettingsPatch` keys; **reject** unknown paths; rate-limit; audit log. **Do not** accept full bot tokens if avoidable. |
-| `interfaces_put` | Thin wrapper over admin interfaces PUT with validation (or split per subsystem). |
+| Planned tool | Purpose | Status |
+|--------------|---------|--------|
+| `settings_patch` | Strictly validated subset of `OperatorSettingsPatch` keys; **reject** unknown paths. | **Shipped** — `OperatorSettingsPatch` fields only. Rate-limit and audit log were never added. |
+| `interfaces_put` | Thin wrapper over admin interfaces PUT with validation (or split per subsystem). | **Shipped** as `interfaces_put`. |
 
 ### Tier C — Secrets and onboarding (safest UX)
 
-| Planned tool | Purpose |
-|--------------|---------|
-| `admin_setup_link_create` | Create short-lived `setup_id` + URL to a **browser form** where the user pastes tokens; chat only receives a link + expiry. |
-| `admin_setup_status` | Poll `{ "discord": "pending"|"configured" }` without returning secret material. |
+| Planned tool | Purpose | Status |
+|--------------|---------|--------|
+| `admin_setup_link_create` | Create short-lived `setup_id` + URL to a **browser form** where the user pastes tokens; chat only receives a link + expiry. | Open. |
+| `admin_setup_status` | Poll `{ "discord": "pending"|"configured" }` without returning secret material. | Open. |
 
 Optional later: per-integration narrow tools (`discord_bridge_set_enabled`, `telegram_bot_set_webhook`, …) so the model cannot over-scope JSON patches.
 
@@ -228,11 +271,11 @@ Optional later: per-integration narrow tools (`discord_bridge_set_enabled`, `tel
 
 ## Related files
 
-- Agent plugin: `plugins/agents/operator.py`
-- Registry allowlist: `plugins/agents/operator.py` + `apps/backend/domain/agent_registry.py` (`AGENT_TOOL_CAPABILITY_ANY` / domain resolution)
-- Admin gate: `apps/backend/infrastructure/auth.py` (`require_admin`)
-- Operator settings service: `apps/backend/infrastructure/operator_settings.py`
-- Settings HTTP API: `apps/backend/api/main.py` (`/v1/admin/operator-settings`)
+- Agent plugin: `plugins/agents/operator/agent.yaml`
+- Registry allowlist: `plugins/agents/operator/agent.yaml` (`tool_capability_any`) resolved by `apps/backend/domain/agent_runtime/registry.py`
+- Admin gate: `apps/backend/infrastructure/identity/auth.py` — `require_site_admin` for site-wide routes, `require_admin_scope(request, CAP_…)` wherever a delegated holder may act inside their granted companies (`require_admin_capability` answers only *what*, not *where*); controllers import these through `apps/backend/application/identity/use_cases/request_auth.py`
+- Operator settings service: `apps/backend/infrastructure/settings/operator_settings.py`
+- Settings HTTP API: `apps/backend/api/providers/controllers/operator_settings_api.py` (`/v1/admin/operator-settings`)
 
 ## Changelog (doc maintenance)
 
@@ -241,3 +284,4 @@ Optional later: per-integration narrow tools (`discord_bridge_set_enabled`, `tel
 - **Admin audit:** Full `require_admin` HTTP inventory + `OperatorSettingsPatch` field groups + suggested Operator tool bundle mapping.
 - **Shipped:** `operator_admin` plugin module (`plugins/tools/capabilities/platform/operator_admin.py`) with 26 tools; operator agent allowlist via capabilities (`plugins/agents/operator.py`).
 - **Proposed:** Chat secret ingress — [`docs/adr/0006-chat-secret-ingress-pipeline.md`](../adr/0006-chat-secret-ingress-pipeline.md).
+- **Drift pass (2026-09-30):** Every path, route and guard re-derived from code. The IDE due/ack queue (`GET /v1/scheduler/jobs/due`, `POST /v1/scheduler/jobs/{job_id}/ack-run`) is gone — this page now documents what replaced it (`scheduler_job_runs` read routes); plugin paths are `plugins/agents/operator/agent.yaml`, `plugins/tools/platform/operator/admin.py`, `plugins/tools/platform/scheduler/jobs.py`; the guard names above are the ones the routers actually call. Entries before this one keep the paths as they read when written.

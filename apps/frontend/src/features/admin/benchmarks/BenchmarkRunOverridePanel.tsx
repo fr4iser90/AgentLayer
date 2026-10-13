@@ -11,6 +11,8 @@ import {
   isHarnessKnob,
   type AgentConfigKnob,
 } from "../agentConfig/agentConfigApi";
+import { TextArea } from "../../../ui/Field";
+import { Button } from "../../../ui/Button";
 
 export type RunOverridePatch = { knob_id: string; value: unknown };
 
@@ -142,42 +144,42 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
   }
 
   return (
-    <section className="rounded-xl border border-amber-500/20 bg-amber-950/10 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
+    <section className="rounded-sheet border border-warning/20 bg-warning-subtle p-wide">
+      <div className="flex flex-wrap items-start justify-between gap-base">
         <div>
-          <h3 className="text-xs font-medium uppercase text-amber-200/90">
+          <h3 className="text-xs font-medium uppercase text-badge-warning">
             {t("admin:benchRunOverridesTitle")}
             {overrides.length > 0 ? (
-              <span className="ml-2 rounded bg-amber-600/40 px-1.5 py-0.5 text-[10px] text-amber-100">
+              <span className="ml-base rounded-tile bg-warning-subtle px-snug py-hair text-meta text-badge-warning">
                 {overrides.length}
               </span>
             ) : null}
           </h3>
-          <p className="mt-1 max-w-prose text-[11px] text-surface-muted">
+          <p className="mt-tight max-w-measure text-meta text-ink-muted">
             {t("admin:benchRunOverridesHint")}
           </p>
         </div>
         <Link
           to="/admin/agent-config"
-          className="shrink-0 text-[11px] text-sky-400 hover:underline"
+          className="shrink-0 text-meta text-accent hover:underline"
         >
           {t("admin:benchHarnessContextEdit")} →
         </Link>
       </div>
 
       {error ? (
-        <p className="mt-2 rounded border border-red-500/40 bg-red-500/10 px-2 py-1 text-xs text-red-200">
+        <p className="mt-base rounded-tile border border-danger/40 bg-danger-subtle px-base py-tight text-xs text-badge-danger">
           {error}
         </p>
       ) : null}
 
       {loading ? (
-        <p className="mt-4 text-sm text-surface-muted">{t("admin:loading")}</p>
+        <p className="mt-wide text-sm text-ink-muted">{t("admin:loading")}</p>
       ) : (
-        <div className="mt-4 grid min-h-[280px] gap-4 md:grid-cols-2">
-          <section className="min-h-0 overflow-auto rounded-lg border border-surface-border bg-[#111] p-3">
-            <h4 className="mb-2 text-sm font-medium text-white">{t("admin:agentConfigKnobs")}</h4>
-            <ul className="space-y-1">
+        <div className="mt-wide grid min-h-[280px] gap-wide md:grid-cols-2">
+          <section className="min-h-0 overflow-auto rounded-card border border-line bg-[#111] p-soft">
+            <h4 className="mb-base text-sm font-medium text-ink-primary">{t("admin:agentConfigKnobs")}</h4>
+            <ul className="space-y-tight">
               {knobs.map((k) => {
                 const ov = overrideMap.get(k.id);
                 const active = selectedId === k.id;
@@ -187,18 +189,18 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
                     <button
                       type="button"
                       onClick={() => setSelectedId(k.id)}
-                      className={`w-full rounded px-2 py-1.5 text-left text-sm ${
-                        active ? "bg-white/10 text-white" : "text-surface-muted hover:bg-white/5"
+                      className={`w-full rounded-tile px-base py-snug text-left text-sm ${
+                        active ? "bg-white/10 text-ink-primary" : "text-ink-muted hover:bg-white/5"
                       }`}
                     >
                       <span className="font-mono text-xs">{k.id}</span>
                       {overridden ? (
-                        <span className="ml-2 text-[10px] uppercase text-amber-400/90">
+                        <span className="ml-base text-meta uppercase text-warning">
                           {t("admin:benchRunOverrideActive")}
                         </span>
                       ) : null}
                       <span
-                        className={`ml-2 text-xs ${overridden ? "text-amber-200/90" : "opacity-70"}`}
+                        className={`ml-base text-xs ${overridden ? "text-badge-warning" : "opacity-70"}`}
                       >
                         {formatKnobValue(k, ov)}
                       </span>
@@ -209,64 +211,67 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
             </ul>
           </section>
 
-          <section className="flex min-h-0 flex-col gap-3 overflow-auto rounded-lg border border-surface-border bg-[#111] p-3">
-            <h4 className="text-sm font-medium text-white">{t("admin:benchRunOverrideEditTitle")}</h4>
+          <section className="flex min-h-0 flex-col gap-soft overflow-auto rounded-card border border-line bg-[#111] p-soft">
+            <h4 className="text-sm font-medium text-ink-primary">{t("admin:benchRunOverrideEditTitle")}</h4>
             {selected ? (
               <>
-                <p className="text-xs text-surface-muted">
+                <p className="text-xs text-ink-muted">
                   {selected.layer ? `[${selected.layer}] ` : ""}
                   {selected.doc}
                 </p>
 
-                <div className="rounded border border-surface-border/60 bg-black/20 p-2 text-xs text-surface-muted">
+                <div className="rounded-tile border border-line/60 bg-black/20 p-base text-xs text-ink-muted">
                   <p className="font-medium text-white/90">{t("admin:benchRunOverrideHarnessBaseline")}</p>
-                  <p className="mt-1 font-mono">{formatKnobValue(selected, undefined)}</p>
-                  <p className="mt-2">
+                  <p className="mt-tight font-mono">{formatKnobValue(selected, undefined)}</p>
+                  <p className="mt-base">
                     {t("admin:agentConfigEffectiveSource")}: {formatKnobSource(selected.source, t as any)}
                   </p>
                 </div>
 
                 {hasOverride ? (
-                  <div className="rounded border border-amber-500/30 bg-amber-950/30 p-2 text-xs">
-                    <p className="font-medium text-amber-100/90">{t("admin:benchRunOverrideForRun")}</p>
-                    <p className="mt-1 font-mono text-amber-200">{formatKnobValue(selected, selectedOverride)}</p>
+                  <div className="rounded-tile border border-warning/30 bg-warning-subtle p-base text-xs">
+                    <p className="font-medium text-badge-warning">{t("admin:benchRunOverrideForRun")}</p>
+                    <p className="mt-tight font-mono text-badge-warning">{formatKnobValue(selected, selectedOverride)}</p>
                   </div>
                 ) : null}
 
-                <div className="rounded border border-blue-500/30 bg-blue-500/5 p-2 text-xs text-blue-100/90">
+                <div className="rounded-tile border border-blue-500/30 bg-blue-500/5 p-base text-xs text-blue-100/90">
                   {t(`admin:${knobHelpKey(selected.id)}`, {
                     defaultValue: selected.doc || selected.id,
                   })}
                 </div>
 
-                <label className="text-xs text-surface-muted">{t("admin:benchRunOverrideValueLabel")}</label>
-                <textarea
-                  className="min-h-[80px] w-full rounded border border-surface-border bg-black/30 p-2 font-mono text-sm text-white"
+                <label className="text-xs text-ink-muted">{t("admin:benchRunOverrideValueLabel")}</label>
+                <TextArea
+                  mono
+                  className="min-h-[80px]"
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                 />
 
-                <div className="flex flex-wrap gap-2">
-                  <button
+                <div className="flex flex-wrap gap-base">
+                  <Button
+                    variant="primary"
+                    tone="warning"
                     type="button"
                     onClick={() => setOverrideForKnob(selected)}
-                    className="rounded bg-amber-700 px-3 py-2 text-sm text-white hover:bg-amber-600"
+                    className="px-soft py-base text-sm"
                   >
                     {t("admin:benchRunOverrideSetBtn")}
-                  </button>
+                  </Button>
                   {hasOverride ? (
-                    <button
+                    <Button
                       type="button"
                       onClick={() => clearOverride(selected.id)}
-                      className="rounded border border-white/15 px-3 py-2 text-sm text-surface-muted hover:bg-white/5"
+                      className="px-soft py-base text-sm text-ink-muted hover:bg-white/5"
                     >
                       {t("admin:benchRunOverrideUseHarness")}
-                    </button>
+                    </Button>
                   ) : null}
                 </div>
               </>
             ) : (
-              <p className="text-sm text-surface-muted">{t("admin:agentConfigSelectKnob")}</p>
+              <p className="text-sm text-ink-muted">{t("admin:agentConfigSelectKnob")}</p>
             )}
           </section>
         </div>

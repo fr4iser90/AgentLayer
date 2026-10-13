@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 
+from apps.backend.domain.identity.roles import ELEVATED_SQL
 from apps.backend.infrastructure.platform.config import AGENT_INITIAL_ADMIN_EMAIL, AGENT_INITIAL_ADMIN_PASSWORD
 from apps.backend.infrastructure.dashboards.dashboard_persistence import ensure_default_dashboard_for_new_user
 from apps.backend.infrastructure.identity.auth import insert_user_with_cursor
@@ -15,10 +16,10 @@ logger = logging.getLogger(__name__)
 
 
 def is_first_start() -> bool:
-    """True when no admin user exists."""
-    with db.pool().connection() as conn:
+    """True when no elevated account exists yet (the domain rule, not the legacy column)."""
+    with db.pool().connection() as conn:  # tenant-scope: site-wide — nothing exists yet
         with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'")
+            cur.execute(f"SELECT COUNT(*) FROM users WHERE {ELEVATED_SQL}")
             admin_count = cur.fetchone()[0]
             return admin_count == 0
 
@@ -38,10 +39,10 @@ def try_create_initial_admin_from_env() -> bool:
         )
         return False
 
-    with db.pool().connection() as conn:
+    with db.pool().connection() as conn:  # tenant-scope: site-wide — first-admin bootstrap
         with conn.cursor() as cur:
             cur.execute("SELECT pg_advisory_xact_lock(872814001)")
-            cur.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'")
+            cur.execute(f"SELECT COUNT(*) FROM users WHERE {ELEVATED_SQL}")
             if cur.fetchone()[0] > 0:
                 conn.rollback()
                 return False

@@ -6,18 +6,21 @@ import json
 import uuid
 from unittest.mock import patch
 
+from apps.backend.domain.delegation.artifact_handoff import (
+    extract_handoff_artifact_ids,
+    load_delegate_allowed_paths,
+    paths_from_artifact_content,
+)
 from apps.backend.domain.delegation.enforcement import (
     coding_delegate_tool_blocked,
-    delegate_excerpt_is_actionable,
     delegate_fingerprint,
-    extract_handoff_artifact_ids,
     general_orchestrator_tool_blocked,
-    load_delegate_allowed_paths,
     orchestrator_pre_tool_blocked,
-    paths_from_artifact_content,
     record_orchestrator_delegate_success,
     subagent_reject_reason,
 )
+from apps.backend.domain.delegation.excerpt_quality import delegate_excerpt_is_actionable
+from apps.backend.domain.delegation.result_preview import tool_result_display_line
 
 
 def test_paths_from_artifact_content_generic() -> None:
@@ -121,7 +124,7 @@ def test_handoff_artifact_ids_from_delegate_payload() -> None:
 def test_load_delegate_allowed_paths() -> None:
     aid = uuid.uuid4()
     with patch(
-        "apps.backend.domain.delegation.enforcement.agent_artifacts_store.get_artifact",
+        "apps.backend.domain.delegation.artifact_handoff.agent_artifacts_store.get_artifact",
         return_value={
             "content": {"high_paths": ["plugins/tools/x.py"]},
         },
@@ -218,8 +221,6 @@ def test_delegate_excerpt_is_actionable_rejects_tool_markup() -> None:
 
 
 def test_tool_result_display_line_delegate() -> None:
-    from apps.backend.domain.delegation.enforcement import tool_result_display_line
-
     ok_json = json.dumps(
         {"ok": True, "assistant_excerpt": "README.md: Hello World!"}
     )
@@ -227,3 +228,33 @@ def test_tool_result_display_line_delegate() -> None:
     fail_json = json.dumps({"ok": False, "error": "sub-agent timed out"})
     assert "timed out" in (tool_result_display_line("delegate", fail_json) or "")
     assert tool_result_display_line("workspace.create", ok_json) is None
+
+
+def test_tool_result_display_line_bash() -> None:
+    ok_json = json.dumps(
+        {
+            "ok": True,
+            "exit_code": 0,
+            "output": "fetched 3 months\nwrote ./pdfs/a.pdf",
+        }
+    )
+    display = tool_result_display_line("bash", ok_json) or ""
+    assert "exit 0" in display
+    assert "fetched 3 months" in display
+    assert "a.pdf" in display
+
+    fail_json = json.dumps(
+        {
+            "ok": False,
+            "exit_code": 1,
+            "error": "command failed (exit 1)",
+            "output": "Error: login failed",
+        }
+    )
+    fail_display = tool_result_display_line("bash", fail_json) or ""
+    assert "exit 1" in fail_display
+    assert "login failed" in fail_display
+
+    assert tool_result_display_line(
+        "bash", json.dumps({"ok": True, "exit_code": 0, "output": "(no output)"})
+    ) == "exit 0"

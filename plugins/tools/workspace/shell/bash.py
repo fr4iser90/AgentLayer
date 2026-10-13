@@ -11,10 +11,17 @@ from typing import Any, Callable
 from plugins.tools.workspace.lib.bash_policy import (
     coding_bash_strict_enabled,
     is_blocked,
+    prepare_coding_bash_command,
     resolve_path_under_workspace,
     strict_mode_reject_reason,
     subprocess_env_for_coding,
+    unsupported_shell_builtin_reason,
 )
+from plugins.tools.workspace.lib.env_secret_bridge import (
+    redact_injected_secrets,
+    resolve_bound_secrets,
+)
+from plugins.tools.workspace.lib.host_toolchain import missing_executable_payload
 from plugins.tools.workspace.lib.package_admission import package_admission_gate
 from plugins.tools.workspace.lib.common import (
     json_workspace_missing_error,
@@ -40,8 +47,14 @@ TOOL_CAPABILITIES = ("coding.execute",)
 TOOL_LABEL = "Coding: Bash"
 TOOL_DESCRIPTION = (
     "Run a shell command within the coding workspace (tests, builds, git, npm, docker, …). "
+    "Commands run in the **AgentLayer server container** PATH (not the user laptop unless "
+    "execution_mode=client). If a binary is missing, the error includes missing_executable "
+    "and a hint — call repository.environment to list available CLIs. "
+    "Workspace env_bindings inject user_secrets as process env (no .env file). "
     "Prefer coding_read_file, coding_search, and coding_glob for reads and search; "
-    "prefer coding_git_sync for git pull/fetch. Output is truncated; use workdir instead of cd."
+    "prefer coding_git_sync for git pull/fetch. Output is truncated; use workdir instead of cd. "
+    "One simple command per call (shell=False): no && / || / ; / | . "
+    "Redirects to /dev/null are ignored (stdout/stderr already captured)."
 )
 
 DEFAULT_TIMEOUT = 120
@@ -97,6 +110,42 @@ def bash(arguments: dict[str, Any], context: dict | None = None) -> str:
     policy_err = is_blocked(command)
     if policy_err:
         return json.dumps({"ok": False, "error": policy_err}, ensure_ascii=False)
+
+    cleaned, prep_err, redirects_stripped = prepare_coding_bash_command(command)
+    if prep_err:
+        return json.dumps(
+            {
+                "ok": False,
+                "error": prep_err,
+                "shell_meta": True,
+                "hint": (
+                    "Run one simple program per bash call. No && / || / ; / | . "
+                    "Do not use redirects — stderr is already captured. "
+                    "Example: {\"command\": \"ls -la ./pdfs\"}."
+                ),
+                "for_assistant_must_say_de": (
+                    "Bash akzeptiert nur einen Befehl ohne Verkettung. "
+                    "Erneut mit einem einfachen Kommando aufrufen (ohne &&/||/;/|)."
+                ),
+                "for_assistant_must_say_en": (
+                    "Bash accepts one simple command only. Retry without &&/||/;/|."
+                ),
+            },
+            ensure_ascii=False,
+        )
+    command = cleaned or command
+
+    builtin_err = unsupported_shell_builtin_reason(command)
+    if builtin_err:
+        return json.dumps(
+            {
+                "ok": False,
+                "error": builtin_err,
+                "shell_builtin": True,
+                "hint": "Use the bash tool `workdir` argument instead of `cd`.",
+            },
+            ensure_ascii=False,
+        )
     if coding_bash_strict_enabled():
         strict_err = strict_mode_reject_reason(command)
         if strict_err:
@@ -131,6 +180,30 @@ def bash(arguments: dict[str, Any], context: dict | None = None) -> str:
             return json.dumps(no_github_pat_payload(), ensure_ascii=False)
         extra_env, askpass_cleanup = askpass_extra_env(pat_token)
 
+    from apps.backend.domain.shared.identity import get_identity
+
+    _tid, uid = get_identity()
+    wid = ws.get("id")
+    secret_env, missing_secrets, bound_names = resolve_bound_secrets(
+        root, user_id=uid, workspace_id=wid
+    )
+    if missing_secrets:
+        return json.dumps(
+            {
+                "ok": False,
+                "error": "workspace env bindings reference missing user secrets",
+                "missing_service_keys": missing_secrets,
+                "bound_env_names": bound_names,
+                "hint": (
+                    "Call request_user_secret or save_user_secret for each missing service_key, "
+                    "or adjust bindings via env_bindings. Secrets are not written to .env."
+                ),
+            },
+            ensure_ascii=False,
+        )
+    if secret_env:
+        extra_env = {**extra_env, **secret_env}
+
     env = subprocess_env_for_coding(home=str(root.resolve()), cwd=cwd, extra=extra_env)
 
     try:
@@ -154,6 +227,7 @@ def bash(arguments: dict[str, Any], context: dict | None = None) -> str:
         if e.stderr:
             out_text += "\n" + str(e.stderr)
         out_text = redact_secrets(out_text, pat_token)
+        out_text = redact_injected_secrets(out_text, secret_env)
         preview, cut = _tail(out_text, MAX_OUTPUT_BYTES)
         detail = "..." if cut else ""
         return json.dumps(
@@ -167,7 +241,7 @@ def bash(arguments: dict[str, Any], context: dict | None = None) -> str:
             ensure_ascii=False,
         )
     except OSError as e:
-        return json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False)
+        return json.dumps(missing_executable_payload(command, e), ensure_ascii=False)
     finally:
         if askpass_cleanup:
             cleanup_askpass_paths(askpass_cleanup)
@@ -181,6 +255,7 @@ def bash(arguments: dict[str, Any], context: dict | None = None) -> str:
     if not combined:
         combined = "(no output)"
     combined = redact_secrets(combined, pat_token)
+    combined = redact_injected_secrets(combined, secret_env)
     preview, cut = _tail(combined, MAX_OUTPUT_BYTES)
     exit_code = int(result.returncode)
     payload: dict[str, Any] = {
@@ -190,6 +265,10 @@ def bash(arguments: dict[str, Any], context: dict | None = None) -> str:
         "output": preview,
         "command": command,
     }
+    if redirects_stripped:
+        payload["redirects_stripped"] = True
+    if secret_env:
+        payload["env_secrets_injected"] = sorted(secret_env.keys())
     if needs_pat:
         payload["github_auth"] = "pat_injected"
         reason = git_auth_failure_reason(combined, exit_code)
@@ -234,21 +313,21 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "bash",
-            "TOOL_DESCRIPTION": "Run a shell command within the coding workspace. ",
+            "description": "Run a shell command within the coding workspace. ",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "command": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Required. Full shell command to run in the workspace (e.g. git status, ls -la). Never omit this field.",
+                        "description": "Required. Full shell command to run in the workspace (e.g. git status, ls -la). Never omit this field.",
                     },
                     "timeout": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": f"Timeout in seconds (default {DEFAULT_TIMEOUT})",
+                        "description": f"Timeout in seconds (default {DEFAULT_TIMEOUT})",
                     },
                     "workdir": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Working directory relative to coding root",
+                        "description": "Working directory relative to coding root",
                     },
                 },
                 "required": ["command"],

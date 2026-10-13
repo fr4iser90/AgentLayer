@@ -6,6 +6,9 @@ import {
 } from "../../../features/admin/operatorSettings/operatorSettingsTypes";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
+import { Checkbox } from "../../../ui/Checkbox";
+import { Select, TextInput } from "../../../ui/Field";
+import { Button } from "../../../ui/Button";
 
 function ProviderModelSelect({
   id,
@@ -27,9 +30,9 @@ function ProviderModelSelect({
   const current = value.trim();
   const options = current && !models.includes(current) ? [current, ...models] : models;
   return (
-    <select
+    <Select
       id={id}
-      className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
+      className="mt-tight"
       value={current}
       disabled={loading || options.length === 0}
       onChange={(e) => onChange(e.target.value)}
@@ -40,7 +43,7 @@ function ProviderModelSelect({
           {model}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
@@ -63,7 +66,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
   }, [ttsProviderId, s.loadOperatorProviderModels]);
 
   if (s.loading) {
-    return <p className="text-sm text-surface-muted">{t("admin:loading")}</p>;
+    return <p className="text-sm text-ink-muted">{t("admin:loading")}</p>;
   }
   const showPlatform = mode === "all" || mode === "platform";
   const showVoice = mode === "all" || mode === "voice";
@@ -96,70 +99,72 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
     <>
           {showPlatform ? (
           <>
-          <section className="mt-8 rounded-xl border border-surface-border bg-surface-raised p-5">
-            <h2 className="text-sm font-medium text-white">{t("admin:ifPlatformAgentModeTitle")}</h2>
-            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformAgentModeIntro")}</p>
-            <p className="mt-2 text-xs text-surface-muted">
+          <section className="mt-deep rounded-sheet border border-line bg-card p-roomy">
+            <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifPlatformAgentModeTitle")}</h2>
+            <p className="mt-base text-xs text-ink-muted">{t("admin:ifPlatformAgentModeIntro")}</p>
+            <p className="mt-base text-xs text-ink-muted">
               {t("admin:ifPlatformAgentModeEnvEffective", {
                 env: s.agentModeEnv,
                 effective: s.agentModeEffective,
               })}
             </p>
-            <label className="mt-3 block text-xs text-surface-muted" htmlFor="agent-mode">
+            <label className="mt-soft block text-xs text-ink-muted" htmlFor="agent-mode">
               {t("admin:ifPlatformAgentModeOverride")}
             </label>
-            <select
+            <Select
               id="agent-mode"
-              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+              className="mt-tight max-w-controlWide"
               value={s.agentMode}
               onChange={(e) => s.setAgentMode(e.target.value as "env" | "sandbox" | "host")}
             >
               <option value="env">{t("admin:ifPlatformAgentModeUseEnv")}</option>
               <option value="sandbox">{t("admin:ifPlatformAgentModeSandbox")}</option>
               <option value="host">{t("admin:ifPlatformAgentModeHost")}</option>
-            </select>
+            </Select>
           </section>
-          <section className="mt-8 rounded-xl border border-surface-border bg-surface-raised p-5">
-            <h2 className="text-sm font-medium text-white">{t("admin:ifPlatformDashboardUploadsTitle")}</h2>
-            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformUploadIntro")}</p>
+          <section className="mt-deep rounded-sheet border border-line bg-card p-roomy">
+            <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifPlatformDashboardUploadsTitle")}</h2>
+            <p className="mt-base text-xs text-ink-muted">{t("admin:ifPlatformUploadIntro")}</p>
             {s.uploadEffBytes != null ? (
-              <p className="mt-2 text-xs text-surface-muted">
+              <p className="mt-base text-xs text-ink-muted">
                 {t("admin:ifPlatformUploadEffective", {
                   bytes: s.uploadEffBytes,
                   mime: s.uploadEffMime.join(", ") || "—",
                 })}
               </p>
             ) : null}
-            <label className="mt-4 block text-xs text-surface-muted" htmlFor="wu-mb">
+            <label className="mt-wide block text-xs text-ink-muted" htmlFor="wu-mb">
               {t("admin:ifPlatformUploadMaxMb")}
             </label>
-            <input
+            <TextInput
+              mono
               id="wu-mb"
               type="number"
               min={1}
               max={512}
-              className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              className="mt-tight max-w-control"
               value={s.uploadMaxMb}
               onChange={(e) => s.setUploadMaxMb(e.target.value)}
               placeholder={t("admin:ifPlatformUploadMbPlaceholder")}
             />
-            <label className="mt-4 block text-xs text-surface-muted" htmlFor="wu-mime">
+            <label className="mt-wide block text-xs text-ink-muted" htmlFor="wu-mime">
               {t("admin:ifPlatformUploadMime")}
             </label>
-            <input
+            <TextInput
+              mono
               id="wu-mime"
-              className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              className="mt-tight"
               value={s.uploadMime}
               onChange={(e) => s.setUploadMime(e.target.value)}
               placeholder={t("admin:ifPlatformMimePlaceholder")}
             />
           </section>
 
-          <section className="mt-8 rounded-xl border border-surface-border bg-surface-raised p-5">
-            <h2 className="text-sm font-medium text-white">{t("admin:ifPlatformMediaTitle")}</h2>
-            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformMediaIntro")}</p>
+          <section className="mt-deep rounded-sheet border border-line bg-card p-roomy">
+            <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifPlatformMediaTitle")}</h2>
+            <p className="mt-base text-xs text-ink-muted">{t("admin:ifPlatformMediaIntro")}</p>
             {s.mediaEffUploadBytes != null ? (
-              <p className="mt-2 text-xs text-surface-muted">
+              <p className="mt-base text-xs text-ink-muted">
                 {t("admin:ifPlatformMediaEffective", {
                   bytes: s.mediaEffUploadBytes,
                   mime: s.mediaEffUploadMime.join(", ") || "—",
@@ -167,79 +172,122 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
                 })}
               </p>
             ) : null}
-            <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
-              <input
-                type="checkbox"
-                className="rounded border-surface-border"
+            <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+              <Checkbox
                 checked={s.mediaLibraryEnabled}
                 onChange={(e) => s.setMediaLibraryEnabled(e.target.checked)}
               />
               {t("admin:ifPlatformMediaLibraryEnabled")}
             </label>
-            <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-white">
-              <input
-                type="checkbox"
-                className="rounded border-surface-border"
+            <label className="mt-base flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+              <Checkbox
                 checked={s.mediaUserUploadEnabled}
                 onChange={(e) => s.setMediaUserUploadEnabled(e.target.checked)}
               />
               {t("admin:ifPlatformMediaUploadEnabled")}
             </label>
-            <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-white">
-              <input
-                type="checkbox"
-                className="rounded border-surface-border"
+            <label className="mt-base flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+              <Checkbox
                 checked={s.mediaSharingEnabled}
                 onChange={(e) => s.setMediaSharingEnabled(e.target.checked)}
               />
               {t("admin:ifPlatformMediaSharingEnabled")}
             </label>
-            <label className="mt-4 block text-xs text-surface-muted" htmlFor="media-quota-mb">
+            <label className="mt-wide block text-xs text-ink-muted" htmlFor="media-quota-mb">
               {t("admin:ifPlatformMediaDefaultQuotaMb")}
             </label>
-            <input
+            <TextInput
+              mono
               id="media-quota-mb"
               type="number"
               min={1}
               max={50000}
-              className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              className="mt-tight max-w-control"
               value={s.mediaDefaultQuotaMb}
               onChange={(e) => s.setMediaDefaultQuotaMb(e.target.value)}
               placeholder={t("admin:ifPlatformMediaQuotaPlaceholder")}
             />
-            <label className="mt-4 block text-xs text-surface-muted" htmlFor="media-upload-mb">
+            <label className="mt-wide block text-xs text-ink-muted" htmlFor="media-upload-mb">
               {t("admin:ifPlatformMediaUploadMaxMb")}
             </label>
-            <input
+            <TextInput
+              mono
               id="media-upload-mb"
               type="number"
               min={1}
               max={512}
-              className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              className="mt-tight max-w-control"
               value={s.mediaUploadMaxMb}
               onChange={(e) => s.setMediaUploadMaxMb(e.target.value)}
               placeholder={t("admin:ifPlatformUploadMbPlaceholder")}
             />
-            <label className="mt-4 block text-xs text-surface-muted" htmlFor="media-mime">
+            <label className="mt-wide block text-xs text-ink-muted" htmlFor="media-mime">
               {t("admin:ifPlatformMediaUploadMime")}
             </label>
-            <input
+            <TextInput
+              mono
               id="media-mime"
-              className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              className="mt-tight"
               value={s.mediaUploadMime}
               onChange={(e) => s.setMediaUploadMime(e.target.value)}
               placeholder={t("admin:ifPlatformMimePlaceholder")}
             />
-            <label className="mt-4 block text-xs text-surface-muted" htmlFor="media-embed-hosts">
+            <label className="mt-wide block text-xs text-ink-muted" htmlFor="media-embed-hosts">
               {t("admin:ifPlatformMediaEmbedHosts")}
             </label>
-            <input
+            <TextInput
+              mono
               id="media-embed-hosts"
-              className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              className="mt-tight"
               value={s.mediaEmbedHosts}
               onChange={(e) => s.setMediaEmbedHosts(e.target.value)}
               placeholder={t("admin:ifPlatformMediaEmbedHostsPlaceholder")}
             />
+          </section>
+
+          <section className="mt-deep rounded-sheet border border-line bg-card p-roomy">
+            <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifPlatformChatQuotaTitle")}</h2>
+            <p className="mt-base text-xs text-ink-muted">{t("admin:ifPlatformChatQuotaIntro")}</p>
+            <label className="mt-wide block text-xs text-ink-muted" htmlFor="chat-max-mb">
+              {t("admin:ifPlatformChatMaxConversationMb")}
+            </label>
+            <TextInput
+              mono
+              id="chat-max-mb"
+              type="number"
+              min={1}
+              max={50000}
+              className="mt-tight max-w-control"
+              value={s.chatMaxConversationMb}
+              onChange={(e) => s.setChatMaxConversationMb(e.target.value)}
+            />
+            <label className="mt-wide block text-xs text-ink-muted" htmlFor="chat-max-personal">
+              {t("admin:ifPlatformChatMaxPersonalSessions")}
+            </label>
+            <TextInput
+              mono
+              id="chat-max-personal"
+              type="number"
+              min={1}
+              max={10000}
+              className="mt-tight max-w-control"
+              value={s.chatMaxPersonalSessions}
+              onChange={(e) => s.setChatMaxPersonalSessions(e.target.value)}
+            />
+            <label className="mt-wide block text-xs text-ink-muted" htmlFor="chat-max-dashboard">
+              {t("admin:ifPlatformChatMaxDashboardSessions")}
+            </label>
+            <TextInput
+              mono
+              id="chat-max-dashboard"
+              type="number"
+              min={1}
+              max={10000}
+              className="mt-tight max-w-control"
+              value={s.chatMaxDashboardSessions}
+              onChange={(e) => s.setChatMaxDashboardSessions(e.target.value)}
+            />
+            <p className="mt-soft text-xs text-ink-muted">{t("admin:ifPlatformChatQuotaWarnHint")}</p>
           </section>
 
           <AdminInterfacesLegalSection />
@@ -248,85 +296,85 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
           ) : null}
 
           {showVoice ? (
-          <section className="mt-8 rounded-xl border border-surface-border bg-surface-raised p-5">
-            <h2 className="text-sm font-medium text-white">{t("admin:ifPlatformVoiceTitle")}</h2>
-            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformVoiceIntro")}</p>
+          <section className="mt-deep rounded-sheet border border-line bg-card p-roomy">
+            <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifPlatformVoiceTitle")}</h2>
+            <p className="mt-base text-xs text-ink-muted">{t("admin:ifPlatformVoiceIntro")}</p>
             {pendingVoiceEnvGroups.length > 0 ? (
-              <div className="mt-4 space-y-3">
+              <div className="mt-wide space-y-soft">
                 {pendingVoiceEnvGroups.map(({ kind, prefix, providers }) => {
                   return (
-                    <div key={kind} className="rounded-lg border border-amber-400/25 bg-amber-500/10 p-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div key={kind} className="rounded-card border border-warning/25 bg-warning-subtle p-wide">
+                      <div className="flex flex-col gap-soft sm:flex-row sm:items-start sm:justify-between">
                         <div>
-                          <h3 className="text-sm font-medium text-amber-100">
+                          <h3 className="text-sm font-medium text-badge-warning">
                             {t("admin:envProviderFoundTitle", { count: providers.length })}
                           </h3>
-                          <p className="mt-1 text-xs text-amber-100/75">
+                          <p className="mt-tight text-xs text-badge-warning">
                             {t("admin:envProviderFoundIntro", { prefix })}
                           </p>
                         </div>
-                        <button
+                        <Button
+                          variant="primary"
+                          tone="warning"
                           type="button"
                           disabled={s.envOperatorImporting === kind}
-                          className="rounded-md bg-amber-500 px-3 py-1.5 text-sm font-medium text-black hover:bg-amber-400 disabled:opacity-50"
+                          className="px-soft py-snug text-sm text-black"
                           onClick={() => void s.importOperatorEnvProviders(kind)}
                         >
                           {s.envOperatorImporting === kind ? t("admin:envLlmImporting") : t("admin:envLlmImportButton")}
-                        </button>
+                        </Button>
                       </div>
-                      <div className="mt-3 space-y-2">
+                      <div className="mt-soft space-y-base">
                         {providers.map((p) => (
-                          <details key={p.provider_id} className="rounded-md border border-white/10 bg-black/25 p-3">
-                            <summary className="cursor-pointer text-xs text-amber-100">
+                          <details key={p.provider_id} className="rounded-tile border border-line bg-black/25 p-soft">
+                            <summary className="cursor-pointer text-xs text-badge-warning">
                               <span className="font-mono">{p.provider_id}</span> · {p.label}
                               {p.already_in_db ? ` · ${t("admin:envLlmAlreadyInDb")}` : ""}
                             </summary>
-                            <p className="mt-2 break-all font-mono text-[11px] text-surface-muted">{p.base_url}</p>
-                            <p className="mt-1 text-[11px] text-neutral-300">
+                            <p className="mt-base break-all font-mono text-meta text-ink-muted">{p.base_url}</p>
+                            <p className="mt-tight text-meta text-ink-secondary">
                               {t("admin:envLlmModels")}: <span className="font-mono">{p.model_default || "—"}</span>
                             </p>
-                            <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+                            <ul className="mt-base grid gap-tight sm:grid-cols-2">
                               {p.cleanup_keys.map((key) => (
-                                <li key={key} className="font-mono text-[10px] text-amber-100/70">{key}</li>
+                                <li key={key} className="font-mono text-meta text-badge-warning">{key}</li>
                               ))}
                             </ul>
                           </details>
                         ))}
                       </div>
                       {s.envOperatorCleanupNotes[kind] ? (
-                        <p className="mt-3 text-xs text-amber-100/75">{s.envOperatorCleanupNotes[kind]}</p>
+                        <p className="mt-soft text-xs text-badge-warning">{s.envOperatorCleanupNotes[kind]}</p>
                       ) : null}
                     </div>
                   );
                 })}
               </div>
             ) : null}
-            <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
-              <input
-                type="checkbox"
-                className="rounded border-surface-border"
+            <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+              <Checkbox
                 checked={s.voiceEnabled}
                 onChange={(e) => s.setVoiceEnabled(e.target.checked)}
               />
               {t("admin:ifPlatformVoiceEnabled")}
             </label>
-            <div className="mt-4 rounded-lg border border-white/10 bg-black/15 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs font-medium text-surface-muted">{t("admin:ifPlatformVoiceEndpoint")}</span>
+            <div className="mt-wide rounded-card border border-line bg-black/15 p-wide">
+              <div className="flex flex-wrap items-center justify-between gap-base">
+                <span className="text-xs font-medium text-ink-muted">{t("admin:ifPlatformVoiceEndpoint")}</span>
                 {s.voiceApiBaseSource === "env" ? (
-                  <span className="text-xs text-amber-300/90">{t("admin:ifPlatformVoiceBaseUrlFromEnv")}</span>
+                  <span className="text-xs text-badge-warning">{t("admin:ifPlatformVoiceBaseUrlFromEnv")}</span>
                 ) : s.voiceApiBaseEffective ? (
-                  <span className="font-mono text-xs text-neutral-500">{t("admin:ifMemActive")}</span>
+                  <span className="font-mono text-xs text-ink-muted">{t("admin:ifMemActive")}</span>
                 ) : null}
               </div>
-              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+              <div className="mt-base grid gap-soft sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs text-surface-muted" htmlFor="voice-stt-provider-id">
+                  <label className="block text-xs text-ink-muted" htmlFor="voice-stt-provider-id">
                     {t("admin:ifPlatformVoiceSttProvider")}
                   </label>
-                  <select
+                  <Select
                     id="voice-stt-provider-id"
-                    className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                    className="mt-tight"
                     value={s.voiceSttProviderId || s.voiceSttProviderIdEffective || ""}
                     onChange={(e) => s.setVoiceSttProviderId(e.target.value)}
                     disabled={s.voiceSttProviders.length === 0}
@@ -337,18 +385,18 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
                         {p.label} ({p.provider_id})
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   {s.voiceSttApiBaseEffective ? (
-                    <p className="mt-1 font-mono text-[10px] text-neutral-400">{s.voiceSttApiBaseEffective}</p>
+                    <p className="mt-tight font-mono text-meta text-ink-muted">{s.voiceSttApiBaseEffective}</p>
                   ) : null}
                 </div>
                 <div>
-                  <label className="block text-xs text-surface-muted" htmlFor="voice-tts-provider-id">
+                  <label className="block text-xs text-ink-muted" htmlFor="voice-tts-provider-id">
                     {t("admin:ifPlatformVoiceTtsProvider")}
                   </label>
-                  <select
+                  <Select
                     id="voice-tts-provider-id"
-                    className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                    className="mt-tight"
                     value={s.voiceTtsProviderId || s.voiceTtsProviderIdEffective || ""}
                     onChange={(e) => s.setVoiceTtsProviderId(e.target.value)}
                     disabled={s.voiceTtsProviders.length === 0}
@@ -359,19 +407,20 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
                         {p.label} ({p.provider_id})
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   {s.voiceTtsApiBaseEffective ? (
-                    <p className="mt-1 font-mono text-[10px] text-neutral-400">{s.voiceTtsApiBaseEffective}</p>
+                    <p className="mt-tight font-mono text-meta text-ink-muted">{s.voiceTtsApiBaseEffective}</p>
                   ) : null}
                 </div>
               </div>
-              <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformVoiceSttTtsEnvHint")}</p>
-              <label className="mt-2 block text-xs text-surface-muted" htmlFor="voice-api-base">
+              <p className="mt-base text-xs text-ink-muted">{t("admin:ifPlatformVoiceSttTtsEnvHint")}</p>
+              <label className="mt-base block text-xs text-ink-muted" htmlFor="voice-api-base">
                 {t("admin:ifPlatformVoiceApiBase")}
               </label>
-              <input
+              <TextInput
+                mono
                 id="voice-api-base"
-                className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
+                className="mt-tight"
                 value={
                   s.voiceApiBaseSource === "env"
                     ? (s.voiceApiBaseEffective ?? "")
@@ -382,7 +431,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
                 disabled={s.voiceApiBaseSource === "env"}
               />
               {s.voiceApiBaseSource === "env" ? (
-                <p className="mt-1 text-xs text-surface-muted">
+                <p className="mt-tight text-xs text-ink-muted">
                   {voiceEnvPrefixPatterns.map((prefix, index) => (
                     <span key={prefix}>
                       {index > 0 ? " / " : ""}
@@ -393,25 +442,26 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
                   <span className="font-mono">.env</span>
                 </p>
               ) : s.voiceApiBaseEffective ? (
-                <p className="mt-1 text-xs text-surface-muted">
+                <p className="mt-tight text-xs text-ink-muted">
                   {t("admin:ifMemEffectiveAfterSave")}{" "}
-                  <span className="font-mono text-neutral-300">{s.voiceApiBaseEffective}</span>
+                  <span className="font-mono text-ink-secondary">{s.voiceApiBaseEffective}</span>
                 </p>
               ) : null}
-              <p className="mt-3 text-xs text-surface-muted">
+              <p className="mt-soft text-xs text-ink-muted">
                 {t("admin:ifPlatformVoiceApiKey")}{" "}
                 {s.voiceApiKeyConfigured ? t("admin:ifMemKeyStored") : t("admin:ifMemKeyEmpty")}
                 {s.voiceApiKeySource === "env" ? (
-                  <span className="text-amber-300/90"> {t("admin:ifMemFromEnv")}</span>
+                  <span className="text-badge-warning"> {t("admin:ifMemFromEnv")}</span>
                 ) : null}
               </p>
-              <label className="mt-2 block text-xs text-surface-muted" htmlFor="voice-api-key">
+              <label className="mt-base block text-xs text-ink-muted" htmlFor="voice-api-key">
                 {t("admin:ifPlatformVoiceApiKey")}
               </label>
-              <input
+              <TextInput
+                mono
                 id="voice-api-key"
                 type="password"
-                className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
+                className="mt-tight max-w-controlWide"
                 value={s.voiceApiKey}
                 onChange={(e) => s.setVoiceApiKey(e.target.value)}
                 placeholder={t("admin:ifPlatformVoiceApiKeyPlaceholder")}
@@ -419,8 +469,8 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
                 disabled={s.voiceApiKeySource === "env"}
               />
             </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <label className="block text-xs text-surface-muted">
+            <div className="mt-wide grid gap-soft sm:grid-cols-2">
+              <label className="block text-xs text-ink-muted">
                 {t("admin:ifPlatformVoiceSttModel")}
                 <ProviderModelSelect
                   id="voice-stt-model"
@@ -432,7 +482,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
                   loadingLabel={t("admin:ifMemLoadingModels")}
                 />
               </label>
-              <label className="block text-xs text-surface-muted">
+              <label className="block text-xs text-ink-muted">
                 {t("admin:ifPlatformVoiceTtsModel")}
                 <ProviderModelSelect
                   id="voice-tts-model"
@@ -445,45 +495,38 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
                 />
               </label>
             </div>
-            <label className="mt-4 block text-xs text-surface-muted">
+            <label className="mt-wide block text-xs text-ink-muted">
               {t("admin:ifPlatformVoiceTtsVoice")}
-              <input
-                className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              <TextInput
+                mono
+                className="mt-tight max-w-control"
                 value={s.voiceTtsVoice}
                 onChange={(e) => s.setVoiceTtsVoice(e.target.value)}
               />
             </label>
-            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-white">
-              <input
-                type="checkbox"
-                className="rounded border-surface-border"
+            <label className="mt-soft flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+              <Checkbox
                 checked={s.voiceBridgeTelegram}
                 onChange={(e) => s.setVoiceBridgeTelegram(e.target.checked)}
               />
               {t("admin:ifPlatformVoiceBridgeTelegram")}
             </label>
-            <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-white">
-              <input
-                type="checkbox"
-                className="rounded border-surface-border"
+            <label className="mt-base flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+              <Checkbox
                 checked={s.voiceBridgeDiscord}
                 onChange={(e) => s.setVoiceBridgeDiscord(e.target.checked)}
               />
               {t("admin:ifPlatformVoiceBridgeDiscord")}
             </label>
-            <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-white">
-              <input
-                type="checkbox"
-                className="rounded border-surface-border"
+            <label className="mt-base flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+              <Checkbox
                 checked={s.voiceRealtimeEnabled}
                 onChange={(e) => s.setVoiceRealtimeEnabled(e.target.checked)}
               />
               {t("admin:ifPlatformVoiceRealtime")}
             </label>
-            <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-white">
-              <input
-                type="checkbox"
-                className="rounded border-surface-border"
+            <label className="mt-base flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+              <Checkbox
                 checked={s.voiceDiscordVcEnabled}
                 onChange={(e) => s.setVoiceDiscordVcEnabled(e.target.checked)}
               />
@@ -493,15 +536,15 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
           ) : null}
 
           {showPlatform ? (
-          <section className="mt-6 rounded-lg border border-surface-border p-4">
-            <h3 className="text-sm font-medium text-white">{t("admin:ifPlatformSurfacesTitle")}</h3>
-            <p className="mt-1 text-xs text-surface-muted">{t("admin:ifPlatformSurfacesIntro")}</p>
-            <label className="mt-4 block text-xs text-surface-muted" htmlFor="surface-preset">
+          <section className="mt-broad rounded-card border border-line p-wide">
+            <h3 className="text-sm font-medium text-ink-primary">{t("admin:ifPlatformSurfacesTitle")}</h3>
+            <p className="mt-tight text-xs text-ink-muted">{t("admin:ifPlatformSurfacesIntro")}</p>
+            <label className="mt-wide block text-xs text-ink-muted" htmlFor="surface-preset">
               {t("admin:ifPlatformSurfacePreset")}
             </label>
-            <select
+            <Select
               id="surface-preset"
-              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+              className="mt-tight max-w-controlWide"
               value={s.surfacePreset}
               onChange={(e) => {
                 const preset = e.target.value as "WEB_ONLY" | "WEB_AND_TUI" | "TUI_ONLY";
@@ -521,11 +564,9 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               <option value="WEB_AND_TUI">{t("admin:ifPlatformSurfaceWebAndTui")}</option>
               <option value="WEB_ONLY">{t("admin:ifPlatformSurfaceWebOnly")}</option>
               <option value="TUI_ONLY">{t("admin:ifPlatformSurfaceTuiOnly")}</option>
-            </select>
-            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-white">
-              <input
-                type="checkbox"
-                className="rounded border-surface-border"
+            </Select>
+            <label className="mt-soft flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+              <Checkbox
                 checked={s.webUiEnabled}
                 onChange={(e) => {
                   const on = e.target.checked;
@@ -537,10 +578,8 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               />
               {t("admin:ifPlatformWebUiEnabled")}
             </label>
-            <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-white">
-              <input
-                type="checkbox"
-                className="rounded border-surface-border"
+            <label className="mt-base flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+              <Checkbox
                 checked={s.apiKeyClientsEnabled}
                 onChange={(e) => {
                   const on = e.target.checked;
@@ -552,12 +591,12 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               />
               {t("admin:ifPlatformApiKeyClientsEnabled")}
             </label>
-            <label className="mt-4 block text-xs text-surface-muted" htmlFor="api-key-ws-modes">
+            <label className="mt-wide block text-xs text-ink-muted" htmlFor="api-key-ws-modes">
               {t("admin:ifPlatformApiKeyWorkspaceModes")}
             </label>
-            <select
+            <Select
               id="api-key-ws-modes"
-              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+              className="mt-tight max-w-controlWide"
               value={s.apiKeyWorkspaceModes}
               onChange={(e) =>
                 s.setApiKeyWorkspaceModes(e.target.value as "server" | "client" | "both")
@@ -567,86 +606,76 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               <option value="both">{t("admin:ifPlatformApiKeyModesBoth")}</option>
               <option value="server">{t("admin:ifPlatformApiKeyModesServer")}</option>
               <option value="client">{t("admin:ifPlatformApiKeyModesClient")}</option>
-            </select>
-            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformApiKeyModesHint")}</p>
-            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-white">
-              <input
-                type="checkbox"
-                className="rounded border-surface-border"
+            </Select>
+            <p className="mt-base text-xs text-ink-muted">{t("admin:ifPlatformApiKeyModesHint")}</p>
+            <label className="mt-soft flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+              <Checkbox
                 checked={s.serverWorkspacesAdminOnly}
                 onChange={(e) => s.setServerWorkspacesAdminOnly(e.target.checked)}
               />
               {t("admin:ifPlatformServerWorkspacesAdminOnly")}
             </label>
-            <p className="mt-2 text-xs text-surface-muted">
+            <p className="mt-base text-xs text-ink-muted">
               {t("admin:ifPlatformServerWorkspacesAdminOnlyHint")}
             </p>
-            <label className="mt-4 block text-xs text-surface-muted" htmlFor="ws-index-consent-max">
+            <label className="mt-wide block text-xs text-ink-muted" htmlFor="ws-index-consent-max">
               {t("admin:ifPlatformIndexConsentMax")}
             </label>
-            <select
+            <Select
               id="ws-index-consent-max"
-              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+              className="mt-tight max-w-controlWide"
               value={s.workspaceIndexConsentMax}
               onChange={(e) => s.setWorkspaceIndexConsentMax(e.target.value)}
             >
               <option value="text">{t("admin:ifPlatformIndexConsentText")}</option>
               <option value="symbols">{t("admin:ifPlatformIndexConsentSymbols")}</option>
               <option value="none">{t("admin:ifPlatformIndexConsentNone")}</option>
-            </select>
-            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformIndexConsentHint")}</p>
+            </Select>
+            <p className="mt-base text-xs text-ink-muted">{t("admin:ifPlatformIndexConsentHint")}</p>
           </section>
           ) : null}
 
           {showPlatform ? (
-          <section className="mt-6 rounded-lg border border-surface-border p-4">
-            <h3 className="text-sm font-medium text-white">{t("admin:ifPlatformWorkspacesTitle")}</h3>
-            <p className="mt-1 text-xs text-surface-muted">{t("admin:ifPlatformWorkspacesIntro")}</p>
-            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-white">
-              <input
-                type="checkbox"
-                className="rounded border-surface-border"
+          <section className="mt-broad rounded-card border border-line p-wide">
+            <h3 className="text-sm font-medium text-ink-primary">{t("admin:ifPlatformWorkspacesTitle")}</h3>
+            <p className="mt-tight text-xs text-ink-muted">{t("admin:ifPlatformWorkspacesIntro")}</p>
+            <label className="mt-soft flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+              <Checkbox
                 checked={s.workspaceAllowSelfEditing}
                 onChange={(e) => s.setWorkspaceAllowSelfEditing(e.target.checked)}
               />
               {t("admin:ifPlatformSelfWorkspace")}
             </label>
-            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformSelfWorkspaceHint")}</p>
-            <label className="mt-4 block text-xs text-surface-muted" htmlFor="ws-index-on-write-default">
+            <p className="mt-base text-xs text-ink-muted">{t("admin:ifPlatformSelfWorkspaceHint")}</p>
+            <label className="mt-wide block text-xs text-ink-muted" htmlFor="ws-index-on-write-default">
               Default index-on-write (new workspaces inherit via null override)
             </label>
-            <select
+            <Select
               id="ws-index-on-write-default"
-              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+              className="mt-tight max-w-controlWide"
               value={s.workspaceIndexOnWriteDefault}
               onChange={(e) => s.setWorkspaceIndexOnWriteDefault(e.target.value)}
             >
               <option value="debounced">debounced (recommended)</option>
               <option value="immediate">immediate</option>
               <option value="off">off</option>
-            </select>
-            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-white">
-              <input
-                type="checkbox"
-                className="rounded border-surface-border"
+            </Select>
+            <label className="mt-soft flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+              <Checkbox
                 checked={s.workspaceReindexAfterGitPull}
                 onChange={(e) => s.setWorkspaceReindexAfterGitPull(e.target.checked)}
               />
               Reindex code after successful git pull
             </label>
-            <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-white">
-              <input
-                type="checkbox"
-                className="rounded border-surface-border"
+            <label className="mt-base flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+              <Checkbox
                 checked={s.workspaceNightlyReindexEnabled}
                 onChange={(e) => s.setWorkspaceNightlyReindexEnabled(e.target.checked)}
               />
               Nightly reindex for stale workspaces (hourly check, max 100)
             </label>
-            <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-white">
-              <input
-                type="checkbox"
-                className="rounded border-surface-border"
+            <label className="mt-base flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+              <Checkbox
                 checked={s.workspaceIndexOnAttachEnabled}
                 onChange={(e) => s.setWorkspaceIndexOnAttachEnabled(e.target.checked)}
               />

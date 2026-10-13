@@ -127,6 +127,29 @@ def get_run(*, run_id: uuid.UUID, tenant_id: int) -> dict[str, Any] | None:
     return dict(row) if row else None
 
 
+def get_run_any_tenant(*, run_id: uuid.UUID) -> dict[str, Any] | None:
+    """Read one run without a tenant filter, only to learn its company.
+
+    Deliberately a separate name instead of ``tenant_id=None`` on
+    :func:`get_run`: a nullable company filter turns a forgotten argument into a
+    cross-company read, and nothing at the call site looks wrong.
+    """
+    with db.pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                SELECT id, scheduler_job_id, tenant_id, execution_user_id, workspace_id,
+                       agent_id, status, error, summary_json, started_at, finished_at, created_at
+                FROM scheduler_job_runs
+                WHERE id = %s
+                """,
+                (run_id,),
+            )
+            row = cur.fetchone()
+        conn.commit()
+    return dict(row) if row else None
+
+
 def user_can_view_job(
     *,
     job_id: uuid.UUID,

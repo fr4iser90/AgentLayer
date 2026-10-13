@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from apps.backend.domain.access.entity_access import OWNED, evaluate_workspace_access
 from apps.backend.domain.agent_runtime.task_access import user_may_access_task_row
 from apps.backend.infrastructure.dashboards import dashboard_persistence as dashboard_db
 from apps.backend.infrastructure.db import db
@@ -72,6 +73,30 @@ def created_at_iso(dt: datetime | None) -> str:
     return ensure_utc(dt).isoformat()
 
 
+def parse_client_message_id(message: dict[str, Any]) -> str | None:
+    raw = message.get("client_message_id")
+    if raw is None:
+        raw = message.get("id")
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s or len(s) > 128:
+        return None
+    return s
+
+
+def parse_message_reasoning(message: dict[str, Any]) -> str | None:
+    raw = message.get("reasoning")
+    if raw is None:
+        raw = message.get("reasoning_content")
+    if raw is None:
+        return None
+    if not isinstance(raw, str):
+        raw = str(raw)
+    s = raw.strip()
+    return s if s else None
+
+
 def insert_chat_message(
     cur: Any,
     conversation_id: uuid.UUID,
@@ -83,21 +108,29 @@ def insert_chat_message(
     if role not in ("user", "assistant", "system"):
         role = "user"
     created = parse_message_created_at(message.get("created_at"))
+    client_id = parse_client_message_id(message)
+    reasoning = parse_message_reasoning(message) if role == "assistant" else None
     if created is not None:
         cur.execute(
             """
-            INSERT INTO chat_messages (conversation_id, position, role, content, created_at)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO chat_messages (
+              conversation_id, position, role, content, created_at,
+              client_message_id, reasoning
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             """,
-            (conversation_id, position, role, content, created),
+            (conversation_id, position, role, content, created, client_id, reasoning),
         )
     else:
         cur.execute(
             """
-            INSERT INTO chat_messages (conversation_id, position, role, content)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO chat_messages (
+              conversation_id, position, role, content,
+              client_message_id, reasoning
+            )
+            VALUES (%s, %s, %s, %s, %s, %s)
             """,
-            (conversation_id, position, role, content),
+            (conversation_id, position, role, content, client_id, reasoning),
         )
 
 
@@ -129,10 +162,15 @@ def shared_chat_can_write(user_id: uuid.UUID, tenant_id: int, dashboard_id: uuid
 
 def pref_workspace_allowed(cur: Any, user_id: uuid.UUID, workspace_id: uuid.UUID) -> bool:
     cur.execute(
-        "SELECT 1 FROM project_workspaces WHERE id = %s AND owner_user_id = %s",
-        (workspace_id, user_id),
+        "SELECT owner_user_id FROM project_workspaces WHERE id = %s",
+        (workspace_id,),
     )
-    return cur.fetchone() is not None
+    row = cur.fetchone()
+    if row is None:
+        return False
+    return evaluate_workspace_access(
+        is_owner=str(row[0] or "") == str(user_id), needed=OWNED
+    )
 
 
 def pref_active_task_allowed(

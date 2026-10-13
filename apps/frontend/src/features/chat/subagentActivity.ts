@@ -8,6 +8,7 @@ export type SubagentActivityExtras = Pick<
   | "stepPhase"
   | "toolOk"
   | "toolError"
+  | "resultDisplay"
   | "toolRound"
   | "durationMs"
   | "resultChars"
@@ -53,6 +54,10 @@ export function handleSubagentWsEvent(
       typeof msg.error === "string" && msg.error.trim()
         ? msg.error.trim().slice(0, 500)
         : undefined;
+    const resultDisplay =
+      typeof msg.result_display === "string" && msg.result_display.trim()
+        ? msg.result_display.trim().slice(0, 4000)
+        : undefined;
     let label = formatToolStepLabel(tool, summary, toolLabel, stepLabel);
     if (phase === "done" && toolOk === false) {
       const errBit = toolError || "failed";
@@ -67,7 +72,21 @@ export function handleSubagentWsEvent(
       stepPhase: phase,
       toolOk,
       toolError,
+      resultDisplay,
       toolRound: msg.round != null ? Number(msg.round) : undefined,
+      resultChars: msg.result_chars != null ? Number(msg.result_chars) : undefined,
+    });
+    return true;
+  }
+  if (typ === "agent.subagent_delta" || typ === "agent.subagent_reasoning") {
+    const sid = String(msg.subagent_run_id ?? "").trim() || "subagent";
+    const aid = String(msg.agent_id ?? "subagent").trim();
+    const delta = typeof msg.delta === "string" ? msg.delta : "";
+    if (!delta) return true;
+    append(typ === "agent.subagent_reasoning" ? "subagent_reasoning" : "subagent_delta", delta, {
+      subagentAgentId: aid,
+      subagentRunId: sid,
+      nested: true,
     });
     return true;
   }

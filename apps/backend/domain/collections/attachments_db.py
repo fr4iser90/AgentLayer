@@ -24,6 +24,14 @@ class CollectionAttachmentsDbDependencies(Protocol):
         tenant_id: int,
     ) -> str | None: ...
 
+    def attachment_list_for_dashboard(
+        self,
+        dashboard_id: uuid.UUID,
+        tenant_id: int,
+        *,
+        limit: int = 200,
+    ) -> list[dict[str, Any]]: ...
+
 
 _deps: CollectionAttachmentsDbDependencies | None = None
 
@@ -85,3 +93,15 @@ def attachment_delete_with_access(
 ) -> str | None:
     """Only the attachment owner may delete."""
     return _require_deps().attachment_delete_with_access(file_id, user_id, tenant_id)
+
+
+def attachment_list_for_dashboard(
+    dashboard_id: uuid.UUID,
+    tenant_id: int,
+    *,
+    limit: int = 200,
+) -> list[dict[str, Any]]:
+    """List board attachments for a dashboard (caller must enforce dashboard read access)."""
+    return _require_deps().attachment_list_for_dashboard(
+        dashboard_id, tenant_id, limit=limit
+    )

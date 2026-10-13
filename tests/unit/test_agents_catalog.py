@@ -18,7 +18,7 @@ def test_build_agents_catalog_includes_general() -> None:
     assert "tool_names" not in general
     assert general["tool_domains"] == []
     assert general["tool_capability_any"] == []
-    assert general["tool_names_count"] == 13
+    assert general["tool_names_count"] == 18
     assert "icon" not in general
     assert all("icon" not in a for a in out["agents"])
 

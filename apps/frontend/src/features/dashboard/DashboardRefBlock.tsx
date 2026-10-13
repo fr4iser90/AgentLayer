@@ -4,6 +4,8 @@ import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import type { UiBlock } from "./types";
 import { DashboardBlockTile } from "./DashboardBlocks";
+import { useDashboardPublicShare } from "./DashboardPublicShareContext";
+import { Button } from "../../ui/Button";
 
 type RenderPayload = {
   block: UiBlock;
@@ -18,6 +20,7 @@ export function DashboardRefBlockBody(props: {
 }) {
   const { t } = useTranslation(["dashboard"]);
   const auth = useAuth();
+  const { token: publicShareToken } = useDashboardPublicShare();
   const p = props.block.props;
   const sourceId = String(p.sourceDashboardId || "").trim();
   const sourceBlockId = String(p.sourceBlockId || "").trim();
@@ -26,6 +29,13 @@ export function DashboardRefBlockBody(props: {
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
+    // A public share token covers one dashboard. The referenced source
+    // dashboard is a different resource that the token does not grant, so
+    // this call is guaranteed to 401 for an anonymous reader.
+    if (publicShareToken) {
+      setErr(t("dashboard:publicShareAuthOnlyBlock"));
+      return;
+    }
     if (!sourceId || !sourceBlockId) {
       setErr(t("dashboard:refMissingSource"));
       return;
@@ -38,8 +48,14 @@ export function DashboardRefBlockBody(props: {
         auth,
       );
       const raw = await res.text();
+      if (res.status === 401) {
+        setErr(t("dashboard:publicShareAuthOnlyBlock"));
+        setPayload(null);
+        return;
+      }
       if (!res.ok) {
-        setErr(raw || t("dashboard:refLoadFailed"));
+        console.warn("dashboard ref load failed", res.status, raw);
+        setErr(t("dashboard:refLoadFailed"));
         setPayload(null);
         return;
       }
@@ -55,35 +71,37 @@ export function DashboardRefBlockBody(props: {
     } finally {
       setLoading(false);
     }
-  }, [auth, sourceBlockId, sourceId, t]);
+  }, [auth, publicShareToken, sourceBlockId, sourceId, t]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   if (loading && !payload) {
-    return <p className="text-sm text-surface-muted">{t("dashboard:refLoading")}</p>;
+    return <p className="text-sm text-ink-muted">{t("dashboard:refLoading")}</p>;
   }
   if (err) {
     return (
-      <div className="space-y-2 text-sm">
-        <p className="text-amber-300">{err}</p>
-        <button type="button" className="text-sky-400 hover:underline" onClick={() => void load()}>
-          {t("dashboard:refRetry")}
-        </button>
+      <div className="space-y-base text-sm">
+        <p className="text-badge-warning">{err}</p>
+        {publicShareToken ? null : (
+          <Button variant="ghost" type="button" className="text-accent hover:underline" onClick={() => void load()}>
+            {t("dashboard:refRetry")}
+          </Button>
+        )}
       </div>
     );
   }
   if (!payload?.block) {
-    return <p className="text-sm text-surface-muted">{t("dashboard:refEmpty")}</p>;
+    return <p className="text-sm text-ink-muted">{t("dashboard:refEmpty")}</p>;
   }
 
   const noop = () => {};
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-base">
       {p.sourceLabel || payload.source_title ? (
-        <p className="text-[10px] uppercase tracking-wide text-surface-muted">
+        <p className="text-meta uppercase tracking-wide text-ink-muted">
           {t("dashboard:refFrom", {
             title: String(p.sourceLabel || payload.source_title),
           })}

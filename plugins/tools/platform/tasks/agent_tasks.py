@@ -85,10 +85,9 @@ def task_create(arguments: dict[str, Any], context: dict[str, Any] | None = None
         except (ValueError, TypeError):
             pass
     try:
-        role = db.user_role(user_id)
         eff_status, approval_hint = normalize_new_task_status(
             requested=str(arguments.get("status") or "draft"),
-            user_role=role,
+            site_role=db.user_site_role(user_id),
         )
         row = agent_tasks_store.create_task(
             tenant_id=tenant_id,

@@ -67,7 +67,7 @@ def _patch_chat(monkeypatch: pytest.MonkeyPatch, *, raises: Exception | None) ->
 
     monkeypatch.setattr(chat_mod, "chat_completion", _chat)
     monkeypatch.setattr(catalog_mod, "catalog_llm_body_extras", lambda **_k: {})
-    monkeypatch.setattr(mod.db, "user_role", lambda _uid: "user")
+    monkeypatch.setattr(mod.db, "user_effective_role", lambda _uid: "user")
 
 
 def test_failed_chat_job_still_stamps_last_run(

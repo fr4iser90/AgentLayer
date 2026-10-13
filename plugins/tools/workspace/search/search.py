@@ -14,6 +14,7 @@ from apps.backend.infrastructure.platform.config import config as _global_config
 
 from plugins.tools.workspace.lib.common import (
     json_workspace_missing_error,
+    resolve_in_workspace,
     workspace_binding_from_context,
 )
 
@@ -275,7 +276,7 @@ def search(arguments: dict[str, Any], context: dict | None = None) -> str:
     search_root = root.resolve()
     rel_root = ""
     if path_prefix:
-        sr = (root / path_prefix).resolve()
+        sr = resolve_in_workspace(root, path_prefix)
         if not sr.is_dir():
             return json.dumps(
                 {"ok": False, "error": "path_prefix must be a directory"},

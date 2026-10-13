@@ -27,7 +27,6 @@ def upgrade() -> None:
         ALTER TABLE operator_settings RENAME COLUMN heartbeat_allowed_tool_packages TO scheduler_allowed_tool_packages;
         ALTER TABLE operator_settings RENAME COLUMN heartbeat_llm_backend TO scheduler_llm_backend;
         ALTER TABLE operator_settings RENAME COLUMN heartbeat_tools_mode TO scheduler_tools_mode;
-        ALTER TABLE operator_settings RENAME COLUMN heartbeat_pidea_enabled TO scheduler_pidea_enabled;
         ALTER TABLE operator_settings RENAME COLUMN heartbeat_instructions TO scheduler_instructions;
         """
     )
@@ -62,7 +61,6 @@ def downgrade() -> None:
         ALTER TABLE operator_settings RENAME COLUMN scheduler_allowed_tool_packages TO heartbeat_allowed_tool_packages;
         ALTER TABLE operator_settings RENAME COLUMN scheduler_llm_backend TO heartbeat_llm_backend;
         ALTER TABLE operator_settings RENAME COLUMN scheduler_tools_mode TO heartbeat_tools_mode;
-        ALTER TABLE operator_settings RENAME COLUMN scheduler_pidea_enabled TO heartbeat_pidea_enabled;
         ALTER TABLE operator_settings RENAME COLUMN scheduler_instructions TO heartbeat_instructions;
         """
     )

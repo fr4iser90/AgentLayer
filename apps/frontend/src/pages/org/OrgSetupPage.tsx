@@ -4,6 +4,9 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { OrgKnowledgePublishSection } from "./OrgKnowledgePublishSection";
+import { Checkbox } from "../../ui/Checkbox";
+import { TextInput } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 type TenantResponse = {
   tenant?: {
@@ -107,63 +110,60 @@ export function OrgSetupPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-10">
-      <h1 className="text-xl font-semibold text-white">{t("org:setupPageTitle")}</h1>
-      <p className="mt-2 text-sm text-surface-muted">{t("org:setupPageIntro")}</p>
+    <div className="mx-auto max-w-pageNarrow px-broad py-page">
+      <h1 className="text-xl font-semibold text-ink-primary">{t("org:setupPageTitle")}</h1>
+      <p className="mt-base text-sm text-ink-muted">{t("org:setupPageIntro")}</p>
 
       {wizardStep === 1 ? (
-        <form onSubmit={(e) => void saveProfile(e)} className="mt-8 space-y-4">
-          <label className="block text-xs text-surface-muted" htmlFor="org-name">
+        <form onSubmit={(e) => void saveProfile(e)} className="mt-deep space-y-wide">
+          <label className="block text-xs text-ink-muted" htmlFor="org-name">
             {t("org:setupOrgName")}
           </label>
-          <input
+          <TextInput
             id="org-name"
-            className="w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
           />
-          <label className="block text-xs text-surface-muted" htmlFor="org-vertical">
+          <label className="block text-xs text-ink-muted" htmlFor="org-vertical">
             {t("org:setupVerticalProfile")}
           </label>
-          <input
+          <TextInput
             id="org-vertical"
-            className="w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
             value={verticalProfile}
             onChange={(e) => setVerticalProfile(e.target.value)}
             required
           />
-          <p className="text-[11px] text-surface-muted">{t("org:setupVerticalProfileHint")}</p>
-          {err ? <p className="text-sm text-red-400">{err}</p> : null}
-          <button
+          <p className="text-meta text-ink-muted">{t("org:setupVerticalProfileHint")}</p>
+          {err ? <p className="text-sm text-danger">{err}</p> : null}
+          <Button
+            variant="primary"
+            size="lg"
             type="submit"
             disabled={busy}
-            className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+            className="px-wide py-base text-sm"
           >
             {t("org:setupContinue")}
-          </button>
+          </Button>
         </form>
       ) : null}
 
       {wizardStep === 2 ? (
-        <div className="mt-8 space-y-6">
-          <label className="flex cursor-pointer items-start gap-2 text-sm text-white">
-            <input
-              type="checkbox"
-              className="mt-1 rounded border-surface-border"
+        <div className="mt-deep space-y-broad">
+          <label className="flex cursor-pointer items-start gap-base text-sm text-ink-primary">
+            <Checkbox
+              className="mt-tight"
               checked={disclaimerAccepted}
               onChange={(e) => setDisclaimerAccepted(e.target.checked)}
             />
             <span>{t("org:setupDisclaimer")}</span>
           </label>
 
-          <div className="rounded-lg border border-surface-border p-4">
-            <p className="text-sm font-medium text-white">{t("org:setupContentStep")}</p>
-            <p className="mt-1 text-xs text-surface-muted">{t("org:setupContentHint")}</p>
-            <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
-              <input
-                type="checkbox"
-                className="rounded border-surface-border"
+          <div className="rounded-card border border-line p-wide">
+            <p className="text-sm font-medium text-ink-primary">{t("org:setupContentStep")}</p>
+            <p className="mt-tight text-xs text-ink-muted">{t("org:setupContentHint")}</p>
+            <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+              <Checkbox
                 checked={startEmpty}
                 onChange={(e) => {
                   setStartEmpty(e.target.checked);
@@ -173,21 +173,23 @@ export function OrgSetupPage() {
               {t("org:setupStartEmpty")}
             </label>
             {!startEmpty ? (
-              <div className="mt-4">
+              <div className="mt-wide">
                 <OrgKnowledgePublishSection onPublished={() => setPublished(true)} />
               </div>
             ) : null}
           </div>
 
-          {err ? <p className="text-sm text-red-400">{err}</p> : null}
-          <button
+          {err ? <p className="text-sm text-danger">{err}</p> : null}
+          <Button
+            variant="primary"
+            size="lg"
             type="button"
             disabled={busy}
-            className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+            className="px-wide py-base text-sm"
             onClick={() => void finishSetup()}
           >
             {busy ? t("org:setupFinishing") : t("org:setupFinish")}
-          </button>
+          </Button>
         </div>
       ) : null}
     </div>

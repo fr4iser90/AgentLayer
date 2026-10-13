@@ -61,7 +61,7 @@ export function GalleryImage(props: { url: string; alt: string; className?: stri
   if (url.startsWith(FILE_REF_PREFIX)) {
     if (!blobUrl) {
       return (
-        <div className="flex h-full min-h-[120px] items-center justify-center text-xs text-surface-muted">
+        <div className="flex h-full min-h-[120px] items-center justify-center text-xs text-ink-muted">
           {t("dashboard:imageLoading")}
         </div>
       );

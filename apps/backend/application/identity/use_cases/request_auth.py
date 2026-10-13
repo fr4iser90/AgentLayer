@@ -21,6 +21,8 @@ from apps.backend.infrastructure.identity.auth import (
     list_api_keys as _list_api_keys,
     require_admin as _require_admin,
     require_site_admin as _require_site_admin,
+    require_admin_capability as _require_admin_capability,
+    require_admin_scope as _require_admin_scope,
     require_tenant_admin as _require_tenant_admin,
     require_tenant_member as _require_tenant_member,
     require_permission as _require_permission,
@@ -43,6 +45,39 @@ async def require_admin(request: Request) -> Any:
 
 async def require_site_admin(request: Request) -> Any:
     return await _require_site_admin(request)
+
+
+async def require_admin_capability(request: Request, capability: str) -> Any:
+    return await _require_admin_capability(request, capability)
+
+
+async def require_admin_scope(request: Request, capability: str) -> Any:
+    """Capability gate plus the tenant range the action may reach.
+
+    Handlers that create, move or grant against a *target* must use this rather
+    than :func:`require_admin_capability` — the capability says what, the scope
+    says where.
+    """
+    return await _require_admin_scope(request, capability)
+
+
+def agent_effective_role(user_id: Any, fallback_role: str | None = None) -> str:
+    """Agent/admin elevation resolved from the canonical ``users.site_role``.
+
+    Delegates to :func:`db.user_effective_role`, the same resolver behind the tool
+    ``min_role`` door, so a legacy ``users.role='admin'`` paired with
+    ``site_role='site_user'`` cannot elevate on either surface.
+
+    ``fallback_role`` is a claim a caller carries rather than something it read, so it
+    answers only when there is no user id to look up at all. A row that cannot be read
+    denies instead of falling back to that claim — trusting it is exactly the fail-open
+    this resolver exists to close.
+    """
+    from apps.backend.infrastructure.db import db
+
+    if user_id is not None:
+        return db.user_effective_role(user_id)
+    return (str(fallback_role or "user").strip().lower()) or "user"
 
 
 async def require_tenant_admin(request: Request) -> Any:
@@ -93,8 +128,8 @@ def revoke_refresh_token(token: str) -> bool:
     return _revoke_refresh_token(token)
 
 
-def list_all_users() -> list[dict[str, Any]]:
-    return _list_all_users()
+def list_all_users(tenant_ids: frozenset[int] | None = None) -> list[dict[str, Any]]:
+    return _list_all_users(tenant_ids)
 
 
 def create_user(email: str, password: str, role: str = "user", tenant_id: int = 1) -> Any:

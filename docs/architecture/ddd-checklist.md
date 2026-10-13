@@ -58,6 +58,85 @@ python3 scripts/checks/run.py --profile ci
 - [x] Large-file reporting is advisory until the current migration hotspots are
   split; then it should become a hard failure threshold.
 
+### `tenant_scope`
+
+- [x] Checks are AST-based, verb-anchored (`FROM t` / `UPDATE t SET` /
+  `DELETE FROM t`), so prose that mentions a table name does not fire.
+- [x] A statement against a configured tenant-scoped table must filter on
+  `tenant_id`, or carry a marker on its own line, the line above, or anywhere
+  inside the enclosing function:
+  - `# tenant-scope: site-wide` — genuinely cross-tenant (login lookup by
+    email, canonical user fetch by primary key, bootstrap admin lookup).
+  - `# tenant-scope: guarded <what>` — tenancy is enforced in Python rather
+    than in the WHERE clause, e.g. by an `AdminScope` check earlier in the
+    handler. Naming the guard keeps the exemption reviewable.
+- [x] f-strings are treated as leaves, so interpolated fragments are not
+  double-counted.
+- [x] Statements whose filter is not statically visible (f-string clause,
+  concatenation cut off at `WHERE`/`SET`) are reported as *unresolved* and do
+  not fail a staged run — a gate that cries wolf gets switched off.
+- [x] `tenant_scope` runs on staged/changed files in fast/precommit/CI.
+- [x] `tenant_scope_all` runs report-only across the tree in
+  architecture/security.
+- [x] Table list is configured in `scripts/checks/config.json`
+  (`tenant_scoped_tables`), migrations excluded.
+
+## Tenancy Conventions
+
+Decided in [ADR 0012](../adr/0012-admin-tenant-scope.md).
+
+**Data access.** New queries build their tenant filter from
+`domain/identity/tenant_scope.py` rather than interpolating a bare
+`user_tenant_id()`:
+
+```python
+where, params = TenantScope.of(tenant_id).where()   # ("tenant_id = %s", (7,))
+scope.require_matches(row)                          # post-read guard
+```
+
+`require_matches` raises when a loaded row carries no `tenant_id` or belongs to
+another tenant. Use it after a read whose filter came from somewhere else.
+
+**Admin endpoints.** Three concepts, and the wrong guard silently grants too much:
+
+| Guard | Use for |
+| --- | --- |
+| `require_admin_capability(request, slug)` | Tenant-free reads — catalogs, definitions, metadata. |
+| `require_admin_scope(request, slug)` | Anything that names a **target**: a user, a tenant, a policy row, a grant. |
+| `require_site_admin(request)` | Instance-level work that must never be delegated — see below. |
+| `require_admin(request)` | **Gone.** No call sites remain; it survives only as the `require_site_admin` alias definition. Do not reintroduce it. |
+
+The rule is one line: **if the request names a target, use `require_admin_scope`.**
+`AdminScope.tenant_filter()` returns `None` for a site admin (do not filter) and
+the caller's tenant set otherwise; `require_tenant()` and `require_site_wide()`
+raise `AdminScopeError`, which handlers map to 403.
+
+**Deliberately undelegable — no capability slug exists for these.** Benchmarks
+(shared provider compute), the provider/model catalog and the `global`
+model-access policy (one change moves every tenant), RAG `ingest-docs`
+(caller-supplied server filesystem path), and scheduler job presets (reads the
+server plugin directory). If you are tempted to mint a slug for one of them,
+the answer is that the surface is not tenant-shaped.
+
+**Deployment mode.** Ask with a predicate, never with a literal.
+`operator_settings.has_org_surface()` and `is_single_user()` replace
+`deployment_mode() != "multi_tenant"`, and the frontend mirrors them in
+`src/auth/deploymentMode.ts`. The bare comparison answers "is this not
+multi_tenant" for every mode added later, so a new mode inherits a
+neighbour's behaviour by accident — which is exactly how `single_user`
+would have left `/org` reachable. `DEPLOYMENT_MODES` in
+`domain/setup/instance.py` is the single canonical list; the settings forms,
+the patch writer and the API `Literal` all derive from it. See ADR 0012 §10.
+
+**Memberships.** `tenant_memberships` must agree with `users.tenant_id` —
+`require_tenant_member` reads one and `resolve_chat_identity` reads the other,
+and a disagreement lets a user enter a tenant while writing into another.
+`tenant_membership_upsert` enforces this and has no override. Tenant moves go
+through `db.move_user_tenant`, which keeps the row in step, never carries the
+old role across, and takes the caller's owned workspaces with it —
+`project_workspaces.tenant_id` is denormalised from the owner and would
+otherwise drift.
+
 ## Layer Rules
 
 ### API

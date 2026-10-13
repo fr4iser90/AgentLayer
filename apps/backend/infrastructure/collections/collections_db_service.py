@@ -11,6 +11,7 @@ attachments_db.register_collection_attachments_db_dependencies(_deps)
 
 attachment_delete_with_access = attachments_db.attachment_delete_with_access
 attachment_get_with_access = attachments_db.attachment_get_with_access
+attachment_list_for_dashboard = attachments_db.attachment_list_for_dashboard
 attachment_insert = collections_db.attachment_insert
 collection_ensure = collections_db.collection_ensure
 collection_get = collections_db.collection_get

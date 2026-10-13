@@ -2,12 +2,16 @@ import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { SETUP_WIZARD_ACTIVE_KEY, useAuth } from "../auth/AuthContext";
+import type { DeploymentMode } from "../auth/deploymentMode";
 import {
   DEFAULT_LLM_PRESET,
   getLlmPreset,
   LLM_PRESETS,
   type LlmPresetId,
 } from "../setup/llmPresets";
+import { Radio } from "../ui/Radio";
+import { Select, TextInput } from "../ui/Field";
+import { Button } from "../ui/Button";
 
 type SetupCatalogProvider = {
   provider_id: string;
@@ -60,7 +64,7 @@ export function SetupWizardPage() {
   const { accessToken, loading, setupStatus, refreshSetupStatus, completeSetup } = useAuth();
 
   const [step, setStep] = useState(0);
-  const [deploymentMode, setDeploymentMode] = useState<"agent_system" | "multi_tenant">("multi_tenant");
+  const [deploymentMode, setDeploymentMode] = useState<DeploymentMode>("multi_tenant");
   const [deploymentPending, setDeploymentPending] = useState(false);
   const [deploymentError, setDeploymentError] = useState<string | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
@@ -434,7 +438,7 @@ export function SetupWizardPage() {
 
   if (statusLoading || loading) {
     return (
-      <div className="flex h-full min-h-0 flex-1 items-center justify-center text-sm text-surface-muted">
+      <div className="flex h-full min-h-0 flex-1 items-center justify-center text-sm text-ink-muted">
         {t("setup:loading")}
       </div>
     );
@@ -457,115 +461,125 @@ export function SetupWizardPage() {
 
   return (
     <div className="h-full min-h-0 overflow-y-auto">
-      <div className="mx-auto max-w-lg px-6 py-12">
-        <p className="text-xs font-medium uppercase tracking-wide text-surface-muted">
+      <div className="mx-auto max-w-dialog px-broad py-grand">
+        <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
           {t("setup:stepOf", { step: step + 1, total: 4 })}
         </p>
 
         {step === 0 ? (
           <>
-            <h1 className="mt-2 text-2xl font-semibold text-white">{t("setup:step0Title")}</h1>
-            <p className="mt-2 text-sm text-surface-muted">{t("setup:step0Intro")}</p>
-            <form onSubmit={onDeploymentSubmit} className="mt-8 flex flex-col gap-4">
+            <h1 className="mt-base text-2xl font-semibold text-ink-primary">{t("setup:step0Title")}</h1>
+            <p className="mt-base text-sm text-ink-muted">{t("setup:step0Intro")}</p>
+            <form onSubmit={onDeploymentSubmit} className="mt-deep flex flex-col gap-wide">
               {setupStatus?.setup_token_required ? (
-                <label className="flex flex-col gap-1.5 text-sm">
-                  <span className="text-surface-muted">{t("setup:setupToken")}</span>
-                  <input
+                <label className="flex flex-col gap-snug text-sm">
+                  <span className="text-ink-muted">{t("setup:setupToken")}</span>
+                  <TextInput
                     type="password"
                     name="setup_token"
                     autoComplete="off"
                     value={setupToken}
                     onChange={(ev) => setSetupToken(ev.target.value)}
                     required
-                    className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                   />
                 </label>
               ) : null}
-              <fieldset className="space-y-3">
-                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-surface-border p-4">
-                  <input
-                    type="radio"
+              <fieldset className="space-y-soft">
+                <label className="flex cursor-pointer items-start gap-soft rounded-card border border-line p-wide">
+                  <Radio
+                    name="deployment_mode"
+                    value="single_user"
+                    checked={deploymentMode === "single_user"}
+                    onChange={() => setDeploymentMode("single_user")}
+                    className="mt-tight"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium text-ink-primary">{t("setup:modeSingleTitle")}</span>
+                    <span className="mt-tight block text-xs text-ink-muted">{t("setup:modeSingleDesc")}</span>
+                  </span>
+                </label>
+                <label className="flex cursor-pointer items-start gap-soft rounded-card border border-line p-wide">
+                  <Radio
                     name="deployment_mode"
                     value="agent_system"
                     checked={deploymentMode === "agent_system"}
                     onChange={() => setDeploymentMode("agent_system")}
-                    className="mt-1"
+                    className="mt-tight"
                   />
                   <span>
-                    <span className="block text-sm font-medium text-white">{t("setup:modeAgentTitle")}</span>
-                    <span className="mt-1 block text-xs text-surface-muted">{t("setup:modeAgentDesc")}</span>
+                    <span className="block text-sm font-medium text-ink-primary">{t("setup:modeAgentTitle")}</span>
+                    <span className="mt-tight block text-xs text-ink-muted">{t("setup:modeAgentDesc")}</span>
                   </span>
                 </label>
-                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-surface-border p-4">
-                  <input
-                    type="radio"
+                <label className="flex cursor-pointer items-start gap-soft rounded-card border border-line p-wide">
+                  <Radio
                     name="deployment_mode"
                     value="multi_tenant"
                     checked={deploymentMode === "multi_tenant"}
                     onChange={() => setDeploymentMode("multi_tenant")}
-                    className="mt-1"
+                    className="mt-tight"
                   />
                   <span>
-                    <span className="block text-sm font-medium text-white">{t("setup:modeTenantTitle")}</span>
-                    <span className="mt-1 block text-xs text-surface-muted">{t("setup:modeTenantDesc")}</span>
+                    <span className="block text-sm font-medium text-ink-primary">{t("setup:modeTenantTitle")}</span>
+                    <span className="mt-tight block text-xs text-ink-muted">{t("setup:modeTenantDesc")}</span>
                   </span>
                 </label>
               </fieldset>
               {deploymentError ? (
-                <p className="text-sm text-red-400" role="alert">
+                <p className="text-sm text-danger" role="alert">
                   {deploymentError}
                 </p>
               ) : null}
-              <button
+              <Button
+                variant="primary"
+                size="lg"
                 type="submit"
                 disabled={deploymentPending}
-                className="rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+                className="px-wide py-firm text-sm"
               >
                 {deploymentPending ? t("setup:deploymentPending") : t("setup:continueBtn")}
-              </button>
+              </Button>
             </form>
           </>
         ) : null}
 
         {step === 1 ? (
           <>
-            <h1 className="mt-2 text-2xl font-semibold text-white">{t("setup:step1Title")}</h1>
-            <p className="mt-2 text-sm text-surface-muted">{t("setup:step1Intro")}</p>
-            <form onSubmit={onAdminSubmit} className="mt-8 flex flex-col gap-4">
+            <h1 className="mt-base text-2xl font-semibold text-ink-primary">{t("setup:step1Title")}</h1>
+            <p className="mt-base text-sm text-ink-muted">{t("setup:step1Intro")}</p>
+            <form onSubmit={onAdminSubmit} className="mt-deep flex flex-col gap-wide">
               {setupStatus?.setup_token_required ? (
-                <label className="flex flex-col gap-1.5 text-sm">
-                  <span className="text-surface-muted">{t("setup:setupToken")}</span>
-                  <input
+                <label className="flex flex-col gap-snug text-sm">
+                  <span className="text-ink-muted">{t("setup:setupToken")}</span>
+                  <TextInput
                     type="password"
                     name="setup_token"
                     autoComplete="off"
                     value={setupToken}
                     onChange={(ev) => setSetupToken(ev.target.value)}
                     required
-                    className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                   />
-                  <p className="text-xs text-surface-muted">
+                  <p className="text-xs text-ink-muted">
                     {setupStatus.setup_token_source === "env"
                       ? t("setup:setupTokenEnv")
                       : t("setup:setupTokenLog")}
                   </p>
                 </label>
               ) : null}
-              <label className="flex flex-col gap-1.5 text-sm">
-                <span className="text-surface-muted">{t("setup:email")}</span>
-                <input
+              <label className="flex flex-col gap-snug text-sm">
+                <span className="text-ink-muted">{t("setup:email")}</span>
+                <TextInput
                   type="email"
                   name="email"
                   autoComplete="username"
                   value={email}
                   onChange={(ev) => setEmail(ev.target.value)}
                   required
-                  className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                 />
               </label>
-              <label className="flex flex-col gap-1.5 text-sm">
-                <span className="text-surface-muted">{t("setup:password")}</span>
-                <input
+              <label className="flex flex-col gap-snug text-sm">
+                <span className="text-ink-muted">{t("setup:password")}</span>
+                <TextInput
                   type="password"
                   name="password"
                   autoComplete="new-password"
@@ -573,12 +587,11 @@ export function SetupWizardPage() {
                   onChange={(ev) => setPassword(ev.target.value)}
                   required
                   minLength={8}
-                  className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                 />
               </label>
-              <label className="flex flex-col gap-1.5 text-sm">
-                <span className="text-surface-muted">{t("setup:passwordConfirm")}</span>
-                <input
+              <label className="flex flex-col gap-snug text-sm">
+                <span className="text-ink-muted">{t("setup:passwordConfirm")}</span>
+                <TextInput
                   type="password"
                   name="password_confirm"
                   autoComplete="new-password"
@@ -586,63 +599,64 @@ export function SetupWizardPage() {
                   onChange={(ev) => setPasswordConfirm(ev.target.value)}
                   required
                   minLength={8}
-                  className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                 />
               </label>
-              <p className="text-xs text-surface-muted">
+              <p className="text-xs text-ink-muted">
                 {t("setup:passwordHint")}
               </p>
               {adminError ? (
-                <p className="text-sm text-red-400" role="alert">
+                <p className="text-sm text-danger" role="alert">
                   {adminError}
                 </p>
               ) : null}
-              <button
+              <Button
+                variant="primary"
+                size="lg"
                 type="submit"
                 disabled={adminPending}
-                className="rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+                className="px-wide py-firm text-sm"
               >
                 {adminPending ? t("setup:adminPending") : t("setup:continueBtn")}
-              </button>
+              </Button>
             </form>
           </>
         ) : null}
 
         {step === 2 ? (
           <>
-            <h1 className="mt-2 text-2xl font-semibold text-white">{t("setup:step2Title")}</h1>
-            <p className="mt-2 text-sm text-surface-muted">{t("setup:step2Intro")}</p>
+            <h1 className="mt-base text-2xl font-semibold text-ink-primary">{t("setup:step2Title")}</h1>
+            <p className="mt-base text-sm text-ink-muted">{t("setup:step2Intro")}</p>
 
             {catalogLoading ? (
-              <p className="mt-6 text-sm text-surface-muted">{t("setup:catalogLoading")}</p>
+              <p className="mt-broad text-sm text-ink-muted">{t("setup:catalogLoading")}</p>
             ) : null}
             {catalogError ? (
-              <p className="mt-4 text-sm text-red-400" role="alert">
+              <p className="mt-wide text-sm text-danger" role="alert">
                 {catalogError}
               </p>
             ) : null}
 
             {catalog ? (
-              <div className="mt-6 space-y-4">
+              <div className="mt-broad space-y-wide">
                 <section>
-                  <h2 className="text-sm font-medium text-white">{t("setup:providerStatus")}</h2>
-                  <ul className="mt-2 space-y-2">
+                  <h2 className="text-sm font-medium text-ink-primary">{t("setup:providerStatus")}</h2>
+                  <ul className="mt-base space-y-base">
                     {catalog.providers.map((p) => (
                       <li
                         key={p.provider_id}
-                        className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-sm"
+                        className="rounded-card border border-line bg-card px-soft py-base text-sm"
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-medium text-white">{p.label}</span>
+                        <div className="flex items-center justify-between gap-base">
+                          <span className="font-medium text-ink-primary">{p.label}</span>
                           <span
                             className={
-                              p.reachable ? "text-emerald-400" : "text-amber-400"
+                              p.reachable ? "text-success" : "text-warning"
                             }
                           >
                             {p.reachable ? t("setup:reachable") : t("setup:notReachable")}
                           </span>
                         </div>
-                        <p className="mt-1 text-xs text-surface-muted">
+                        <p className="mt-tight text-xs text-ink-muted">
                           {p.source}
                           {p.model_count > 0
                             ? t("setup:providerModelsSummary", {
@@ -652,21 +666,21 @@ export function SetupWizardPage() {
                             : ""}
                         </p>
                         {p.detail && !p.reachable ? (
-                          <p className="mt-1 text-xs text-amber-300/90">{p.detail}</p>
+                          <p className="mt-tight text-xs text-badge-warning">{p.detail}</p>
                         ) : null}
                       </li>
                     ))}
                   </ul>
                 </section>
 
-                <section className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-sm">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-white">{t("setup:embeddingsTitle")}</span>
+                <section className="rounded-card border border-line bg-card px-soft py-base text-sm">
+                  <div className="flex items-center justify-between gap-base">
+                    <span className="font-medium text-ink-primary">{t("setup:embeddingsTitle")}</span>
                     <span
                       className={
                         catalog.embedding.configured && catalog.embedding.reachable
-                          ? "text-emerald-400"
-                          : "text-amber-400"
+                          ? "text-success"
+                          : "text-warning"
                       }
                     >
                       {!catalog.embedding.configured
@@ -677,35 +691,36 @@ export function SetupWizardPage() {
                     </span>
                   </div>
                   {catalog.embedding.status_line && !catalog.embedding.configured ? (
-                    <p className="mt-2 text-xs text-surface-muted">{catalog.embedding.status_line}</p>
+                    <p className="mt-base text-xs text-ink-muted">{catalog.embedding.status_line}</p>
                   ) : null}
                   {catalog.embedding.configured && catalog.embedding.detail && !catalog.embedding.reachable ? (
-                    <p className="mt-1 text-xs text-amber-300/90">{catalog.embedding.detail}</p>
+                    <p className="mt-tight text-xs text-badge-warning">{catalog.embedding.detail}</p>
                   ) : null}
                   {!catalog.embedding.configured &&
                   catalog.embedding.chat_embed_opt_in?.available ? (
-                    <div className="mt-3 flex flex-col gap-2">
-                      <p className="text-xs text-surface-muted">
+                    <div className="mt-soft flex flex-col gap-base">
+                      <p className="text-xs text-ink-muted">
                         {t("setup:chatEmbedHint", {
                           model: catalog.embedding.chat_embed_opt_in.suggested_model ?? "—",
                         })}
                       </p>
-                      <button
+                      <Button
+                        variant="primary"
                         type="button"
                         disabled={chatEmbedPending || prefsPending}
                         onClick={() => void onEnableChatProviderEmbedding()}
-                        className="self-start rounded-lg border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-sm text-sky-200 hover:bg-sky-500/20 disabled:opacity-50"
+                        className="self-start border-accent/40 px-soft py-base text-sm text-badge-accent"
                       >
                         {chatEmbedPending ? t("setup:chatEmbedPending") : t("setup:chatEmbedBtn")}
-                      </button>
+                      </Button>
                     </div>
                   ) : null}
                 </section>
 
-                <form onSubmit={onSavePreferences} className="flex flex-col gap-4">
-                  <label className="flex flex-col gap-1.5 text-sm">
-                    <span className="text-surface-muted">{t("setup:preferredProvider")}</span>
-                    <select
+                <form onSubmit={onSavePreferences} className="flex flex-col gap-wide">
+                  <label className="flex flex-col gap-snug text-sm">
+                    <span className="text-ink-muted">{t("setup:preferredProvider")}</span>
+                    <Select
                       value={primaryProviderId}
                       onChange={(ev) => {
                         const id = ev.target.value;
@@ -717,7 +732,6 @@ export function SetupWizardPage() {
                           setModelCoding(prov.chat_models[1] ?? prov.chat_models[0]);
                         }
                       }}
-                      className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                     >
                       <option value="">{t("setup:selectProvider")}</option>
                       {catalog.providers.map((p) => (
@@ -730,16 +744,15 @@ export function SetupWizardPage() {
                           {p.reachable ? "" : t("setup:offlineSuffix")}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </label>
 
-                  <label className="flex flex-col gap-1.5 text-sm">
-                    <span className="text-surface-muted">{t("setup:modelAgent")}</span>
-                    <select
+                  <label className="flex flex-col gap-snug text-sm">
+                    <span className="text-ink-muted">{t("setup:modelAgent")}</span>
+                    <Select
                       value={modelAgent}
                       onChange={(ev) => setModelAgent(ev.target.value)}
                       disabled={!chatModels.length}
-                      className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
                     >
                       {chatModels.length === 0 ? (
                         <option value="">{t("setup:noChatModels")}</option>
@@ -750,52 +763,49 @@ export function SetupWizardPage() {
                           </option>
                         ))
                       )}
-                    </select>
+                    </Select>
                   </label>
 
-                  <label className="flex flex-col gap-1.5 text-sm">
-                    <span className="text-surface-muted">{t("setup:modelCoding")}</span>
-                    <select
+                  <label className="flex flex-col gap-snug text-sm">
+                    <span className="text-ink-muted">{t("setup:modelCoding")}</span>
+                    <Select
                       value={modelCoding}
                       onChange={(ev) => setModelCoding(ev.target.value)}
                       disabled={!chatModels.length}
-                      className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
                     >
                       {chatModels.map((m) => (
                         <option key={`c-${m}`} value={m}>
                           {m}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </label>
 
-                  <label className="flex flex-col gap-1.5 text-sm">
-                    <span className="text-surface-muted">{t("setup:modelDefault")}</span>
-                    <select
+                  <label className="flex flex-col gap-snug text-sm">
+                    <span className="text-ink-muted">{t("setup:modelDefault")}</span>
+                    <Select
                       value={modelDefault}
                       onChange={(ev) => setModelDefault(ev.target.value)}
                       disabled={!chatModels.length}
-                      className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
                     >
                       {chatModels.map((m) => (
                         <option key={`d-${m}`} value={m}>
                           {m}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </label>
 
                   {embedOptions.length > 0 || catalog.embedding.configured ? (
-                    <div className="flex flex-col gap-2">
-                      <label className="flex flex-col gap-1.5 text-sm">
-                        <span className="text-surface-muted">
+                    <div className="flex flex-col gap-base">
+                      <label className="flex flex-col gap-snug text-sm">
+                        <span className="text-ink-muted">
                           {t("setup:ragEmbedding")}
                           {!catalog.embedding.configured ? t("setup:ragEmbeddingAfterEnable") : ""}
                         </span>
-                        <select
+                        <Select
                           value={ragEmbedding}
                           onChange={(ev) => setRagEmbedding(ev.target.value)}
-                          className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                         >
                           <option value="">{t("setup:optionalDash")}</option>
                           {embedOptions.map((m) => (
@@ -803,18 +813,18 @@ export function SetupWizardPage() {
                               {m}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </label>
-                      <button
+                      <Button
                         type="button"
                         disabled={embedTestPending || !ragEmbedding.trim()}
                         onClick={() => void onTestEmbedding()}
-                        className="self-start rounded-lg border border-surface-border px-3 py-2 text-sm text-white hover:bg-white/5 disabled:opacity-50"
+                        className="self-start px-soft py-base text-sm hover:bg-white/5"
                       >
                         {embedTestPending ? t("setup:embedTestPending") : t("setup:embedTestBtn")}
-                      </button>
+                      </Button>
                       {embedTestOk ? (
-                        <p className="text-sm text-emerald-400" role="status">
+                        <p className="text-sm text-success" role="status">
                           {embedTestOk}
                         </p>
                       ) : null}
@@ -822,69 +832,72 @@ export function SetupWizardPage() {
                   ) : null}
 
                   {prefsError ? (
-                    <p className="text-sm text-red-400" role="alert">
+                    <p className="text-sm text-danger" role="alert">
                       {prefsError}
                     </p>
                   ) : null}
                   {prefsOk ? (
-                    <p className="text-sm text-emerald-400" role="status">
+                    <p className="text-sm text-success" role="status">
                       {prefsOk}
                     </p>
                   ) : null}
 
-                  <div className="flex flex-wrap gap-3">
-                    <button
+                  <div className="flex flex-wrap gap-soft">
+                    <Button
+                      size="lg"
                       type="button"
                       disabled={catalogLoading}
                       onClick={() => void loadCatalog()}
-                      className="rounded-lg border border-surface-border px-4 py-2.5 text-sm text-white hover:bg-white/5 disabled:opacity-50"
+                      className="px-wide py-firm text-sm hover:bg-white/5"
                     >
                       {t("setup:refresh")}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="lg"
                       type="submit"
                       disabled={
                         prefsPending ||
                         !primaryProviderId ||
                         !selectedProvider?.reachable
                       }
-                      className="rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+                      className="px-wide py-firm text-sm"
                     >
                       {prefsPending ? t("setup:savePending") : t("setup:saveAndContinue")}
-                    </button>
+                    </Button>
                   </div>
                 </form>
               </div>
             ) : null}
 
-            <div className="mt-8 border-t border-surface-border pt-6">
-              <button
+            <div className="mt-deep border-t border-line pt-broad">
+              <Button
+                variant="ghost"
                 type="button"
                 onClick={() => setShowManual((v) => !v)}
-                className="text-sm text-sky-400 hover:underline"
+                className="text-sm text-accent hover:underline"
               >
                 {showManual ? t("setup:showManualHide") : t("setup:showManualAdd")}
-              </button>
+              </Button>
               {showManual ? (
-                <form onSubmit={onLlmSave} className="mt-4 flex flex-col gap-4">
-                  <label className="flex flex-col gap-1.5 text-sm">
-                    <span className="text-surface-muted">{t("setup:preset")}</span>
-                    <select
+                <form onSubmit={onLlmSave} className="mt-wide flex flex-col gap-wide">
+                  <label className="flex flex-col gap-snug text-sm">
+                    <span className="text-ink-muted">{t("setup:preset")}</span>
+                    <Select
                       value={preset}
                       onChange={(ev) => onPresetChange(ev.target.value as LlmPresetId)}
-                      className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                     >
                       {LLM_PRESETS.map((p) => (
                         <option key={p.id} value={p.id}>
                           {t(`setup:${p.labelKey}`)}
                         </option>
                       ))}
-                    </select>
-                    <p className="text-xs text-surface-muted">{t(`setup:${presetConfig.helpKey}`)}</p>
+                    </Select>
+                    <p className="text-xs text-ink-muted">{t(`setup:${presetConfig.helpKey}`)}</p>
                   </label>
-                  <label className="flex flex-col gap-1.5 text-sm">
-                    <span className="text-surface-muted">{t("setup:baseUrl")}</span>
-                    <input
+                  <label className="flex flex-col gap-snug text-sm">
+                    <span className="text-ink-muted">{t("setup:baseUrl")}</span>
+                    <TextInput
                       type="url"
                       value={baseUrl}
                       onChange={(ev) => {
@@ -893,15 +906,14 @@ export function SetupWizardPage() {
                         setLlmTestOk(null);
                       }}
                       required
-                      className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                     />
                   </label>
-                  <label className="flex flex-col gap-1.5 text-sm">
-                    <span className="text-surface-muted">
+                  <label className="flex flex-col gap-snug text-sm">
+                    <span className="text-ink-muted">
                       {t("setup:apiKey")}
                       {presetConfig.apiKeyRequired ? t("setup:apiKeyRequired") : t("setup:apiKeyOptional")}
                     </span>
-                    <input
+                    <TextInput
                       type="password"
                       value={apiKey}
                       onChange={(ev) => {
@@ -910,76 +922,78 @@ export function SetupWizardPage() {
                       }}
                       autoComplete="off"
                       required={presetConfig.apiKeyRequired}
-                      className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                     />
-                    <p className="text-xs text-surface-muted">{t(`setup:${presetConfig.apiKeyHintKey}`)}</p>
+                    <p className="text-xs text-ink-muted">{t(`setup:${presetConfig.apiKeyHintKey}`)}</p>
                   </label>
-                  <label className="flex flex-col gap-1.5 text-sm">
-                    <span className="text-surface-muted">{t("setup:defaultModelOptional")}</span>
-                    <input
+                  <label className="flex flex-col gap-snug text-sm">
+                    <span className="text-ink-muted">{t("setup:defaultModelOptional")}</span>
+                    <TextInput
                       type="text"
                       value={modelDefaultManual}
                       onChange={(ev) => setModelDefaultManual(ev.target.value)}
                       placeholder={t(`setup:${presetConfig.modelPlaceholderKey}`)}
-                      className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                     />
                   </label>
                   {llmError ? (
-                    <p className="text-sm text-red-400" role="alert">
+                    <p className="text-sm text-danger" role="alert">
                       {llmError}
                     </p>
                   ) : null}
                   {llmTestOk ? (
-                    <p className="text-sm text-emerald-400" role="status">
+                    <p className="text-sm text-success" role="status">
                       {llmTestOk}
                     </p>
                   ) : null}
-                  <div className="flex flex-wrap gap-3">
-                    <button
+                  <div className="flex flex-wrap gap-soft">
+                    <Button
+                      size="lg"
                       type="button"
                       disabled={llmPending}
                       onClick={(ev) => void onLlmTest(ev as unknown as FormEvent)}
-                      className="rounded-lg border border-surface-border px-4 py-2.5 text-sm text-white hover:bg-white/5 disabled:opacity-50"
+                      className="px-wide py-firm text-sm hover:bg-white/5"
                     >
                       {t("setup:testConnection")}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      size="lg"
                       type="submit"
                       disabled={llmPending}
-                      className="rounded-lg border border-surface-border px-4 py-2.5 text-sm text-white hover:bg-white/5 disabled:opacity-50"
+                      className="px-wide py-firm text-sm hover:bg-white/5"
                     >
                       {t("setup:saveEndpoint")}
-                    </button>
+                    </Button>
                   </div>
                 </form>
               ) : null}
             </div>
 
-            <button
+            <Button
+              variant="plain"
+              block
               type="button"
               disabled={prefsPending}
               onClick={() => void onSkipProfiles()}
-              className="mt-6 text-left text-sm text-surface-muted hover:text-white disabled:opacity-50"
+              className="mt-broad text-sm text-ink-muted hover:text-white"
             >
               {t("setup:skipProfiles")}
-            </button>
+            </Button>
           </>
         ) : null}
 
         {step === 3 ? (
           <>
-            <h1 className="mt-2 text-2xl font-semibold text-white">{t("setup:step3Title")}</h1>
-            <p className="mt-2 text-sm text-surface-muted">{t("setup:step3Intro")}</p>
-            <div className="mt-8 flex flex-col gap-3">
+            <h1 className="mt-base text-2xl font-semibold text-ink-primary">{t("setup:step3Title")}</h1>
+            <p className="mt-base text-sm text-ink-muted">{t("setup:step3Intro")}</p>
+            <div className="mt-deep flex flex-col gap-soft">
               <Link
                 to="/chat"
-                className="rounded-lg bg-sky-600 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-sky-500"
+                className="rounded-card bg-accent px-wide py-firm text-center text-sm font-medium text-ink-on-fill hover:bg-accent-hover"
               >
                 {t("setup:goToChat")}
               </Link>
               <Link
                 to="/admin"
-                className="rounded-lg border border-surface-border px-4 py-2.5 text-center text-sm text-white hover:bg-white/5"
+                className="rounded-card border border-line px-wide py-firm text-center text-sm text-ink-primary hover:bg-white/5"
               >
                 {t("setup:goToAdmin")}
               </Link>
@@ -987,8 +1001,8 @@ export function SetupWizardPage() {
           </>
         ) : null}
 
-        <p className="mt-10 text-center text-sm text-surface-muted">
-          <Link to="/login" className="text-sky-400 hover:underline">
+        <p className="mt-page text-center text-sm text-ink-muted">
+          <Link to="/login" className="text-accent hover:underline">
             {t("setup:backToLogin")}
           </Link>
         </p>

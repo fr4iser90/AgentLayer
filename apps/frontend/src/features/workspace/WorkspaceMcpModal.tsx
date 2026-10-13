@@ -12,6 +12,11 @@ import {
   uvToolInstallCommand,
   type UvMcpLaunchMode,
 } from "./workspaceMcpBuilders";
+import { Button } from "../../ui/Button";
+import { Modal } from "../../ui/Modal";
+import { Radio } from "../../ui/Radio";
+import { Checkbox } from "../../ui/Checkbox";
+import { Select, TextArea, TextInput } from "../../ui/Field";
 
 type Props = {
   open: boolean;
@@ -172,27 +177,38 @@ export function WorkspaceMcpModal({
   const previewRow = "row" in previewBuilt ? previewBuilt.row : null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-      role="dialog"
-      aria-modal="true"
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t("workspace:mcpModalTitle")}
+      size="dialogWide"
+      footer={
+        <>
+          <Button variant="secondary" size="sm" onClick={onClose} disabled={saving}>
+            {t("workspace:cancel")}
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => void handleSave()}
+            disabled={saving}
+          >
+            {saving ? t("workspace:saving") : t("workspace:save")}
+          </Button>
+        </>
+      }
     >
-      <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-white/15 bg-[#141414] shadow-xl">
-        <div className="shrink-0 border-b border-white/10 px-4 py-3">
-          <h2 className="text-sm font-semibold text-white">{t("workspace:mcpModalTitle")}</h2>
-          <p className="mt-1 text-[11px] leading-snug text-surface-muted">
-            {t("workspace:mcpModalDescription", { workspaceName })}
-          </p>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-          <section className="rounded-lg border border-white/10 bg-black/25 p-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-surface-muted">{t("workspace:addViaUv")}</p>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+      <p className="text-meta leading-snug text-ink-muted">
+        {t("workspace:mcpModalDescription", { workspaceName })}
+      </p>
+      <div className="mt-soft">
+          <section className="rounded-card border border-line bg-black/25 p-soft">
+            <p className="text-meta font-semibold uppercase tracking-wide text-ink-muted">{t("workspace:addViaUv")}</p>
+            <div className="mt-base grid gap-base sm:grid-cols-2">
               <label className="block sm:col-span-2">
-                <span className="text-[10px] text-surface-muted">{t("workspace:presetLabel")}</span>
-                <select
-                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2 py-1.5 text-xs text-neutral-100"
+                <span className="text-meta text-ink-muted">{t("workspace:presetLabel")}</span>
+                <Select
+                  className="mt-hair text-xs"
                   value={presetId}
                   onChange={(e) => applyPreset(e.target.value)}
                 >
@@ -201,12 +217,13 @@ export function WorkspaceMcpModal({
                       {p.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               <label className="block">
-                <span className="text-[10px] text-surface-muted">{t("workspace:serverIdLabel")}</span>
-                <input
-                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-black/40 px-2 py-1.5 font-mono text-xs text-neutral-100"
+                <span className="text-meta text-ink-muted">{t("workspace:serverIdLabel")}</span>
+                <TextInput
+                  mono
+                  className="mt-hair text-xs"
                   value={serverId}
                   onChange={(e) => {
                     setServerId(e.target.value);
@@ -216,20 +233,20 @@ export function WorkspaceMcpModal({
                 />
               </label>
               <label className="block">
-                <span className="text-[10px] text-surface-muted">{t("workspace:packageLabel")}</span>
-                <input
-                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-black/40 px-2 py-1.5 font-mono text-xs text-neutral-100"
+                <span className="text-meta text-ink-muted">{t("workspace:packageLabel")}</span>
+                <TextInput
+                  mono
+                  className="mt-hair text-xs"
                   value={packageSpec}
                   onChange={(e) => handlePackageSpecChange(e.target.value)}
                   placeholder={t("workspace:packagePlaceholder")}
                 />
               </label>
               <fieldset className="sm:col-span-2">
-                <legend className="text-[10px] text-surface-muted">{t("workspace:launchOnServer")}</legend>
-                <div className="mt-1 flex flex-wrap gap-3 text-xs text-neutral-200">
-                  <label className="inline-flex items-center gap-1.5">
-                    <input
-                      type="radio"
+                <legend className="text-meta text-ink-muted">{t("workspace:launchOnServer")}</legend>
+                <div className="mt-tight flex flex-wrap gap-soft text-xs text-ink-primary">
+                  <label className="inline-flex items-center gap-snug">
+                    <Radio
                       name="uv-launch"
                       checked={launchMode === "uvx"}
                       onChange={() => setLaunchMode("uvx")}
@@ -238,9 +255,8 @@ export function WorkspaceMcpModal({
                       {t("workspace:launchUvx")}
                     </span>
                   </label>
-                  <label className="inline-flex items-center gap-1.5">
-                    <input
-                      type="radio"
+                  <label className="inline-flex items-center gap-snug">
+                    <Radio
                       name="uv-launch"
                       checked={launchMode === "tool"}
                       onChange={() => setLaunchMode("tool")}
@@ -252,17 +268,18 @@ export function WorkspaceMcpModal({
                 </div>
               </fieldset>
               {launchMode === "tool" ? (
-                <p className="sm:col-span-2 rounded border border-amber-500/25 bg-amber-950/30 px-2 py-1.5 text-[10px] leading-snug text-amber-100/90">
+                <p className="sm:col-span-2 rounded-tile border border-warning/25 bg-warning-subtle px-base py-snug text-meta leading-snug text-badge-warning">
                   {t("workspace:onServerOnce")}{" "}
-                  <code className="break-all text-amber-200/95">{toolInstallCmd}</code>
+                  <code className="break-all text-badge-warning">{toolInstallCmd}</code>
                 </p>
               ) : null}
               <label className="block">
-                <span className="text-[10px] text-surface-muted">
+                <span className="text-meta text-ink-muted">
                   {launchMode === "uvx" ? t("workspace:binaryAfterFromLabel") : t("workspace:binaryOnPathLabel")}
                 </span>
-                <input
-                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-black/40 px-2 py-1.5 font-mono text-xs text-neutral-100"
+                <TextInput
+                  mono
+                  className="mt-hair text-xs"
                   value={binary}
                   onChange={(e) => {
                     setBinary(e.target.value);
@@ -272,9 +289,10 @@ export function WorkspaceMcpModal({
                 />
               </label>
               <label className="block">
-                <span className="text-[10px] text-surface-muted">{t("workspace:argsLabel")}</span>
-                <input
-                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-black/40 px-2 py-1.5 font-mono text-xs text-neutral-100"
+                <span className="text-meta text-ink-muted">{t("workspace:argsLabel")}</span>
+                <TextInput
+                  mono
+                  className="mt-hair text-xs"
                   value={mcpArgsText}
                   onChange={(e) => {
                     setMcpArgsText(e.target.value);
@@ -283,37 +301,38 @@ export function WorkspaceMcpModal({
                   placeholder={t("workspace:argsPlaceholder")}
                 />
               </label>
-              <label className="flex items-center gap-2 sm:col-span-2 text-xs text-neutral-300">
-                <input
-                  type="checkbox"
+              <label className="flex items-center gap-base sm:col-span-2 text-xs text-ink-secondary">
+                <Checkbox
                   checked={useWorkspaceCwd}
                   onChange={(e) => setUseWorkspaceCwd(e.target.checked)}
                 />
-                {t("workspace:workspaceCwdLabel")} <code className="text-neutral-400">cwd</code>
+                {t("workspace:workspaceCwdLabel")} <code className="text-ink-muted">cwd</code>
                 {workspacePath ? (
-                  <span className="truncate text-[10px] text-surface-muted" title={workspacePath}>
+                  <span className="truncate text-meta text-ink-muted" title={workspacePath}>
                     ({workspacePath})
                   </span>
                 ) : (
-                  <span className="text-[10px] text-amber-300/90">{t("workspace:workspaceCwdUnknownHint")}</span>
+                  <span className="text-meta text-badge-warning">{t("workspace:workspaceCwdUnknownHint")}</span>
                 )}
               </label>
             </div>
             {previewRow ? (
-              <pre className="mt-2 max-h-20 overflow-auto rounded border border-white/5 bg-black/40 p-2 text-[10px] text-neutral-400">
+              <pre className="mt-base max-h-20 overflow-auto rounded-tile border border-line-subtle bg-black/40 p-base text-meta text-ink-muted">
                 {JSON.stringify(previewRow, null, 2)}
               </pre>
             ) : null}
-            {uvFormError ? <p className="mt-2 text-xs text-red-300/95">{uvFormError}</p> : null}
-            <button
+            {uvFormError ? <p className="mt-base text-xs text-badge-danger">{uvFormError}</p> : null}
+            <Button
+              variant="primary"
+              size="sm"
               type="button"
-              className="mt-2 rounded-lg border border-sky-600/50 bg-sky-950/40 px-3 py-1.5 text-xs font-medium text-sky-200 hover:bg-sky-900/50"
+              className="mt-base border-accent/50 px-soft py-snug text-xs text-badge-accent"
               onClick={handleAddUvServer}
             >
               {t("workspace:addToJsonList")}
-            </button>
+            </Button>
             {preset.toolInstallHint ? (
-              <p className="mt-2 text-[10px] text-surface-muted">
+              <p className="mt-base text-meta text-ink-muted">
                 {t("workspace:optionalPersistentInstallHint", {
                   hint: preset.toolInstallHint,
                   binary: preset.binary,
@@ -322,45 +341,27 @@ export function WorkspaceMcpModal({
             ) : null}
           </section>
 
-          <p className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-surface-muted">{t("workspace:serversJsonTitle")}</p>
-          <textarea
-            className="mt-1 h-48 w-full resize-y rounded-lg border border-surface-border bg-black/40 px-3 py-2 font-mono text-xs text-neutral-100"
+          <p className="mt-soft text-meta font-semibold uppercase tracking-wide text-ink-muted">{t("workspace:serversJsonTitle")}</p>
+          <TextArea
+            mono
+            className="mt-tight resize-y text-xs"
             spellCheck={false}
             value={text}
             onChange={(e) => setText(e.target.value)}
             aria-label={t("workspace:serversJsonAria")}
           />
-          <p className="mt-2 text-[10px] leading-snug text-surface-muted">
+          <p className="mt-base text-meta leading-snug text-ink-muted">
             {t("workspace:schemaHint")}{" "}
-            <code className="text-neutral-500">id</code>, <code className="text-neutral-500">command</code>,{" "}
-            <code className="text-neutral-500">args</code>, optional <code className="text-neutral-500">env</code>,{" "}
-            <code className="text-neutral-500">cwd</code>. {t("workspace:cwdHint")}
+            <code className="text-ink-muted">id</code>, <code className="text-ink-muted">command</code>,{" "}
+            <code className="text-ink-muted">args</code>, optional <code className="text-ink-muted">env</code>,{" "}
+            <code className="text-ink-muted">cwd</code>. {t("workspace:cwdHint")}
           </p>
-          <pre className="mt-1 max-h-24 overflow-auto rounded border border-white/5 bg-black/30 p-2 text-[10px] text-neutral-400">
+          <pre className="mt-tight max-h-24 overflow-auto rounded-tile border border-line-subtle bg-black/30 p-base text-meta text-ink-muted">
             {EXAMPLE}
           </pre>
         </div>
 
-        {error ? <p className="shrink-0 px-4 pb-2 text-xs text-red-300/95">{error}</p> : null}
-        <div className="flex shrink-0 justify-end gap-2 border-t border-white/10 px-4 py-3">
-          <button
-            type="button"
-            className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-neutral-200 hover:bg-white/5"
-            onClick={onClose}
-            disabled={saving}
-          >
-            {t("workspace:cancel")}
-          </button>
-          <button
-            type="button"
-            className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500 disabled:opacity-50"
-            onClick={() => void handleSave()}
-            disabled={saving}
-          >
-            {saving ? t("workspace:saving") : t("workspace:save")}
-          </button>
-        </div>
-      </div>
-    </div>
+        {error ? <p className="mt-base text-xs text-danger">{error}</p> : null}
+    </Modal>
   );
 }

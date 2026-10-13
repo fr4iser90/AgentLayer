@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "../../ui/Button";
 import { useAuth } from "../../auth/AuthContext";
 import { useOptionalGlobalMedia } from "../media/GlobalMediaProvider";
 import {
@@ -16,12 +17,13 @@ import { getPath, setPath } from "./dashboardDataPaths";
 import { MEDIA_AUDIO_ACCEPT, addMediaEmbed, uploadMediaFile } from "./media/mediaUpload";
 import { MediaSharePanel } from "./media/MediaSharePanel";
 import { mediaIdFromRef, useMediaStreamUrl } from "./media/useMediaStreamUrl";
+import { TextInput } from "../../ui/Field";
 
 function LocalUploadPlayer(props: { mediaId: string }) {
   const { t } = useTranslation(["dashboard"]);
   const url = useMediaStreamUrl(props.mediaId);
   if (!url) {
-    return <p className="text-xs text-surface-muted">{t("dashboard:mediaStreamLoading")}</p>;
+    return <p className="text-xs text-ink-muted">{t("dashboard:mediaStreamLoading")}</p>;
   }
   return (
     <audio controls className="w-full" src={url}>
@@ -170,35 +172,37 @@ export function MediaPlayerBlockBody(props: {
   };
 
   return (
-    <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-3 md:p-4">
-      <h3 className="mb-3 text-sm font-medium text-white">{sectionTitle}</h3>
+    <section className="rounded-sheet border border-line bg-card p-soft md:p-wide">
+      <h3 className="mb-soft text-sm font-medium text-ink-primary">{sectionTitle}</h3>
 
-      <div className="mb-4 min-h-[4rem] rounded-lg border border-white/10 bg-black/40 p-3">
+      <div className="mb-wide min-h-[4rem] rounded-card border border-line bg-black/40 p-soft">
         {!nowItem ? (
-          <p className="text-sm text-surface-muted">{t("dashboard:mediaQueueEmpty")}</p>
+          <p className="text-sm text-ink-muted">{t("dashboard:mediaQueueEmpty")}</p>
         ) : nowEmbed ? (
-          <div className="aspect-video max-h-48 overflow-hidden rounded-md">
+          <div className="aspect-video max-h-48 overflow-hidden rounded-tile">
             <iframe title={itemLabel(nowItem, sectionTitle)} src={nowEmbed} className="h-full w-full border-0" />
           </div>
         ) : nowMediaId || nowExternalStream ? (
           globalMedia ? (
-            <div className="space-y-2">
-              <p className="text-sm text-white">{itemLabel(nowItem, t("dashboard:mediaUntitledTrack"))}</p>
+            <div className="space-y-base">
+              <p className="text-sm text-ink-primary">{itemLabel(nowItem, t("dashboard:mediaUntitledTrack"))}</p>
               {nowExternalStream ? (
-                <p className="text-xs text-surface-muted">{t("dashboard:mediaMiniPlayerStreamHint")}</p>
+                <p className="text-xs text-ink-muted">{t("dashboard:mediaMiniPlayerStreamHint")}</p>
               ) : null}
               {globalPlayingNow ? (
-                <p className="text-xs text-sky-200/90">{t("dashboard:mediaPlayingInFooter")}</p>
+                <p className="text-xs text-badge-accent">{t("dashboard:mediaPlayingInFooter")}</p>
               ) : null}
-              <button
+              <Button
+                variant="primary"
+                size="sm"
                 type="button"
-                className="rounded-lg border border-sky-500/40 bg-sky-950/40 px-3 py-1.5 text-xs text-sky-100 hover:bg-sky-900/40"
+                className="border-accent/40 px-soft py-snug text-xs text-badge-accent"
                 onClick={() => (globalPlayingNow ? globalMedia.togglePause() : startPlayback(nowItem))}
               >
                 {globalPlayingNow && !globalMedia.paused
                   ? t("dashboard:mediaMiniPlayerPause")
                   : t("dashboard:mediaMiniPlayerPlay")}
-              </button>
+              </Button>
             </div>
           ) : nowMediaId ? (
             <LocalUploadPlayer mediaId={nowMediaId} />
@@ -208,24 +212,25 @@ export function MediaPlayerBlockBody(props: {
             </audio>
           )
         ) : (
-          <p className="text-sm text-amber-200">{t("dashboard:mediaPlaybackUnavailable")}</p>
+          <p className="text-sm text-badge-warning">{t("dashboard:mediaPlaybackUnavailable")}</p>
         )}
         {nowItem && nowEmbed ? (
-          <p className="mt-2 text-xs text-surface-muted">{itemLabel(nowItem, sectionTitle)}</p>
+          <p className="mt-base text-xs text-ink-muted">{itemLabel(nowItem, sectionTitle)}</p>
         ) : null}
       </div>
 
       {!readOnly ? (
-        <div className="dashboard-grid-no-drag mb-4 space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
+        <div className="dashboard-grid-no-drag mb-wide space-y-base">
+          <div className="flex flex-wrap items-center gap-base">
+            <Button
+              size="sm"
               type="button"
-              className="rounded-lg border border-surface-border bg-black/30 px-3 py-1.5 text-xs text-white hover:bg-white/5 disabled:opacity-50"
+              className="bg-black/30 px-soft py-snug text-xs hover:bg-white/5"
               disabled={uploading || !dashboardId}
               onClick={() => fileRef.current?.click()}
             >
               {uploading ? t("dashboard:loading") : t("dashboard:mediaUploadTrack")}
-            </button>
+            </Button>
             <input
               ref={fileRef}
               type="file"
@@ -238,62 +243,69 @@ export function MediaPlayerBlockBody(props: {
               }}
             />
           </div>
-          <div className="flex flex-wrap gap-2">
-            <input
+          <div className="flex flex-wrap gap-base">
+            <TextInput
+              mono
               type="url"
-              className="min-w-[12rem] flex-1 rounded-lg border border-surface-border bg-black/40 px-3 py-2 font-mono text-xs text-neutral-100"
+              className="min-w-[12rem] flex-1 text-xs"
               placeholder={t("dashboard:embedUrlPlaceholder")}
               value={embedUrl}
               onChange={(e) => setEmbedUrl(e.target.value)}
             />
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               type="button"
-              className="rounded-lg border border-sky-500/40 bg-sky-950/40 px-3 py-2 text-xs text-sky-100 hover:bg-sky-900/40 disabled:opacity-50"
+              className="border-accent/40 px-soft py-base text-xs text-badge-accent"
               disabled={uploading || !embedUrl.trim()}
               onClick={() => void onAddEmbed()}
             >
               {t("dashboard:mediaAddEmbed")}
-            </button>
+            </Button>
           </div>
-          {err ? <p className="text-xs text-red-400">{err}</p> : null}
+          {err ? <p className="text-xs text-danger">{err}</p> : null}
         </div>
       ) : null}
 
       {st.items.length > 0 ? (
-        <ol className="space-y-1">
+        <ol className="space-y-tight">
           {st.items.map((it, idx) => {
             const id = itemId(it);
             const active = id != null && id === (st.now_playing_id ?? itemId(st.items[0]));
             return (
               <li
                 key={`${id ?? idx}-${idx}`}
-                className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${
-                  active ? "bg-sky-950/40 text-sky-100" : "text-neutral-200 hover:bg-white/5"
+                className={`flex items-center gap-base rounded-card px-base py-snug text-sm ${
+                  active ? "bg-accent-subtle text-badge-accent" : "text-ink-primary hover:bg-white/5"
                 }`}
               >
-                <button
+                <Button
+                  variant="plain"
+                  block
                   type="button"
-                  className="min-w-0 flex-1 truncate text-left"
+                  className="min-w-0 flex-1 truncate"
                   onClick={() => playItem(it)}
                   disabled={readOnly && !active}
                 >
                   {itemLabel(it, t("dashboard:mediaUntitledTrack"))}
-                </button>
+                </Button>
                 {!readOnly ? (
-                  <button
+                  <Button
                     type="button"
-                    className="shrink-0 text-[10px] uppercase text-red-300 hover:text-red-200"
+                    variant="danger"
+                    size="sm"
+                    className="shrink-0"
                     onClick={() => removeAt(idx)}
                   >
                     {t("dashboard:delete")}
-                  </button>
+                  </Button>
                 ) : null}
               </li>
             );
           })}
         </ol>
       ) : readOnly ? (
-        <p className="text-sm text-surface-muted">{t("dashboard:mediaQueueEmptyReadOnly")}</p>
+        <p className="text-sm text-ink-muted">{t("dashboard:mediaQueueEmptyReadOnly")}</p>
       ) : null}
 
       {!readOnly ? <MediaSharePanel /> : null}

@@ -108,14 +108,14 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "math_eval",
-            "TOOL_DESCRIPTION": TOOL_DESCRIPTION,
+            "description": TOOL_DESCRIPTION,
             "parameters": {
                 "type": "object",
                 "required": ["expression"],
                 "properties": {
                     "expression": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Numeric expression, e.g. (2+3)*4, sqrt(16), sin(pi/2), log(e)"
                         ),
                     },

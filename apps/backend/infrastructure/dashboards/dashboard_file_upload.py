@@ -83,12 +83,17 @@ def fetch_image_bytes(url: str) -> tuple[bytes | None, str | None]:
 
 
 def _validate_image_bytes(data: bytes) -> tuple[str | None, str | None]:
+    from apps.backend.infrastructure.settings.operator_settings import effective_dashboard_upload_mime
+
     max_b = effective_dashboard_upload_max_bytes()
     if len(data) > max_b:
         return None, f"image too large (max {max_b} bytes)"
     sniff = sniff_image_mime(data[:64])
     if sniff is None:
         return None, "unsupported image type (jpeg, png, gif, webp only)"
+    allowed = effective_dashboard_upload_mime()
+    if sniff not in allowed:
+        return None, f"image type not allowed: {sniff}"
     return sniff, None
 
 

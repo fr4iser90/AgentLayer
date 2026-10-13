@@ -36,23 +36,23 @@ export function MessageTurnActivity({ entries, running = false, waitHint = null 
   if (steps.length === 0 && !running) return null;
 
   return (
-    <div className="mb-2 rounded-lg border border-white/8 bg-black/25 px-2.5 py-2">
-      <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wide text-surface-muted">
+    <div className="mb-base rounded-card border border-white/8 bg-black/25 px-firm py-base">
+      <p className="mb-snug text-meta font-semibold uppercase tracking-wide text-ink-muted">
         {t("chat:messageRuntimeLabel")}
       </p>
       {steps.length === 0 ? (
-        <p className="flex items-center gap-1.5 text-[11px] text-violet-200/85">
-          <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400" />
+        <p className="flex items-center gap-snug text-meta text-violet-200/85">
+          <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-pill bg-violet-400" />
           {waitHint?.trim() || t("chat:agentRunning")}
         </p>
       ) : (
-        <ul className="space-y-1">
+        <ul className="space-y-tight">
           {steps.map((e) => (
             <li
               key={e.id}
-              className="border-l-2 border-violet-500/40 pl-2 text-[11px] leading-snug text-neutral-300"
+              className="border-l-2 border-violet-500/40 pl-base text-meta leading-snug text-ink-secondary"
             >
-              <span className="text-[9px] font-medium uppercase tracking-wide text-surface-muted">
+              <span className="text-meta font-medium uppercase tracking-wide text-ink-muted">
                 {e.kind === "llm"
                   ? t("chat:activityKindLlm")
                   : e.kind === "llm_queue"
@@ -76,7 +76,7 @@ export function MessageTurnActivity({ entries, running = false, waitHint = null 
                   ) || e.text
                 : e.text}
               {e.durationMs != null && e.durationMs >= 0 ? (
-                <span className="ml-1 tabular-nums text-neutral-500">
+                <span className="ml-tight tabular-nums text-ink-muted">
                   {e.durationMs < 1000
                     ? `${e.durationMs}ms`
                     : `${(e.durationMs / 1000).toFixed(1)}s`}
@@ -85,8 +85,8 @@ export function MessageTurnActivity({ entries, running = false, waitHint = null 
             </li>
           ))}
           {running ? (
-            <li className="flex items-center gap-1.5 border-l-2 border-violet-500/30 pl-2 text-[11px] text-violet-200/80">
-              <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400" />
+            <li className="flex items-center gap-snug border-l-2 border-violet-500/30 pl-base text-meta text-violet-200/80">
+              <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-pill bg-violet-400" />
               {waitHint?.trim() || t("chat:running")}
             </li>
           ) : null}

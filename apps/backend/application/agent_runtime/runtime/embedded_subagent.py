@@ -121,11 +121,7 @@ def run_embedded_subagent_sync(
         infer_plan_delegate_mode,
         parse_delegate_mode,
     )
-    from apps.backend.domain.delegation.enforcement import (
-        load_delegate_allowed_paths,
-        parse_requirement_value,
-        subagent_reject_reason,
-    )
+    from apps.backend.domain.delegation import artifact_handoff, enforcement
 
     prompt = (prompt or "").strip()
     if not prompt:
@@ -141,7 +137,7 @@ def run_embedded_subagent_sync(
         if isinstance(raw_req, list):
             reqs = raw_req
 
-    reject = subagent_reject_reason(
+    reject = enforcement.subagent_reject_reason(
         agent_id=aid,
         requirements=reqs,
         artifact_refs=refs,
@@ -217,7 +213,7 @@ def run_embedded_subagent_sync(
         if delegate_mode == "git_forensics":
             body["agent_plan_delegate_mode"] = delegate_mode
     if delegate_mode == "fix_from_artifact" and aid == "coding" and parent_tid is not None:
-        allowed_paths = load_delegate_allowed_paths(
+        allowed_paths = artifact_handoff.load_delegate_allowed_paths(
             tenant_id=int(parent_tid),
             artifact_refs=refs,
             max_artifacts=agent_config_effective.delegate_max_artifact_refs(tenant_id=tid),
@@ -235,7 +231,7 @@ def run_embedded_subagent_sync(
                 ensure_ascii=False,
             )
         body["agent_delegate_allowed_paths"] = allowed_paths
-        branch = parse_requirement_value(reqs, "branch")
+        branch = artifact_handoff.parse_requirement_value(reqs, "branch")
         if branch:
             body["agent_delegate_required_branch"] = branch
 
@@ -474,7 +470,7 @@ def run_embedded_subagent_sync(
                 )
             else:
                 from apps.backend.application.agent_runtime.runtime.tool_loop import _strip_prose_fake_tool_markup
-                from apps.backend.domain.delegation.enforcement import delegate_excerpt_is_actionable
+                from apps.backend.domain.delegation.excerpt_quality import delegate_excerpt_is_actionable
 
                 excerpt = _strip_prose_fake_tool_markup(content)[:12000].strip()
                 if not excerpt or not delegate_excerpt_is_actionable(excerpt):

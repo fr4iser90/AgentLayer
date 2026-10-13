@@ -1,14 +1,18 @@
-"""Shared helpers for friend-scoped tools (lookup, calendar secrets, share labels)."""
+"""Shared helpers for friend-scoped tools (lookup, share labels).
+
+Reading a friend's calendar is deliberately not a helper here: the ICS address
+is a bearer credential and must not be resolvable by the grantee. The share
+path goes through ``plugins.tools.personal.calendar.ics.fetch_shared_calendar``,
+which returns events and never the URL (ADR 0014 Principle 1).
+"""
 
 from __future__ import annotations
 
-import json
 import uuid
 from typing import Any
 
 from apps.backend.infrastructure.db import db
 
-CALENDAR_SECRET_KEYS: tuple[str, ...] = ("google_calendar", "calendar_ics")
 
 def resource_type_label(resource_type: str, *, lang: str = "en") -> str:
     from apps.backend.domain.shares.catalog import resource_type_label as _catalog_label
@@ -109,26 +113,4 @@ def resolve_friend_by_name(user_id: uuid.UUID, name_query: str) -> dict[str, Any
         email = friend.get("email", "").lower()
         if search_name in name or search_name in email:
             return friend
-    return None
-
-
-def _parse_calendar_secret(raw: str | None) -> str | None:
-    if not raw or not raw.strip():
-        return None
-    try:
-        obj = json.loads(raw.strip())
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(obj, dict):
-        return None
-    url = str(obj.get("ics_url") or obj.get("url") or "").strip()
-    return url or None
-
-
-def friend_calendar_ics_url(friend_user_id: uuid.UUID) -> str | None:
-    for service_key in CALENDAR_SECRET_KEYS:
-        raw = db.user_secret_get_plaintext(friend_user_id, service_key)
-        url = _parse_calendar_secret(raw)
-        if url:
-            return url
     return None

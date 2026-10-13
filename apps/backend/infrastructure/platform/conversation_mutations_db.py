@@ -13,7 +13,6 @@ from apps.backend.infrastructure.platform.conversation_common import (
     normalize_model_catalog_owned_by,
     pref_active_task_allowed,
     pref_workspace_allowed,
-    serialize_message_content,
     shared_chat_can_write,
     user_tenant_id,
 )
@@ -383,11 +382,17 @@ def conversation_append_message(
     *,
     role: str,
     content: Any,
+    client_message_id: str | None = None,
+    reasoning: str | None = None,
 ) -> bool:
     """Append one message to a conversation (next ``position``). Personal chats only (same checks as delete)."""
     if role not in ("user", "assistant", "system"):
         return False
-    serialized = serialize_message_content(content)
+    msg: dict[str, Any] = {"role": role, "content": content}
+    if client_message_id:
+        msg["client_message_id"] = client_message_id
+    if reasoning and role == "assistant":
+        msg["reasoning"] = reasoning
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -413,13 +418,7 @@ def conversation_append_message(
             )
             pos_row = cur.fetchone()
             pos = int(pos_row[0]) if pos_row else 0
-            cur.execute(
-                """
-                INSERT INTO chat_messages (conversation_id, position, role, content)
-                VALUES (%s, %s, %s, %s)
-                """,
-                (conversation_id, pos, role, serialized),
-            )
+            insert_chat_message(cur, conversation_id, pos, msg)
             cur.execute(
                 "UPDATE chat_conversations SET updated_at = now() WHERE id = %s",
                 (conversation_id,),

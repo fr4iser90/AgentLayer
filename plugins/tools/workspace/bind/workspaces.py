@@ -94,7 +94,7 @@ def create(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> 
                     "ok": False,
                     "error": (
                         "git_url is required for source=git "
-                        '(HTTPS URL or "owner/repo", e.g. fr4iser90/PIDEA)'
+                        '(HTTPS URL or "owner/repo", e.g. fr4iser90/AgentLayer)'
                     ),
                 }
             )
@@ -106,6 +106,15 @@ def create(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> 
         bind_after = bind_after.strip().lower() in ("1", "true", "yes", "on")
     else:
         bind_after = bool(bind_after)
+
+    # Deliberately absent from the TOOLS spec below: this is for the first-party
+    # bulk-import UI, not for the agent surface. The runtime does no schema
+    # validation, so an undeclared argument is accepted here without being
+    # advertised to the model.
+    from apps.backend.domain.access.entity_access import TENANT_VISIBLE, normalize_visibility
+
+    visibility = normalize_visibility(arguments.get("visibility"))
+    wants_company = visibility == TENANT_VISIBLE
 
     from apps.backend.infrastructure.workspace.workspace_service import (
         WorkspaceCreateError,
@@ -172,6 +181,11 @@ def create(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> 
             {
                 "ok": True,
                 "reused": True,
+                # Reuse never rewrites an existing workspace's visibility, so a
+                # caller that asked for company visibility did not get it here.
+                # Without this the bulk-import UI would report a ticked "company"
+                # checkbox as satisfied for rows that stayed private.
+                "company_visibility_applied": False,
                 "workspace": {
                     "id": materialized.get("id"),
                     "name": materialized.get("name"),
@@ -193,6 +207,7 @@ def create(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> 
             git_url=git_url,
             git_branch=git_branch,
             benchmark_run_id=benchmark_run_id,
+            visibility=visibility,
         )
     except WorkspaceCreateError as e:
         return dump({"ok": False, "error": e.message})
@@ -219,6 +234,7 @@ def create(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> 
     return dump(
         {
             "ok": True,
+            "company_visibility_applied": wants_company,
             "workspace": {
                 "id": materialized.get("id"),
                 "name": materialized.get("name"),
@@ -328,13 +344,13 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "list",
-            "TOOL_DESCRIPTION": "List project workspaces for the signed-in user (id, name, git_url).",
+            "description": "List project workspaces for the signed-in user (id, name, git_url).",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Optional filter substring for name or git_url",
+                        "description": "Optional filter substring for name or git_url",
                     },
                 },
             },
@@ -344,7 +360,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "create",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Create a workspace (manual dir or git clone). "
                 "Defaults bind=true so this run uses the new workspace."
             ),
@@ -354,24 +370,24 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Unique workspace name (folder under your user path)",
+                        "description": "Unique workspace name (folder under your user path)",
                     },
                     "source": {
                         "type": "string",
                         "enum": ["manual", "git"],
-                        "TOOL_DESCRIPTION": "manual = empty dir; git = clone",
+                        "description": "manual = empty dir; git = clone",
                     },
                     "git_url": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": 'HTTPS clone URL or "owner/repo" (GitHub)',
+                        "description": 'HTTPS clone URL or "owner/repo" (GitHub)',
                     },
                     "git_branch": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Branch for git clone (default main)",
+                        "description": "Branch for git clone (default main)",
                     },
                     "bind": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Bind this workspace for the rest of the agent run (default true)",
+                        "description": "Bind this workspace for the rest of the agent run (default true)",
                     },
                 },
             },
@@ -381,7 +397,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "bind",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Switch the active coding workspace for this chat/run by workspace_id or name. "
                 "Persists to the conversation when conversation_id is available."
             ),
@@ -391,11 +407,11 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "workspace_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Workspace UUID from workspace_list",
+                        "description": "Workspace UUID from workspace_list",
                     },
                     "name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Workspace name (alternative to workspace_id)",
+                        "description": "Workspace name (alternative to workspace_id)",
                     },
                 },
             },

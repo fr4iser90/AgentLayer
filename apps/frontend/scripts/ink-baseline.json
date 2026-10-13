@@ -1,0 +1,199 @@
+{
+  "src/components/LegalFooterLinks.tsx": [
+    "text-neutral-300",
+    "text-white/15"
+  ],
+  "src/components/NotificationBell.tsx": [
+    "text-neutral-300",
+    "text-white/30"
+  ],
+  "src/components/UserMenu.tsx": [
+    "text-neutral-200"
+  ],
+  "src/features/admin/benchmarks/BenchmarkInsightsPanel.tsx": [
+    "text-white/90"
+  ],
+  "src/features/admin/benchmarks/BenchmarkRunOverridePanel.tsx": [
+    "text-blue-100/90",
+    "text-white/90"
+  ],
+  "src/features/admin/benchmarks/HarnessRunContextBar.tsx": [
+    "text-white/70"
+  ],
+  "src/features/chat/AssistantTurnBlock.tsx": [
+    "text-neutral-300/90",
+    "text-violet-200"
+  ],
+  "src/features/chat/ChatComposerTextarea.tsx": [
+    "text-neutral-500"
+  ],
+  "src/features/chat/ChatRuntimeBar.tsx": [
+    "text-violet-300/85"
+  ],
+  "src/features/chat/MessageFeedbackButtons.tsx": [
+    "text-neutral-300"
+  ],
+  "src/features/chat/MessageTurnActivity.tsx": [
+    "text-violet-200/80",
+    "text-violet-200/85"
+  ],
+  "src/features/chat/PermissionAskCard.tsx": [
+    "text-black"
+  ],
+  "src/features/chat/SecretRegisterCard.tsx": [
+    "text-neutral-300"
+  ],
+  "src/features/chat/TurnNavigator.tsx": [
+    "text-neutral-200"
+  ],
+  "src/features/chat/UserMessageBubble.tsx": [
+    "text-violet-100",
+    "text-violet-200/80"
+  ],
+  "src/features/dashboard/CardGridBlock.tsx": [
+    "text-violet-200"
+  ],
+  "src/features/dashboard/DashboardBlocks.tsx": [
+    "text-white/25"
+  ],
+  "src/features/dashboard/DashboardCanvasSurface.tsx": [
+    "text-violet-200"
+  ],
+  "src/features/dashboard/DashboardEmbeddedChat.tsx": [
+    "text-white",
+    "text-white/25"
+  ],
+  "src/features/dashboard/DashboardEmbeddedThreadMenu.tsx": [
+    "text-white"
+  ],
+  "src/features/dashboard/DashboardGridInner.tsx": [
+    "text-violet-200"
+  ],
+  "src/features/dashboard/DashboardOverviewPanel.tsx": [
+    "text-white/45"
+  ],
+  "src/features/dashboard/DashboardSidebarNav.tsx": [
+    "text-white/20",
+    "text-white/25",
+    "text-white/30",
+    "text-white/35",
+    "text-white/40",
+    "text-white/45",
+    "text-white/70"
+  ],
+  "src/features/dashboard/ProjectWorkspaceControls.tsx": [
+    "text-violet-100"
+  ],
+  "src/features/dashboard/gallery/GalleryBlockBody.tsx": [
+    "text-white/25"
+  ],
+  "src/features/media/MediaMiniPlayer.tsx": [
+    "text-neutral-200",
+    "text-white/40"
+  ],
+  "src/features/media/MediaMiniPlayerPanel.tsx": [
+    "text-neutral-200",
+    "text-white"
+  ],
+  "src/features/voice/VoiceHandsFreeBar.tsx": [
+    "text-violet-100",
+    "text-violet-100/90"
+  ],
+  "src/features/voice/VoiceMicButton.tsx": [
+    "text-neutral-200"
+  ],
+  "src/features/workspace/CodingWorkspacePanels.tsx": [
+    "text-neutral-200",
+    "text-white/20"
+  ],
+  "src/features/workspace/WorkspaceRetrievalBar.tsx": [
+    "text-violet-200/90",
+    "text-violet-200/95"
+  ],
+  "src/pages/ChatPage.tsx": [
+    "text-black",
+    "text-neutral-200",
+    "text-violet-100",
+    "text-violet-200/80",
+    "text-violet-300/70",
+    "text-white",
+    "text-white/65"
+  ],
+  "src/pages/DashboardPage.tsx": [
+    "text-violet-100",
+    "text-violet-200/90",
+    "text-white",
+    "text-white/25",
+    "text-white/30",
+    "text-white/50",
+    "text-white/80",
+    "text-white/85"
+  ],
+  "src/pages/ProjectsPage.tsx": [
+    "text-neutral-200"
+  ],
+  "src/pages/SetupWizardPage.tsx": [
+    "text-white"
+  ],
+  "src/pages/StudioPage.tsx": [
+    "text-black"
+  ],
+  "src/pages/TasksPage.tsx": [
+    "text-neutral-300"
+  ],
+  "src/pages/admin/AdminAgentConfig.tsx": [
+    "text-blue-100/90",
+    "text-white/90"
+  ],
+  "src/pages/admin/AdminAgentSubmissions.tsx": [
+    "text-neutral-500"
+  ],
+  "src/pages/admin/AdminAgents.tsx": [
+    "text-neutral-500",
+    "text-white"
+  ],
+  "src/pages/admin/AdminBenchmarks.tsx": [
+    "text-violet-100",
+    "text-violet-100/90",
+    "text-violet-200",
+    "text-violet-200/70",
+    "text-violet-500",
+    "text-white",
+    "text-white/70",
+    "text-white/75",
+    "text-white/80",
+    "text-white/85",
+    "text-white/90"
+  ],
+  "src/pages/admin/AdminTools.tsx": [
+    "text-neutral-500",
+    "text-violet-100",
+    "text-violet-200/80",
+    "text-white"
+  ],
+  "src/pages/admin/interfaces/AdminInterfacesLlmSection.tsx": [
+    "text-black"
+  ],
+  "src/pages/admin/interfaces/AdminInterfacesMemorySection.tsx": [
+    "text-black"
+  ],
+  "src/pages/admin/interfaces/AdminInterfacesPlatformSection.tsx": [
+    "text-black"
+  ],
+  "src/pages/settings/AgentSettings.tsx": [
+    "text-neutral-600"
+  ],
+  "src/pages/settings/ConnectionsSettings.tsx": [
+    "text-neutral-600"
+  ],
+  "src/pages/settings/FriendsSettings.tsx": [
+    "text-white"
+  ],
+  "src/pages/settings/SharesSettings.tsx": [
+    "text-white"
+  ],
+  "src/pages/settings/ToolsSettings.tsx": [
+    "text-neutral-200",
+    "text-neutral-600"
+  ]
+}

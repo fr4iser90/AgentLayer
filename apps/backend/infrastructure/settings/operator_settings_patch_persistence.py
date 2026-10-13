@@ -20,7 +20,13 @@ from apps.backend.infrastructure.settings.operator_settings import (
 )
 from apps.backend.infrastructure.settings.operator_settings_patch_writer import _maybe_align_pgvector_embedding_dim
 
-def persist_operator_settings_patch(r: dict[str, Any], patch: dict[str, Any], media_patch: dict[str, Any]) -> None:
+def persist_operator_settings_patch(
+    r: dict[str, Any],
+    patch: dict[str, Any],
+    media_patch: dict[str, Any],
+    *,
+    chat_quota_patch: dict[str, Any] | None = None,
+) -> None:
     _maybe_align_pgvector_embedding_dim(r, patch)
 
     with db.pool().connection() as conn:
@@ -71,10 +77,6 @@ def persist_operator_settings_patch(r: dict[str, Any], patch: dict[str, Any], me
                   rag_embed_timeout_sec = %s,
                   rag_tenant_shared_domains = %s,
                   docs_root = %s,
-                  pidea_enabled = %s,
-                  pidea_cdp_http_url = %s,
-                  pidea_selector_ide = %s,
-                  pidea_selector_version = %s,
                   expose_internal_errors = %s,
                   http_client_log_level = %s,
                   scheduler_enabled = %s,
@@ -87,11 +89,8 @@ def persist_operator_settings_patch(r: dict[str, Any], patch: dict[str, Any], me
                   scheduler_allowed_tool_packages = %s,
                   scheduler_llm_backend = %s,
                   scheduler_tools_mode = %s,
-                  scheduler_pidea_enabled = %s,
                   scheduler_instructions = %s,
                   scheduler_jobs_worker_enabled = %s,
-                  scheduler_jobs_ide_pidea_enabled = %s,
-                  scheduler_jobs_ide_pidea_timeout_sec = %s,
                   workspace_allow_self_editing = %s,
                   embedding_api_base_url = %s,
                   embedding_api_key = %s,
@@ -147,10 +146,6 @@ def persist_operator_settings_patch(r: dict[str, Any], patch: dict[str, Any], me
                         else "agentlayer_docs"
                     ),
                     r.get("docs_root"),
-                    bool(r.get("pidea_enabled", False)),
-                    r.get("pidea_cdp_http_url"),
-                    r.get("pidea_selector_ide"),
-                    r.get("pidea_selector_version"),
                     bool(r.get("expose_internal_errors", False)),
                     _normalize_http_client_log_level_str(r.get("http_client_log_level")),
                     bool(r.get("scheduler_enabled", False)),
@@ -163,11 +158,8 @@ def persist_operator_settings_patch(r: dict[str, Any], patch: dict[str, Any], me
                     r.get("scheduler_allowed_tool_packages"),
                     normalize_scheduler_llm_backend(r.get("scheduler_llm_backend")),
                     normalize_scheduler_tools_mode(r.get("scheduler_tools_mode")),
-                    bool(r.get("scheduler_pidea_enabled", False)),
                     r.get("scheduler_instructions"),
                     bool(r.get("scheduler_jobs_worker_enabled", True)),
-                    bool(r.get("scheduler_jobs_ide_pidea_enabled", True)),
-                    _bound_float(r.get("scheduler_jobs_ide_pidea_timeout_sec"), 300.0, 30.0, 900.0),
                     bool(r.get("workspace_allow_self_editing", False)),
                     r.get("embedding_api_base_url"),
                     r.get("embedding_api_key"),
@@ -282,6 +274,12 @@ def persist_operator_settings_patch(r: dict[str, Any], patch: dict[str, Any], me
             if "legal_terms_md" in patch:
                 extra_sets.append("legal_terms_md = %s")
                 extra_params.append(r.get("legal_terms_md"))
+            if "dashboards_allowed" in patch:
+                extra_sets.append("dashboards_allowed = %s")
+                extra_params.append(bool(r.get("dashboards_allowed", True)))
+            if "friend_system_enabled" in patch:
+                extra_sets.append("friend_system_enabled = %s")
+                extra_params.append(bool(r.get("friend_system_enabled", True)))
             if extra_sets:
                 # SECURITY: Column names in `extra_sets` come from the known
                 # _SETTING_KEYS mapping (see _OPERATOR_SETTINGS_KEYS).
@@ -333,6 +331,10 @@ def persist_operator_settings_patch(r: dict[str, Any], patch: dict[str, Any], me
         from apps.backend.infrastructure.media.operator_media_settings import apply_media_operator_patch
 
         apply_media_operator_patch(media_patch)
+    if chat_quota_patch:
+        from apps.backend.infrastructure.platform.chat_storage_quota import apply_chat_quota_operator_patch
+
+        apply_chat_quota_operator_patch(chat_quota_patch)
     voice_patch = {
         k: patch[k]
         for k in (

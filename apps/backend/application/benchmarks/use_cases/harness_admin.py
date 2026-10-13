@@ -7,7 +7,7 @@ from fastapi import Request
 
 from apps.backend.infrastructure.benchmarks import benchmark_harness_resolve, benchmark_harness_store
 from apps.backend.infrastructure.db import db
-from apps.backend.infrastructure.identity.auth import require_admin
+from apps.backend.infrastructure.identity.auth import require_site_admin
 
 
 def validate_harness_preset(preset: str) -> str:
@@ -18,7 +18,7 @@ def validate_harness_preset(preset: str) -> str:
 
 
 async def harness_admin_tenant_id(request: Request) -> int:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     return db.user_tenant_id(admin.id)
 
 
@@ -31,7 +31,7 @@ async def get_harness_matrix_for_admin(request: Request) -> dict[str, Any]:
 
 
 async def set_global_harness_for_admin(request: Request, *, fields: Any) -> dict[str, Any]:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     return benchmark_harness_store.set_global(
         tid,
@@ -51,7 +51,7 @@ async def upsert_harness_override_for_admin(
     fields: Any,
     override_id: uuid.UUID | None = None,
 ) -> dict[str, Any]:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     return benchmark_harness_store.upsert_override(
         tid,

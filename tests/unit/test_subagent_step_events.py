@@ -70,6 +70,31 @@ def test_forward_tool_done_includes_failure_from_result() -> None:
     assert "Permission denied" in out[0]["error"]
 
 
+def test_forward_tool_done_includes_result_display() -> None:
+    out: list[dict] = []
+
+    def notify(payload: dict) -> None:
+        out.append(payload)
+
+    _forward_subagent_tool_event(
+        notify,
+        sub_run_id="abc",
+        agent_id="coding",
+        ev={
+            "type": "agent.tool_done",
+            "name": "bash",
+            "round": 1,
+            "result_ok": True,
+            "result_chars": 42,
+            "result_display": "exit 0\nfetched 3 months",
+        },
+    )
+    assert out[0]["phase"] == "done"
+    assert out[0]["ok"] is True
+    assert out[0]["result_display"] == "exit 0\nfetched 3 months"
+    assert out[0]["result_chars"] == 42
+
+
 def test_forward_ignores_other_events() -> None:
     out: list[dict] = []
 
@@ -83,6 +108,32 @@ def test_forward_ignores_other_events() -> None:
         ev={"type": "agent.llm_round", "round": 1},
     )
     assert out == []
+
+
+def test_forward_llm_delta_as_subagent_delta() -> None:
+    out: list[dict] = []
+
+    def notify(payload: dict) -> None:
+        out.append(payload)
+
+    _forward_subagent_tool_event(
+        notify,
+        sub_run_id="abc",
+        agent_id="coding",
+        ev={"type": "agent.llm_delta", "delta": "hello"},
+    )
+    assert out[0]["type"] == "agent.subagent_delta"
+    assert out[0]["delta"] == "hello"
+
+    out.clear()
+    _forward_subagent_tool_event(
+        notify,
+        sub_run_id="abc",
+        agent_id="coding",
+        ev={"type": "agent.llm_delta", "channel": "reasoning", "delta": "think"},
+    )
+    assert out[0]["type"] == "agent.subagent_reasoning"
+    assert out[0]["delta"] == "think"
 
 
 def test_forward_deferred_wait_to_parent() -> None:

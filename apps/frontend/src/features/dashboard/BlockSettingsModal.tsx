@@ -1,14 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "../../auth/AuthContext";
+import { apiFetch } from "../../lib/api";
 import { blockTypeLabel } from "./layoutTree";
+import {
+  buildShareCandidates,
+  blockTargetIsGone,
+  candidateKeyForBlock,
+  type ShareCandidate,
+} from "./shareWidgetCandidates";
 import {
   applyDisplayPreset,
   previewDataAtPath,
   type DisplayPresetId,
 } from "./blockSettingsPreview";
 import type { UiBlock } from "./types";
+import { Button } from "../../ui/Button";
+import { Drawer } from "../../ui/Drawer";
+import { Checkbox } from "../../ui/Checkbox";
+import { Select, TextInput } from "../../ui/Field";
+import { Tabs } from "../../ui/Tabs";
 
-type TabId = "general" | "data" | "display";
+type TabId = "general" | "data" | "share" | "display";
 
 type Props = {
   block: UiBlock;
@@ -20,6 +33,20 @@ type Props = {
   onSave: (nextProps: UiBlock["props"]) => void | Promise<void>;
 };
 
+type CatalogEntry = {
+  id?: unknown;
+  name?: unknown;
+  aliases?: unknown;
+  previewable?: unknown;
+};
+
+type IncomingGrant = {
+  owner_user_id?: unknown;
+  resource_type?: unknown;
+  display_name?: unknown;
+  email?: unknown;
+};
+
 function strList(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
   return raw.map((x) => String(x).trim()).filter(Boolean);
@@ -27,6 +54,16 @@ function strList(raw: unknown): string[] {
 
 function supportsDataTab(type: string): boolean {
   return type !== "dashboard_ref" && type !== "share_widget" && type !== "section";
+}
+
+/**
+ * The share widget's target is a friend's projection rather than a data
+ * path, so it gets its own tab rather than a data tab it would not use.
+ * Admitting the type here is also what lets the grid stop excluding it
+ * from configuration altogether.
+ */
+function supportsShareTab(type: string): boolean {
+  return type === "share_widget";
 }
 
 function supportsDisplayPreset(type: string): boolean {
@@ -42,6 +79,7 @@ export function BlockSettingsModal({
   onSave,
 }: Props) {
   const { t } = useTranslation(["dashboard"]);
+  const auth = useAuth();
   const [tab, setTab] = useState<TabId>("general");
   const [title, setTitle] = useState("");
   const [dataPath, setDataPath] = useState("");
@@ -51,6 +89,11 @@ export function BlockSettingsModal({
   const [enableRowDetail, setEnableRowDetail] = useState(false);
   const [cardFields, setCardFields] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [shareCandidates, setShareCandidates] = useState<ShareCandidate[]>([]);
+  const [shareCatalog, setShareCatalog] = useState<CatalogEntry[]>([]);
+  const [shareKey, setShareKey] = useState("");
+  const [shareLoading, setShareLoading] = useState(false);
+  const [daysAhead, setDaysAhead] = useState(7);
 
   const columnFields = useMemo(
     () =>
@@ -72,8 +115,48 @@ export function BlockSettingsModal({
     setEnableSearch(block.props.enableSearch === true);
     setEnableRowDetail(block.props.enableRowDetail === true);
     setCardFields(strList(block.props.cardFields));
+    setDaysAhead(Math.min(90, Math.max(1, Number(block.props.daysAhead) || 7)));
+    // Cleared here rather than carried over: the key is only meaningful
+    // against the candidate list this block's fetch produces, and leaving a
+    // previous block's key in place would silently re-point a newly opened
+    // widget at the resource it was not showing.
+    setShareKey("");
     setTab("general");
   }, [block]);
+
+  useEffect(() => {
+    if (block.type !== "share_widget") return;
+    let cancelled = false;
+    setShareLoading(true);
+    void (async () => {
+      try {
+        const [incomingRes, catalogRes] = await Promise.all([
+          apiFetch("/v1/shares/incoming", auth),
+          apiFetch("/v1/shares/catalog", auth),
+        ]);
+        const incoming = (await incomingRes.json()) as { shares?: IncomingGrant[] };
+        const catalog = (await catalogRes.json()) as { resources?: CatalogEntry[] };
+        if (cancelled) return;
+        const resources = Array.isArray(catalog.resources) ? catalog.resources : [];
+        const grants = Array.isArray(incoming.shares) ? incoming.shares : [];
+        const next = buildShareCandidates(grants, resources);
+        setShareCatalog(resources);
+        setShareCandidates(next);
+        setShareKey(candidateKeyForBlock(block.props, resources, next));
+      } catch {
+        if (!cancelled) {
+          setShareCatalog([]);
+          setShareCandidates([]);
+          setShareKey("");
+        }
+      } finally {
+        if (!cancelled) setShareLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [auth, block]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -93,9 +176,25 @@ export function BlockSettingsModal({
     const next: UiBlock["props"] = {
       ...block.props,
       title: title.trim(),
-      dataPath: dataPath.trim(),
       fillGrid,
     };
+    if (block.type === "share_widget") {
+      // No dataPath: the widget reads a friend's projection through the
+      // preview endpoint, so an empty one here would leave a key that looks
+      // configurable and does nothing.
+      next.daysAhead = daysAhead;
+      const chosen = shareCandidates.find((c) => c.key === shareKey);
+      // Only written when a real target was picked. Saving with nothing
+      // selected must not blank the widget's owner — that would turn a
+      // mis-click into a widget that shows nothing at all.
+      if (chosen) {
+        next.friendUserId = chosen.ownerUserId;
+        next.friendDisplayName = chosen.displayName;
+        next.resourceType = chosen.resourceType;
+      }
+      return next;
+    }
+    next.dataPath = dataPath.trim();
     if (block.type === "card_grid") {
       next.gridColumns = gridColumns;
       next.enableSearch = enableSearch;
@@ -132,6 +231,9 @@ export function BlockSettingsModal({
     ...(supportsDataTab(block.type)
       ? [{ id: "data" as TabId, label: t("dashboard:blockSettingsTabData") }]
       : []),
+    ...(supportsShareTab(block.type)
+      ? [{ id: "share" as TabId, label: t("dashboard:blockSettingsTabShare") }]
+      : []),
     { id: "display", label: t("dashboard:blockSettingsTabDisplay") },
   ];
 
@@ -156,77 +258,64 @@ export function BlockSettingsModal({
   const isSaving = saving || busy;
 
   return (
-    <div
-      className="fixed inset-0 z-[80] flex justify-end bg-black/50"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="block-settings-title"
-      onClick={onClose}
+    <Drawer
+      open
+      onClose={onClose}
+      title={t("dashboard:blockSettingsTitle")}
+      side="right"
+      headerExtra={
+        <>
+          <p className="text-meta text-ink-muted">
+            {blockTypeLabel(block.type)} ·{" "}
+            <span className="font-mono text-ink-muted">{block.id}</span>
+          </p>
+          <Tabs
+            className="mt-soft"
+            ariaLabel={t("dashboard:blockSettingsTabsAria")}
+            value={tab}
+            onChange={(id) => {
+              // Tabs hands back a plain string; resolved against the tabs this
+              // block renders instead of cast to TabId, so the drawer cannot be
+              // pointed at a section it never drew.
+              const next = tabs.find((item) => item.id === id);
+              if (next) setTab(next.id);
+            }}
+            items={tabs}
+          />
+        </>
+      }
+      footer={
+        <>
+          <Button variant="secondary" size="sm" onClick={onClose} disabled={isSaving}>
+            {t("dashboard:blockSettingsCancel")}
+          </Button>
+          <Button variant="primary" size="sm" onClick={() => void save()} disabled={isSaving}>
+            {isSaving ? t("dashboard:saving") : saveLabel}
+          </Button>
+        </>
+      }
     >
-      <aside
-        className="flex h-full w-full max-w-md flex-col border-l border-surface-border bg-[#111] shadow-2xl sm:max-w-lg"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="shrink-0 border-b border-surface-border px-4 py-3">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <h2 id="block-settings-title" className="text-sm font-semibold text-white">
-                {t("dashboard:blockSettingsTitle")}
-              </h2>
-              <p className="mt-0.5 text-[11px] text-surface-muted">
-                {blockTypeLabel(block.type)} ·{" "}
-                <span className="font-mono text-white/70">{block.id}</span>
-              </p>
-            </div>
-            <button
-              type="button"
-              className="rounded px-2 py-1 text-surface-muted hover:bg-white/10 hover:text-white"
-              onClick={onClose}
-              aria-label={t("dashboard:blockSettingsClose")}
-            >
-              ×
-            </button>
-          </div>
-          <nav className="mt-3 flex gap-1 border-b border-white/5 pb-0" aria-label={t("dashboard:blockSettingsTabsAria")}>
-            {tabs.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={[
-                  "rounded-t-md px-3 py-1.5 text-xs font-medium transition-colors",
-                  tab === item.id
-                    ? "border border-b-0 border-white/15 bg-black/40 text-white"
-                    : "text-surface-muted hover:text-white",
-                ].join(" ")}
-                onClick={() => setTab(item.id)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
-        </header>
-
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 text-sm">
+      <div className="text-sm">
           {tab === "general" ? (
-            <div className="space-y-4">
-              <p className="text-xs leading-snug text-surface-muted">
+            <div className="space-y-wide">
+              <p className="text-xs leading-snug text-ink-muted">
                 {autoSave
                   ? t("dashboard:blockSettingsIntroAutoSave")
                   : t("dashboard:blockSettingsIntroDraft")}
               </p>
-              <label className="block space-y-1">
-                <span className="text-[11px] text-surface-muted">
+              <label className="block space-y-tight">
+                <span className="text-meta text-ink-muted">
                   {t("dashboard:blockSettingsTitleLabel")}
                 </span>
-                <input
-                  className="w-full rounded-lg border border-surface-border bg-black/40 px-3 py-2 text-white outline-none focus:border-sky-500/50"
+                <TextInput
+                  className="outline-hidden"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </label>
-              <div className="space-y-1">
-                <span className="text-[11px] text-surface-muted">{t("dashboard:blockSettingsBlockId")}</span>
-                <p className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 font-mono text-[11px] text-neutral-300">
+              <div className="space-y-tight">
+                <span className="text-meta text-ink-muted">{t("dashboard:blockSettingsBlockId")}</span>
+                <p className="rounded-card border border-line bg-black/30 px-soft py-base font-mono text-meta text-ink-secondary">
                   {block.id}
                 </p>
               </div>
@@ -234,32 +323,32 @@ export function BlockSettingsModal({
           ) : null}
 
           {tab === "data" && supportsDataTab(block.type) ? (
-            <div className="space-y-4">
-              <label className="block space-y-1">
-                <span className="text-[11px] text-surface-muted">{t("dashboard:blockSettingsDataPath")}</span>
-                <input
-                  className="w-full rounded-lg border border-surface-border bg-black/40 px-3 py-2 font-mono text-xs text-white outline-none focus:border-sky-500/50"
+            <div className="space-y-wide">
+              <label className="block space-y-tight">
+                <span className="text-meta text-ink-muted">{t("dashboard:blockSettingsDataPath")}</span>
+                <TextInput
+                  mono
+                  className="text-xs outline-hidden"
                   value={dataPath}
                   onChange={(e) => setDataPath(e.target.value)}
                   placeholder={t("dashboard:blockSettingsDataPathPlaceholder")}
                 />
-                <span className="text-[10px] text-surface-muted">{t("dashboard:blockSettingsDataPathHint")}</span>
+                <span className="text-meta text-ink-muted">{t("dashboard:blockSettingsDataPathHint")}</span>
               </label>
-              <div className="rounded-lg border border-sky-500/20 bg-sky-950/20 px-3 py-2 text-xs text-sky-100/90">
-                <span className="block text-[10px] font-medium uppercase tracking-wide text-sky-300/80">
+              <div className="rounded-card border border-accent/20 bg-accent-subtle px-soft py-base text-xs text-badge-accent">
+                <span className="block text-meta font-medium uppercase tracking-wide text-badge-accent">
                   {t("dashboard:blockSettingsPreviewLabel")}
                 </span>
                 {previewText}
               </div>
               {block.type === "card_grid" && columnFields.length ? (
-                <div className="space-y-2">
-                  <span className="text-[11px] text-surface-muted">{t("dashboard:blockSettingsCardFields")}</span>
-                  <ul className="flex flex-wrap gap-2">
+                <div className="space-y-base">
+                  <span className="text-meta text-ink-muted">{t("dashboard:blockSettingsCardFields")}</span>
+                  <ul className="flex flex-wrap gap-base">
                     {columnFields.map((field) => (
                       <li key={field}>
-                        <label className="flex cursor-pointer items-center gap-1.5 rounded border border-white/10 bg-black/30 px-2 py-1 text-xs">
-                          <input
-                            type="checkbox"
+                        <label className="flex cursor-pointer items-center gap-snug rounded-tile border border-line bg-black/30 px-base py-tight text-xs">
+                          <Checkbox
                             checked={cardFields.includes(field)}
                             onChange={() => toggleCardField(field)}
                           />
@@ -273,65 +362,130 @@ export function BlockSettingsModal({
             </div>
           ) : null}
 
+          {tab === "share" && supportsShareTab(block.type) ? (
+            <div className="space-y-wide">
+              <p className="text-xs leading-snug text-ink-muted">
+                {t("dashboard:blockSettingsShareIntro")}
+              </p>
+              {shareLoading ? (
+                <p className="text-xs text-ink-muted">{t("dashboard:blockSettingsShareLoading")}</p>
+              ) : shareCandidates.length === 0 ? (
+                <p className="rounded-card border border-line bg-black/30 px-soft py-base text-xs text-ink-muted">
+                  {t("dashboard:blockSettingsShareNone")}
+                </p>
+              ) : (
+                <div className="space-y-tight">
+                  <label
+                    className="block text-meta text-ink-muted"
+                    htmlFor="block-settings-share-target"
+                  >
+                    {t("dashboard:blockSettingsShareTarget")}
+                  </label>
+                  <Select
+                    id="block-settings-share-target"
+                    className="outline-hidden"
+                    value={shareKey}
+                    onChange={(e) => setShareKey(e.target.value)}
+                  >
+                    <option value="">{t("dashboard:blockSettingsShareChoose")}</option>
+                    {shareCandidates.map((c) => (
+                      <option key={c.key} value={c.key}>
+                        {c.displayName} · {c.resourceName}
+                      </option>
+                    ))}
+                  </Select>
+                  <span className="block text-meta text-ink-muted">
+                    {t("dashboard:blockSettingsShareTargetHint")}
+                  </span>
+                </div>
+              )}
+              {blockTargetIsGone(block.props, shareCatalog, shareCandidates) ? (
+                <p className="rounded-card border border-warning/25 bg-warning-subtle px-soft py-base text-xs text-badge-warning">
+                  {t("dashboard:blockSettingsShareTargetGone")}
+                </p>
+              ) : null}
+              <div className="space-y-tight">
+                <label
+                  className="block text-meta text-ink-muted"
+                  htmlFor="block-settings-share-days"
+                >
+                  {t("dashboard:blockSettingsShareDays")}
+                </label>
+                <TextInput
+                  id="block-settings-share-days"
+                  type="number"
+                  min={1}
+                  max={90}
+                  className="w-24"
+                  value={daysAhead}
+                  onChange={(e) =>
+                    setDaysAhead(Math.min(90, Math.max(1, Number(e.target.value) || 7)))
+                  }
+                />
+                <span className="block text-meta text-ink-muted">
+                  {t("dashboard:blockSettingsShareDaysHint")}
+                </span>
+              </div>
+            </div>
+          ) : null}
+
           {tab === "display" ? (
-            <div className="space-y-4">
+            <div className="space-y-wide">
               {supportsDisplayPreset(block.type) ? (
-                <div className="space-y-2">
-                  <span className="text-[11px] text-surface-muted">{t("dashboard:blockSettingsPreset")}</span>
-                  <div className="flex flex-wrap gap-2">
+                <div className="space-y-base">
+                  <span className="text-meta text-ink-muted">{t("dashboard:blockSettingsPreset")}</span>
+                  <div className="flex flex-wrap gap-base">
                     {(["compact", "standard", "comfortable"] as DisplayPresetId[]).map((preset) => (
-                      <button
+                      <Button
+                        size="sm"
                         key={preset}
                         type="button"
-                        className="rounded-lg border border-white/15 bg-black/30 px-3 py-1.5 text-xs text-neutral-200 hover:border-sky-500/40 hover:bg-sky-950/30"
+                        className="bg-black/30 px-soft py-snug text-xs"
                         onClick={() => applyPreset(preset)}
                       >
                         {t(`dashboard:blockSettingsPreset_${preset}`)}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
               ) : null}
-              <label className="flex items-start gap-2">
-                <input
-                  type="checkbox"
-                  className="mt-0.5"
+              <label className="flex items-start gap-base">
+                <Checkbox
+                  className="mt-hair"
                   checked={fillGrid}
                   onChange={(e) => setFillGrid(e.target.checked)}
                 />
                 <span>
-                  <span className="block text-white">{t("dashboard:blockSettingsFillGrid")}</span>
-                  <span className="text-[10px] text-surface-muted">
+                  <span className="block text-ink-primary">{t("dashboard:blockSettingsFillGrid")}</span>
+                  <span className="text-meta text-ink-muted">
                     {t("dashboard:blockSettingsFillGridHint")}
                   </span>
                 </span>
               </label>
               {block.type === "card_grid" ? (
                 <>
-                  <label className="block space-y-1">
-                    <span className="text-[11px] text-surface-muted">
+                  <label className="block space-y-tight">
+                    <span className="text-meta text-ink-muted">
                       {t("dashboard:blockSettingsGridColumns")}
                     </span>
-                    <input
+                    <TextInput
                       type="number"
                       min={1}
                       max={5}
-                      className="w-24 rounded-lg border border-surface-border bg-black/40 px-3 py-2 text-white"
+                      className="w-24"
                       value={gridColumns}
                       onChange={(e) => setGridColumns(Number(e.target.value) || 3)}
                     />
                   </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                  <label className="flex items-center gap-base">
+                    <Checkbox
                       checked={enableSearch}
                       onChange={(e) => setEnableSearch(e.target.checked)}
                     />
                     <span>{t("dashboard:blockSettingsEnableSearch")}</span>
                   </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                  <label className="flex items-center gap-base">
+                    <Checkbox
                       checked={enableRowDetail}
                       onChange={(e) => setEnableRowDetail(e.target.checked)}
                     />
@@ -341,17 +495,15 @@ export function BlockSettingsModal({
               ) : null}
               {block.type === "table" ? (
                 <>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                  <label className="flex items-center gap-base">
+                    <Checkbox
                       checked={enableSearch}
                       onChange={(e) => setEnableSearch(e.target.checked)}
                     />
                     <span>{t("dashboard:blockSettingsEnableSearch")}</span>
                   </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                  <label className="flex items-center gap-base">
+                    <Checkbox
                       checked={enableRowDetail}
                       onChange={(e) => setEnableRowDetail(e.target.checked)}
                     />
@@ -362,26 +514,6 @@ export function BlockSettingsModal({
             </div>
           ) : null}
         </div>
-
-        <footer className="flex shrink-0 justify-end gap-2 border-t border-surface-border px-4 py-3">
-          <button
-            type="button"
-            className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-neutral-300 hover:bg-white/5"
-            onClick={onClose}
-            disabled={isSaving}
-          >
-            {t("dashboard:blockSettingsCancel")}
-          </button>
-          <button
-            type="button"
-            className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500 disabled:opacity-50"
-            onClick={() => void save()}
-            disabled={isSaving}
-          >
-            {isSaving ? t("dashboard:saving") : saveLabel}
-          </button>
-        </footer>
-      </aside>
-    </div>
+    </Drawer>
   );
 }

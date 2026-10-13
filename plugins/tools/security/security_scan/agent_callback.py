@@ -89,7 +89,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "agent_callback",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "After pushing a fix branch, notify SSC to rescan. Returns new scan_id; end the run."
                 + NO_WAIT_SUFFIX
             ),
@@ -98,21 +98,21 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "target_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "My Targets id from resolve or targets_list",
+                        "description": "My Targets id from resolve or targets_list",
                     },
                     "branch_name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Feature branch that was pushed",
+                        "description": "Feature branch that was pushed",
                     },
                     "trigger_rescan": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Queue rescan (default true)",
+                        "description": "Queue rescan (default true)",
                     },
-                    "pr_url": {"type": "string", "TOOL_DESCRIPTION": "Optional PR URL"},
-                    "commit_sha": {"type": "string", "TOOL_DESCRIPTION": "Optional commit on branch"},
+                    "pr_url": {"type": "string", "description": "Optional PR URL"},
+                    "commit_sha": {"type": "string", "description": "Optional commit on branch"},
                     "metadata": {
                         "type": "object",
-                        "TOOL_DESCRIPTION": "Optional metadata dict for SSC",
+                        "description": "Optional metadata dict for SSC",
                     },
                 },
                 "required": ["target_id", "branch_name"],

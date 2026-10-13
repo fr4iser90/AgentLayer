@@ -8,15 +8,27 @@
     "chat": "Chat",
     "studio": "Image generation",
     "dashboard": "Dashboard",
+    "projects": "Projects",
     "schedules": "Schedules",
     "tasks": "Tasks",
     "shares": "Shares",
-    "connections": "Connections",
-    "more": "More",
-    "signIn": "Sign in"
+    "friends": "Friends",
+    "docs": "Docs",
+    "github": "GitHub",
+    "signIn": "Sign in",
+    "sectionsAria": "Sections",
+    "workspace": "Workspace",
+    "sharing": "Sharing",
+    "resources": "Help",
+    "management": "Management",
+    "admin": "Platform admin",
+    "org": "Organization",
+    "backToApp": "Back to app",
+    "openMenu": "Open menu",
+    "expandGroup": "Show {{group}} pages",
+    "collapseGroup": "Hide {{group}} pages"
   },
   "footer": {
-    "github": "GitHub",
     "docs": "Docs",
     "brand": "Agent Layer"
   },
@@ -27,9 +39,6 @@
   "settings": "Settings",
   "userMenu": {
     "account": "Account",
-    "settings": "Settings",
-    "organization": "Organization",
-    "platformAdmin": "Platform admin",
     "signOut": "Sign out"
   },
   "language": {
@@ -46,6 +55,7 @@
     "hubTitle": "Workspace",
     "hubIntro": "This tenant uses a restricted app surface configured by the operator.",
     "hubDashboardDesc": "Boards and calculators available for your organization",
+    "hubProjectsDesc": "Your coding workspaces — browse files, delete and clean",
     "hubChatDesc": "Chat with agents allowed for this tenant"
   },
   "docs": {
@@ -73,5 +83,29 @@
     "result": "Result",
     "generatedImageAlt": "Generated image",
     "noPresetSelected": "No preset selected."
+  },
+  "toast": {
+    "region": "Notifications",
+    "bannerRegion": "Important notices",
+    "dismiss": "Dismiss notification"
+  },
+  "modal": {
+    "close": "Close dialog"
+  },
+  "drawer": {
+    "close": "Close panel"
+  },
+  "errorBoundary": {
+    "title": "This area stopped responding",
+    "hint": "The rest of the app is fine — retry, or pick another page.",
+    "retry": "Try again"
+  },
+  "session": {
+    "expiredTitle": "Session expired",
+    "expiredBody": "Sign in again to keep working.",
+    "signIn": "Sign in",
+    "networkTitle": "Server unreachable",
+    "networkBody": "The request timed out after {{seconds}} s. Check your connection.",
+    "retry": "Try again"
   }
 }

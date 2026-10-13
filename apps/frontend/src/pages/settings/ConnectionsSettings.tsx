@@ -3,6 +3,9 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { Button } from "../../ui/Button";
+import { Badge } from "../../ui/Badge";
+import { TextArea, TextInput } from "../../ui/Field";
 
 type SecretField = {
   name: string;
@@ -23,7 +26,6 @@ type ToolsMeta = {
   tools?: string[];
   secrets_required?: string[];
   requires?: string[];
-  TOOL_LABEL?: string;
   user_secret_forms?: Record<string, UserSecretFormSpec>;
   ui?: { display_name?: string; category?: string };
 };
@@ -185,7 +187,7 @@ export function ConnectionsSettings() {
     const map = new Map<string, { ids: string[]; labels: string[] }>();
     for (const m of meta) {
       const pid = (m.id || "").trim() || "—";
-      const label = (m.ui?.display_name || m.TOOL_LABEL || m.id || "").trim() || pid;
+      const label = (m.ui?.display_name || m.id || "").trim() || pid;
       for (const k of secretKeysForPackage(m)) {
         if (!map.has(k)) map.set(k, { ids: [], labels: [] });
         const e = map.get(k)!;
@@ -302,23 +304,24 @@ export function ConnectionsSettings() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className="mx-auto max-w-page space-y-deep">
       <div>
-        <h1 className="text-lg font-semibold text-white">{t("settings:connectionsTitle")}</h1>
-        <p className="mt-2 text-sm text-surface-muted">{t("settings:connectionsIntro")}</p>
+        <h1 className="text-lg font-semibold text-ink-primary">{t("settings:connectionsTitle")}</h1>
+        <p className="mt-base text-sm text-ink-muted">{t("settings:connectionsIntro")}</p>
       </div>
 
-      {loading ? <p className="text-sm text-surface-muted">{t("settings:agentLoading")}</p> : null}
+      {loading ? <p className="text-sm text-ink-muted">{t("settings:agentLoading")}</p> : null}
 
-      <section className="rounded-xl border border-surface-border bg-surface-raised p-5">
-        <h2 className="text-sm font-medium text-white">{t("admin:discord")}</h2>
-        <p className="mt-2 text-xs text-surface-muted">{t("settings:connectionsDiscordIntro")}</p>
-        <label className="mt-4 block text-xs text-surface-muted" htmlFor="discord-user-id">
+      <section className="rounded-sheet border border-line bg-card p-roomy">
+        <h2 className="text-sm font-medium text-ink-primary">{t("admin:discord")}</h2>
+        <p className="mt-base text-xs text-ink-muted">{t("settings:connectionsDiscordIntro")}</p>
+        <label className="mt-wide block text-xs text-ink-muted" htmlFor="discord-user-id">
           {t("settings:connectionsDiscordIdLabel")}
         </label>
-        <input
+        <TextInput
+          mono
           id="discord-user-id"
-          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-tight max-w-controlWide"
           value={discordUserId}
           onChange={(e) => setDiscordUserId(e.target.value.replace(/\D/g, ""))}
           autoComplete="off"
@@ -326,19 +329,22 @@ export function ConnectionsSettings() {
           placeholder={t("settings:discordUserIdPlaceholder")}
           spellCheck={false}
         />
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button
+        <div className="mt-wide flex flex-wrap gap-base">
+          <Button
+            variant="primary"
+            size="lg"
             type="button"
             disabled={discordSaving}
-            className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+            className="px-wide py-base text-sm"
             onClick={() => void saveDiscordLink()}
           >
             {discordSaving ? t("settings:saving") : t("settings:connectionsSaveDiscord")}
-          </button>
-          <button
+          </Button>
+          <Button
+            size="lg"
             type="button"
             disabled={discordSaving || !discordUserId}
-            className="rounded-md border border-white/15 bg-white/5 px-4 py-2 text-sm text-neutral-200 hover:bg-white/10 disabled:opacity-40"
+            className="bg-white/5 px-wide py-base text-sm hover:bg-white/10"
             onClick={() => {
               setDiscordUserId("");
               void (async () => {
@@ -365,19 +371,20 @@ export function ConnectionsSettings() {
             }}
           >
             {t("settings:connectionsClearDiscord")}
-          </button>
+          </Button>
         </div>
       </section>
 
-      <section className="rounded-xl border border-surface-border bg-surface-raised p-5">
-        <h2 className="text-sm font-medium text-white">{t("admin:telegram")}</h2>
-        <p className="mt-2 text-xs text-surface-muted">{t("settings:connectionsTelegramIntro")}</p>
-        <label className="mt-4 block text-xs text-surface-muted" htmlFor="telegram-user-id">
+      <section className="rounded-sheet border border-line bg-card p-roomy">
+        <h2 className="text-sm font-medium text-ink-primary">{t("admin:telegram")}</h2>
+        <p className="mt-base text-xs text-ink-muted">{t("settings:connectionsTelegramIntro")}</p>
+        <label className="mt-wide block text-xs text-ink-muted" htmlFor="telegram-user-id">
           {t("settings:connectionsTelegramIdLabel")}
         </label>
-        <input
+        <TextInput
+          mono
           id="telegram-user-id"
-          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-tight max-w-controlWide"
           value={telegramUserId}
           onChange={(e) => setTelegramUserId(e.target.value.replace(/\D/g, ""))}
           autoComplete="off"
@@ -385,19 +392,22 @@ export function ConnectionsSettings() {
           placeholder={t("settings:telegramUserIdPlaceholder")}
           spellCheck={false}
         />
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button
+        <div className="mt-wide flex flex-wrap gap-base">
+          <Button
+            variant="primary"
+            size="lg"
             type="button"
             disabled={telegramSaving}
-            className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+            className="px-wide py-base text-sm"
             onClick={() => void saveTelegramLink()}
           >
             {telegramSaving ? t("settings:saving") : t("settings:connectionsSaveTelegram")}
-          </button>
-          <button
+          </Button>
+          <Button
+            size="lg"
             type="button"
             disabled={telegramSaving || !telegramUserId}
-            className="rounded-md border border-white/15 bg-white/5 px-4 py-2 text-sm text-neutral-200 hover:bg-white/10 disabled:opacity-40"
+            className="bg-white/5 px-wide py-base text-sm hover:bg-white/10"
             onClick={() => {
               setTelegramUserId("");
               void (async () => {
@@ -424,7 +434,7 @@ export function ConnectionsSettings() {
             }}
           >
             {t("settings:connectionsClear")}
-          </button>
+          </Button>
         </div>
       </section>
 
@@ -437,22 +447,22 @@ export function ConnectionsSettings() {
             msg === t("settings:telegramSaved") ||
             msg === t("settings:connectionsDiscordRemoved") ||
             msg === t("settings:connectionsTelegramRemoved")
-              ? "text-emerald-400"
-              : "text-amber-400"
+              ? "text-success"
+              : "text-warning"
           }`}
         >
           {msg}
         </p>
       ) : null}
 
-      <section className="rounded-xl border border-surface-border bg-surface-raised">
-        <div className="border-b border-surface-border px-4 py-3">
-          <h2 className="text-sm font-medium text-white">{t("settings:connectionsCatalogTitle")}</h2>
-          <p className="mt-0.5 text-xs text-surface-muted">{t("settings:connectionsCatalogHint")}</p>
+      <section className="rounded-sheet border border-line bg-card">
+        <div className="border-b border-line px-wide py-soft">
+          <h2 className="text-sm font-medium text-ink-primary">{t("settings:connectionsCatalogTitle")}</h2>
+          <p className="mt-hair text-xs text-ink-muted">{t("settings:connectionsCatalogHint")}</p>
         </div>
-        <ul className="divide-y divide-white/5">
+        <ul className="divide-y divide-line-subtle">
           {keyUsage.length === 0 && !loading ? (
-            <li className="px-4 py-6 text-sm text-surface-muted">{t("settings:connectionsCatalogEmpty")}</li>
+            <li className="px-wide py-broad text-sm text-ink-muted">{t("settings:connectionsCatalogEmpty")}</li>
           ) : (
             keyUsage.map(([key, info]) => {
               const saved = services.includes(key);
@@ -460,21 +470,23 @@ export function ConnectionsSettings() {
               const open = activeKey === key;
               return (
                 <li key={key} className="overflow-hidden">
-                  <button
+                  <Button
+                    variant="plain"
+                    block
                     type="button"
                     onClick={() => toggleKey(key)}
-                    className="flex w-full flex-col gap-2 px-4 py-4 text-left transition hover:bg-white/[0.03] sm:flex-row sm:items-center sm:justify-between"
+                    className="w-full flex-col gap-base px-wide py-wide transition hover:bg-white/[0.03] sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-sm text-white">{key}</span>
+                      <div className="flex flex-wrap items-center gap-base">
+                        <span className="font-mono text-sm text-ink-primary">{key}</span>
                         {hasForm ? (
-                          <span className="rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] text-sky-200">
+                          <Badge tone="accent">
                             {t("settings:connectionsFormInUiBadge")}
-                          </span>
+                          </Badge>
                         ) : null}
                       </div>
-                      <div className="mt-1 text-xs text-surface-muted">
+                      <div className="mt-tight text-xs text-ink-muted">
                         {t("settings:connectionsPackages", {
                           labels:
                             info.labels.slice(0, 4).join(", ") +
@@ -482,62 +494,57 @@ export function ConnectionsSettings() {
                         })}
                       </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <span
-                        className={
-                          saved
-                            ? "rounded bg-emerald-500/15 px-2 py-1 text-xs text-emerald-300"
-                            : "rounded bg-neutral-500/20 px-2 py-1 text-xs text-neutral-300"
-                        }
-                      >
+                    <div className="flex shrink-0 items-center gap-base">
+                      <Badge tone={saved ? "success" : "neutral"}>
                         {saved ? t("settings:connectionsSecretSaved") : t("settings:connectionsSecretNotSaved")}
-                      </span>
-                      <span className="text-xs text-surface-muted">{open ? "▲" : "▼"}</span>
+                      </Badge>
+                      <span className="text-xs text-ink-muted">{open ? "▲" : "▼"}</span>
                     </div>
-                  </button>
+                  </Button>
 
                   {open ? (
-                    <div className="space-y-4 border-t border-white/5 bg-black/20 px-4 py-4">
+                    <div className="space-y-wide border-t border-line-subtle bg-black/20 px-wide py-wide">
                       {saved && !secretsUnavailable ? (
                         <div className="flex justify-end">
-                          <button
+                          <Button
                             type="button"
-                            className="text-xs text-red-400/90 hover:text-red-300 hover:underline"
+                            variant="danger"
+                            size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               void deleteSecret(key);
                             }}
                           >
                             {t("settings:connectionsRemoveStoredSecret")}
-                          </button>
+                          </Button>
                         </div>
                       ) : null}
 
                         {activeForm?.help || activeForm?.title ? (
-                        <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs leading-relaxed text-neutral-300">
+                        <div className="rounded-card border border-line bg-white/[0.03] px-soft py-base text-xs leading-relaxed text-ink-secondary">
                           {activeForm.title ? (
-                            <p className="mb-1 font-medium text-neutral-200">{activeForm.title}</p>
+                            <p className="mb-tight font-medium text-ink-primary">{activeForm.title}</p>
                           ) : null}
-                          <p className="text-surface-muted">{activeForm.help}</p>
+                          <p className="text-ink-muted">{activeForm.help}</p>
                         </div>
                       ) : null}
 
                       {activeForm?.fields?.length ? (
-                        <div className="space-y-3">
+                        <div className="space-y-soft">
                           {activeForm.fields.map((f) => {
                             const id = `sec-${key}-${f.name}`;
                             const fieldType = (f.type || "text").toLowerCase();
                             const inputType =
                               fieldType === "password" ? "password" : fieldType === "email" ? "email" : "text";
                             return (
-                              <label key={f.name} className="block text-xs text-surface-muted" htmlFor={id}>
+                              <label key={f.name} className="block text-xs text-ink-muted" htmlFor={id}>
                                 {f.label || f.name}
-                                {f.required ? <span className="text-amber-400/80"> *</span> : null}
+                                {f.required ? <span className="text-warning"> *</span> : null}
                                 <input
                                   id={id}
                                   type={inputType}
                                   autoComplete="off"
-                                  className="mt-1 block w-full rounded-md border border-surface-border bg-black/30 px-3 py-2 text-sm text-white placeholder:text-neutral-600"
+                                  className="mt-tight block w-full rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary placeholder:text-neutral-600"
                                   value={fieldValues[f.name] ?? ""}
                                   onChange={(e) => setFieldValues((prev) => ({ ...prev, [f.name]: e.target.value }))}
                                   disabled={secretsUnavailable}
@@ -547,10 +554,11 @@ export function ConnectionsSettings() {
                           })}
                         </div>
                       ) : (
-                        <label className="block text-xs text-surface-muted">
+                        <label className="block text-xs text-ink-muted">
                           {t("settings:connectionsSecretLabel")}
-                          <textarea
-                            className="mt-1 min-h-[7rem] w-full rounded-md border border-surface-border bg-black/30 px-3 py-2 font-mono text-xs text-white placeholder:text-neutral-600"
+                          <TextArea
+                            mono
+                            className="mt-tight min-h-[7rem] text-xs"
                             placeholder={t("settings:connectionsSecretJsonPlaceholder")}
                             value={rawJson}
                             onChange={(e) => setRawJson(e.target.value)}
@@ -560,14 +568,16 @@ export function ConnectionsSettings() {
                         </label>
                       )}
 
-                      <button
+                      <Button
+                        variant="primary"
+                        size="lg"
                         type="button"
                         disabled={saving || secretsUnavailable}
-                        className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-40"
+                        className="px-wide py-base text-sm"
                         onClick={() => void saveSecret()}
                       >
                         {saving ? t("settings:saving") : t("admin:save")}
-                      </button>
+                      </Button>
                     </div>
                   ) : null}
                 </li>
@@ -578,50 +588,56 @@ export function ConnectionsSettings() {
       </section>
 
       {orphanServices.length > 0 ? (
-        <section className="rounded-xl border border-surface-border bg-black/20 p-5">
-          <h2 className="text-sm font-medium text-white">{t("settings:connectionsOrphanTitle")}</h2>
-          <p className="mt-1 text-xs text-surface-muted">{t("settings:connectionsOrphanIntro")}</p>
-          <ul className="mt-3 divide-y divide-white/5 rounded-lg border border-white/10">
+        <section className="rounded-sheet border border-line bg-black/20 p-roomy">
+          <h2 className="text-sm font-medium text-ink-primary">{t("settings:connectionsOrphanTitle")}</h2>
+          <p className="mt-tight text-xs text-ink-muted">{t("settings:connectionsOrphanIntro")}</p>
+          <ul className="mt-soft divide-y divide-line-subtle rounded-card border border-line">
             {orphanServices.map((k) => {
               const open = activeKey === k;
               return (
                 <li key={k}>
-                  <button
+                  <Button
+                    variant="plain"
+                    block
                     type="button"
                     onClick={() => toggleKey(k)}
-                    className="flex w-full items-center justify-between px-3 py-3 text-left text-sm hover:bg-white/[0.03]"
+                    className="w-full items-center justify-between px-soft py-soft text-sm hover:bg-white/[0.03]"
                   >
-                    <span className="font-mono text-white">{k}</span>
-                    <span className="text-xs text-surface-muted">{open ? "▲" : "▼"}</span>
-                  </button>
+                    <span className="font-mono text-ink-primary">{k}</span>
+                    <span className="text-xs text-ink-muted">{open ? "▲" : "▼"}</span>
+                  </Button>
                   {open ? (
-                    <div className="space-y-3 border-t border-white/5 px-3 py-3">
-                      <label className="block text-xs text-surface-muted">
+                    <div className="space-y-soft border-t border-line-subtle px-soft py-soft">
+                      <label className="block text-xs text-ink-muted">
                         {t("settings:connectionsSecretLabel")}
-                        <textarea
-                          className="mt-1 min-h-[6rem] w-full rounded-md border border-surface-border bg-black/30 px-3 py-2 font-mono text-xs text-white"
+                        <TextArea
+                          mono
+                          className="mt-tight min-h-[6rem] text-xs"
                           value={rawJson}
                           onChange={(e) => setRawJson(e.target.value)}
                           disabled={secretsUnavailable}
                           spellCheck={false}
                         />
                       </label>
-                      <div className="flex flex-wrap gap-2">
-                        <button
+                      <div className="flex flex-wrap gap-base">
+                        <Button
+                          variant="primary"
+                          size="sm"
                           type="button"
                           disabled={saving || secretsUnavailable}
-                          className="rounded-md bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500 disabled:opacity-40"
+                          className="px-soft py-snug text-xs"
                           onClick={() => void saveSecret()}
                         >
                           {saving ? t("settings:saving") : t("admin:save")}
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
-                          className="text-xs text-red-400/90 hover:text-red-300 hover:underline"
+                          variant="danger"
+                          size="sm"
                           onClick={() => void deleteSecret(k)}
                         >
                           {t("settings:connectionsRemove")}
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ) : null}
@@ -632,23 +648,25 @@ export function ConnectionsSettings() {
         </section>
       ) : null}
 
-      <p className="text-xs text-surface-muted">{t("settings:connectionsToolAuthorsHint")}</p>
+      <p className="text-xs text-ink-muted">{t("settings:connectionsToolAuthorsHint")}</p>
 
-      <p className="text-xs text-surface-muted">
+      <p className="text-xs text-ink-muted">
         {t("settings:connectionsEndUserTools")}{" "}
-        <Link to="/settings/tools" className="text-sky-400 hover:text-sky-300 hover:underline">
+        <Link to="/settings/tools" className="text-accent hover:text-badge-accent hover:underline">
           {t("settings:toolsTitle")}
         </Link>
         .
       </p>
 
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         type="button"
-        className="text-xs text-sky-400 hover:text-sky-300 hover:underline"
+        className="text-xs text-accent hover:text-badge-accent hover:underline"
         onClick={() => void load()}
       >
         {t("settings:profileRefresh")}
-      </button>
+      </Button>
     </div>
   );
 }

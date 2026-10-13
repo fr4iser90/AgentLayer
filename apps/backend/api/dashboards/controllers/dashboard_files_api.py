@@ -14,7 +14,13 @@ from apps.backend.application.dashboards.use_cases.dashboard_controller_services
 from apps.backend.application.dashboards.use_cases.dashboard_controller_services import dashboard_db
 from apps.backend.application.dashboards.use_cases.dashboard_controller_services import file_storage
 from apps.backend.application.dashboards.use_cases.dashboard_controller_services import public_share
-from apps.backend.application.dashboards.use_cases.dashboard_controller_services import normalized_content_type, sniff_image_mime
+from apps.backend.application.dashboards.use_cases.dashboard_controller_services import (
+    decode_text_payload,
+    is_image_mime,
+    is_text_like_mime,
+    normalized_content_type,
+    sniff_upload_mime,
+)
 from apps.backend.application.dashboards.use_cases.dashboard_controller_services import col_db
 from apps.backend.application.dashboards.use_cases.dashboard_controller_services import attachments_db
 from apps.backend.application.identity.use_cases.request_auth import get_current_user
@@ -105,12 +111,75 @@ async def dashboard_file_delete(request: Request, file_id: uuid.UUID):
     return {"ok": True, "deleted": True}
 
 
+def _apply_text_to_data_path(
+    *,
+    user_id: uuid.UUID,
+    tenant_id: int,
+    dashboard_id: uuid.UUID,
+    ws: dict[str, Any],
+    text_path: str,
+    text: str,
+) -> dict[str, Any]:
+    """Write extracted text into a bound collection field (markdown strategy a)."""
+    from apps.backend.application.dashboards.use_cases.dashboard_controller_services import collections_view_service as domain_svc
+    from apps.backend.application.dashboards.use_cases.dashboard_controller_services import top_level_key
+
+    path = (text_path or "").strip()
+    if not path:
+        return {"ok": False, "error": "empty text path"}
+
+    owner_raw = ws.get("owner_user_id")
+    try:
+        owner_uid = uuid.UUID(str(owner_raw)) if owner_raw else user_id
+    except (ValueError, TypeError):
+        owner_uid = user_id
+    row_tid = int(ws.get("tenant_id") or tenant_id)
+
+    if ws.get("access_scope") == "granular":
+        from apps.backend.application.dashboards.use_cases.dashboard_controller_services import (
+            data_paths_from_blocks,
+        )
+
+        ul = ws.get("ui_layout") if isinstance(ws.get("ui_layout"), dict) else {}
+        blocks = ul.get("blocks") if isinstance(ul.get("blocks"), list) else []
+        allowed = {top_level_key(dp) for dp in data_paths_from_blocks(blocks) if dp}
+        if top_level_key(path) not in allowed:
+            return {"ok": False, "error": f"granular share cannot write data.{top_level_key(path)!r}"}
+
+    bindings = domain_svc.resolve_bindings_for_dashboard(ws)
+    result = domain_svc.patch_fields(
+        owner_user_id=owner_uid,
+        tenant_id=row_tid,
+        bindings=bindings,
+        ui_layout=ws.get("ui_layout") if isinstance(ws.get("ui_layout"), dict) else None,
+        patches=[{"path": path, "value": text}],
+    )
+    if not result.get("ok"):
+        return {"ok": False, "error": str(result.get("error") or "text patch failed")}
+    return {"ok": True, "path": path, "patch": result}
+
+
+@router.get("/{dashboard_id}/files")
+async def dashboard_files_list(request: Request, dashboard_id: uuid.UUID):
+    """List board attachments (Board-Dateien) for a dashboard."""
+    require_dashboard_schema()
+    user = await get_current_user(request)
+    tid = db.user_tenant_id(user.id)
+    ws = dashboard_db.dashboard_get(user.id, tid, dashboard_id)
+    if not ws:
+        raise HTTPException(status_code=404, detail="dashboard not found")
+    row_tid = int(ws.get("tenant_id") or tid)
+    files = attachments_db.attachment_list_for_dashboard(dashboard_id, row_tid, limit=200)
+    return {"ok": True, "files": files}
+
+
 @router.post("/{dashboard_id}/files")
 async def dashboard_file_upload(
     request: Request,
     dashboard_id: uuid.UUID,
     file: UploadFile = File(...),
     append_list_path: str | None = Form(default=None),
+    append_text_path: str | None = Form(default=None),
     caption: str = Form(default=""),
 ):
     require_dashboard_schema()
@@ -142,16 +211,19 @@ async def dashboard_file_upload(
     if not data:
         raise HTTPException(status_code=400, detail="empty file")
 
-    sniff = sniff_image_mime(data[:64])
+    name = (file.filename or "").strip()[:500]
     declared = normalized_content_type(file.content_type)
+    sniff = sniff_upload_mime(data, filename=name, declared=declared)
     if sniff is None or sniff not in allowed:
         raise HTTPException(
             status_code=415,
-            detail="unsupported or invalid image type",
+            detail="unsupported or invalid file type",
         )
     if declared and declared not in allowed:
-        raise HTTPException(status_code=415, detail="content type not allowed")
-    if declared and declared != sniff:
+        # Allow browsers that send application/octet-stream for .md when sniff succeeded
+        if declared not in ("application/octet-stream", "binary/octet-stream"):
+            raise HTTPException(status_code=415, detail="content type not allowed")
+    if declared and declared in allowed and declared != sniff and is_image_mime(sniff):
         raise HTTPException(
             status_code=400,
             detail=f"content type mismatch (declared {declared}, actual {sniff})",
@@ -159,7 +231,6 @@ async def dashboard_file_upload(
 
     fid = uuid.uuid4()
     relpath = f"{tid}/{fid}"
-    name = (file.filename or "").strip()[:500]
     try:
         file_storage.write_bytes(config.dashboard_upload_dir(), relpath, data)
     except OSError as e:
@@ -198,23 +269,52 @@ async def dashboard_file_upload(
             "dashboard_id": str(dashboard_id),
             "content_type": row["content_type"],
             "size_bytes": row["size_bytes"],
+            "original_name": name,
             "gallery_ref": gallery_ref,
+            "file_ref": gallery_ref,
         },
     }
     lp = (append_list_path or "").strip()
     if lp:
-        from apps.backend.application.dashboards.use_cases.dashboard_controller_services import append_list_rows
-
-        append = append_list_rows(
-            user.id,
-            tid,
-            dashboard_id,
-            list_path=lp,
-            rows=[{"url": gallery_ref, "caption": (caption or "")[:500]}],
-        )
-        if not append.get("ok"):
-            out["gallery_append_error"] = str(append.get("error") or "list_append failed")
+        if not is_image_mime(sniff):
+            out["gallery_append_error"] = "append_list_path requires an image upload"
         else:
-            out["appended_to"] = lp
-            out["append"] = append
+            from apps.backend.application.dashboards.use_cases.dashboard_controller_services import append_list_rows
+
+            append = append_list_rows(
+                user.id,
+                tid,
+                dashboard_id,
+                list_path=lp,
+                rows=[{"url": gallery_ref, "caption": (caption or "")[:500]}],
+            )
+            if not append.get("ok"):
+                out["gallery_append_error"] = str(append.get("error") or "list_append failed")
+            else:
+                out["appended_to"] = lp
+                out["append"] = append
+
+    tp = (append_text_path or "").strip()
+    if tp:
+        if not is_text_like_mime(sniff):
+            out["text_apply_error"] = "append_text_path requires a text/markdown upload"
+        else:
+            text = decode_text_payload(data)
+            if text is None:
+                out["text_apply_error"] = "file is not valid UTF-8 text"
+            else:
+                applied = _apply_text_to_data_path(
+                    user_id=user.id,
+                    tenant_id=tid,
+                    dashboard_id=dashboard_id,
+                    ws=ws,
+                    text_path=tp,
+                    text=text,
+                )
+                if not applied.get("ok"):
+                    out["text_apply_error"] = str(applied.get("error") or "text apply failed")
+                else:
+                    out["text_applied_to"] = tp
+                    out["text_chars"] = len(text)
+                    out["source_file_ref"] = gallery_ref
     return out

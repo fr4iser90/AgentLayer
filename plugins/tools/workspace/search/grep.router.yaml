@@ -1,0 +1,10 @@
+# Grep tool router phrases
+# (all locales unioned at load)
+
+grep:
+  - "grep"
+  - "search"
+  - "find"
+  - "pattern"
+  - "regex"
+  - "text"

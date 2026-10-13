@@ -30,6 +30,71 @@ from apps.backend.infrastructure.workspace.workspace_project_common import (
 
 logger = logging.getLogger(__name__)
 
+# Never dragged into a per-user copy of the seed repo.
+#
+# ``.git`` is deliberately NOT here: the self-workspace is expected to be a
+# git checkout (see the ``no .git`` guards in ``workspace_git.py`` and
+# below), so dropping it would break git for the feature it belongs to.
+_SEED_IGNORE_NAMES = frozenset(
+    {
+        "node_modules",
+        ".venv",
+        "venv",
+        "__pycache__",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        "output",
+        ".scanning",
+    }
+)
+
+
+def _seed_copy_ignore(seed: Path, target: Path):
+    """``shutil.copytree`` ignore filter for the seed -> user-workspace copy.
+
+    Two hazards, both observed live on this deployment:
+
+    * The workspace base (``AGENTLAYER_WORKSPACE_PATH``) is a bind mount
+      whose host location sits *inside* the repo the seed points at. A
+      plain ``copytree`` then copies the destination into itself and
+      recurses until ``ENAMETOOLONG`` — which wedged the request thread
+      for tens of minutes and took the whole instance down with it.
+      Inside the container the two paths look unrelated
+      (``/workspace/AgentLayer`` vs ``/data/project_workspaces``), so a
+      path-string containment check cannot see the nesting. The check is
+      done on ``(st_dev, st_ino)``, which a bind mount shares with its
+      host directory, so it catches the nesting regardless of names.
+    * ``.git`` / ``node_modules`` / caches are hundreds of MB and were
+      copied into every workspace, making materialization slow even
+      without the recursion.
+    """
+    try:
+        base_st = os.stat(workspace_base_path())
+    except OSError:
+        base_st = None
+
+    def ignore(dirpath: str, names: list[str]) -> set[str]:
+        skip = {n for n in names if n in _SEED_IGNORE_NAMES}
+        if base_st is not None:
+            for name in names:
+                try:
+                    st = os.stat(os.path.join(dirpath, name))
+                except OSError:
+                    continue
+                if (st.st_dev, st.st_ino) == (base_st.st_dev, base_st.st_ino):
+                    skip.add(name)
+                    logger.warning(
+                        "agentlayer-self: refusing to copy %s — it is the workspace "
+                        "base (%s) bind-mounted inside the seed tree",
+                        os.path.join(dirpath, name),
+                        workspace_base_path(),
+                    )
+        return skip
+
+    return ignore
+
+
 def _agentlayer_self_seed_dir() -> Path | None:
     """ADR 0005: first directory that is a git checkout — ``/workspace/AgentLayer``, else ``/app``."""
     for p in (Path("/workspace/AgentLayer"), Path("/app")):
@@ -39,7 +104,13 @@ def _agentlayer_self_seed_dir() -> Path | None:
 
 
 def self_editing_allowed(user) -> bool:
-    """Operator flag + (admin or ``workspace_self_allowed``)."""
+    """Operator flag + (site admin or ``workspace_self_allowed``).
+
+    The admin is read from ``users.site_role``, not from ``user.role``: for a user
+    built by :func:`apps.backend.domain.workspace.workspace_common.user_from_context`
+    that attribute *is* the legacy ``users.role`` DB read, and it is what decided who
+    could point a chat at AgentLayer's own source tree.
+    """
     from apps.backend.infrastructure.settings.operator_settings import public_dict
     from apps.backend.infrastructure.db import db
 
@@ -49,12 +120,12 @@ def self_editing_allowed(user) -> bool:
     except Exception:
         logger.warning("failed to read operator settings for self-workspace")
         return False
-    if getattr(user, "role", None) == "admin":
-        return True
     try:
+        if db.user_site_role(user.id) == "site_admin":
+            return True
         with db.pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
+                cur.execute(  # tenant-scope: guarded by user_id pk — caller supplied an already-resolved user
                     "SELECT COALESCE(workspace_self_allowed, false) FROM users WHERE id = %s",
                     (user.id,),
                 )
@@ -130,7 +201,7 @@ def materialize_agentlayer_self_workspace(user) -> dict[str, Any] | None:
         if not target.exists():
             target.parent.mkdir(parents=True, exist_ok=True)
             logger.info("agentlayer-self: copying seed %s -> %s", seed, target)
-            shutil.copytree(seed, target)
+            shutil.copytree(seed, target, ignore=_seed_copy_ignore(seed, target))
         else:
             logger.debug("agentlayer-self: target already exists %s", target)
 
@@ -158,11 +229,11 @@ def materialize_agentlayer_self_workspace(user) -> dict[str, Any] | None:
                     cur.execute(
                         """
                         INSERT INTO project_workspaces
-                        (owner_user_id, name, path, source, git_url, git_branch, access_role)
-                        VALUES (%s, %s, %s, 'manual', NULL, 'main', 'owner')
+                        (owner_user_id, name, path, source, git_url, git_branch, access_role, tenant_id)
+                        VALUES (%s, %s, %s, 'manual', NULL, 'main', 'owner', %s)
                         RETURNING id
                         """,
-                        (user.id, AGENTLAYER_SELF_NAME, str(target)),
+                        (user.id, AGENTLAYER_SELF_NAME, str(target), db.user_tenant_id(user.id)),
                     )
                     row = cur.fetchone()
             conn.commit()
@@ -210,11 +281,11 @@ def reset_agentlayer_self_workspace(
                     cur.execute(
                         """
                         INSERT INTO project_workspaces
-                        (owner_user_id, name, path, source, git_url, git_branch, access_role)
-                        VALUES (%s, %s, %s, 'manual', NULL, 'main', 'owner')
+                        (owner_user_id, name, path, source, git_url, git_branch, access_role, tenant_id)
+                        VALUES (%s, %s, %s, 'manual', NULL, 'main', 'owner', %s)
                         RETURNING id
                         """,
-                        (user.id, AGENTLAYER_SELF_NAME, expected),
+                        (user.id, AGENTLAYER_SELF_NAME, expected, db.user_tenant_id(user.id)),
                     )
                     row = cur.fetchone()
                 else:
@@ -251,7 +322,7 @@ def reset_agentlayer_self_workspace(
 
         target.parent.mkdir(parents=True, exist_ok=True)
         logger.warning("agentlayer-self reset: copying seed %s -> %s", seed, target)
-        shutil.copytree(seed, target)
+        shutil.copytree(seed, target, ignore=_seed_copy_ignore(seed, target))
 
         return resolve_db_workspace(wid, user)
     except Exception as e:
@@ -327,26 +398,20 @@ def create_db_workspace(workspace_id: str, user) -> dict[str, Any] | None:
                     ws_path.parent.mkdir(parents=True, exist_ok=True)
 
                     if ws_source == "git" and ws_git_url:
-                        # Clone git repo
                         logger.info("cloning git repo: %s", ws_git_url)
-                        import subprocess
-
-                        result = subprocess.run(
-                            [
-                                "git",
-                                "clone",
-                                "--depth",
-                                "1",
-                                "--branch",
-                                ws_branch,
-                                ws_git_url,
-                                str(ws_path),
-                            ],
-                            capture_output=True,
-                            text=True,
+                        from apps.backend.infrastructure.workspace.workspace_git_clone import (
+                            GitCloneError,
+                            clone_shallow_repo,
                         )
-                        if result.returncode != 0:
-                            logger.error("git clone failed: %s", result.stderr)
+
+                        try:
+                            clone_shallow_repo(
+                                ws_git_url,
+                                ws_path,
+                                branch=ws_branch or "main",
+                            )
+                        except GitCloneError as e:
+                            logger.error("git clone failed: %s", e)
                             return None
                     else:
                         # Create empty directory

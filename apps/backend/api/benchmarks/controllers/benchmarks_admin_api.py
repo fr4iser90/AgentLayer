@@ -24,7 +24,7 @@ from apps.backend.application.benchmarks.use_cases.benchmark_controller_services
 from apps.backend.application.benchmarks.use_cases.benchmark_controller_services import agent_config_service
 from apps.backend.application.benchmarks.use_cases.benchmark_controller_services import agent_config_store
 from apps.backend.application.benchmarks.use_cases.benchmark_controller_services import compute_fingerprint
-from apps.backend.application.identity.use_cases.request_auth import get_user_by_id, require_admin
+from apps.backend.application.identity.use_cases.request_auth import get_user_by_id, require_site_admin
 from apps.backend.application.benchmarks.use_cases.benchmark_controller_services import (
     benchmark_catalog,
     list_benchmark_llm_providers,
@@ -183,26 +183,26 @@ def _public_run_detail(row: dict[str, Any]) -> dict[str, Any]:
 
 @router.get("/suites")
 async def get_benchmark_suites(request: Request) -> dict:
-    await require_admin(request)
+    await require_site_admin(request)
     return {"ok": True, "suites": list_suites()}
 
 
 @router.get("/catalog")
 async def get_benchmark_catalog(request: Request) -> dict:
-    await require_admin(request)
+    await require_site_admin(request)
     return {"ok": True, **benchmark_catalog()}
 
 
 @router.get("/llm-providers")
 async def get_benchmark_llm_providers(request: Request) -> dict:
     """LLM providers for benchmark compare list (.env LLM_PROVIDER_* + Admin DB endpoints)."""
-    await require_admin(request)
+    await require_site_admin(request)
     return {"ok": True, "providers": list_benchmark_llm_providers()}
 
 
 @router.get("/run-readiness")
 async def get_benchmark_run_readiness(request: Request, user_id: uuid.UUID) -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     _assert_tenant_user(user_id, tid)
     return {"ok": True, **_readiness_for_user(user_id)}
@@ -227,7 +227,7 @@ def _cleanup_benchmark_sandboxes_sync(user_id: uuid.UUID) -> dict[str, Any]:
 @router.post("/cleanup-workspaces")
 async def post_cleanup_benchmark_resources(request: Request, user_id: uuid.UUID) -> dict:
     """Delete all benchmark sandboxes (workspaces, dashboards, conversations) for the run-as user."""
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     _assert_tenant_user(user_id, tid)
     try:
@@ -251,7 +251,7 @@ async def get_benchmark_stats(
     fastest_min_pass_rate: float = 0.0,
 ) -> dict:
     """Cross-run leaderboard: pass rate and latency by provider + model."""
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     since = since_days if since_days is not None and since_days >= 1 else None
     if since is not None:
@@ -283,7 +283,7 @@ async def get_benchmark_stats(
 @router.post("/runs/bulk-delete")
 async def bulk_delete_benchmark_runs(request: Request, body: BulkDeleteRunsBody) -> dict:
     """Delete finished benchmark runs (history + stats source). Skips queued/running."""
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     deleted = benchmark_runs_store.delete_finished_runs(
         tenant_id=tid,
@@ -295,7 +295,7 @@ async def bulk_delete_benchmark_runs(request: Request, body: BulkDeleteRunsBody)
 
 @router.get("/runs")
 async def list_benchmark_runs(request: Request, limit: int = 50) -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     rows = benchmark_runs_store.list_runs(tenant_id=tid, limit=limit)
     return {"ok": True, "runs": [_public_run(r) for r in rows]}
@@ -303,7 +303,7 @@ async def list_benchmark_runs(request: Request, limit: int = 50) -> dict:
 
 @router.get("/runs/{run_id}")
 async def get_benchmark_run(request: Request, run_id: uuid.UUID) -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     row = benchmark_runs_store.get_run(run_id)
     if not row or int(row.get("tenant_id") or 0) != tid:
@@ -313,7 +313,7 @@ async def get_benchmark_run(request: Request, run_id: uuid.UUID) -> dict:
 
 @router.delete("/runs/{run_id}")
 async def delete_benchmark_run(request: Request, run_id: uuid.UUID) -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     outcome = benchmark_runs_store.delete_run(run_id=run_id, tenant_id=tid)
     if outcome == "not_found":
@@ -328,7 +328,7 @@ async def delete_benchmark_run(request: Request, run_id: uuid.UUID) -> dict:
 
 @router.post("/runs/{run_id}/cancel")
 async def cancel_benchmark_run(request: Request, run_id: uuid.UUID) -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     row = benchmark_runs_store.get_run(run_id)
     if not row or int(row.get("tenant_id") or 0) != tid:
@@ -343,7 +343,7 @@ async def cancel_benchmark_run(request: Request, run_id: uuid.UUID) -> dict:
 
 @router.post("/runs")
 async def post_start_benchmark(request: Request, body: StartBenchmarkBody) -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     run_as_id = body.run_as_user_id or admin.id
     _assert_tenant_user(run_as_id, tid)
@@ -392,13 +392,13 @@ async def post_start_benchmark(request: Request, body: StartBenchmarkBody) -> di
 
 @router.get("/tune/presets")
 async def get_benchmark_tune_presets(request: Request) -> dict:
-    await require_admin(request)
+    await require_site_admin(request)
     return {"ok": True, "presets": tuning_presets()}
 
 
 @router.get("/tune/sessions")
 async def list_benchmark_tune_sessions(request: Request, limit: int = 50) -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     return {
         "ok": True,
@@ -408,7 +408,7 @@ async def list_benchmark_tune_sessions(request: Request, limit: int = 50) -> dic
 
 @router.post("/tune/sessions")
 async def post_start_benchmark_tune(request: Request, body: StartBenchmarkTuneBody) -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     run_as_id = body.run_as_user_id or admin.id
     _assert_tenant_user(run_as_id, tid)
@@ -443,7 +443,7 @@ async def post_start_benchmark_tune(request: Request, body: StartBenchmarkTuneBo
 
 @router.get("/tune/sessions/{session_id}")
 async def get_benchmark_tune_session(request: Request, session_id: uuid.UUID) -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     session = benchmark_tuning_store.get_session(session_id, tenant_id=tid)
     if not session:
@@ -453,7 +453,7 @@ async def get_benchmark_tune_session(request: Request, session_id: uuid.UUID) ->
 
 @router.post("/tune/sessions/{session_id}/promote")
 async def promote_benchmark_tune_session(request: Request, session_id: uuid.UUID) -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     session = benchmark_tuning_store.get_session(session_id, tenant_id=tid)
     if not session:
@@ -493,7 +493,7 @@ async def get_benchmark_analysis(
     experiment_id: uuid.UUID | None = None,
     limit: int = 200,
 ) -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     rows = benchmark_runs_store.list_runs_for_stats(
         tenant_id=tid,
@@ -516,7 +516,7 @@ async def get_benchmark_analysis(
 
 @router.get("/cohorts")
 async def get_benchmark_cohorts(request: Request, limit: int = 200) -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     rows = benchmark_runs_store.list_runs_for_stats(tenant_id=tid, limit=limit)
     return {"ok": True, "cohorts": list_cohorts(rows)}
@@ -530,7 +530,7 @@ async def get_benchmark_cohort_compare(
     suite: str | None = None,
     limit: int = 200,
 ) -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     rows = benchmark_runs_store.list_runs_for_stats(tenant_id=tid, limit=limit, suite=suite)
     return {"ok": True, **compare_cohorts(rows, cohort_a=cohort_a, cohort_b=cohort_b, suite=suite)}

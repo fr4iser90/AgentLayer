@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 /**
  * Playwright: open UX-audit dashboard and screenshot every block individually.
- * Expects example/dashboard-ux-audit/dashboard.json from seed_dashboard_ux_audit.py
+ * Expects output/ux-audit/dashboard.json from seed_dashboard_ux_audit.py.
+ *
+ * Everything written here is regenerated per run against a live instance and is
+ * gitignored: binary diffs are unmergeable across branches that both run the
+ * audit, and the shots carry the seeding instance's emails and tenant names.
  */
 import { chromium } from "playwright";
 import {
@@ -16,8 +20,8 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FRONTEND = join(__dirname, "..");
 const REPO = join(FRONTEND, "../..");
-const OUT_DIR = join(REPO, "example/dashboard-ux-audit/screenshots");
-const META_PATH = join(REPO, "example/dashboard-ux-audit/dashboard.json");
+const OUT_DIR = join(REPO, "output/ux-audit/screenshots");
+const META_PATH = join(REPO, "output/ux-audit/dashboard.json");
 
 function loadDotenv(path) {
   if (!existsSync(path)) return;
@@ -160,7 +164,7 @@ async function main() {
     await browser.close();
   }
 
-  const summaryPath = join(REPO, "example/dashboard-ux-audit/screenshot-index.json");
+  const summaryPath = join(REPO, "output/ux-audit/screenshot-index.json");
   writeFileSync(summaryPath, JSON.stringify({ base, dashId, results }, null, 2) + "\n");
   const failed = results.filter((r) => !r.ok);
   console.log(

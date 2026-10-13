@@ -7,9 +7,11 @@ export type NavItemId =
   | "chat"
   | "studio"
   | "dashboard"
+  | "projects"
   | "schedules"
   | "tasks"
-  | "shares";
+  | "shares"
+  | "friends";
 
 /** When ``user.allowed_nav`` is set, chrome is limited to those ids. ``null`` = full app. */
 export function allowedNavItems(user: AuthUser | null | undefined): NavItemId[] | null {
@@ -25,9 +27,11 @@ export function allowedNavItems(user: AuthUser | null | undefined): NavItemId[] 
       id === "chat" ||
       id === "studio" ||
       id === "dashboard" ||
+      id === "projects" ||
       id === "schedules" ||
       id === "tasks" ||
-      id === "shares"
+      id === "shares" ||
+      id === "friends"
     ) {
       out.push(id);
     }
@@ -45,8 +49,17 @@ export function canUseSchedules(user: AuthUser | null | undefined): boolean {
   return (user.site_role || "").trim().toLowerCase() === "site_admin";
 }
 
+/** Operator kill-switch for friendship + peer sharing.
+
+Absent means enabled: a payload from before the flag existed must not hide a
+subsystem that is live. This is a display hint only — the API refuses regardless. */
+export function friendSystemEnabled(user: AuthUser | null | undefined): boolean {
+  return user?.friend_system_enabled !== false;
+}
+
 export function navItemAllowed(user: AuthUser | null | undefined, item: NavItemId): boolean {
   if (item === "schedules" && !canUseSchedules(user)) return false;
+  if (item === "friends" && !friendSystemEnabled(user)) return false;
   const allowed = allowedNavItems(user);
   if (allowed === null) return true;
   return allowed.includes(item);
@@ -59,7 +72,9 @@ export function hasRestrictedNav(user: AuthUser | null | undefined): boolean {
 
 export function pathForNavItem(id: NavItemId): string {
   if (id === "home") return "/";
-  return `/${id === "shares" ? "settings/shares" : id}`;
+  // shares and friends live under /settings, the rest are top-level.
+  if (id === "shares" || id === "friends") return `/settings/${id}`;
+  return `/${id}`;
 }
 
 /** Chat-first landing; restricted tenants prefer chat, then dashboard, then home. */

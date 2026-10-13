@@ -2,6 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { Badge, type BadgeTone } from "../../ui/Badge";
+import { Checkbox } from "../../ui/Checkbox";
+import { Select, TextArea, TextInput } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 type ToolMeta = {
   id?: string;
@@ -148,18 +152,27 @@ function sectionsByDomain(pkgs: ToolMeta[]): { key: string; domain: string; item
     }));
 }
 
-function riskBadgeClass(rl: string | undefined): string {
+/**
+ * Risk tier -> ``Badge`` tone.
+ *
+ * `l3` was previously `rose`, which the app also uses for live-mic and
+ * trend-down. A risk escalation's top tier means "harmful", and that is what
+ * `danger` already says — so `l3` lands there and rose is freed to mean
+ * recording only. Keeping a bespoke chip to avoid a hue collision preserves the
+ * collision instead of resolving it.
+ */
+function riskBadgeTone(rl: string | undefined): BadgeTone {
   switch (rl) {
     case "l3":
-      return "bg-rose-900/80 text-rose-100";
+      return "danger";
     case "l2":
-      return "bg-amber-900/70 text-amber-100";
+      return "warning";
     case "l1":
-      return "bg-sky-900/60 text-sky-100";
+      return "accent";
     case "l0":
-      return "bg-white/10 text-neutral-200";
+      return "neutral";
     default:
-      return "bg-white/5 text-neutral-400";
+      return "neutral";
   }
 }
 
@@ -392,29 +405,33 @@ export function AdminTools() {
       (firstTool && p.tool_effective?.[firstTool]?.execution_context) || manCtx;
     const effMr = firstTool && p.tool_effective?.[firstTool]?.min_role;
     const effTenants = firstTool ? p.tool_effective?.[firstTool]?.allowed_tenant_ids : null;
+    const riskLevel = p.risk_level;
+    const riskLabel = riskLevel ? t("admin:toolsBadgeRisk", { level: riskLevel }) : null;
+    // `null` tone means the tier is reserved (rose) and keeps its bespoke chip.
+    const riskTone = riskLevel ? riskBadgeTone(riskLevel) : null;
 
     return (
       <li
         key={pid}
-        className="rounded-lg border border-surface-border bg-surface-raised/80 p-3 text-xs text-neutral-200"
+        className="rounded-card border border-line bg-card p-soft text-xs text-ink-primary"
       >
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="font-mono text-sm font-semibold text-white">{pid}</span>
-              {p.version ? <span className="text-[11px] text-surface-muted">v{p.version}</span> : null}
+        <div className="flex flex-col gap-base sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1 space-y-base">
+            <div className="flex flex-wrap items-center gap-x-base gap-y-tight">
+              <span className="font-mono text-sm font-semibold text-ink-primary">{pid}</span>
+              {p.version ? <span className="text-meta text-ink-muted">v{p.version}</span> : null}
               {p.admin_bucket ? (
-                <span className="rounded bg-emerald-950/60 px-1.5 py-0.5 text-[10px] text-emerald-200/90">
+                <Badge tone="success">
                   {t("admin:toolsBadgeBucket", { name: p.admin_bucket })}
-                </span>
+                </Badge>
               ) : null}
               {p.domain ? (
-                <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-neutral-300">
+                <Badge tone="neutral">
                   {t("admin:toolsBadgeDomain", { name: p.domain })}
-                </span>
+                </Badge>
               ) : null}
               <span
-                className="rounded bg-violet-900/50 px-1.5 py-0.5 text-[10px] text-violet-100"
+                className="rounded-tile bg-violet-900/50 px-snug py-hair text-meta text-violet-100"
                 title={t("admin:effectiveRunContextTitle")}
               >
                 {t("admin:toolsBadgeRun", { ctx: effCtx })}
@@ -425,80 +442,71 @@ export function AdminTools() {
                 ) : null}
               </span>
               {effMr ? (
-                <span
-                  className="rounded bg-amber-950/50 px-1.5 py-0.5 text-[10px] text-amber-100"
-                  title={t("admin:effectiveMinRoleTitle")}
-                >
+                <Badge tone="warning" title={t("admin:effectiveMinRoleTitle")}>
                   {t("admin:toolsBadgeAccess", { role: effMr })}
-                </span>
+                </Badge>
               ) : null}
               {effTenants?.length ? (
-                <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-200">
+                <Badge tone="neutral">
                   {t("admin:toolsBadgeTenants", { ids: effTenants.join(",") })}
-                </span>
+                </Badge>
               ) : null}
               {p.os_support?.length ? (
-                <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-neutral-300">
+                <Badge tone="neutral">
                   {t("admin:toolsBadgeOs", { list: p.os_support.join(",") })}
-                </span>
+                </Badge>
               ) : null}
-              {p.risk_level ? (
-                <span
-                  className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${riskBadgeClass(p.risk_level)}`}
-                >
-                  {t("admin:toolsBadgeRisk", { level: p.risk_level })}
-                </span>
-              ) : null}
+              {riskLevel ? <Badge tone={riskTone}>{riskLabel}</Badge> : null}
             </div>
-            <p className="truncate font-mono text-[11px] text-surface-muted" title={p.source}>
+            <p className="truncate font-mono text-meta text-ink-muted" title={p.source}>
               {p.source}
             </p>
-            <div className="grid gap-1.5 sm:grid-cols-2">
+            <div className="grid gap-snug sm:grid-cols-2">
               <div>
-                <span className="text-surface-muted">{t("admin:toolsColTools")}</span>{" "}
-                <span className="break-all font-mono text-[11px] text-neutral-300">
+                <span className="text-ink-muted">{t("admin:toolsColTools")}</span>{" "}
+                <span className="break-all font-mono text-meta text-ink-secondary">
                   {(p.tools ?? []).join(", ")}
                 </span>
               </div>
               {p.tags?.length ? (
                 <div>
-                  <span className="text-surface-muted">{t("admin:toolsColManifestTags")}</span>{" "}
-                  <span className="text-neutral-300">{p.tags.join(", ")}</span>
+                  <span className="text-ink-muted">{t("admin:toolsColManifestTags")}</span>{" "}
+                  <span className="text-ink-secondary">{p.tags.join(", ")}</span>
                 </div>
               ) : null}
               {p.admin_tags?.length ? (
                 <div>
-                  <span className="text-surface-muted">{t("admin:toolsColRegistryTags")}</span>{" "}
-                  <span className="text-neutral-300">{p.admin_tags.join(", ")}</span>
+                  <span className="text-ink-muted">{t("admin:toolsColRegistryTags")}</span>{" "}
+                  <span className="text-ink-secondary">{p.admin_tags.join(", ")}</span>
                 </div>
               ) : null}
               {p.capabilities?.length ? (
                 <div>
-                  <span className="text-surface-muted">{t("admin:toolsColCapabilities")}</span>{" "}
-                  <span className="text-neutral-300">{p.capabilities.join(", ")}</span>
+                  <span className="text-ink-muted">{t("admin:toolsColCapabilities")}</span>{" "}
+                  <span className="text-ink-secondary">{p.capabilities.join(", ")}</span>
                 </div>
               ) : null}
               {req?.length ? (
                 <div>
-                  <span className="text-surface-muted">{t("admin:toolsColToolRequires")}</span>{" "}
-                  <span className="text-neutral-300">{req.join(", ")}</span>
+                  <span className="text-ink-muted">{t("admin:toolsColToolRequires")}</span>{" "}
+                  <span className="text-ink-secondary">{req.join(", ")}</span>
                 </div>
               ) : null}
               {sec?.length ? (
                 <div>
-                  <span className="text-surface-muted">{t("admin:toolsColSecrets")}</span>{" "}
-                  <span className="text-amber-200/90">{sec.join(", ")}</span>
+                  <span className="text-ink-muted">{t("admin:toolsColSecrets")}</span>{" "}
+                  <span className="text-badge-warning">{sec.join(", ")}</span>
                 </div>
               ) : null}
               {p.families?.length ? (
                 <div>
-                  <span className="text-surface-muted">{t("admin:toolsColFamilies")}</span>{" "}
-                  <span className="text-neutral-300">{p.families.join(", ")}</span>
+                  <span className="text-ink-muted">{t("admin:toolsColFamilies")}</span>{" "}
+                  <span className="text-ink-secondary">{p.families.join(", ")}</span>
                 </div>
               ) : null}
               <div className="sm:col-span-2">
-                <span className="text-surface-muted">{t("admin:adminToolsManifestAccess")}</span>{" "}
-                <span className="font-mono text-neutral-300">
+                <span className="text-ink-muted">{t("admin:adminToolsManifestAccess")}</span>{" "}
+                <span className="font-mono text-ink-secondary">
                   TOOL_MIN_ROLE={p.min_role ?? "user"}
                   {p.allowed_tenant_ids?.length
                     ? ` · TOOL_ALLOWED_TENANT_IDS=[${p.allowed_tenant_ids.join(", ")}]`
@@ -507,20 +515,19 @@ export function AdminTools() {
               </div>
             </div>
           </div>
-          <label className="flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap text-[11px] text-neutral-200">
-            <input
-              type="checkbox"
+          <label className="flex shrink-0 cursor-pointer items-center gap-base whitespace-nowrap text-meta text-ink-primary">
+            <Checkbox
               checked={pol.enabled}
               onChange={(e) => updatePolicy(pid, { enabled: e.target.checked })}
             />
             {t("admin:toolsPolicyEnabled")}
           </label>
         </div>
-        <div className="mt-3 grid grid-cols-1 gap-3 border-t border-white/10 pt-3 sm:grid-cols-2">
-          <label className="flex min-w-0 flex-col gap-1 text-[11px] text-surface-muted">
-            <span className="text-neutral-400">{t("admin:toolsPolicyMinRole")}</span>
-            <select
-              className="w-full rounded-md border border-surface-border bg-black/30 px-2 py-1.5 text-xs text-white"
+        <div className="mt-soft grid grid-cols-1 gap-soft border-t border-line pt-soft sm:grid-cols-2">
+          <label className="flex min-w-0 flex-col gap-tight text-meta text-ink-muted">
+            <span className="text-ink-muted">{t("admin:toolsPolicyMinRole")}</span>
+            <Select
+              className="text-xs"
               value={pol.min_role}
               onChange={(e) =>
                 updatePolicy(pid, { min_role: e.target.value === "admin" ? "admin" : "user" })
@@ -528,15 +535,16 @@ export function AdminTools() {
             >
               <option value="user">{t("admin:toolsMinRoleUser")}</option>
               <option value="admin">{t("admin:toolsMinRoleAdmin")}</option>
-            </select>
+            </Select>
           </label>
-          <label className="flex min-w-0 flex-col gap-1 text-[11px] text-surface-muted">
-            <span className="text-neutral-400">
+          <label className="flex min-w-0 flex-col gap-tight text-meta text-ink-muted">
+            <span className="text-ink-muted">
               {t("admin:toolsPolicyTenantIds")} (<span className="font-mono">tenants.id</span>)
             </span>
-            <input
+            <TextInput
+              mono
               type="text"
-              className="w-full rounded-md border border-surface-border bg-black/30 px-2 py-1.5 font-mono text-xs text-white placeholder:text-neutral-500"
+              className="text-xs"
               placeholder={t("admin:toolsPolicyTenantIdsPlaceholder")}
               value={tenantInputByPkg[pid] ?? ""}
               onChange={(e) => {
@@ -551,27 +559,27 @@ export function AdminTools() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-      <h1 className="text-2xl font-semibold text-white">{t("admin:toolsRegistryTitle")}</h1>
-      <p className="mt-2 max-w-2xl text-sm text-surface-muted">
+    <div className="mx-auto max-w-pageWide px-wide py-deep sm:px-broad">
+      <h1 className="text-2xl font-semibold text-ink-primary">{t("admin:toolsRegistryTitle")}</h1>
+      <p className="mt-base max-w-measure text-sm text-ink-muted">
         {t("admin:toolsRegistryIntro")}{" "}
-        <span className="text-neutral-500">{t("admin:toolsRegistryAssignUsers")}</span>
+        <span className="text-ink-muted">{t("admin:toolsRegistryAssignUsers")}</span>
       </p>
 
-      <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised/80 p-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <section className="mt-broad rounded-sheet border border-line bg-card p-wide">
+        <div className="flex flex-col gap-base sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-white">{t("admin:toolsImportTitle")}</h2>
-            <p className="mt-1 max-w-2xl text-xs text-surface-muted">
+            <h2 className="text-sm font-semibold text-ink-primary">{t("admin:toolsImportTitle")}</h2>
+            <p className="mt-tight max-w-measure text-xs text-ink-muted">
               {t("admin:toolsImportIntro")}
             </p>
           </div>
           <label className="sr-only" htmlFor="tools-import-source-type">
             {t("admin:toolsImportSourceType")}
           </label>
-          <select
+          <Select
             id="tools-import-source-type"
-            className="w-full rounded-md border border-surface-border bg-black/30 px-2 py-1.5 text-xs text-white sm:w-56"
+            className="text-xs sm:w-56"
             value={importSourceType}
             onChange={(e) => setImportSourceType(e.target.value)}
           >
@@ -580,81 +588,84 @@ export function AdminTools() {
             <option value="cursor_skill">{t("admin:toolsImportCursor")}</option>
             <option value="claude_command">{t("admin:toolsImportClaude")}</option>
             <option value="generic_markdown">{t("admin:toolsImportGeneric")}</option>
-          </select>
+          </Select>
         </div>
-        <div className="mt-4 grid gap-3 lg:grid-cols-2">
-          <label className="flex flex-col gap-1 text-xs text-surface-muted">
+        <div className="mt-wide grid gap-soft lg:grid-cols-2">
+          <label className="flex flex-col gap-tight text-xs text-ink-muted">
             <span>{t("admin:toolsImportPaste")}</span>
-            <textarea
-              className="min-h-40 rounded-md border border-surface-border bg-black/30 px-3 py-2 font-mono text-xs text-white placeholder:text-neutral-500"
+            <TextArea
+              mono
+              className="min-h-40 text-xs"
               value={importMarkdown}
               onChange={(e) => setImportMarkdown(e.target.value)}
               placeholder={t("admin:toolsImportPastePlaceholder")}
             />
           </label>
-          <div className="rounded-md border border-white/10 bg-black/20 p-3 text-xs text-surface-muted">
+          <div className="rounded-tile border border-line bg-black/20 p-soft text-xs text-ink-muted">
             <label className="block">
               <span>{t("admin:toolsImportUpload")}</span>
               <input
-                className="mt-2 block w-full text-xs text-neutral-200 file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:text-white hover:file:bg-white/15"
+                className="mt-base block w-full text-xs text-ink-primary file:mr-soft file:rounded-tile file:border-0 file:bg-white/10 file:px-soft file:py-snug file:text-xs file:text-white hover:file:bg-white/15"
                 type="file"
                 multiple
                 accept=".md,.markdown,.txt,.yaml,.yml,.json,.zip"
                 onChange={(e) => setImportFiles(e.target.files)}
               />
             </label>
-            <ul className="mt-3 list-disc space-y-1 pl-4 text-[11px]">
+            <ul className="mt-soft list-disc space-y-tight pl-wide text-meta">
               <li>{t("admin:toolsImportAllowed")}</li>
               <li>{t("admin:toolsImportLimits")}</li>
               <li>{t("admin:toolsImportZipSafety")}</li>
               <li>{t("admin:toolsImportAnalyzeOnly")}</li>
             </ul>
-            <button
+            <Button
+              variant="primary"
+              size="lg"
               type="button"
               disabled={importBusy || (!importMarkdown.trim() && !(importFiles?.length))}
-              className="mt-4 rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+              className="mt-wide px-wide py-base text-sm"
               onClick={() => void analyzeImport()}
             >
               {importBusy ? t("admin:toolsImportAnalyzing") : t("admin:toolsImportAnalyze")}
-            </button>
+            </Button>
           </div>
         </div>
-        {importMsg ? <p className="mt-3 text-sm text-surface-muted">{importMsg}</p> : null}
+        {importMsg ? <p className="mt-soft text-sm text-ink-muted">{importMsg}</p> : null}
         {importResult ? (
-          <div className="mt-4 space-y-3">
-            <div className="rounded-md border border-white/10 bg-black/20 p-3 text-xs text-neutral-300">
-              {t("admin:toolsImportDetected")}: <span className="font-mono text-white">{importResult.source_type}</span>{" "}
-              <span className="text-surface-muted">
+          <div className="mt-wide space-y-soft">
+            <div className="rounded-tile border border-line bg-black/20 p-soft text-xs text-ink-secondary">
+              {t("admin:toolsImportDetected")}: <span className="font-mono text-ink-primary">{importResult.source_type}</span>{" "}
+              <span className="text-ink-muted">
                 ({Math.round(importResult.source_type_confidence * 100)}%)
               </span>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-base flex flex-wrap gap-base">
                 {importResult.sources.map((s) => (
-                  <span key={s.path} className="rounded bg-white/5 px-2 py-1 font-mono text-[11px]">
+                  <span key={s.path} className="rounded-tile bg-white/5 px-base py-tight font-mono text-meta">
                     {s.path} · {t("admin:toolsImportChars", { count: s.chars })}
                   </span>
                 ))}
               </div>
             </div>
-            <div className="grid gap-3 lg:grid-cols-2">
+            <div className="grid gap-soft lg:grid-cols-2">
               {importResult.candidates.map((c) => (
-                <article key={`${c.kind}:${c.name}`} className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-neutral-200">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-sm font-semibold text-white">{c.name}</span>
-                    <span className="rounded bg-sky-900/60 px-1.5 py-0.5 text-[10px] text-sky-100">{c.kind}</span>
-                    <span className="rounded bg-amber-900/60 px-1.5 py-0.5 text-[10px] text-amber-100">
+                <article key={`${c.kind}:${c.name}`} className="rounded-card border border-line bg-black/20 p-soft text-xs text-ink-primary">
+                  <div className="flex flex-wrap items-center gap-base">
+                    <span className="font-mono text-sm font-semibold text-ink-primary">{c.name}</span>
+                    <Badge tone="accent">{c.kind}</Badge>
+                    <Badge tone="warning">
                       {t("admin:toolsImportRisk", { risk: c.risk ?? t("admin:toolsImportUnknown") })}
-                    </span>
+                    </Badge>
                     {typeof c.confidence === "number" ? (
-                      <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px]">
+                      <Badge tone="neutral">
                         {Math.round(c.confidence * 100)}%
-                      </span>
+                      </Badge>
                     ) : null}
                   </div>
-                  <p className="mt-2 text-neutral-300">{c.title}</p>
-                  {c.summary ? <p className="mt-1 text-surface-muted">{c.summary}</p> : null}
-                  <p className="mt-2 font-mono text-[11px] text-surface-muted">{c.target_dir}</p>
+                  <p className="mt-base text-ink-secondary">{c.title}</p>
+                  {c.summary ? <p className="mt-tight text-ink-muted">{c.summary}</p> : null}
+                  <p className="mt-base font-mono text-meta text-ink-muted">{c.target_dir}</p>
                   {c.determinism_notes?.length ? (
-                    <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] text-neutral-400">
+                    <ul className="mt-base list-disc space-y-tight pl-wide text-meta text-ink-muted">
                       {c.determinism_notes.map((n) => <li key={n}>{n}</li>)}
                     </ul>
                   ) : null}
@@ -665,40 +676,46 @@ export function AdminTools() {
         ) : null}
       </section>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <button
+      <div className="mt-wide flex flex-wrap gap-base">
+        <Button
+          variant="primary"
+          size="lg"
           type="button"
           disabled={busy}
-          className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+          className="px-wide py-base text-sm"
           onClick={() => void loadAdmin()}
         >
           {t("admin:toolsRegistryRefresh")}
-        </button>
-        <button
+        </Button>
+        <Button
+          size="lg"
           type="button"
           disabled={busy}
-          className="rounded-md bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/15 disabled:opacity-50"
+          className="bg-white/10 px-wide py-base text-sm hover:bg-white/15"
           onClick={() => void reloadRegistry()}
         >
           {t("admin:toolsRegistryReload")}
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="primary"
+          tone="success"
+          size="lg"
           type="button"
           disabled={busy || loading}
-          className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
+          className="px-wide py-base text-sm"
           onClick={() => void savePolicies()}
         >
           {t("admin:toolsRegistrySavePolicy")}
-        </button>
+        </Button>
       </div>
 
-      {msg ? <p className="mt-3 text-sm text-surface-muted">{msg}</p> : null}
+      {msg ? <p className="mt-soft text-sm text-ink-muted">{msg}</p> : null}
 
       {loading ? (
-        <p className="mt-8 text-sm text-surface-muted">{t("admin:toolsRegistryLoading")}</p>
+        <p className="mt-deep text-sm text-ink-muted">{t("admin:toolsRegistryLoading")}</p>
       ) : (
-        <div className="mt-6 max-h-[min(72vh,calc(100dvh-11rem))] overflow-y-auto overscroll-contain rounded-lg border border-surface-border bg-black/20 pr-1">
-          <div className="flex flex-col divide-y divide-white/10">
+        <div className="mt-broad max-h-[min(72vh,calc(100dvh-11rem))] overflow-y-auto overscroll-contain rounded-card border border-line bg-black/20 pr-tight">
+          <div className="flex flex-col divide-y divide-line">
             {ADMIN_BUCKET_ORDER.map((bucket) => {
               const raw = groupedPackages[bucket] ?? [];
               const sectionPkgs = sortPackagesById(raw);
@@ -709,30 +726,30 @@ export function AdminTools() {
                 : [{ domain: "", items: sectionPkgs }];
 
               return (
-                <details key={bucket} className="group px-2 py-0.5 open:bg-white/[0.03]">
-                  <summary className="cursor-pointer list-none py-2.5 pl-1 [&::-webkit-details-marker]:hidden">
-                    <div className="flex flex-wrap items-baseline justify-between gap-2 pr-1">
-                      <span className="text-sm font-medium text-neutral-200">
-                        <span className="font-mono text-neutral-500">{bucket}</span> ·{" "}
+                <details key={bucket} className="group px-base py-hair open:bg-white/[0.03]">
+                  <summary className="cursor-pointer list-none py-firm pl-tight [&::-webkit-details-marker]:hidden">
+                    <div className="flex flex-wrap items-baseline justify-between gap-base pr-tight">
+                      <span className="text-sm font-medium text-ink-primary">
+                        <span className="font-mono text-ink-muted">{bucket}</span> ·{" "}
                         {t(ADMIN_BUCKET_LABEL_KEYS[bucket])}
                       </span>
-                      <span className="font-mono text-xs text-surface-muted">
+                      <span className="font-mono text-xs text-ink-muted">
                         {t("admin:toolsPackagesCount", { count: sectionPkgs.length })}
                       </span>
                     </div>
                   </summary>
-                  <div className="space-y-4 pb-4 pl-1">
+                  <div className="space-y-wide pb-wide pl-tight">
                     {blocks.map((block) => (
                       <div key={block.domain || "_"}>
                         {subdiv ? (
-                          <h3 className="mb-2 border-l-2 border-sky-600/60 pl-2 text-[11px] font-semibold uppercase tracking-wide text-sky-200/90">
+                          <h3 className="mb-base border-l-2 border-accent/60 pl-base text-meta font-semibold uppercase tracking-wide text-badge-accent">
                             {t("admin:toolsDomainHeader", {
                               domain: block.domain,
                               count: block.items.length,
                             })}
                           </h3>
                         ) : null}
-                        <ul className="flex flex-col gap-2">{block.items.map((p) => renderCard(p))}</ul>
+                        <ul className="flex flex-col gap-base">{block.items.map((p) => renderCard(p))}</ul>
                       </div>
                     ))}
                   </div>
@@ -744,7 +761,7 @@ export function AdminTools() {
       )}
 
       {!loading && totalPackages === 0 ? (
-        <p className="mt-8 text-sm text-surface-muted">{t("admin:toolsRegistryNoneLoaded")}</p>
+        <p className="mt-deep text-sm text-ink-muted">{t("admin:toolsRegistryNoneLoaded")}</p>
       ) : null}
     </div>
   );

@@ -143,6 +143,15 @@ def build_retrieval_bootstrap_snippet(workspace: dict[str, Any]) -> str:
 
     if is_client_execution(workspace.get("execution_mode")):
         lines.append(f"Execution: client · index_consent: {effective_index_consent(workspace)}")
+        client_path = workspace.get("path") or workspace.get("repo_path")
+        if isinstance(client_path, str) and client_path.strip():
+            lines.append(f"Client path (not readable on server): ``{client_path.strip()}``")
+    elif root is not None:
+        lines.append(f"Container path (bash cwd): ``{root.resolve()}``")
+        lines.append(
+            "Default `bash` cwd is this path. Prefer the `workdir` argument over shell `cd` "
+            "(commands run with shell=False — `cd` is not an executable)."
+        )
 
     stats = workspace.get("last_index_stats")
     sym = stats.get("total_symbols") if isinstance(stats, dict) else None

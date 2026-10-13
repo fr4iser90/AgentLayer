@@ -27,7 +27,6 @@ from apps.backend.application.identity.use_cases.request_auth import (
     get_user_by_id,
     get_user_for_bearer_token,
     list_all_users,
-    require_admin,
     revoke_refresh_token,
     update_user_tenant,
     validate_refresh_token,
@@ -67,7 +66,7 @@ def _generate_openapi_spec(title: str, tool_filter=None):
         if tool_filter and name not in tool_filter:
             continue
             
-        description = fn.get("TOOL_DESCRIPTION", fn.get("description", ""))
+        description = fn.get("description", "")
         parameters = fn.get("parameters", {})
         
         spec["paths"][f"/{name}"] = {

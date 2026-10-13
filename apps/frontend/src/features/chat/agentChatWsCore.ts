@@ -7,6 +7,7 @@ import {
   extractSpeechTextFromCompletion,
 } from "./assistantCompletionExtract";
 import { compactionEventToTimeline } from "./compactionActivity";
+import { appendContextInjectionsFromSession } from "./contextInjectionTimeline";
 import { formatToolStepLabel } from "./toolStepLabel";
 import type { LiveTurnStore } from "./useAgentLiveTurn";
 
@@ -208,6 +209,10 @@ export function handleAgentWsMessage(msg: Record<string, unknown>, ctx: HandlerC
       "session",
       [em && `model: ${em}`, mr && `(${mr})`].filter(Boolean).join(" ")
     );
+    appendContextInjectionsFromSession(
+      (kind, text, extras) => appendAgentLine(liveTurn, kind, text, extras),
+      msg.context_injections
+    );
     if (msg.context && typeof msg.context === "object") {
       const ctxMeta = msg.context as Record<string, unknown>;
       if (ctxMeta.compaction_applied && ctxMeta.summary_active) {
@@ -383,6 +388,10 @@ export function handleAgentWsMessage(msg: Record<string, unknown>, ctx: HandlerC
       typeof msg.result_error === "string" && msg.result_error.trim()
         ? msg.result_error.trim().slice(0, 500)
         : undefined;
+    const resultDisplay =
+      typeof msg.result_display === "string" && msg.result_display.trim()
+        ? msg.result_display.trim().slice(0, 4000)
+        : undefined;
     let durationMs = msg.duration_ms != null ? Number(msg.duration_ms) : null;
     if (durationMs == null || durationMs < 0) {
       const startTime = toolStartTimes.get(n);
@@ -409,6 +418,7 @@ export function handleAgentWsMessage(msg: Record<string, unknown>, ctx: HandlerC
       toolName: n,
       toolOk,
       toolError,
+      resultDisplay,
       durationMs: durationMs ?? undefined,
       resultChars: ch,
     });

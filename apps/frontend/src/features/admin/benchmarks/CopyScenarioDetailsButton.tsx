@@ -1,7 +1,9 @@
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Check, Copy } from "lucide-react";
 import type { BenchmarkScenarioResult } from "./benchmarksApi";
 import { copyScenarioDetailsToClipboard } from "./benchCopyDetails";
+import { Tooltip } from "../../../ui/Tooltip";
 
 export function CopyScenarioDetailsButton({
   res,
@@ -40,19 +42,28 @@ export function CopyScenarioDetailsButton({
       : t("admin:benchDetailCopyDetails");
 
   return (
+    <Tooltip label={label}>
     <button
-      type="button"
-      className={
-        className ||
-        (compact
-          ? "rounded px-1 text-[10px] text-surface-muted hover:bg-white/5 hover:text-sky-300"
-          : "rounded border border-white/10 px-2 py-0.5 text-[11px] text-surface-muted hover:border-sky-500/30 hover:text-sky-300")
-      }
-      title={label}
-      aria-label={label}
-      onClick={(e) => void onClick(e)}
-    >
-      {copied ? "✓" : failed ? "!" : compact ? "⎘" : label}
-    </button>
+        type="button"
+        className={
+          className ||
+          (compact
+            ? "rounded-tile px-tight text-meta text-ink-muted hover:bg-white/5 hover:text-badge-accent"
+            : "rounded-tile border border-line px-base py-hair text-meta text-ink-muted hover:border-accent/30 hover:text-badge-accent")
+        }
+        aria-label={label}
+        onClick={(e) => void onClick(e)}
+      >
+        {copied ? (
+          <Check aria-hidden className="inline h-3.5 w-3.5 align-[-2px]" />
+        ) : failed ? (
+          "!"
+        ) : compact ? (
+          <Copy aria-hidden className="inline h-3.5 w-3.5 align-[-2px]" />
+        ) : (
+          label
+        )}
+      </button>
+    </Tooltip>
   );
 }

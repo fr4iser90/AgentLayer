@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState, type RefObject } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
+import { Settings } from "lucide-react";
 import ReactGridLayout, {
   useContainerWidth,
   verticalCompactor,
@@ -40,6 +41,8 @@ import {
   sectionHasUnreadNested,
   updateBlockById,
 } from "./layoutTree";
+import { Button } from "../../ui/Button";
+import { Tooltip } from "../../ui/Tooltip";
 
 function usedDataPaths(blocks: UiBlock[]): Set<string> {
   const s = new Set<string>();
@@ -90,16 +93,18 @@ function AddBlockToolbar(props: {
   const { t } = useTranslation(["dashboard"]);
   const { definitions, onAdd, compact } = props;
   return (
-    <div className={`flex flex-wrap gap-2 ${compact ? "" : "mb-1"}`}>
+    <div className={`flex flex-wrap gap-base ${compact ? "" : "mb-tight"}`}>
       {definitions.map((definition) => (
-        <button
+        <Button
+          variant="primary"
+          size="sm"
           key={definition.type}
           type="button"
-          className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
+          className="dashboard-grid-no-drag px-soft py-snug text-xs"
           onClick={() => onAdd(definition.type)}
         >
           {t(definition.addLabelKey as "dashboard:addList")}
-        </button>
+        </Button>
       ))}
     </div>
   );
@@ -266,9 +271,9 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
 
   if (!layout.blocks.length) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-soft">
         {editMode && !hideToolbar ? <AddBlockToolbar definitions={toolbarDefinitions} onAdd={addBlock} /> : null}
-        <p className="text-sm text-surface-muted">{t("dashboard:noBlocksInLayout")}</p>
+        <p className="text-sm text-ink-muted">{t("dashboard:noBlocksInLayout")}</p>
       </div>
     );
   }
@@ -302,7 +307,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
           {layout.blocks.map((b) => {
             const canExpand = blockSupportsExpand(b.type);
             const canConfigureBlock =
-              Boolean(onBlockPropsSave) && b.type !== "dashboard_ref" && b.type !== "share_widget";
+              Boolean(onBlockPropsSave) && b.type !== "dashboard_ref";
             const showBlockToolbar =
               editMode ||
               canExpand ||
@@ -320,14 +325,14 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                 key={b.id}
                 data-block-id={b.id}
                 className={[
-                  "relative overflow-hidden rounded-xl border bg-surface-raised/90 shadow-sm transition-colors",
+                  "relative overflow-hidden rounded-sheet border bg-card shadow-xs transition-colors",
                   isSelected && editMode
-                    ? "border-sky-500/60 ring-1 ring-sky-500/30"
+                    ? "border-accent/60 ring-1 ring-accent/30"
                     : isHighlighted
                       ? "border-orange-500/50 ring-2 ring-orange-500/40"
                       : hasUnread
-                        ? "border-orange-500/25"
-                        : "border-surface-border",
+                        ? "border-unread/25"
+                        : "border-line",
                 ].join(" ")}
                 onClick={() => {
                   if (editMode) setSelectedBlockId(b.id);
@@ -337,76 +342,88 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                 {hasUnread ? <AgentUpdateBadge title={badgeTitle} pulse={isHighlighted} /> : null}
                 <div className={blockShellClassForBlock(b)}>
                   {showBlockToolbar || editMode ? (
-                    <div className="dashboard-grid-drag-handle sticky top-0 z-10 flex cursor-grab items-center gap-2 border-b border-white/5 bg-surface-raised/95 px-2 py-1 active:cursor-grabbing">
-                      <span className="min-w-0 flex-1 truncate text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+                    <div className="dashboard-grid-drag-handle sticky top-0 z-lift flex cursor-grab items-center gap-base border-b border-line-subtle bg-card px-base py-tight active:cursor-grabbing">
+                      <span className="min-w-0 flex-1 truncate text-meta font-medium uppercase tracking-wide text-ink-muted">
                         {blockTitle(b)}
                       </span>
-                      <div className="flex shrink-0 gap-1">
+                      <div className="flex shrink-0 gap-tight">
                         {canExpand ? (
-                          <button
-                            type="button"
-                            className="dashboard-grid-no-drag rounded px-2 py-0.5 text-xs text-sky-200 hover:bg-sky-950/50"
-                            title={t("dashboard:blockExpand")}
-                            aria-label={t("dashboard:blockExpand")}
-                            onClick={() => {
-                              acknowledgeBlock(b.id);
-                              setExpandedBlockId(b.id);
-                            }}
+                          <Tooltip label={t("dashboard:blockExpand")}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                              type="button"
+                              className="dashboard-grid-no-drag px-base py-hair text-xs text-badge-accent"
+                              aria-label={t("dashboard:blockExpand")}
+                              onClick={() => {
+                                acknowledgeBlock(b.id);
+                                setExpandedBlockId(b.id);
+                              }}
                           >
-                            {t("dashboard:blockExpand")}
-                          </button>
+                              {t("dashboard:blockExpand")}
+                            </Button>
+                          </Tooltip>
                         ) : null}
                         {onPinBlockToChat && b.type !== "dashboard_ref" ? (
+                          <Tooltip label={t("dashboard:pinBlockToChatHint")}>
                           <button
-                            type="button"
-                            className={[
-                              "dashboard-grid-no-drag rounded px-2 py-0.5 text-xs",
-                              chatFocusedBlockId === b.id
-                                ? "bg-emerald-900/60 text-emerald-100"
-                                : "text-emerald-200 hover:bg-emerald-950/50",
-                            ].join(" ")}
-                            title={t("dashboard:pinBlockToChatHint")}
-                            onClick={() => onPinBlockToChat(b.id)}
-                          >
-                            {chatFocusedBlockId === b.id
-                              ? t("dashboard:pinBlockToChatActive")
-                              : t("dashboard:pinBlockToChat")}
-                          </button>
+                              type="button"
+                              className={[
+                                "dashboard-grid-no-drag rounded-tile px-base py-hair text-xs",
+                                chatFocusedBlockId === b.id
+                                  ? "bg-success-subtle text-badge-success"
+                                  : "text-badge-success hover:bg-success-subtle",
+                              ].join(" ")}
+                              onClick={() => onPinBlockToChat(b.id)}
+                            >
+                              {chatFocusedBlockId === b.id
+                                ? t("dashboard:pinBlockToChatActive")
+                                : t("dashboard:pinBlockToChat")}
+                            </button>
+                          </Tooltip>
                         ) : null}
                         {canConfigureBlock ? (
-                          <button
-                            type="button"
-                            className="dashboard-grid-no-drag rounded px-2 py-0.5 text-xs text-amber-200 hover:bg-amber-950/50"
-                            title={t("dashboard:blockSettingsTitle")}
-                            aria-label={t("dashboard:blockSettingsTitle")}
-                            onClick={() => setSettingsBlockId(b.id)}
+                          <Tooltip label={t("dashboard:blockSettingsTitle")}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                              type="button"
+                              className="dashboard-grid-no-drag px-base py-hair text-xs text-badge-warning"
+                              aria-label={t("dashboard:blockSettingsTitle")}
+                              onClick={() => setSettingsBlockId(b.id)}
                           >
-                            ⚙
-                          </button>
+                              <Settings aria-hidden className="h-3.5 w-3.5" />
+                            </Button>
+                          </Tooltip>
                         ) : null}
                         {onPinBlock && b.type !== "dashboard_ref" ? (
-                          <button
-                            type="button"
-                            className="dashboard-grid-no-drag rounded px-2 py-0.5 text-xs text-violet-200 hover:bg-violet-950/50"
-                            title={t("dashboard:pinBlockHint")}
-                            onClick={() => onPinBlock(b.id)}
+                          <Tooltip label={t("dashboard:pinBlockHint")}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                              type="button"
+                              className="dashboard-grid-no-drag px-base py-hair text-xs text-violet-200 hover:bg-violet-950/50"
+                              onClick={() => onPinBlock(b.id)}
                           >
-                            {t("dashboard:pinBlock")}
-                          </button>
+                              {t("dashboard:pinBlock")}
+                            </Button>
+                          </Tooltip>
                         ) : null}
                         {editMode ? (
-                          <button
+                          <Button
                             type="button"
-                            className="dashboard-grid-no-drag rounded px-2 py-0.5 text-xs text-red-300 hover:bg-red-950/50"
+                            variant="danger"
+                            size="sm"
+                            className="dashboard-grid-no-drag"
                             onClick={() => removeBlock(b.id)}
                           >
                             {t("dashboard:gridRemoveBlock")}
-                          </button>
+                          </Button>
                         ) : null}
                       </div>
                     </div>
                   ) : null}
-                  <div className="min-h-0 flex-1 p-2">
+                  <div className="min-h-0 flex-1 p-base">
                     <DashboardBlockTile
                       block={b}
                       data={data}
@@ -434,12 +451,12 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
   );
 
   return (
-    <div className={`min-w-0 space-y-3 ${embedded ? "" : ""}`}>
+    <div className={`min-w-0 space-y-soft ${embedded ? "" : ""}`}>
       {editMode && !hideToolbar ? (
         <AddBlockToolbar definitions={toolbarDefinitions} onAdd={addBlock} />
       ) : null}
       {mobileStack ? (
-        <p className="text-[11px] text-surface-muted">{t("dashboard:gridMobileStackHint")}</p>
+        <p className="text-meta text-ink-muted">{t("dashboard:gridMobileStackHint")}</p>
       ) : null}
 
       <div ref={containerRef as RefObject<HTMLDivElement>} className="min-h-[200px] min-w-0">

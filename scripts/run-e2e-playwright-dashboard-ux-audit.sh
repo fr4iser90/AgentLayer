@@ -32,4 +32,4 @@ docker run --rm \
   mcr.microsoft.com/playwright:v1.49.1-noble \
   bash -lc 'npm install playwright@1.49.1 --no-save && npx playwright install chromium && node scripts/e2e-playwright-dashboard-ux-audit.mjs'
 
-echo "[ux-audit] Done. See example/dashboard-ux-audit/"
+echo "[ux-audit] Done. See output/ux-audit/ (gitignored — regenerated per run)"

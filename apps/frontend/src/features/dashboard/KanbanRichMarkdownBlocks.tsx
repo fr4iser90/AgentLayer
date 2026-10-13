@@ -2,8 +2,10 @@ import type { Dispatch, SetStateAction } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useTranslation } from "react-i18next";
+import { Button } from "../../ui/Button";
 
 import { getPath, setPath } from "./dashboardDataPaths";
+import { Select, TextArea, TextInput } from "../../ui/Field";
 
 function newKanbanId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -123,86 +125,92 @@ export function KanbanBlockBody(props: {
   };
 
   return (
-    <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-3 md:p-4">
+    <section className="rounded-sheet border border-line bg-card p-soft md:p-wide">
       {displayMode === "grid" ? (
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-medium text-white">{sectionTitle}</h3>
+        <div className="mb-soft flex flex-wrap items-center justify-between gap-base">
+          <h3 className="text-sm font-medium text-ink-primary">{sectionTitle}</h3>
           {!readOnly ? (
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               type="button"
-              className="rounded-md bg-sky-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
+              className="px-soft py-snug text-xs"
               onClick={addColumn}
             >
               {t("dashboard:kanbanAddColumn")}
-            </button>
+            </Button>
           ) : null}
         </div>
       ) : (
         !readOnly ? (
-          <div className="mb-3 flex justify-end">
-            <button
+          <div className="mb-soft flex justify-end">
+            <Button
+              variant="primary"
+              size="sm"
               type="button"
-              className="rounded-md bg-sky-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
+              className="px-soft py-snug text-xs"
               onClick={addColumn}
             >
               {t("dashboard:kanbanAddColumn")}
-            </button>
+            </Button>
           </div>
         ) : null
       )}
       <div
         className={[
-          "flex gap-3 overflow-x-auto pb-1",
+          "flex gap-soft overflow-x-auto pb-tight",
           displayMode === "expanded" ? "min-h-[min(60vh,520px)]" : "min-h-[120px]",
         ].join(" ")}
       >
         {columns.map((col, ci) => (
           <div
             key={col.id}
-            className="flex w-[min(100%,280px)] shrink-0 flex-col rounded-lg border border-white/10 bg-black/25 p-2"
+            className="flex w-[min(100%,280px)] shrink-0 flex-col rounded-card border border-line bg-black/25 p-base"
           >
-            <div className="mb-2 flex items-center gap-1">
+            <div className="mb-base flex items-center gap-tight">
               {readOnly ? (
-                <span className="flex-1 truncate text-sm font-medium text-white">{col.title}</span>
+                <span className="flex-1 truncate text-sm font-medium text-ink-primary">{col.title}</span>
               ) : (
-                <input
+                <TextInput
                   type="text"
-                  className="dashboard-grid-no-drag min-w-0 flex-1 rounded border border-surface-border bg-black/40 px-2 py-1 text-sm text-white"
+                  className="dashboard-grid-no-drag min-w-0 flex-1"
                   value={col.title}
                   onChange={(e) => updateColTitle(ci, e.target.value)}
                 />
               )}
               {!readOnly && columns.length > 1 ? (
-                <button
+                <Button
                   type="button"
-                  className="shrink-0 rounded px-1.5 text-xs text-red-400 hover:bg-white/5"
+                  variant="danger"
+                  size="sm"
+                  className="shrink-0"
                   title={t("dashboard:kanbanDeleteColumn")}
                   onClick={() => removeColumn(ci)}
                 >
                   ×
-                </button>
+                </Button>
               ) : null}
             </div>
-            <div className="flex min-h-[80px] flex-col gap-2">
+            <div className="flex min-h-[80px] flex-col gap-base">
               {col.cards.map((card) => (
                 <div
                   key={card.id}
-                  className="rounded-md border border-white/5 bg-surface-raised/80 p-2 shadow-sm"
+                  className="rounded-tile border border-line-subtle bg-raised p-base shadow-xs"
                 >
                   {readOnly ? (
-                    <p className="text-sm text-neutral-200">{card.title || t("dashboard:kanbanCardTitleEmpty")}</p>
+                    <p className="text-sm text-ink-primary">{card.title || t("dashboard:kanbanCardTitleEmpty")}</p>
                   ) : (
                     <>
-                      <input
+                      <TextInput
                         type="text"
                         placeholder={t("dashboard:kanbanCardPlaceholder")}
-                        className="dashboard-grid-no-drag mb-2 w-full rounded border border-surface-border bg-black/40 px-2 py-1 text-sm text-white"
+                        className="dashboard-grid-no-drag mb-base"
                         value={card.title}
                         onChange={(e) => updateCardTitle(ci, card.id, e.target.value)}
                       />
-                      <div className="flex flex-wrap items-center gap-2">
-                        <select
-                          className="dashboard-grid-no-drag max-w-full flex-1 rounded border border-surface-border bg-black/40 px-1 py-0.5 text-[10px] text-neutral-200"
+                      <div className="flex flex-wrap items-center gap-base">
+                        <Select
+                          className="dashboard-grid-no-drag max-w-full flex-1 text-meta"
                           value={ci}
                           onChange={(e) => moveCard(ci, card.id, Number(e.target.value))}
                           title={t("dashboard:kanbanMoveColumn")}
@@ -212,14 +220,15 @@ export function KanbanBlockBody(props: {
                               → {c.title || t("dashboard:kanbanColumnFallback", { index: ti + 1 })}
                             </option>
                           ))}
-                        </select>
-                        <button
+                        </Select>
+                        <Button
                           type="button"
-                          className="text-[10px] text-red-400 hover:underline"
+                          variant="danger"
+                          size="sm"
                           onClick={() => removeCard(ci, card.id)}
                         >
                           {t("dashboard:delete")}
-                        </button>
+                        </Button>
                       </div>
                     </>
                   )}
@@ -227,39 +236,40 @@ export function KanbanBlockBody(props: {
               ))}
             </div>
             {!readOnly ? (
-              <button
+              <Button
+                size="sm"
                 type="button"
-                className="dashboard-grid-no-drag mt-2 rounded-md border border-dashed border-white/15 py-1.5 text-xs text-surface-muted hover:border-sky-500/40 hover:text-sky-300"
+                className="dashboard-grid-no-drag mt-base border-dashed py-snug text-xs text-ink-muted hover:text-badge-accent"
                 onClick={() => addCard(ci)}
               >
                 {t("dashboard:kanbanAddCard")}
-              </button>
+              </Button>
             ) : null}
           </div>
         ))}
       </div>
       {columns.length === 0 && !readOnly ? (
-        <p className="text-center text-sm text-surface-muted">{t("dashboard:kanbanEmptyHint")}</p>
+        <p className="text-center text-sm text-ink-muted">{t("dashboard:kanbanEmptyHint")}</p>
       ) : null}
     </section>
   );
 }
 
 const mdClass = {
-  p: "mb-2 last:mb-0 leading-relaxed text-neutral-200",
-  h1: "mt-3 mb-2 text-xl font-semibold text-white first:mt-0",
-  h2: "mt-3 mb-2 text-lg font-semibold text-white",
-  h3: "mt-2 mb-1 text-base font-medium text-white",
-  ul: "my-2 list-disc pl-5 text-neutral-200",
-  ol: "my-2 list-decimal pl-5 text-neutral-200",
-  li: "my-0.5",
-  a: "text-sky-400 underline hover:text-sky-300",
-  code: "rounded bg-white/10 px-1 py-0.5 font-mono text-[13px] text-sky-200",
-  pre: "my-2 overflow-x-auto rounded-lg border border-white/10 bg-black/50 p-3 text-sm",
-  blockquote: "border-l-2 border-sky-500/50 pl-3 italic text-surface-muted",
-  table: "my-2 w-full border-collapse text-sm",
-  th: "border border-white/10 bg-white/5 px-2 py-1 text-left text-white",
-  td: "border border-white/10 px-2 py-1 text-neutral-200",
+  p: "mb-base last:mb-0 leading-relaxed text-ink-primary",
+  h1: "mt-soft mb-base text-xl font-semibold text-ink-primary first:mt-0",
+  h2: "mt-soft mb-base text-lg font-semibold text-ink-primary",
+  h3: "mt-base mb-tight text-base font-medium text-ink-primary",
+  ul: "my-base list-disc pl-roomy text-ink-primary",
+  ol: "my-base list-decimal pl-roomy text-ink-primary",
+  li: "my-hair",
+  a: "text-accent underline hover:text-badge-accent",
+  code: "rounded-tile bg-white/10 px-tight py-hair font-mono text-body text-badge-accent",
+  pre: "my-base overflow-x-auto rounded-card border border-line bg-black/50 p-soft text-sm",
+  blockquote: "border-l-2 border-accent/50 pl-soft italic text-ink-muted",
+  table: "my-base w-full border-collapse text-sm",
+  th: "border border-line bg-white/5 px-base py-tight text-left text-ink-primary",
+  td: "border border-line px-base py-tight text-ink-primary",
 };
 
 export function RichMarkdownBlockBody(props: {
@@ -276,7 +286,7 @@ export function RichMarkdownBlockBody(props: {
   const text = typeof raw === "string" ? raw : "";
 
   const preview = (
-    <div className="min-h-[160px] overflow-y-auto rounded-lg border border-white/10 bg-black/30 p-3 text-sm">
+    <div className="min-h-[160px] overflow-y-auto rounded-card border border-line bg-black/30 p-soft text-sm">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -323,28 +333,29 @@ export function RichMarkdownBlockBody(props: {
 
   if (readOnly) {
     return (
-      <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-4">
-        <h3 className="mb-3 text-sm font-medium text-white">{sectionTitle}</h3>
+      <section className="rounded-sheet border border-line bg-card p-wide">
+        <h3 className="mb-soft text-sm font-medium text-ink-primary">{sectionTitle}</h3>
         {preview}
       </section>
     );
   }
 
   return (
-    <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-4">
-      <h3 className="mb-3 text-sm font-medium text-white">{sectionTitle}</h3>
-      <div className="grid gap-3 lg:grid-cols-2">
+    <section className="rounded-sheet border border-line bg-card p-wide">
+      <h3 className="mb-soft text-sm font-medium text-ink-primary">{sectionTitle}</h3>
+      <div className="grid gap-soft lg:grid-cols-2">
         <div>
-          <label className="mb-1 block text-[10px] uppercase text-surface-muted">{t("dashboard:markdownLabel")}</label>
-          <textarea
-            className="dashboard-grid-no-drag min-h-[220px] w-full resize-y rounded-lg border border-surface-border bg-black/35 px-3 py-2 font-mono text-sm text-neutral-100 outline-none focus:border-sky-500/50"
+          <label className="mb-tight block text-meta uppercase text-ink-muted">{t("dashboard:markdownLabel")}</label>
+          <TextArea
+            mono
+            className="dashboard-grid-no-drag min-h-[220px] resize-y outline-hidden"
             placeholder={placeholder}
             value={text}
             onChange={(e) => setData((d) => setPath(d, dp, e.target.value))}
           />
         </div>
         <div>
-          <label className="mb-1 block text-[10px] uppercase text-surface-muted">{t("dashboard:markdownPreview")}</label>
+          <label className="mb-tight block text-meta uppercase text-ink-muted">{t("dashboard:markdownPreview")}</label>
           {preview}
         </div>
       </div>

@@ -113,16 +113,17 @@ def user_from_context(context: dict[str, Any] | None) -> Any | None:
         return None
 
     class UserLike:
+        """An id and nothing else.
+
+        It used to carry ``db.user_role(uid)`` — the legacy column — which the
+        self-workspace and server-workspace gates then judged as admin. Rights on
+        this path are resolved from ``users.site_role`` by those gates themselves.
+        """
+
         def __init__(self, user_id: uuid.UUID) -> None:
             self.id = user_id
-            self.role = "user"
 
-    u = UserLike(uid)
-    try:
-        u.role = db.user_role(uid) or "user"
-    except Exception:
-        pass
-    return u
+    return UserLike(uid)
 
 
 def normalize_git_url(raw: str) -> str | None:

@@ -1,0 +1,385 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { useAuth } from "../auth/AuthContext";
+import { hasOrgSurface } from "../auth/deploymentMode";
+import { apiFetch, type WorkspaceApiRecord, type WorkspaceListScope } from "../lib/api";
+import { deleteWorkspaceApi, fetchWorkspacesApi, isAgentlayerSelfWorkspace } from "../lib/workspacesApi";
+import { Badge } from "../ui/Badge";
+import { Button } from "../ui/Button";
+import { Tabs } from "../ui/Tabs";
+
+type FsEntry = {
+  name: string;
+  path: string;
+  is_dir: boolean;
+  is_symlink?: boolean;
+};
+
+const SCOPE_TABS = [
+  { id: "mine", labelKey: "workspace:projectsScopeMine" },
+  { id: "company", labelKey: "workspace:projectsScopeCompany" },
+] as const;
+
+function parentPath(p: string): string {
+  const parts = p.replace(/\\/g, "/").split("/").filter(Boolean);
+  if (parts.length <= 1) return "";
+  return parts.slice(0, -1).join("/");
+}
+
+export function ProjectsPage() {
+  const { t } = useTranslation(["workspace", "errors", "common"]);
+  const auth = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedId = searchParams.get("id")?.trim() || null;
+
+  const [scope, setScope] = useState<WorkspaceListScope>("mine");
+  const [companyTenantId, setCompanyTenantId] = useState<number | null>(null);
+  const [workspaces, setWorkspaces] = useState<WorkspaceApiRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const [browsePath, setBrowsePath] = useState("");
+  const [entries, setEntries] = useState<FsEntry[]>([]);
+  const [treeLoading, setTreeLoading] = useState(false);
+  const [treeError, setTreeError] = useState<string | null>(null);
+  const [treeTruncated, setTreeTruncated] = useState(false);
+
+  const selected = useMemo(
+    () => workspaces.find((w) => w.id === selectedId) ?? null,
+    [workspaces, selectedId]
+  );
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const j = await fetchWorkspacesApi(auth, scope);
+      setWorkspaces(Array.isArray(j.workspaces) ? j.workspaces : []);
+      setCompanyTenantId(j.tenant_id ?? null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("workspace:projectsLoadFailed", { status: "?" }));
+      setWorkspaces([]);
+      setCompanyTenantId(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [auth, scope, t]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const switchScope = (next: WorkspaceListScope) => {
+    if (next === scope) return;
+    setScope(next);
+    // Dropping the old list here keeps the auto-select effect from re-picking a
+    // workspace from the previous scope before the new one has loaded.
+    setWorkspaces([]);
+    setSearchParams({});
+  };
+
+  useEffect(() => {
+    if (!selectedId && workspaces.length > 0) {
+      setSearchParams({ id: workspaces[0]!.id }, { replace: true });
+    }
+  }, [selectedId, workspaces, setSearchParams]);
+
+  const loadTree = useCallback(async () => {
+    if (!selectedId) {
+      setEntries([]);
+      setTreeError(null);
+      return;
+    }
+    setTreeLoading(true);
+    setTreeError(null);
+    try {
+      const q = browsePath ? `?path=${encodeURIComponent(browsePath)}` : "";
+      const r = await apiFetch(`/v1/workspaces/${encodeURIComponent(selectedId)}/fs/list${q}`, auth);
+      const j = (await r.json().catch(() => ({}))) as {
+        entries?: FsEntry[];
+        truncated?: boolean;
+        detail?: string;
+      };
+      if (!r.ok) {
+        setTreeError(
+          typeof j.detail === "string" ? j.detail : t("workspace:projectsTreeFailed", { status: r.status })
+        );
+        setEntries([]);
+        return;
+      }
+      setEntries(Array.isArray(j.entries) ? j.entries : []);
+      setTreeTruncated(Boolean(j.truncated));
+    } catch (e) {
+      setTreeError(e instanceof Error ? e.message : t("workspace:projectsTreeFailed", { status: "?" }));
+      setEntries([]);
+    } finally {
+      setTreeLoading(false);
+    }
+  }, [auth, browsePath, selectedId, t]);
+
+  useEffect(() => {
+    setBrowsePath("");
+  }, [selectedId]);
+
+  useEffect(() => {
+    void loadTree();
+  }, [loadTree]);
+
+  const selectWorkspace = (id: string) => {
+    setSearchParams({ id });
+  };
+
+  const onDelete = async (ws: WorkspaceApiRecord) => {
+    const self = isAgentlayerSelfWorkspace(ws);
+    const ok = window.confirm(
+      self
+        ? t("workspace:projectsDeleteSelfConfirm", { name: ws.name })
+        : t("workspace:projectsDeleteConfirm", { name: ws.name })
+    );
+    if (!ok) return;
+    setBusyId(ws.id);
+    setError(null);
+    try {
+      await deleteWorkspaceApi(auth, ws.id);
+      setWorkspaces((prev) => prev.filter((w) => w.id !== ws.id));
+      if (selectedId === ws.id) {
+        setSearchParams({});
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("workspace:projectsDeleteFailed"));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-pageWide flex-col gap-wide overflow-hidden p-wide md:p-broad">
+      <header className="shrink-0">
+        <h1 className="text-lg font-semibold text-ink-primary">{t("workspace:projectsTitle")}</h1>
+        <p className="mt-tight max-w-measure text-sm text-ink-muted">{t("workspace:projectsIntro")}</p>
+        <p className="mt-tight text-xs text-ink-muted">
+          {scope === "company"
+            ? t("workspace:projectsCompanyScopeNote")
+            : t("workspace:projectsOwnerScopeNote")}
+        </p>
+      </header>
+
+      {error ? (
+        <p className="shrink-0 rounded-card border border-danger/30 bg-danger-subtle px-soft py-base text-sm text-badge-danger">
+          {error}
+        </p>
+      ) : null}
+
+      <div className="grid min-h-0 flex-1 gap-wide md:grid-cols-[minmax(14rem,20rem)_1fr]">
+        <section className="flex min-h-0 flex-col rounded-sheet border border-line bg-card">
+          <div className="flex items-center justify-between gap-base border-b border-line px-soft py-base">
+            {hasOrgSurface(auth.user) ? (
+              // `border-b-0`: this row already carries the divider the list sits
+              // under, so the strip's own underline would draw a second hairline
+              // eight pixels below it.
+              <Tabs
+                ariaLabel={t("workspace:projectsScopeAria")}
+                className="border-b-0"
+                value={scope}
+                onChange={(id) => switchScope(id === "company" ? "company" : "mine")}
+                items={SCOPE_TABS.map((tab) => ({ id: tab.id, label: t(tab.labelKey) }))}
+              />
+            ) : (
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                {t("workspace:projectsListTitle")}
+              </h2>
+            )}
+            <Button
+              type="button"
+              className="px-base py-tight text-meta text-ink-secondary hover:bg-white/5"
+              disabled={loading}
+              onClick={() => void reload()}
+            >
+              {t("workspace:projectsRefresh")}
+            </Button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-base">
+            {loading ? (
+              <p className="px-base py-base text-xs text-ink-muted">{t("common:nav.loading")}</p>
+            ) : workspaces.length === 0 ? (
+              <p className="px-base py-base text-xs text-ink-muted">
+                {scope === "company" && companyTenantId === null
+                  ? t("workspace:projectsCompanyNoTenant")
+                  : t("workspace:projectsEmpty")}
+              </p>
+            ) : (
+              <ul className="space-y-tight">
+                {workspaces.map((w) => {
+                  const active = w.id === selectedId;
+                  return (
+                    <li key={w.id}>
+                      <button
+                        type="button"
+                        className={[
+                          "w-full rounded-card px-firm py-base text-left transition-colors",
+                          active
+                            ? "border border-accent/40 bg-accent-subtle"
+                            : "border border-transparent hover:bg-white/5",
+                        ].join(" ")}
+                        onClick={() => selectWorkspace(w.id)}
+                      >
+                        <span className="flex items-center gap-snug">
+                          <span className="min-w-0 flex-1 truncate text-sm text-ink-primary">{w.name}</span>
+                          {scope === "mine" && w.visibility === "tenant" ? (
+                            <Badge tone="accent" className="shrink-0 uppercase tracking-wide">
+                              {t("workspace:visibilityCompanyTag")}
+                            </Badge>
+                          ) : null}
+                        </span>
+                        <span className="mt-hair block truncate text-meta text-ink-muted">
+                          {w.source}
+                          {w.git_url ? ` · ${w.git_url}` : ""}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </section>
+
+        <section className="flex min-h-0 flex-col rounded-sheet border border-line bg-card">
+          {!selected ? (
+            <p className="p-wide text-sm text-ink-muted">{t("workspace:selectProjectBrowseFiles")}</p>
+          ) : (
+            <>
+              <div className="shrink-0 space-y-soft border-b border-line p-wide">
+                <div className="flex flex-wrap items-start justify-between gap-soft">
+                  <div className="min-w-0">
+                    <h2 className="truncate text-base font-medium text-ink-primary">{selected.name}</h2>
+                    <p className="mt-tight break-all font-mono text-meta text-ink-muted">
+                      {selected.path || "—"}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-base">
+                    <Link
+                      to={`/chat?workspace=${encodeURIComponent(selected.id)}`}
+                      className="rounded-card border border-line px-soft py-snug text-xs text-ink-primary hover:bg-white/5"
+                    >
+                      {t("workspace:projectsOpenChat")}
+                    </Link>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      size="sm"
+                      disabled={busyId === selected.id}
+                      onClick={() => void onDelete(selected)}
+                    >
+                      {busyId === selected.id
+                        ? t("workspace:projectsDeleting")
+                        : t("workspace:projectsDeleteClean")}
+                    </Button>
+                  </div>
+                </div>
+                <dl className="grid gap-base text-xs sm:grid-cols-2">
+                  <div>
+                    <dt className="text-ink-muted">{t("workspace:projectsFieldSource")}</dt>
+                    <dd className="text-ink-primary">{selected.source}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-ink-muted">{t("workspace:projectsFieldBranch")}</dt>
+                    <dd className="text-ink-primary">{selected.git_branch || "—"}</dd>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <dt className="text-ink-muted">{t("workspace:projectsFieldGit")}</dt>
+                    <dd className="break-all text-ink-primary">{selected.git_url || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-ink-muted">{t("workspace:projectsFieldUpdated")}</dt>
+                    <dd className="text-ink-primary">{selected.updated_at || "—"}</dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div className="flex min-h-0 flex-1 flex-col">
+                <div className="flex shrink-0 items-center justify-between gap-base border-b border-line px-soft py-base">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                    {t("workspace:projectFilesTitle")}
+                  </h3>
+                  <div className="flex items-center gap-base">
+                    {browsePath ? (
+                      <Button
+                        type="button"
+                        className="px-base py-hair text-meta text-ink-secondary hover:bg-white/5"
+                        onClick={() => setBrowsePath(parentPath(browsePath))}
+                      >
+                        {t("workspace:projectsTreeUp")}
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      className="px-base py-hair text-meta text-ink-secondary hover:bg-white/5"
+                      disabled={treeLoading}
+                      onClick={() => void loadTree()}
+                    >
+                      {t("workspace:projectsRefresh")}
+                    </Button>
+                  </div>
+                </div>
+                <p className="shrink-0 truncate border-b border-line-subtle px-soft py-tight font-mono text-meta text-ink-muted">
+                  {browsePath || "."}
+                </p>
+                <div className="min-h-0 flex-1 overflow-y-auto p-base">
+                  {treeError ? (
+                    <p className="px-base py-base text-xs text-danger">{treeError}</p>
+                  ) : treeLoading ? (
+                    <p className="px-base py-base text-xs text-ink-muted">{t("common:nav.loading")}</p>
+                  ) : entries.length === 0 ? (
+                    <p className="px-base py-base text-xs text-ink-muted">{t("workspace:projectsTreeEmpty")}</p>
+                  ) : (
+                    <ul className="space-y-hair">
+                      {entries.map((e) => (
+                        <li key={e.path}>
+                          {e.is_dir ? (
+                            <Button
+                              variant="plain"
+                              block
+                              type="button"
+                              className="w-full items-center gap-base rounded-tile px-base py-tight text-xs text-badge-accent hover:bg-white/5"
+                              onClick={() => setBrowsePath(e.path)}
+                            >
+                              <span className="text-ink-muted">/</span>
+                              <span className="truncate">{e.name}</span>
+                              {e.is_symlink ? (
+                                <span className="text-meta text-ink-muted">
+                                  {t("workspace:treeEntrySymlink")}
+                                </span>
+                              ) : null}
+                            </Button>
+                          ) : (
+                            <div className="flex items-center gap-base rounded-tile px-base py-tight text-xs text-ink-secondary">
+                              <span className="text-ink-muted">·</span>
+                              <span className="truncate">{e.name}</span>
+                              {e.is_symlink ? (
+                                <span className="text-meta text-ink-muted">
+                                  {t("workspace:treeEntrySymlink")}
+                                </span>
+                              ) : null}
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {treeTruncated ? (
+                    <p className="mt-base px-base text-meta text-badge-warning">
+                      {t("workspace:projectsTreeTruncated")}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}

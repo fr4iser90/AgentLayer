@@ -28,7 +28,6 @@ def upgrade() -> None:
           ADD COLUMN IF NOT EXISTS heartbeat_allowed_tool_packages TEXT,
           ADD COLUMN IF NOT EXISTS heartbeat_llm_backend TEXT NOT NULL DEFAULT 'inherit',
           ADD COLUMN IF NOT EXISTS heartbeat_tools_mode TEXT NOT NULL DEFAULT 'none',
-          ADD COLUMN IF NOT EXISTS heartbeat_pidea_enabled BOOLEAN NOT NULL DEFAULT false,
           ADD COLUMN IF NOT EXISTS heartbeat_instructions TEXT;
         """
     )
@@ -56,7 +55,6 @@ def downgrade() -> None:
         """
         ALTER TABLE operator_settings
           DROP COLUMN IF EXISTS heartbeat_instructions,
-          DROP COLUMN IF EXISTS heartbeat_pidea_enabled,
           DROP COLUMN IF EXISTS heartbeat_tools_mode,
           DROP COLUMN IF EXISTS heartbeat_llm_backend,
           DROP COLUMN IF EXISTS heartbeat_allowed_tool_packages,

@@ -173,16 +173,16 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "fact_upsert",
-            "TOOL_DESCRIPTION": "Upsert one structured memory fact (key/value JSON). Use only on explicit user request.",
+            "description": "Upsert one structured memory fact (key/value JSON). Use only on explicit user request.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "dashboard_id": {"type": "string", "TOOL_DESCRIPTION": "Optional dashboard UUID scope"},
+                    "dashboard_id": {"type": "string", "description": "Optional dashboard UUID scope"},
                     "key": {"type": "string"},
                     "value_json": {"type": "object"},
                     "confidence": {"type": "number"},
                     "source": {"type": "string"},
-                    "expires_at": {"type": "string", "TOOL_DESCRIPTION": "Optional ISO timestamp"},
+                    "expires_at": {"type": "string", "description": "Optional ISO timestamp"},
                 },
                 "required": ["key", "value_json"],
             },
@@ -192,7 +192,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "fact_list",
-            "TOOL_DESCRIPTION": "List this user's memory facts (active, not expired).",
+            "description": "List this user's memory facts (active, not expired).",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -208,7 +208,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "fact_delete",
-            "TOOL_DESCRIPTION": "Delete one memory fact by key (soft-delete).",
+            "description": "Delete one memory fact by key (soft-delete).",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -223,7 +223,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "note_add",
-            "TOOL_DESCRIPTION": "Add a semantic memory note (embedded server-side). Use only on explicit user request.",
+            "description": "Add a semantic memory note (embedded server-side). Use only on explicit user request.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -240,7 +240,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "note_search",
-            "TOOL_DESCRIPTION": "Semantic search over previously stored memory notes for this user.",
+            "description": "Semantic search over previously stored memory notes for this user.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -257,7 +257,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "note_delete",
-            "TOOL_DESCRIPTION": "Delete one memory note by id (soft-delete).",
+            "description": "Delete one memory note by id (soft-delete).",
             "parameters": {
                 "type": "object",
                 "properties": {

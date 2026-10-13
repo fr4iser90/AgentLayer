@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { Select, TextInput } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 type Department = { id: string; slug: string; name: string };
 type ProfessionRole = { id: string; slug: string; name: string; role_kind: string };
@@ -76,36 +78,36 @@ export function OrgTeamPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-10">
-      <h1 className="text-xl font-semibold text-white">{t("org:teamPageTitle")}</h1>
-      <p className="mt-2 text-sm text-surface-muted">{t("org:teamPageIntro")}</p>
+    <div className="mx-auto max-w-page px-broad py-page">
+      <h1 className="text-xl font-semibold text-ink-primary">{t("org:teamPageTitle")}</h1>
+      <p className="mt-base text-sm text-ink-muted">{t("org:teamPageIntro")}</p>
 
-      <section className="mt-8 rounded-xl border border-surface-border bg-surface-raised p-5">
-        <h2 className="text-sm font-medium text-white">{t("org:teamDepartments")}</h2>
-        <ul className="mt-3 space-y-1 text-sm text-neutral-300">
+      <section className="mt-deep rounded-sheet border border-line bg-card p-roomy">
+        <h2 className="text-sm font-medium text-ink-primary">{t("org:teamDepartments")}</h2>
+        <ul className="mt-soft space-y-tight text-sm text-ink-secondary">
           {departments.map((d) => (
             <li key={d.id}>
-              <span className="font-mono text-xs text-surface-muted">{d.slug}</span> — {d.name}
+              <span className="font-mono text-xs text-ink-muted">{d.slug}</span> — {d.name}
             </li>
           ))}
         </ul>
       </section>
 
-      <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">
-        <h2 className="text-sm font-medium text-white">{t("org:teamProfessionRoles")}</h2>
-        <ul className="mt-3 space-y-1 text-sm text-neutral-300">
+      <section className="mt-broad rounded-sheet border border-line bg-card p-roomy">
+        <h2 className="text-sm font-medium text-ink-primary">{t("org:teamProfessionRoles")}</h2>
+        <ul className="mt-soft space-y-tight text-sm text-ink-secondary">
           {roles.map((r) => (
             <li key={r.id}>
-              <span className="font-mono text-xs text-surface-muted">{r.slug}</span> — {r.name}{" "}
-              <span className="text-surface-muted">({r.role_kind})</span>
+              <span className="font-mono text-xs text-ink-muted">{r.slug}</span> — {r.name}{" "}
+              <span className="text-ink-muted">({r.role_kind})</span>
             </li>
           ))}
         </ul>
       </section>
 
-      <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">
-        <h2 className="text-sm font-medium text-white">{t("org:teamAssignments")}</h2>
-        <ul className="mt-3 space-y-2 text-sm text-neutral-300">
+      <section className="mt-broad rounded-sheet border border-line bg-card p-roomy">
+        <h2 className="text-sm font-medium text-ink-primary">{t("org:teamAssignments")}</h2>
+        <ul className="mt-soft space-y-base text-sm text-ink-secondary">
           {assignments.map((a) => (
             <li key={a.user_id}>
               {a.user_email ?? a.user_id} → {a.profession_role_slug ?? "?"}
@@ -114,15 +116,13 @@ export function OrgTeamPage() {
           ))}
         </ul>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <input
-            className="rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+        <div className="mt-wide grid gap-soft sm:grid-cols-3">
+          <TextInput
             placeholder={t("org:teamUserIdPlaceholder")}
             value={assignUserId}
             onChange={(e) => setAssignUserId(e.target.value)}
           />
-          <select
-            className="rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+          <Select
             value={assignRoleId}
             onChange={(e) => setAssignRoleId(e.target.value)}
           >
@@ -132,9 +132,8 @@ export function OrgTeamPage() {
                 {r.name}
               </option>
             ))}
-          </select>
-          <select
-            className="rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+          </Select>
+          <Select
             value={assignDeptId}
             onChange={(e) => setAssignDeptId(e.target.value)}
           >
@@ -144,26 +143,28 @@ export function OrgTeamPage() {
                 {d.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
-        <button
+        <Button
+          variant="primary"
+          size="lg"
           type="button"
-          className="mt-3 rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
+          className="mt-soft px-wide py-base text-sm"
           onClick={() => void saveAssignment()}
         >
           {t("org:teamSaveAssignment")}
-        </button>
+        </Button>
       </section>
 
-      <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">
-        <h2 className="text-sm font-medium text-white">{t("org:teamPolicyPreview")}</h2>
-        <pre className="mt-3 overflow-x-auto rounded bg-black/30 p-3 text-xs text-neutral-300">
+      <section className="mt-broad rounded-sheet border border-line bg-card p-roomy">
+        <h2 className="text-sm font-medium text-ink-primary">{t("org:teamPolicyPreview")}</h2>
+        <pre className="mt-soft overflow-x-auto rounded-tile bg-black/30 p-soft text-xs text-ink-secondary">
           {policyPreview}
         </pre>
       </section>
 
-      {msg ? <p className="mt-4 text-sm text-emerald-400">{msg}</p> : null}
-      {err ? <p className="mt-4 text-sm text-red-400">{err}</p> : null}
+      {msg ? <p className="mt-wide text-sm text-success">{msg}</p> : null}
+      {err ? <p className="mt-wide text-sm text-danger">{err}</p> : null}
     </div>
   );
 }

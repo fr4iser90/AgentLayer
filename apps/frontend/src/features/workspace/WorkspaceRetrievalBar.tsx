@@ -10,6 +10,8 @@ import {
   type WorkspaceIndexStatus,
 } from "../../lib/api";
 import type { IndexActivityEvent } from "../chat/indexActivity";
+import { Tooltip } from "../../ui/Tooltip";
+import { Select } from "../../ui/Field";
 
 type Props = {
   auth: Pick<AuthContextValue, "accessToken" | "refresh">;
@@ -34,8 +36,8 @@ function fmtIndexTime(iso: string | null | undefined, t: (key: string) => string
 
 function pill(on: boolean) {
   return on
-    ? `rounded border border-emerald-500/40 bg-emerald-950/50 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-emerald-200/95`
-    : `rounded border border-white/15 bg-white/5 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-neutral-500`;
+    ? `rounded-tile border border-success/40 bg-success-subtle px-snug py-hair text-meta font-medium uppercase tracking-wide text-badge-success`
+    : `rounded-tile border border-line-strong bg-white/5 px-snug py-hair text-meta font-medium uppercase tracking-wide text-ink-muted`;
 }
 
 function indexJobRunning(job: WorkspaceIndexJob | null | undefined): boolean {
@@ -73,7 +75,7 @@ function indexProgressLabel(job: WorkspaceIndexJob | null | undefined, t: (key: 
 }
 
 const INDEX_BTN =
-  "rounded border px-1.5 py-0.5 text-[9px] font-medium disabled:opacity-50";
+  "rounded-tile border px-snug py-hair text-meta font-medium disabled:opacity-50";
 
 export function WorkspaceRetrievalBar({
   auth,
@@ -259,74 +261,78 @@ export function WorkspaceRetrievalBar({
 
   return (
     <div
-      className={`rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-[10px] leading-snug text-neutral-300 ${className}`}
+      className={`rounded-card border border-line bg-black/30 px-firm py-snug text-meta leading-snug text-ink-secondary ${className}`}
     >
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="font-semibold uppercase tracking-wide text-surface-muted">{t("workspace:codeIndex")}</span>
-        <button
-          type="button"
-          disabled={!canEdit || busy !== null}
-          className={pill(indexOn)}
-          title={
+      <div className="flex flex-wrap items-center gap-x-base gap-y-tight">
+        <span className="font-semibold uppercase tracking-wide text-ink-muted">{t("workspace:codeIndex")}</span>
+        <Tooltip label={
             canEdit
               ? t("workspace:treeSitterHint")
               : t("workspace:readOnlyCannotChange")
-          }
-          onClick={() => void patchFlags({ semantic_index_enabled: !indexOn })}
-        >
-          {indexOn ? t("common:on") : t("common:off")}
-        </button>
-        <span className="text-neutral-600">·</span>
-        <span className="font-semibold uppercase tracking-wide text-surface-muted">{t("workspace:retrieval")}</span>
+          }>
         <button
-          type="button"
-          disabled={!canEdit || busy !== null}
-          className={pill(retrievalOn)}
-          title={
+            type="button"
+            disabled={!canEdit || busy !== null}
+            className={pill(indexOn)}
+            onClick={() => void patchFlags({ semantic_index_enabled: !indexOn })}
+          >
+            {indexOn ? t("common:on") : t("common:off")}
+          </button>
+        </Tooltip>
+        <span className="text-ink-faint">·</span>
+        <span className="font-semibold uppercase tracking-wide text-ink-muted">{t("workspace:retrieval")}</span>
+        <Tooltip label={
             canEdit
               ? t("workspace:toggleRetrievalHint")
               : t("workspace:readOnlyCannotChange")
-          }
-          onClick={() => void patchFlags({ retrieval_enabled: !retrievalOn })}
-        >
-          {retrievalOn ? t("common:on") : t("common:off")}
-        </button>
-        <span className="text-neutral-600">·</span>
-        <span className="font-semibold uppercase tracking-wide text-surface-muted">{t("workspace:docsRag")}</span>
+          }>
         <button
-          type="button"
-          disabled={!canEdit || busy !== null}
-          className={pill(docsRagOn)}
-          title={
+            type="button"
+            disabled={!canEdit || busy !== null}
+            className={pill(retrievalOn)}
+            onClick={() => void patchFlags({ retrieval_enabled: !retrievalOn })}
+          >
+            {retrievalOn ? t("common:on") : t("common:off")}
+          </button>
+        </Tooltip>
+        <span className="text-ink-faint">·</span>
+        <span className="font-semibold uppercase tracking-wide text-ink-muted">{t("workspace:docsRag")}</span>
+        <Tooltip label={
             canEdit
               ? t("workspace:docsIndexHint")
               : t("workspace:readOnlyCannotChange")
-          }
-          onClick={() => void patchFlags({ docs_rag_enabled: !docsRagOn })}
-        >
-          {docsRagOn ? t("common:on") : t("common:off")}
-        </button>
-        <span className="text-neutral-600">·</span>
-        <span className="font-semibold uppercase tracking-wide text-surface-muted">{t("workspace:graphIndex")}</span>
+          }>
         <button
-          type="button"
-          disabled={!canEdit || busy !== null}
-          className={pill(graphOn)}
-          title={t("workspace:graphIndexTitle")}
-          onClick={() => void patchFlags({ graph_index_enabled: !graphOn })}
-        >
-          {graphOn ? t("common:on") : t("common:off")}
-        </button>
+            type="button"
+            disabled={!canEdit || busy !== null}
+            className={pill(docsRagOn)}
+            onClick={() => void patchFlags({ docs_rag_enabled: !docsRagOn })}
+          >
+            {docsRagOn ? t("common:on") : t("common:off")}
+          </button>
+        </Tooltip>
+        <span className="text-ink-faint">·</span>
+        <span className="font-semibold uppercase tracking-wide text-ink-muted">{t("workspace:graphIndex")}</span>
+        <Tooltip label={t("workspace:graphIndexTitle")}>
+        <button
+            type="button"
+            disabled={!canEdit || busy !== null}
+            className={pill(graphOn)}
+            onClick={() => void patchFlags({ graph_index_enabled: !graphOn })}
+          >
+            {graphOn ? t("common:on") : t("common:off")}
+          </button>
+        </Tooltip>
       </div>
 
       {canEdit ? (
-        <div className="mt-1.5 flex flex-wrap items-center gap-2">
-          <label className="text-[9px] text-surface-muted" htmlFor={`idx-write-${workspace.id}`}>
+        <div className="mt-snug flex flex-wrap items-center gap-base">
+          <label className="text-meta text-ink-muted" htmlFor={`idx-write-${workspace.id}`}>
             Index on write
           </label>
-          <select
+          <Select
             id={`idx-write-${workspace.id}`}
-            className="rounded border border-white/15 bg-black/40 px-1.5 py-0.5 text-[9px] text-neutral-200"
+            className="text-meta"
             disabled={busy !== null}
             value={workspace.index_on_write ?? ""}
             title={`Effective: ${indexOnWriteEffective}`}
@@ -339,63 +345,66 @@ export function WorkspaceRetrievalBar({
             <option value="debounced">debounced</option>
             <option value="immediate">immediate</option>
             <option value="off">off</option>
-          </select>
+          </Select>
         </div>
       ) : null}
 
       {canEdit ? (
-        <div className="mt-1.5 flex flex-wrap items-center gap-1">
-          <span className="mr-0.5 text-[9px] uppercase tracking-wide text-surface-muted">{t("workspace:reindex")}</span>
+        <div className="mt-snug flex flex-wrap items-center gap-tight">
+          <span className="mr-hair text-meta uppercase tracking-wide text-ink-muted">{t("workspace:reindex")}</span>
+          <Tooltip label={t("workspace:reindexAllTitle")}>
           <button
-            type="button"
-            disabled={!indexOn || indexBusy || showProgress}
-            className={`${INDEX_BTN} border-violet-500/35 bg-violet-950/40 text-violet-200/95 hover:bg-violet-900/50`}
-            title={t("workspace:reindexAllTitle")}
-            onClick={() => void runIndex("full")}
-          >
-            {busy === "full" && showProgress ? "…" : t("workspace:all")}
-          </button>
+              type="button"
+              disabled={!indexOn || indexBusy || showProgress}
+              className={`${INDEX_BTN} border-violet-500/35 bg-violet-950/40 text-violet-200/95 hover:bg-violet-900/50`}
+              onClick={() => void runIndex("full")}
+            >
+              {busy === "full" && showProgress ? "…" : t("workspace:all")}
+            </button>
+          </Tooltip>
+          <Tooltip label={t("workspace:reindexCodeTitle")}>
           <button
-            type="button"
-            disabled={!indexOn || indexBusy || showProgress}
-            className={`${INDEX_BTN} border-sky-500/35 bg-sky-950/40 text-sky-200/95 hover:bg-sky-900/50`}
-            title={t("workspace:reindexCodeTitle")}
-            onClick={() => void runIndex("code")}
-          >
-            {busy === "code" && showProgress ? "…" : t("workspace:code")}
-          </button>
+              type="button"
+              disabled={!indexOn || indexBusy || showProgress}
+              className={`${INDEX_BTN} border-accent/35 bg-accent-subtle text-badge-accent hover:bg-accent-subtle`}
+              onClick={() => void runIndex("code")}
+            >
+              {busy === "code" && showProgress ? "…" : t("workspace:code")}
+            </button>
+          </Tooltip>
+          <Tooltip label={t("workspace:reindexDocsTitle")}>
           <button
-            type="button"
-            disabled={!docsRagOn || indexBusy || showProgress}
-            className={`${INDEX_BTN} border-amber-500/35 bg-amber-950/40 text-amber-200/95 hover:bg-amber-900/50`}
-            title={t("workspace:reindexDocsTitle")}
-            onClick={() => void runIndex("docs")}
-          >
-            {busy === "docs" && showProgress ? "…" : t("workspace:docs")}
-          </button>
+              type="button"
+              disabled={!docsRagOn || indexBusy || showProgress}
+              className={`${INDEX_BTN} border-warning/35 bg-warning-subtle text-badge-warning hover:bg-warning-subtle`}
+              onClick={() => void runIndex("docs")}
+            >
+              {busy === "docs" && showProgress ? "…" : t("workspace:docs")}
+            </button>
+          </Tooltip>
         </div>
       ) : null}
 
       {showProgress ? (
-        <div className="mt-1.5 space-y-1" title={progressLabel || t("workspace:indexingInProgress")}>
-          <div className="flex items-center justify-between gap-2 text-[9px] text-violet-200/90">
+        <div className="mt-snug space-y-tight" title={progressLabel || t("workspace:indexingInProgress")}>
+          <div className="flex items-center justify-between gap-base text-meta text-violet-200/90">
             <span className="truncate">{progressLabel || t("workspace:indexingEllipsis")}</span>
             {progressPct != null ? <span className="shrink-0 tabular-nums">{progressPct}%</span> : null}
           </div>
-          <div className="h-1 overflow-hidden rounded-full bg-white/10">
+          <div className="h-1 overflow-hidden rounded-pill bg-white/10">
             <div
-              className="h-full rounded-full bg-violet-500/70 transition-[width] duration-300"
+              className="h-full rounded-pill bg-violet-500/70 transition-[width] duration-300"
               style={{ width: progressPct != null ? `${progressPct}%` : "30%" }}
             />
           </div>
         </div>
       ) : indexFailed && activeJob?.error ? (
-        <p className="mt-1 text-[9px] text-amber-300/90" title={activeJob.error}>
+        <p className="mt-tight text-meta text-badge-warning" title={activeJob.error}>
           {t("workspace:indexFailed", { err: activeJob.error.slice(0, 120) })}
         </p>
       ) : null}
 
-      <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] text-neutral-500">
+      <div className="mt-tight flex flex-wrap gap-x-base gap-y-hair text-meta text-ink-muted">
         <span title={t("workspace:lastCodeIndexRun")}>
           {t("workspace:code")}: {fmtIndexTime(status?.last_index_at ?? workspace.last_index_at, t)}
         </span>
@@ -411,7 +420,7 @@ export function WorkspaceRetrievalBar({
         </span>
         {indexOn && indexStale ? (
           <span
-            className="text-amber-300/95"
+            className="text-badge-warning"
             title={
               staleReason === "never_indexed"
                 ? t("workspace:noCodeIndexYet")
@@ -447,11 +456,11 @@ export function WorkspaceRetrievalBar({
                 : "—"}
         </span>
         {workspace.last_index_error ? (
-          <span className="text-amber-300/90" title={workspace.last_index_error}>
+          <span className="text-badge-warning" title={workspace.last_index_error}>
             · {t("workspace:err")}
           </span>
         ) : null}
-        {statusErr ? <span className="text-red-400/90">· {statusErr}</span> : null}
+        {statusErr ? <span className="text-danger">· {statusErr}</span> : null}
       </div>
     </div>
   );

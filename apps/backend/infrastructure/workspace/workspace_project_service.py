@@ -3,11 +3,16 @@ from __future__ import annotations
 
 import logging
 import shutil
-import subprocess
 import uuid
 from pathlib import Path
 from typing import Any
 
+from apps.backend.domain.access.entity_access import (
+    MANAGE,
+    TENANT_VISIBLE,
+    evaluate_workspace_access,
+    normalize_visibility,
+)
 from apps.backend.infrastructure.workspace.workspace_columns import (
     CLIENT_EXECUTION,
     SERVER_EXECUTION,
@@ -19,7 +24,7 @@ from apps.backend.infrastructure.workspace.workspace_project_common import (
     AGENTLAYER_SELF_NAME,
     WorkspaceCreateError,
     WorkspaceState,
-    resolve_user_workspace_dir,
+    resolve_workspace_dir,
     slug_from_git_url,
     validate_client_workspace_path,
     validate_workspace_name,
@@ -42,6 +47,7 @@ def create_project_workspace_for_user(
     benchmark_run_id: uuid.UUID | None = None,
     execution_mode: str = SERVER_EXECUTION,
     path: str | None = None,
+    visibility: str = "private",
 ) -> dict[str, Any]:
     """
     Create a row in ``project_workspaces`` and materialize on disk (same rules as ``POST /v1/workspaces``).
@@ -103,6 +109,7 @@ def create_project_workspace_for_user(
                         "Clean benchmark sandboxes in Admin → Benchmarks."
                     )
             else:
+                # tenant-scope: guarded by user_id pk — the caller resolved the user inside its tenant
                 cur.execute(
                     "SELECT COALESCE(workspace_quota, 10) FROM users WHERE id = %s",
                     (user.id,),
@@ -123,40 +130,44 @@ def create_project_workspace_for_user(
                     )
 
     materialized_dir: Path | None = None
+    vis = normalize_visibility(visibility)
+    tenant_id = db.user_tenant_id(user.id)
+    if vis == TENANT_VISIBLE and tenant_id is None:
+        # Checked here rather than left to the domain's ValueError: placement runs
+        # before the try block below, so an uncaught raise would surface as a
+        # 500 where this is a plain bad request.
+        raise WorkspaceCreateError(
+            "Cannot create a company-visible workspace without a tenant."
+        )
     if mode == CLIENT_EXECUTION:
         stored_path = validate_client_workspace_path(path)
     else:
         base = _workspace_base_path()
-        user_workspace_dir = resolve_user_workspace_dir(base, user.id, nm)
+        ws_dir = resolve_workspace_dir(
+            base, nm, visibility=vis, owner_user_id=user.id, tenant_id=tenant_id
+        )
+        # Only a directory we created here may be cleaned up below. The INSERT
+        # can still lose a unique race after this point, and rmtree'ing a path
+        # that already held a workspace would take that workspace's files with
+        # it -- under the shared tenant root, somebody else's files.
+        created_here = not ws_dir.exists()
         if src == "git":
             gu = git_url.strip()
-            user_workspace_dir.parent.mkdir(parents=True, exist_ok=True)
-            if user_workspace_dir.exists():
-                shutil.rmtree(user_workspace_dir, ignore_errors=True)
-            user_workspace_dir.mkdir(parents=True, exist_ok=True)
+            ws_dir.parent.mkdir(parents=True, exist_ok=True)
             br = (git_branch or "main").strip() or "main"
-            result = subprocess.run(
-                [
-                    "git",
-                    "clone",
-                    "--branch",
-                    br,
-                    "--depth",
-                    "1",
-                    gu,
-                    str(user_workspace_dir),
-                ],
-                capture_output=True,
-                text=True,
+            from apps.backend.infrastructure.workspace.workspace_git_clone import (
+                GitCloneError,
+                clone_shallow_repo,
             )
-            if result.returncode != 0:
-                shutil.rmtree(user_workspace_dir, ignore_errors=True)
-                err = (result.stderr or result.stdout or "").strip() or "git clone failed"
-                raise WorkspaceCreateError(f"Git clone failed: {err[:800]}")
+
+            try:
+                clone_shallow_repo(gu, ws_dir, branch=br)
+            except GitCloneError as e:
+                raise WorkspaceCreateError(str(e)) from e
         else:
-            user_workspace_dir.mkdir(parents=True, exist_ok=True)
-        stored_path = str(user_workspace_dir)
-        materialized_dir = user_workspace_dir
+            ws_dir.mkdir(parents=True, exist_ok=True)
+        stored_path = str(ws_dir)
+        materialized_dir = ws_dir if created_here else None
 
     br_ins = (git_branch or "main").strip() or "main"
     gu_ins = (git_url or "").strip() if src == "git" else None
@@ -176,12 +187,25 @@ def create_project_workspace_for_user(
                     """
                     INSERT INTO project_workspaces (
                       owner_user_id, name, path, source, git_url, git_branch,
-                      access_role, benchmark_run_id, execution_mode, index_consent
+                      access_role, benchmark_run_id, execution_mode, index_consent,
+                      tenant_id, visibility
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, 'owner', %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, 'owner', %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
-                    (user.id, nm, stored_path, src, gu_ins, br_ins, bench_run_id, mode, index_consent),
+                    (
+                        user.id,
+                        nm,
+                        stored_path,
+                        src,
+                        gu_ins,
+                        br_ins,
+                        bench_run_id,
+                        mode,
+                        index_consent,
+                        tenant_id,
+                        vis,
+                    ),
                 )
                 created = cur.fetchone()
                 if not created:
@@ -204,6 +228,14 @@ def create_project_workspace_for_user(
         if materialized_dir is not None:
             shutil.rmtree(materialized_dir, ignore_errors=True)
         if isinstance(ex, UniqueViolation):
+            if vis == TENANT_VISIBLE:
+                # The tenant-wide rule is what fired, not the per-owner one.
+                # Saying "you already have this" would send the user to look in
+                # the wrong place -- the name is taken by a colleague.
+                raise WorkspaceCreateError(
+                    f"The company already has a workspace named {nm!r}. "
+                    "Pick a different name, or ask to be added to the existing one."
+                ) from e
             raise WorkspaceCreateError(
                 "Workspace name already exists for this user; pick a different name."
             ) from e
@@ -217,7 +249,9 @@ def _delete_workspace_db_dependencies(cur: Any, workspace_id: str) -> None:
     ``agent_tasks`` with ``scope='workspace'`` cannot have ``workspace_id`` set to NULL
     (check constraint) when the FK fires — delete them explicitly first.
     """
-    cur.execute("DELETE FROM agent_tasks WHERE workspace_id = %s", (workspace_id,))
+    cur.execute(  # tenant-scope: guarded by workspace_id — workspace ownership checked by the caller
+        "DELETE FROM agent_tasks WHERE workspace_id = %s", (workspace_id,)
+    )
 
 
 def _delete_workspace_files(ws_path: Path) -> None:
@@ -255,13 +289,20 @@ def delete_owned_workspace(*, workspace_id: str, owner_user_id: Any) -> bool:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT path, name, execution_mode FROM project_workspaces
-                    WHERE id = %s AND owner_user_id = %s AND access_role = 'owner'
+                    SELECT path, name, execution_mode, owner_user_id, access_role
+                    FROM project_workspaces
+                    WHERE id = %s
                     """,
-                    (wid, owner_user_id),
+                    (wid,),
                 )
                 row = cur.fetchone()
-                if not row:
+                if row is None:
+                    return False
+                if not evaluate_workspace_access(
+                    is_owner=str(row[3] or "") == str(owner_user_id),
+                    access_role=str(row[4] or "").strip().lower() or None,
+                    needed=MANAGE,
+                ):
                     return False
 
                 ws_path = Path(row[0])

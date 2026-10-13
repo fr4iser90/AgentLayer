@@ -14,6 +14,7 @@ from plugins.tools.workspace.lib.common import (
     json_blocked_credential_path_error,
     json_workspace_missing_error,
     maybe_enqueue_incremental_index,
+    resolve_in_workspace,
     workspace_binding_from_context,
 )
 
@@ -127,7 +128,7 @@ def edit(arguments: dict[str, Any], context: dict | None = None) -> str:
         return json.dumps({"ok": False, "error": "path is required"}, ensure_ascii=False)
     if is_blocked_credential_path(rel):
         return json_blocked_credential_path_error(rel)
-    resolved = (root / rel).resolve()
+    resolved = resolve_in_workspace(root, rel)
     old = arguments.get("old_string")
     new = arguments.get("new_string")
     if old is None:
@@ -191,7 +192,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "edit",
-            "TOOL_DESCRIPTION": "Edit a file by replacing old_string with new_string. "
+            "description": "Edit a file by replacing old_string with new_string. "
             "Uses multiple fallback strategies: exact match, line-trimmed, block-anchor, "
             "whitespace-normalized, indentation-flexible. "
             "Unlike coding_replace, this is more forgiving with whitespace differences.",
@@ -200,19 +201,19 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "path": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "File path relative to coding root",
+                        "description": "File path relative to coding root",
                     },
                     "old_string": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "The text to replace (matched with flexible strategies)",
+                        "description": "The text to replace (matched with flexible strategies)",
                     },
                     "new_string": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "The replacement text (may be empty to delete)",
+                        "description": "The replacement text (may be empty to delete)",
                     },
                     "replace_all": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Replace all occurrences (default false = require single match)",
+                        "description": "Replace all occurrences (default false = require single match)",
                     },
                 },
                 "required": ["path", "old_string"],

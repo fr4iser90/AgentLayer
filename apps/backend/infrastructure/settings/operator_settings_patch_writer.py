@@ -22,7 +22,10 @@ from apps.backend.infrastructure.settings.operator_settings import (
     normalize_scheduler_llm_backend,
     normalize_scheduler_tools_mode,
 )
-from apps.backend.infrastructure.settings.operator_settings_forms import OperatorSettingsPatch
+from apps.backend.infrastructure.settings.operator_settings_forms import (
+    DEPLOYMENT_MODES,
+    OperatorSettingsPatch,
+)
 
 def _maybe_align_pgvector_embedding_dim(r: dict[str, Any], patch: dict[str, Any]) -> None:
     """Migrate pgvector columns when embedding model/dim changes in operator settings."""
@@ -168,7 +171,7 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
         r["delegate_enabled"] = bool(patch["delegate_enabled"])
     if "deployment_mode" in patch:
         v = str(patch["deployment_mode"] or "multi_tenant").strip().lower()
-        r["deployment_mode"] = v if v in ("agent_system", "multi_tenant") else "multi_tenant"
+        r["deployment_mode"] = v if v in DEPLOYMENT_MODES else "multi_tenant"
     if "memory_graph_enabled" in patch:
         r["memory_graph_enabled"] = bool(patch["memory_graph_enabled"])
     if "memory_graph_max_hops" in patch:
@@ -264,17 +267,6 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
         else:
             s = str(v).strip()
             r["docs_root"] = s or None
-    if "pidea_enabled" in patch:
-        r["pidea_enabled"] = bool(patch["pidea_enabled"])
-    if "pidea_cdp_http_url" in patch:
-        v = patch["pidea_cdp_http_url"]
-        r["pidea_cdp_http_url"] = None if v is None else (str(v).strip() or None)
-    if "pidea_selector_ide" in patch:
-        v = patch["pidea_selector_ide"]
-        r["pidea_selector_ide"] = None if v is None else (str(v).strip().lower()[:32] or None)
-    if "pidea_selector_version" in patch:
-        v = patch["pidea_selector_version"]
-        r["pidea_selector_version"] = None if v is None else (str(v).strip()[:64] or None)
     if "expose_internal_errors" in patch:
         r["expose_internal_errors"] = bool(patch["expose_internal_errors"])
     if "http_client_log_level" in patch:
@@ -320,20 +312,11 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
     if "scheduler_tools_mode" in patch:
         v = patch["scheduler_tools_mode"]
         r["scheduler_tools_mode"] = normalize_scheduler_tools_mode(v)
-    if "scheduler_pidea_enabled" in patch:
-        r["scheduler_pidea_enabled"] = bool(patch["scheduler_pidea_enabled"])
     if "scheduler_instructions" in patch:
         v = patch["scheduler_instructions"]
         r["scheduler_instructions"] = None if v is None else (str(v).strip() or None)
     if "scheduler_jobs_worker_enabled" in patch:
         r["scheduler_jobs_worker_enabled"] = bool(patch["scheduler_jobs_worker_enabled"])
-    if "scheduler_jobs_ide_pidea_enabled" in patch:
-        r["scheduler_jobs_ide_pidea_enabled"] = bool(patch["scheduler_jobs_ide_pidea_enabled"])
-    if "scheduler_jobs_ide_pidea_timeout_sec" in patch:
-        v = patch["scheduler_jobs_ide_pidea_timeout_sec"]
-        r["scheduler_jobs_ide_pidea_timeout_sec"] = (
-            _bound_float(v, 300.0, 30.0, 900.0) if v is not None else 300.0
-        )
     if "workspace_allow_self_editing" in patch:
         r["workspace_allow_self_editing"] = bool(patch["workspace_allow_self_editing"])
     if "workspace_index_on_write_default" in patch:
@@ -404,6 +387,10 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
     if "legal_terms_md" in patch:
         v = patch["legal_terms_md"]
         r["legal_terms_md"] = None if v is None else (str(v).strip() or None)
+    if "dashboards_allowed" in patch:
+        r["dashboards_allowed"] = bool(patch["dashboards_allowed"])
+    if "friend_system_enabled" in patch:
+        r["friend_system_enabled"] = bool(patch["friend_system_enabled"])
 
     media_patch = {
         k: patch[k]
@@ -418,10 +405,19 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
         )
         if k in patch
     }
+    chat_quota_patch = {
+        k: patch[k]
+        for k in (
+            "chat_max_conversation_mb",
+            "chat_max_personal_sessions",
+            "chat_max_dashboard_sessions",
+        )
+        if k in patch
+    }
 
     from apps.backend.infrastructure.settings.operator_settings_patch_persistence import persist_operator_settings_patch
 
-    persist_operator_settings_patch(r, patch, media_patch)
+    persist_operator_settings_patch(r, patch, media_patch, chat_quota_patch=chat_quota_patch)
     _invalidate()
     if any(k in patch for k in ("llm_queue_policy", "llm_queue_user_priority", "llm_queue_benchmark_priority", "llm_queue_scheduler_priority")):
         try:

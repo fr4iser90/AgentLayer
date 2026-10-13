@@ -11,46 +11,53 @@ from typing import Any
 from apps.backend.domain.shared.identity import reset_identity, set_identity
 from apps.backend.infrastructure.agent_runtime import agent_tasks_store
 from apps.backend.infrastructure.db import db
+from apps.backend.infrastructure.platform.poll_loop import PollLoop
 
 logger = logging.getLogger(__name__)
-
-_stop = threading.Event()
-_thread: threading.Thread | None = None
 
 _POLL_SEC = 30.0
 _MAX_BATCH = 3
 _RUNNABLE_AGENTS = frozenset({"general"})
 
+# The worker's own event loop, on its own thread: task rows are awaited there,
+# and nothing else in the process may run on it.
+_thread_state = threading.local()
+
 
 def start_agent_tasks_worker() -> None:
-    global _thread
-    if _thread is not None and _thread.is_alive():
-        return
-    _stop.clear()
-    _thread = threading.Thread(
-        target=_worker_loop, daemon=True, name="agent-tasks-worker"
-    )
-    _thread.start()
+    _worker.start()
 
 
 def stop_agent_tasks_worker() -> None:
-    _stop.set()
-    if _thread is not None:
-        _thread.join(timeout=20)
+    _worker.stop()
 
 
-def _worker_loop() -> None:
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        while not _stop.is_set():
-            try:
-                loop.run_until_complete(_poll_once())
-            except Exception:
-                logger.exception("agent_tasks worker poll failed")
-            _stop.wait(_POLL_SEC)
-    finally:
+def _open_event_loop() -> bool:
+    _thread_state.loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(_thread_state.loop)
+    return True
+
+
+def _close_event_loop() -> None:
+    loop = getattr(_thread_state, "loop", None)
+    if loop is not None:
         loop.close()
+
+
+def _run_queued_tasks() -> None:
+    _thread_state.loop.run_until_complete(_poll_once())
+
+
+_worker = PollLoop(
+    name="agent-tasks-worker",
+    iteration=_run_queued_tasks,
+    poll_sec=_POLL_SEC,
+    join_sec=20.0,
+    startup=_open_event_loop,
+    shutdown=_close_event_loop,
+    run_first_pass_immediately=True,
+    failure_log="agent_tasks worker poll failed",
+)
 
 
 async def _poll_once() -> None:
@@ -93,11 +100,6 @@ async def _run_task_row(row: dict[str, Any]) -> None:
             f"task_id: {task_id}",
             f"Goal: {goal}",
             req_block,
-            (
-                "Workflow: use delegate to security_auditor for SSC resolve-scan per repo_url; "
-                "then dashboard.list_update to write scan fields on each board row. "
-                "Do not redesign layout unless the goal requires it."
-            ),
         )
         if part
     )
@@ -133,7 +135,7 @@ async def _run_task_row(row: dict[str, Any]) -> None:
 
     from apps.backend.domain.shared.identity import llm_queue_source_scope, reset_identity, set_identity
 
-    role = db.user_role(user_id)
+    role = db.user_effective_role(user_id)
     id_tok = set_identity(tenant_id, user_id)
     failed = False
     try:

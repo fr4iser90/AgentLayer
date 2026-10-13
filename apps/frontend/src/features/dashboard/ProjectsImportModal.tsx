@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "../../auth/AuthContext";
+import { hasOrgSurface } from "../../auth/deploymentMode";
 import type { AuthContextValue } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { Button } from "../../ui/Button";
+import { Modal } from "../../ui/Modal";
+import { Checkbox } from "../../ui/Checkbox";
+import { TextInput } from "../../ui/Field";
+import { SkeletonRows } from "../../ui/Skeleton";
 
 export type GithubRepoRow = {
   full_name: string;
@@ -47,6 +54,29 @@ async function runTool(
   }
 }
 
+/**
+ * The placeholder for the repository list.
+ *
+ * `58` is the pitch of one row of that list: `py-base` (8 + 8) around a
+ * `text-sm` name (20) and a `text-xs` description (16), the 1 px border on each
+ * side, and the `space-y-tight` gap the list puts between rows.
+ *
+ * Ten rows rather than "as many as fit", because the panel is `max-h-full` and
+ * centred: it is sized by its content, so a placeholder that is taller than the
+ * result makes the dialog shrink when the list lands and moves the header and
+ * the filter row in the other direction. Ten rows is what the body shows on a
+ * short laptop viewport — the smallest common case — so the dialog either stays
+ * put or grows, never collapses.
+ */
+function ImportListSkeleton({ label }: { label: string }) {
+  return (
+    <div role="status">
+      <span className="sr-only">{label}</span>
+      <SkeletonRows rows={10} rowHeight={58} columns={["14px", "58%", "52px"]} />
+    </div>
+  );
+}
+
 export function ProjectsImportModal({
   open,
   onClose,
@@ -55,13 +85,15 @@ export function ProjectsImportModal({
   listPath,
   onImported,
 }: Props) {
-  const { t } = useTranslation(["dashboard", "errors", "admin"]);
+  const { t } = useTranslation(["dashboard", "errors", "admin", "workspace"]);
+  const { user } = useAuth();
   const [repos, setRepos] = useState<GithubRepoRow[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [createWorkspaces, setCreateWorkspaces] = useState(false);
+  const [shareWithCompany, setShareWithCompany] = useState(false);
   const [skipExisting, setSkipExisting] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
@@ -129,6 +161,7 @@ export function ProjectsImportModal({
     setError(null);
     setResultMsg(null);
     const workspaceErrors: string[] = [];
+    const visibilityNotApplied: string[] = [];
     try {
       const rows: Array<Record<string, unknown>> = [];
       for (const r of picked) {
@@ -141,10 +174,14 @@ export function ProjectsImportModal({
             git_url: r.clone_url,
             git_branch: r.default_branch || "main",
             bind: false,
+            visibility: shareWithCompany ? "tenant" : "private",
           });
           if (!ws.ok) {
             workspaceErrors.push(`${r.full_name}: ${ws.error ?? "workspace failed"}`);
           } else {
+            if (shareWithCompany && ws.company_visibility_applied !== true) {
+              visibilityNotApplied.push(r.full_name);
+            }
             const w = ws.workspace as { id?: string; path?: string } | undefined;
             workspaceId = String(w?.id ?? "");
             projectPath = String(w?.path ?? "");
@@ -185,8 +222,15 @@ export function ProjectsImportModal({
       if (dashRes.ok && dashBody?.dashboard?.data && typeof dashBody.dashboard.data === "object") {
         onImported(dashBody.dashboard.data);
       }
-      if (workspaceErrors.length > 0) {
-        setError(workspaceErrors.join("; "));
+      const problems: string[] = [];
+      if (workspaceErrors.length > 0) problems.push(workspaceErrors.join("; "));
+      if (visibilityNotApplied.length > 0) {
+        problems.push(
+          t("dashboard:importVisibilityNotApplied", { names: visibilityNotApplied.join(", ") })
+        );
+      }
+      if (problems.length > 0) {
+        setError(problems.join(" | "));
       }
     } catch (e) {
       setError(String(e));
@@ -198,88 +242,111 @@ export function ProjectsImportModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="presentation">
-      <div
-        className="absolute inset-0 bg-black/70"
-        role="button"
-        tabIndex={0}
-        aria-label={t("dashboard:close")}
-        onClick={onClose}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onClose();
-          }
-        }}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-surface-border bg-surface-raised shadow-2xl"
-      >
-        <div className="border-b border-surface-border px-5 py-4">
-          <h2 className="text-lg font-semibold text-white">{t("dashboard:importFromGithub")}</h2>
-          <p className="mt-1 text-xs text-surface-muted">{t("dashboard:importFromGithubHint")}</p>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t("dashboard:importFromGithub")}
+      size="dialogWide"
+      footer={
+        <div className="flex flex-wrap items-center justify-between gap-base">
+          <div className="flex flex-wrap gap-base">
+            <Button variant="secondary" size="sm" onClick={() => toggleAllVisible(true)}>
+              {t("dashboard:importSelectAll")}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => toggleAllVisible(false)}>
+              {t("dashboard:importSelectNone")}
+            </Button>
+            <span className="self-center text-xs text-ink-muted">
+              {t("dashboard:importSelectedCount", { count: selectedCount })}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-base">
+            {resultMsg ? <span className="self-center text-xs text-success">{resultMsg}</span> : null}
+            {error && repos.length > 0 ? (
+              <span className="self-center text-xs text-warning">{error}</span>
+            ) : null}
+            <Button type="button" variant="secondary" size="lg" onClick={onClose}>
+              {t("admin:cancel")}
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
+              disabled={importing || selectedCount === 0}
+              onClick={() => void runImport()}
+            >
+              {importing ? t("dashboard:importing") : t("dashboard:importRun")}
+            </Button>
+          </div>
         </div>
+      }
+    >
+      <p className="text-meta text-ink-muted">{t("dashboard:importFromGithubHint")}</p>
 
-        <div className="flex flex-wrap items-center gap-3 border-b border-surface-border px-5 py-3">
-          <input
+        <div className="flex flex-wrap items-center gap-soft border-b border-line px-roomy py-soft">
+          <TextInput
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("dashboard:importSearchRepos")}
-            className="min-w-[200px] flex-1 rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-sky-500/50"
+            className="min-w-[200px] flex-1 outline-hidden"
           />
-          <label className="flex items-center gap-2 text-xs text-neutral-200">
-            <input
-              type="checkbox"
+          <label className="flex items-center gap-base text-xs text-ink-primary">
+            <Checkbox
               checked={skipExisting}
               onChange={(e) => setSkipExisting(e.target.checked)}
             />
             {t("dashboard:importSkipExisting")}
           </label>
-          <label className="flex items-center gap-2 text-xs text-neutral-200">
-            <input
-              type="checkbox"
+          <label className="flex items-center gap-base text-xs text-ink-primary">
+            <Checkbox
               checked={createWorkspaces}
               onChange={(e) => setCreateWorkspaces(e.target.checked)}
             />
             {t("dashboard:importCreateWorkspaces")}
           </label>
+          {createWorkspaces && hasOrgSurface(user) ? (
+            <label className="flex items-center gap-base text-xs text-ink-primary">
+              <Checkbox
+                checked={shareWithCompany}
+                onChange={(e) => setShareWithCompany(e.target.checked)}
+              />
+              {t("workspace:createShareWithCompany")}
+            </label>
+          ) : null}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3">
+        <div className="min-h-0 flex-1 overflow-y-auto px-roomy py-soft">
           {loading ? (
-            <p className="text-sm text-surface-muted">{t("dashboard:loading")}</p>
+            <ImportListSkeleton label={t("dashboard:loading")} />
           ) : error && repos.length === 0 ? (
-            <div className="space-y-2 text-sm">
-              <p className="text-red-300">{error}</p>
-              <p className="text-surface-muted">{t("dashboard:importGithubTokenHint")}</p>
+            <div className="space-y-base text-sm">
+              <p className="text-badge-danger">{error}</p>
+              <p className="text-ink-muted">{t("dashboard:importGithubTokenHint")}</p>
             </div>
           ) : filtered.length === 0 ? (
-            <p className="text-sm text-surface-muted">{t("dashboard:importNoRepos")}</p>
+            <p className="text-sm text-ink-muted">{t("dashboard:importNoRepos")}</p>
           ) : (
-            <ul className="space-y-1">
+            <ul className="space-y-tight">
               {filtered.map((r) => (
                 <li
                   key={r.full_name}
-                  className="flex items-start gap-2 rounded-lg border border-white/5 px-3 py-2 hover:bg-white/[0.03]"
+                  className="flex items-start gap-base rounded-card border border-line-subtle px-soft py-base hover:bg-white/[0.03]"
                 >
-                  <input
-                    type="checkbox"
-                    className="mt-1"
+                  <Checkbox
+                    className="mt-tight"
                     checked={!!selected[r.full_name]}
                     onChange={(e) =>
                       setSelected((prev) => ({ ...prev, [r.full_name]: e.target.checked }))
                     }
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-neutral-100">{r.full_name}</div>
+                    <div className="truncate text-sm font-medium text-ink-primary">{r.full_name}</div>
                     {r.description ? (
-                      <div className="truncate text-xs text-surface-muted">{r.description}</div>
+                      <div className="truncate text-xs text-ink-muted">{r.description}</div>
                     ) : null}
                   </div>
                   {r.private ? (
-                    <span className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-surface-muted">
+                    <span className="shrink-0 rounded-tile bg-white/10 px-snug py-hair text-meta text-ink-muted">
                       private
                     </span>
                   ) : null}
@@ -288,50 +355,6 @@ export function ProjectsImportModal({
             </ul>
           )}
         </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-surface-border px-5 py-4">
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="rounded-lg border border-surface-border px-3 py-1.5 text-xs text-neutral-200 hover:bg-white/5"
-              onClick={() => toggleAllVisible(true)}
-            >
-              {t("dashboard:importSelectAll")}
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border border-surface-border px-3 py-1.5 text-xs text-neutral-200 hover:bg-white/5"
-              onClick={() => toggleAllVisible(false)}
-            >
-              {t("dashboard:importSelectNone")}
-            </button>
-            <span className="self-center text-xs text-surface-muted">
-              {t("dashboard:importSelectedCount", { count: selectedCount })}
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {resultMsg ? <span className="self-center text-xs text-emerald-300">{resultMsg}</span> : null}
-            {error && repos.length > 0 ? (
-              <span className="self-center text-xs text-amber-300">{error}</span>
-            ) : null}
-            <button
-              type="button"
-              className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5"
-              onClick={onClose}
-            >
-              {t("admin:cancel")}
-            </button>
-            <button
-              type="button"
-              disabled={importing || selectedCount === 0}
-              className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
-              onClick={() => void runImport()}
-            >
-              {importing ? t("dashboard:importing") : t("dashboard:importRun")}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

@@ -1,0 +1,17 @@
+id: coding_qwen
+name: Coding (Qwen Code)
+icon: code
+description: "Build mode executed by the external Qwen Code runtime — edits, bash and git in the workspace"
+min_role: user
+delegatable: true
+external_runtime: qwen_code
+# Unattended scheduled builds with a full-auto external agent are out of scope for the
+# first slice: an interactive run is reviewable as a diff, a night job nobody watches is not.
+schedulable: false
+requires_workspace: true
+strict_workspace: true
+execution_context: container
+model_profile: coding
+tool_discipline_preset: coding_build
+tool_domains:
+  - coding

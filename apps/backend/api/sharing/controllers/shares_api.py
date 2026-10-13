@@ -7,26 +7,42 @@ Completely generic for all resource types - calendar, github, notes, agents etc.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from apps.backend.domain.shares.catalog import catalog_for_api, canonical_resource_type
 from apps.backend.domain.shares.policy import normalize_policy
+from apps.backend.domain.shares.projections import (
+    default_projection_kind,
+    projection_backed,
+    projection_kinds_for,
+    projection_store,
+)
+from apps.backend.domain.shares.registry import (
+    canonical_type_for,
+    get_share_adapter,
+    publish_projection,
+    resolve_projection,
+)
 from apps.backend.application.identity.use_cases.request_auth import get_current_user
 from apps.backend.application.sharing.use_cases.sharing_controller_services import friend_get
 from apps.backend.application.sharing.use_cases.sharing_controller_services import (
-    SHARE_RESOURCE_GOOGLE_CALENDAR,
     list_shares_between,
     list_shares_by_grantee,
     list_shares_by_owner,
+    require_friend_system,
     share_permission_check,
-    share_permission_get,
     share_permission_set,
 )
 
-router = APIRouter(prefix="/v1/shares", tags=["shares"])
+router = APIRouter(
+    prefix="/v1/shares",
+    tags=["shares"],
+    dependencies=[Depends(require_friend_system)],
+)
 
 
 class ShareSetBody(BaseModel):
@@ -85,6 +101,107 @@ async def set_share_permission(request: Request, body: ShareSetBody):
         raise HTTPException(status_code=500, detail="could not update share permission")
 
     return {"ok": True, "policy": clean_policy if body.is_allowed else {}}
+
+
+class ProjectionPublishBody(BaseModel):
+    resource_type: str = Field(..., min_length=2, max_length=50)
+    resource_identifier: str = Field(default="primary", min_length=1, max_length=100)
+    projection_kind: str | None = Field(default=None, min_length=1, max_length=50)
+
+
+@router.post("/projection")
+async def publish_share_projection(request: Request, body: ProjectionPublishBody):
+    """Publish the caller's own narrowed view of a resource (ADR 0014 step 6).
+
+    Owner-side and deliberately separate from ``/set``: this chooses *what
+    shape exists*, not *who may read it*. Publishing grants nothing, and a
+    projection nobody has been granted is still unreadable.
+    """
+    user = await get_current_user(request)
+
+    canonical = canonical_resource_type(body.resource_type)
+    if not canonical:
+        raise HTTPException(status_code=400, detail="invalid resource_type")
+
+    adapter = get_share_adapter(canonical)
+    if adapter is None:
+        raise HTTPException(
+            status_code=404, detail="no adapter registered for this resource_type"
+        )
+
+    kinds = projection_kinds_for(adapter)
+    if not kinds:
+        raise HTTPException(
+            status_code=400,
+            detail="this resource is read live and publishes no projections",
+        )
+
+    kind = (body.projection_kind or default_projection_kind(adapter) or "").strip().lower()
+    if kind not in kinds:
+        raise HTTPException(
+            status_code=400,
+            detail=f"unknown projection_kind '{kind}'; available: {', '.join(kinds)}",
+        )
+
+    outcome = publish_projection(
+        resource_type=canonical,
+        owner_user_id=user.id,
+        identifier=body.resource_identifier,
+        kind=kind,
+    )
+    if not outcome.served:
+        raise HTTPException(status_code=422, detail=outcome.refusal or "publish_failed")
+
+    stored = outcome.projection
+    return {
+        "ok": True,
+        "resource_type": canonical,
+        "resource_identifier": body.resource_identifier,
+        "projection_kind": stored.kind,
+        "expires_at": stored.expires_at.isoformat() if stored.expires_at else None,
+        "available_kinds": list(kinds),
+    }
+
+
+@router.get("/projections")
+async def list_my_share_projections(request: Request):
+    """What the caller has published about their own resources.
+
+    Owner-scoped, and deliberately not part of the per-friend grant list.
+    The projection shape is a property of the resource, not of the share:
+    one row per (owner, type, identifier), and every grantee of that
+    resource sees the same shape. Putting the picker next to a particular
+    friend would imply Lena can give Bob the narrow view and Alice the
+    wide one, which is neither what the model does nor what she would
+    have agreed to.
+    """
+    user = await get_current_user(request)
+    store = projection_store()
+    if store is None:
+        return {"ok": True, "projections": []}
+
+    now = datetime.now(timezone.utc)
+    items: list[dict[str, Any]] = []
+    for row in store.projection_list_for_owner(owner_user_id=user.id):
+        adapter = get_share_adapter(str(row.get("resource_type") or ""))
+        expires = row.get("expires_at")
+        generated = row.get("generated_at")
+        items.append(
+            {
+                "resource_type": row.get("resource_type"),
+                "resource_identifier": row.get("resource_identifier"),
+                "projection_kind": row.get("projection_kind"),
+                # Sent with each row rather than only in the catalog, so the
+                # picker can offer a change without a second round-trip and
+                # cannot offer a kind this adapter never publishes.
+                "available_kinds": list(projection_kinds_for(adapter)) if adapter else [],
+                "default_kind": default_projection_kind(adapter) if adapter else None,
+                "generated_at": generated.isoformat() if generated else None,
+                "expires_at": expires.isoformat() if expires else None,
+                "fresh": bool(expires) and expires > now,
+            }
+        )
+    return {"ok": True, "projections": items}
 
 
 @router.get("/check")
@@ -150,59 +267,78 @@ async def get_shares_between_friends(request: Request, friend_user_id: str):
     return {"ok": True, **shares}
 
 
-@router.get("/preview/calendar")
-async def preview_friend_calendar(
+# A registry refusal is a fact about why nothing was served, and the three
+# a grantee can act on are different: ask for the grant, fix the
+# identifier, or stop — so they cannot share one status code.
+_PREVIEW_REFUSAL_STATUS = {
+    "no_adapter_registered": 404,
+    "malformed_identifier": 400,
+    "not_granted": 403,
+}
+
+
+@router.get("/preview/{resource_type}")
+async def preview_shared_resource(
     request: Request,
+    resource_type: str,
     owner_user_id: str,
-    days: int = 7,
+    identifier: str = "",
+    days: int | None = None,
 ):
-    """Compact calendar preview for share_widget blocks (requires active grant)."""
+    """Generic preview of a friend's shared resource, for dashboard widgets.
+
+    Resolved through the registry rather than reimplemented here. That is
+    the whole point of this endpoint: the grant is enforced by the adapter
+    that owns the type, and what comes back is the projection the owner
+    published.
+
+    The calendar-only preview this replaces checked the grant again in the
+    controller and then fetched the live feed. Two consequences, both
+    wrong: the owner's chosen shape was ignored, so a friend who had been
+    given ``availability`` — busy windows, no titles — still had event
+    titles rendered from a live ICS read; and every widget load was a
+    round-trip to the owner's source, leaving the projection machinery
+    doing nothing for the one surface that reads most often.
+
+    Previewable means projection-backed. A type with an adapter but no
+    projection reads live and returns a permission decision rather than
+    content, so there is nothing for a widget to draw.
+    """
     user = await get_current_user(request)
     try:
         owner_uuid = uuid.UUID(owner_user_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="invalid owner_user_id")
 
-    if not share_permission_check(
+    adapter = get_share_adapter(resource_type)
+    if adapter is None:
+        raise HTTPException(status_code=404, detail="unknown resource type")
+    if not projection_backed(adapter):
+        raise HTTPException(status_code=404, detail="resource type is not previewable")
+
+    resolved_identifier = identifier or (adapter.normalize_identifier("") or "")
+    if not resolved_identifier:
+        raise HTTPException(status_code=400, detail="identifier required")
+
+    outcome = resolve_projection(
+        resource_type=resource_type,
         owner_user_id=owner_uuid,
         grantee_user_id=user.id,
-        resource_type=SHARE_RESOURCE_GOOGLE_CALENDAR,
-    ):
-        raise HTTPException(status_code=403, detail="calendar not shared with you")
-
-    grant = share_permission_get(
-        owner_user_id=owner_uuid,
-        grantee_user_id=user.id,
-        resource_type=SHARE_RESOURCE_GOOGLE_CALENDAR,
+        identifier=resolved_identifier,
+        request={} if days is None else {"days": days},
     )
-    from apps.backend.domain.shares.policy import effective_days_ahead
-    from plugins.tools.integrations.friends.lib.common import friend_calendar_ics_url
-
-    effective = effective_days_ahead(
-        grant.get("policy") if grant else None,
-        days,
-    )
-
-    ics_url = friend_calendar_ics_url(owner_uuid)
-    if not ics_url:
-        return {"ok": True, "events": [], "hint": "friend has no calendar configured"}
-
-    try:
-        from plugins.tools.personal.calendar.ics import calendar_ics
-
-        raw = calendar_ics({"ics_url": ics_url, "days": effective})
-        if isinstance(raw, str):
-            import json as _json
-
-            parsed = _json.loads(raw)
-        else:
-            parsed = raw
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    if not outcome.served:
+        raise HTTPException(
+            status_code=_PREVIEW_REFUSAL_STATUS.get(outcome.refusal or "", 400),
+            detail=outcome.refusal,
+        )
 
     return {
         "ok": True,
+        # The adapter's canonical id, not the string that arrived: a
+        # request made under the legacy ``calendar`` alias should not come
+        # back looking like a second, different resource type.
+        "resource_type": canonical_type_for(adapter, resource_type),
         "owner_user_id": owner_user_id,
-        "days_effective": effective,
-        "calendar": parsed,
+        "preview": outcome.projection,
     }

@@ -35,12 +35,11 @@ def _truthy(v: Any) -> bool:
 
 def catalog(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> str:
     _tid, uid = get_identity()
-    role = db.user_role(uid) if uid is not None else "user"
+    # The resolver answers for the role word and nothing else: the tool context used to be
+    # able to override it through ``user_role``/``role``, and no production path ever wrote
+    # those keys, so a caller-shaped value could decide agent visibility.
+    role = db.user_effective_role(uid) if uid is not None else "user"
     tenant_id = int(db.user_tenant_id(uid) or 1) if uid is not None else 1
-    if context:
-        ctx_role = context.get("user_role") or context.get("role")
-        if isinstance(ctx_role, str) and ctx_role.strip():
-            role = ctx_role.strip().lower()
 
     payload = build_agents_catalog(
         user_role=role,

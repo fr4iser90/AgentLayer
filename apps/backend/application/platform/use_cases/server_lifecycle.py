@@ -16,6 +16,7 @@ from apps.backend.infrastructure.agent_runtime import agent_task_prompt_service 
 from apps.backend.infrastructure.agent_runtime import assistant_display_sanitize_service as _assistant_display_sanitize_service  # noqa: F401
 from apps.backend.infrastructure.agent_runtime import chat_audio_attachment_service as _chat_audio_attachment_service  # noqa: F401
 from apps.backend.infrastructure.agent_runtime import current_time_context_service as _current_time_context_service  # noqa: F401
+from apps.backend.infrastructure.agent_runtime import external_runtimes as _external_runtimes  # noqa: F401
 from apps.backend.infrastructure.agent_runtime import media_chat_prompt_service as _media_chat_prompt_service  # noqa: F401
 from apps.backend.infrastructure.agent_runtime import smart_route_service as _smart_route_service  # noqa: F401
 from apps.backend.infrastructure.agent_runtime import speech_prep_service as _speech_prep_service  # noqa: F401
@@ -57,6 +58,11 @@ from apps.backend.infrastructure.scheduling.scheduler_jobs_runner import (
     stop_scheduler_jobs_worker,
 )
 from apps.backend.infrastructure.settings import operator_voice_settings_service as _operator_voice_settings_service  # noqa: F401
+from apps.backend.infrastructure.shares import share_registry_service as _share_registry_service  # noqa: F401
+from apps.backend.infrastructure.shares.projection_refresh_runner import (
+    start_projection_refresh_worker,
+    stop_projection_refresh_worker,
+)
 from apps.backend.infrastructure.tools import tool_forward_policy_service as _tool_forward_policy_service  # noqa: F401
 from apps.backend.infrastructure.tools import tool_policy_service as _tool_policy_service  # noqa: F401
 from apps.backend.infrastructure.tools import tool_routing_service as _tool_routing_service  # noqa: F401
@@ -167,6 +173,10 @@ async def server_lifespan(_app: FastAPI) -> AsyncIterator[None]:
     except Exception:
         logger.exception("Agent tasks worker failed to start (optional)")
     try:
+        start_projection_refresh_worker()
+    except Exception:
+        logger.exception("Share projection refresh worker failed to start (optional)")
+    try:
         start_discord_bridge()
     except Exception:
         logger.exception("Discord bridge failed to start (optional)")
@@ -221,6 +231,10 @@ async def server_lifespan(_app: FastAPI) -> AsyncIterator[None]:
         pass
     try:
         stop_agent_tasks_worker()
+    except Exception:
+        pass
+    try:
+        stop_projection_refresh_worker()
     except Exception:
         pass
     db.close_pool()

@@ -9,6 +9,7 @@ from apps.backend.domain.agent_runtime.governance import (
     resolve_agent_access,
 )
 from apps.backend.domain.agent_runtime.registry import effective_tool_names_for_caller, get_agent_registry
+from apps.backend.domain.agent_runtime.prompt_risk import PromptRisk, assess_prompt_risk
 from apps.backend.infrastructure.agent_runtime import agent_access_policy_store
 from apps.backend.infrastructure.agent_runtime.agent_config_effective import merge_agent_definition
 from apps.backend.infrastructure.agent_runtime import agent_prompt_version_store
@@ -60,6 +61,31 @@ def list_agent_prompt_versions(*, tenant_id: int, agent_id: str, limit: int = 20
         tenant_id=tenant_id,
         agent_id=agent_id,
         limit=limit,
+    )
+
+
+def get_agent_prompt_version(
+    *, tenant_id: int, agent_id: str, version_id: uuid.UUID
+) -> dict[str, Any] | None:
+    return agent_prompt_version_store.get_prompt_version(
+        tenant_id=tenant_id,
+        agent_id=agent_id,
+        version_id=version_id,
+    )
+
+
+def assess_agent_prompt_risk(prompt_text: str, *, agent_id: str = "") -> PromptRisk:
+    """Run the publish risk gate with the catalog LLM client wired in.
+
+    The domain owns the verdict logic but must not reach into infrastructure
+    for a provider, so the call is supplied here.
+    """
+    from apps.backend.infrastructure.agent_runtime.catalog_llm_client import (
+        post_catalog_chat_completions,
+    )
+
+    return assess_prompt_risk(
+        prompt_text, agent_id=agent_id, llm_call=post_catalog_chat_completions
     )
 
 
@@ -125,6 +151,42 @@ def upsert_agent_access_policy(
     )
 
 
+def batch_upsert_user_agent_policies(
+    *,
+    user_id: uuid.UUID,
+    agent_ids: list[str],
+    direct_state: str,
+    delegate_state: str,
+    notes: str | None,
+    updated_by: uuid.UUID | None,
+) -> list[dict[str, Any]]:
+    """Set ``scope='user'`` access policies for several agents at once (P3).
+
+    Validates every id against the registry first (400 listing the unknown ids)
+    so a partial typo never leaves a person half-granted.
+    """
+    reg = get_agent_registry()
+    resolved = {str(aid).strip() for aid in agent_ids if str(aid or "").strip()}
+    unknown = [aid for aid in resolved if not reg.get_agent(aid)]
+    if unknown:
+        raise ValueError(f"unknown agent id(s): {', '.join(sorted(unknown))}")
+    rows: list[dict[str, Any]] = []
+    for agent_id in resolved:
+        rows.append(
+            agent_access_policy_store.upsert_agent_policy(
+                scope="user",
+                tenant_id=None,
+                user_id=user_id,
+                agent_id=agent_id,
+                direct_state=direct_state,
+                delegate_state=delegate_state,
+                notes=notes,
+                updated_by=updated_by,
+            )
+        )
+    return rows
+
+
 def delete_agent_access_policy(
     *,
     scope: str,
@@ -166,6 +228,10 @@ def publish_agent_prompt_version(
     agent_id: str,
     version_id: uuid.UUID,
     published_by: uuid.UUID | None,
+    risk_level: str = "unassessed",
+    risk_reasons: list[str] | None = None,
+    override_by: uuid.UUID | None = None,
+    override_reason: str | None = None,
 ) -> dict[str, Any]:
     reg = get_agent_registry()
     if not reg.get_agent(agent_id):
@@ -175,4 +241,8 @@ def publish_agent_prompt_version(
         agent_id=agent_id,
         version_id=version_id,
         published_by=published_by,
+        risk_level=risk_level,
+        risk_reasons=risk_reasons,
+        override_by=override_by,
+        override_reason=override_reason,
     )

@@ -9,6 +9,7 @@ from typing import Any, Callable
 
 from apps.backend.domain.shared.identity import get_identity
 from apps.backend.infrastructure.db import db
+from apps.backend.application.identity.use_cases.request_auth import agent_effective_role
 from apps.backend.application.scheduling.use_cases.scheduling_controller_services import (
     schedule_feature_permission_error,
 )
@@ -89,14 +90,14 @@ def create(arguments: dict[str, Any]) -> str:
     if not idt:
         return _err("missing identity — not authenticated")
     tenant_id, caller_uid = idt
-    role = db.user_role(caller_uid)
+    role = db.user_effective_role(caller_uid)
     is_admin = role == "admin"
 
     raw_target = normalize_execution_target(arguments.get("execution_target"))
     if not raw_target or not is_valid_execution_target(raw_target):
         return _err(execution_target_error(arguments.get("execution_target")))
 
-    feat_err = schedule_feature_permission_error(user_id=caller_uid, user_role=role or "user")
+    feat_err = schedule_feature_permission_error(user_id=caller_uid)
     if feat_err:
         return _err(feat_err)
 
@@ -104,6 +105,7 @@ def create(arguments: dict[str, Any]) -> str:
         user_role=role or "user",
         execution_target=raw_target or "",
         user_id=caller_uid,
+        tenant_id=tenant_id,
     )
     if perm_err:
         return _err(perm_err)
@@ -183,7 +185,7 @@ def list(arguments: dict[str, Any]) -> str:
     if not idt:
         return _err("missing identity — not authenticated")
     tenant_id, caller_uid = idt
-    is_admin = db.user_role(caller_uid) == "admin"
+    is_admin = db.user_effective_role(caller_uid) == "admin"
 
     ws = _parse_uuid(arguments.get("dashboard_id"), field="dashboard_id")
     if arguments.get("dashboard_id") is not None and str(arguments.get("dashboard_id")).strip() and ws is None:
@@ -214,9 +216,9 @@ def set_enabled(arguments: dict[str, Any]) -> str:
     if not idt:
         return _err("missing identity — not authenticated")
     tenant_id, caller_uid = idt
-    role = db.user_role(caller_uid)
+    role = db.user_effective_role(caller_uid)
     is_admin = role == "admin"
-    feat_err = schedule_feature_permission_error(user_id=caller_uid, user_role=role or "user")
+    feat_err = schedule_feature_permission_error(user_id=caller_uid)
     if feat_err:
         return _err(feat_err)
 
@@ -251,7 +253,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "create",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Create a persisted scheduler job. execution_target: registry agent_id "
                 "(e.g. general, coding, coding_plan, security_auditor — see GET /v1/user/scheduler-jobs/execution-targets). "
                 "Workspace agents need workspace_id or coding_workflow.workspace_id. "
@@ -263,36 +265,36 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "instructions": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Task description for the executing agent.",
+                        "description": "Task description for the executing agent.",
                     },
                     "execution_target": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Registry agent_id (general, coding, coding_plan, security_auditor, …).",
+                        "description": "Registry agent_id (general, coding, coding_plan, security_auditor, …).",
                     },
-                    "title": {"type": "string", "TOOL_DESCRIPTION": "Short label (optional)."},
+                    "title": {"type": "string", "description": "Short label (optional)."},
                     "dashboard_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Optional UUID of user_dashboards row; requires edit access.",
+                        "description": "Optional UUID of user_dashboards row; requires edit access.",
                     },
                     "execution_user_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Optional UUID — user context for execution; default is caller.",
+                        "description": "Optional UUID — user context for execution; default is caller.",
                     },
                     "interval_minutes": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "5–10080; default 60.",
+                        "description": "5–10080; default 60.",
                     },
                     "enabled": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Default true.",
+                        "description": "Default true.",
                     },
                     "workspace_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Workspace UUID (required for workspace agents).",
+                        "description": "Workspace UUID (required for workspace agents).",
                     },
                     "coding_workflow": {
                         "type": "object",
-                        "TOOL_DESCRIPTION": (
+                        "description": (
                             "Optional overrides: workspace_id, agent_id (coding|coding_plan), prompt_preamble."
                         ),
                     },
@@ -305,15 +307,15 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "list",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "List scheduler jobs in your tenant. Non-admins see jobs they created or that target them "
                 "as execution user. Optional dashboard_id filter."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "dashboard_id": {"type": "string", "TOOL_DESCRIPTION": "Optional filter UUID."},
-                    "limit": {"type": "integer", "TOOL_DESCRIPTION": "Max rows (default 50, max 200)."},
+                    "dashboard_id": {"type": "string", "description": "Optional filter UUID."},
+                    "limit": {"type": "integer", "description": "Max rows (default 50, max 200)."},
                 },
             },
         },
@@ -322,11 +324,11 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "set_enabled",
-            "TOOL_DESCRIPTION": "Enable or disable a job by id. Creator or admin only.",
+            "description": "Enable or disable a job by id. Creator or admin only.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "job_id": {"type": "string", "TOOL_DESCRIPTION": "Job UUID."},
+                    "job_id": {"type": "string", "description": "Job UUID."},
                     "enabled": {"type": "boolean"},
                 },
                 "required": ["job_id", "enabled"],

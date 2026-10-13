@@ -4,6 +4,11 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+# Re-exported from the domain, which owns the list. Kept here so existing
+# imports of DEPLOYMENT_MODES from this module keep working.
+from apps.backend.domain.setup.instance import DEPLOYMENT_MODES  # noqa: F401
+
+
 class OperatorSettingsPayload(BaseModel):
     """Full replace on PUT (empty strings clear optional fields where applicable)."""
 
@@ -71,10 +76,6 @@ class OperatorSettingsPatch(BaseModel):
     rag_embed_timeout_sec: float | None = Field(default=None, ge=5.0, le=600.0)
     rag_tenant_shared_domains: str | None = Field(default=None, max_length=4000)
     docs_root: str | None = Field(default=None, max_length=4096)
-    pidea_enabled: bool | None = None
-    pidea_cdp_http_url: str | None = Field(default=None, max_length=512)
-    pidea_selector_ide: str | None = Field(default=None, max_length=32)
-    pidea_selector_version: str | None = Field(default=None, max_length=64)
     expose_internal_errors: bool | None = None
     http_client_log_level: str | None = Field(default=None, max_length=16)
     scheduler_enabled: bool | None = None
@@ -87,11 +88,8 @@ class OperatorSettingsPatch(BaseModel):
     scheduler_allowed_tool_packages: str | None = Field(default=None, max_length=4000)
     scheduler_llm_backend: str | None = Field(default=None, max_length=16)
     scheduler_tools_mode: str | None = Field(default=None, max_length=16)
-    scheduler_pidea_enabled: bool | None = None
     scheduler_instructions: str | None = Field(default=None, max_length=32000)
     scheduler_jobs_worker_enabled: bool | None = None
-    scheduler_jobs_ide_pidea_enabled: bool | None = None
-    scheduler_jobs_ide_pidea_timeout_sec: float | None = Field(default=None, ge=30.0, le=900.0)
     workspace_allow_self_editing: bool | None = None
     workspace_index_on_write_default: str | None = Field(default=None, max_length=16)
     workspace_reindex_after_git_pull: bool | None = None
@@ -110,6 +108,9 @@ class OperatorSettingsPatch(BaseModel):
     media_upload_max_file_mb: int | None = Field(default=None, ge=1, le=512)
     media_upload_allowed_mime: str | None = Field(default=None, max_length=2000)
     media_embed_allowed_hosts: str | None = Field(default=None, max_length=4000)
+    chat_max_conversation_mb: int | None = Field(default=None, ge=1, le=50_000)
+    chat_max_personal_sessions: int | None = Field(default=None, ge=1, le=10_000)
+    chat_max_dashboard_sessions: int | None = Field(default=None, ge=1, le=10_000)
     voice_enabled: bool | None = None
     voice_provider_id: str | None = Field(default=None, max_length=64)
     voice_stt_provider_id: str | None = Field(default=None, max_length=64)
@@ -135,6 +136,8 @@ class OperatorSettingsPatch(BaseModel):
     legal_impressum_md: str | None = Field(default=None, max_length=200_000)
     legal_privacy_md: str | None = Field(default=None, max_length=200_000)
     legal_terms_md: str | None = Field(default=None, max_length=200_000)
+    dashboards_allowed: bool | None = None
+    friend_system_enabled: bool | None = None
 
 
 def operator_settings_patch_field_names() -> tuple[str, ...]:

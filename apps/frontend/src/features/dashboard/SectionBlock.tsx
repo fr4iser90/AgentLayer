@@ -6,6 +6,8 @@ import { AgentUpdateBadge } from "./AgentUpdateBadge";
 import { DashboardGridInner } from "./DashboardGridInner";
 import type { UiBlock, UiLayout } from "./types";
 import { emptyNestedLayout, normalizeNestedLayout, sectionHasUnreadNested } from "./layoutTree";
+import { TextInput } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 export function SectionBlockBody(props: {
   block: UiBlock;
@@ -77,31 +79,31 @@ export function SectionBlockBody(props: {
   const title = block.props.title?.trim() || t("dashboard:sectionFallback");
 
   return (
-    <section className="relative flex h-full min-h-0 flex-col rounded-lg border border-white/5 bg-black/20">
+    <section className="relative flex h-full min-h-0 flex-col rounded-card border border-line-subtle bg-black/20">
       {sectionUnread && collapsed ? (
         <AgentUpdateBadge
           variant="corner"
           title={t("notifications:agentUpdateBadgeSection")}
         />
       ) : null}
-      <header className="dashboard-grid-no-drag flex flex-wrap items-center gap-2 border-b border-white/5 px-3 py-2">
+      <header className="dashboard-grid-no-drag flex flex-wrap items-center gap-base border-b border-line-subtle px-soft py-base">
         {editMode && !contentReadOnly ? (
-          <input
+          <TextInput
             type="text"
-            className="min-w-0 flex-1 rounded-md border border-surface-border bg-black/40 px-2 py-1 text-sm text-white outline-none focus:border-sky-500/50"
+            className="min-w-0 flex-1 outline-hidden"
             value={block.props.title ?? ""}
             placeholder={t("dashboard:sectionTitlePlaceholder")}
             onChange={(e) => patchSectionProps({ title: e.target.value })}
           />
         ) : (
-          <h3 className="min-w-0 flex-1 truncate text-sm font-medium text-white">{title}</h3>
+          <h3 className="min-w-0 flex-1 truncate text-sm font-medium text-ink-primary">{title}</h3>
         )}
         {sectionUnread && !collapsed ? (
           <AgentUpdateBadge variant="inline" title={t("notifications:agentUpdateBadgeSection")} />
         ) : null}
-        <button
+        <Button
           type="button"
-          className="dashboard-grid-no-drag rounded-md border border-surface-border px-2 py-1 text-[11px] text-surface-muted hover:bg-white/5"
+          className="dashboard-grid-no-drag px-base py-tight text-meta text-ink-muted hover:bg-white/5"
           onClick={() => {
             const next = !collapsed;
             setCollapsed(next);
@@ -109,12 +111,12 @@ export function SectionBlockBody(props: {
           }}
         >
           {collapsed ? t("dashboard:sectionExpand") : t("dashboard:sectionCollapse")}
-        </button>
+        </Button>
       </header>
       {!collapsed ? (
-        <div className="min-h-0 flex-1 overflow-auto p-2">
+        <div className="min-h-0 flex-1 overflow-auto p-base">
           {nested.blocks.length === 0 && !editMode ? (
-            <p className="px-2 py-4 text-xs text-surface-muted">{t("dashboard:sectionEmpty")}</p>
+            <p className="px-base py-wide text-xs text-ink-muted">{t("dashboard:sectionEmpty")}</p>
           ) : (
             <DashboardGridInner
               layout={nested.blocks.length ? nested : emptyNestedLayout()}

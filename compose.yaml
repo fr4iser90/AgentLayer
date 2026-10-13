@@ -1,9 +1,11 @@
 # Agent layer + PostgreSQL. Netzwerk ai-net (wie examples/ollama/docker/compose.yaml).
 #
-# Variablen: docker/.env (von .env_example kopieren). Compose lädt .env automatisch.
+# Variablen: .env (von .env.example kopieren). Compose lädt .env automatisch.
 #
 # Start:
 #   docker compose up -d
+# agent-layer entrypoint drops to the host user that owns the repo bind-mount
+# (/workspace/AgentLayer) so ./workspace is not written as root — no wrapper, no hardcoded UID.
 #
 # Open WebUI: OpenAI API URL → http://agent-layer:8080/v1 (im gleichen Docker-Netz)
 #   oder vom Host: http://HOST_IP:8088/v1
@@ -22,6 +24,13 @@ services:
       - agent_pg_data:/var/lib/postgresql/data
     networks:
       - ai-net
+    deploy:
+      resources:
+        limits:
+          cpus: "${POSTGRES_CPU_LIMIT:-1.0}"
+          memory: ${POSTGRES_MEM_LIMIT:-1G}
+        reservations:
+          memory: ${POSTGRES_MEM_RESERVE:-256M}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 3s
@@ -44,6 +53,13 @@ services:
       - QDRANT__LOG_LEVEL=ERROR
     networks:
       - ai-net
+    deploy:
+      resources:
+        limits:
+          cpus: "${QDRANT_CPU_LIMIT:-1.0}"
+          memory: ${QDRANT_MEM_LIMIT:-768M}
+        reservations:
+          memory: ${QDRANT_MEM_RESERVE:-256M}
   neo4j:
     image: neo4j:5-community
     container_name: agent-layer-neo4j
@@ -54,6 +70,10 @@ services:
       # NEO4J_AUTH applies only on first boot (empty agent_neo4j_data volume).
       - NEO4J_AUTH=neo4j/${NEO4J_PASSWORD:?Set NEO4J_PASSWORD in .env}
       - NEO4J_PLUGINS=["apoc"]
+      # Cap heap/pagecache so Neo4j does not eat the host (keep under NEO4J_MEM_LIMIT).
+      - NEO4J_server_memory_heap_initial__size=${NEO4J_HEAP_INITIAL:-512m}
+      - NEO4J_server_memory_heap_max__size=${NEO4J_HEAP_MAX:-1G}
+      - NEO4J_server_memory_pagecache_size=${NEO4J_PAGECACHE:-512m}
     ports:
       - "7474:7474"
       - "7687:7687"
@@ -61,6 +81,13 @@ services:
       - agent_neo4j_data:/data
     networks:
       - ai-net
+    deploy:
+      resources:
+        limits:
+          cpus: "${NEO4J_CPU_LIMIT:-1.5}"
+          memory: ${NEO4J_MEM_LIMIT:-2G}
+        reservations:
+          memory: ${NEO4J_MEM_RESERVE:-512M}
     healthcheck:
       # Password comes from NEO4J_AUTH (neo4j/<password>); do not set NEO4J_PASSWORD in this service.
       test: ["CMD-SHELL", "cypher-shell -u neo4j -p \"$${NEO4J_AUTH#neo4j/}\" 'RETURN 1'"]
@@ -89,24 +116,34 @@ services:
     env_file:
       - .env
     environment:
-      # Nur Playwright-Install (Web-UI): Pfade auf Named Volumes — kein PIDEA_CDP_* (CDP = Admin → IDE Agent / DB).
-      PIDEA_PLAYWRIGHT_PIP_TARGET: /data/pidea/playwright-site-packages
-      PLAYWRIGHT_BROWSERS_PATH: /data/pidea/ms-playwright
       # DB-backed project workspaces (manual/git/agentlayer-self). Separate from /workspace/AgentLayer (read-only seed).
       # See docs/runbooks/workspace-persistence.md
       # LSP servers are not in the image — put them on PATH or set AGENT_LSP_*_CMD (docs/runbooks/lsp.md).
+      # Shared Chromium cache for all coding workspaces (Playwright) — docs/runbooks/playwright.md
+      PLAYWRIGHT_BROWSERS_PATH: /data/ms-playwright
       AGENTLAYER_WORKSPACE_PATH: /data/project_workspaces
+      # Writable HOME for external agent runtimes (Qwen Code sessions). Enable with
+      # AGENT_EXTERNAL_RUNTIME_ENABLED=true in .env — docs/features/external-agent-runtimes.md
+      AGENT_EXTERNAL_RUNTIME_HOME: /data/external_runtimes
     volumes:
-      # create_tool / Default AGENT_TOOLS_EXTRA_DIR=/data/tools — ohne Mount existiert der Pfad nicht.
       - ./plugins/tools/agent_created:/data/tools:rw
-      # Coding workspace -> mount the actual source code
       - .:/code:ro
-      # Self-editing workspace (Hybrid: local bevorzugt)
       - .:/workspace/AgentLayer:ro
-      # Writable per-user project dirs (survives container recreate). Matches AGENTLAYER_WORKSPACE_PATH above.
-      - agent_project_workspaces:/data/project_workspaces:rw
-      # Backups (replace_tool/update_tool): Default /data/tool_backups liegt NICHT auf diesem Mount →
-      # in .env setzen: AGENT_TOOLS_BACKUP_DIR=/data/tools/.tool_backups (Ordner erscheint unter ./plugins/tools/agent_created/.tool_backups)
+      - ./workspace:/data/project_workspaces:rw
+      - agent_ms_playwright:/data/ms-playwright:rw
+      - agent_external_runtimes:/data/external_runtimes:rw
+    # Chromium needs shared memory; Docker default 64MB → flaky Playwright. Override via AGENT_SHM_SIZE.
+    shm_size: ${AGENT_SHM_SIZE:-512mb}
+    # Budget for API + coding bash + 1× Playwright + 1–3 small apps/scripts (tune via .env).
+    # Peak stack ≈ agent 6G + neo4j 2G + postgres 1G + qdrant 768M ≈ 10G — leave host headroom.
+    deploy:
+      resources:
+        limits:
+          cpus: "${AGENT_CPU_LIMIT:-3.0}"
+          memory: ${AGENT_MEM_LIMIT:-6G}
+        reservations:
+          cpus: "${AGENT_CPU_RESERVE:-1.0}"
+          memory: ${AGENT_MEM_RESERVE:-2G}
     # Optional read-only:  - ./plugins/tools/agent_created:/data/tools:ro
     # Optional: mount dirs for fs_* if you need host files in-container (paths are cwd/absolute; no AGENT_DASHBOARD_ROOT).
     networks:
@@ -115,7 +152,8 @@ volumes:
   agent_pg_data:
   agent_qdrant_data:
   agent_neo4j_data:
-  agent_project_workspaces:
+  agent_ms_playwright:
+  agent_external_runtimes:
 networks:
   ai-net:
     external: true

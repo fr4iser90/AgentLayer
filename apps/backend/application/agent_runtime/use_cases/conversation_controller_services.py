@@ -16,3 +16,9 @@ from apps.backend.infrastructure.platform.conversations_db import (
     conversation_update_delegate_prefs,
     conversations_list,
 )
+from apps.backend.infrastructure.platform.conversation_mutations_db import (
+    conversation_append_message,
+)
+from apps.backend.infrastructure.integrations.bridge_agent_turn import extract_bridge_reply
+from apps.backend.infrastructure.platform import chat_storage_quota
+

@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field
 from apps.backend.infrastructure.platform.config import config
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure.settings.operator_settings import (
-    _bound_float,
     _cached_row,
     _discord_trigger_prefix_sql,
     _fetch_row,
@@ -27,8 +26,7 @@ def scheduler_jobs_worker_settings() -> tuple[bool, float]:
     """Persisted ``scheduler_jobs`` + ``project_runs`` worker: enabled, run timeout hint (30–900 s)."""
     r = fetch_operator_settings_row()
     w = bool(r.get("scheduler_jobs_worker_enabled", True))
-    t = _bound_float(r.get("scheduler_jobs_ide_pidea_timeout_sec"), 300.0, 30.0, 900.0)
-    return w, t
+    return w, 300.0
 
 
 def interface_hints_public() -> dict[str, Any]:

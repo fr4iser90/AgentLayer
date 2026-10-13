@@ -19,5 +19,9 @@ tree-sitter>=0.23.0
 tree-sitter-language-pack>=1.0.0
 neo4j>=5.20.0,<6
 mcp>=1.8.0,<2
+# External agent runtime (Qwen Code): only a preview release exists on PyPI, so pin it
+# exactly — an open range would resolve to nothing. Import is lazy: the backend runs fine
+# without this package, the runtime just reports itself unavailable.
+qwen-code-sdk==0.1.0rc0
 PyYAML>=6.0.0
 emoji>=2.14.0

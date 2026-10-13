@@ -36,6 +36,9 @@ class TestWorkspaceRetrievalBootstrap(unittest.TestCase):
             )
         self.assertIn("retrieve_context", snip)
         self.assertIn("Top-level:", snip)
+        self.assertIn("Container path (bash cwd):", snip)
+        self.assertIn(str(root.resolve()), snip)
+        self.assertIn("workdir", snip)
 
     def test_list_repo_top_level_skips_hidden(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -50,20 +53,26 @@ class TestWorkspaceRetrievalBootstrap(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "f.py").write_text("x = 1\n", encoding="utf-8")
+            import os
             import subprocess
 
-            subprocess.run(["git", "init"], cwd=root, capture_output=True, check=False)
-            subprocess.run(["git", "add", "f.py"], cwd=root, capture_output=True, check=False)
+            env = {
+                **os.environ,
+                "GIT_AUTHOR_NAME": "test",
+                "GIT_AUTHOR_EMAIL": "test@example.com",
+                "GIT_COMMITTER_NAME": "test",
+                "GIT_COMMITTER_EMAIL": "test@example.com",
+                "GIT_AUTHOR_DATE": "2020-01-01T00:00:00+00:00",
+                "GIT_COMMITTER_DATE": "2020-01-01T00:00:00+00:00",
+            }
+            subprocess.run(["git", "init"], cwd=root, capture_output=True, check=True, env=env)
+            subprocess.run(["git", "add", "f.py"], cwd=root, capture_output=True, check=True, env=env)
             subprocess.run(
-                ["git", "commit", "-m", "init", "--author", "t <t@t>"],
+                ["git", "commit", "-m", "init"],
                 cwd=root,
                 capture_output=True,
-                env={
-                    **dict(__import__("os").environ),
-                    "GIT_AUTHOR_DATE": "2020-01-01T00:00:00+00:00",
-                    "GIT_COMMITTER_DATE": "2020-01-01T00:00:00+00:00",
-                },
-                check=False,
+                check=True,
+                env=env,
             )
             ws = {
                 "path": str(root),

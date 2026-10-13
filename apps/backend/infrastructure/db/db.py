@@ -62,34 +62,55 @@ def close_pool() -> None:
         _pool = None
 
 
+def query(sql: str, params: tuple[Any, ...] = ()) -> int:
+    """Run a single write/DDL statement and commit.
+
+    Thin wrapper over the pool for ad-hoc statements (e.g. admin PATCH handlers)
+    that do not warrant a dedicated persistence helper. Returns the cursor rowcount.
+    """
+    if _pool is None:
+        raise RuntimeError("database pool not initialized")
+    with _pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+            count = cur.rowcount or 0
+        conn.commit()
+    return count
+
+
 from apps.backend.infrastructure.db.identity_tenants import (
-    discord_user_id_normalize,
     scheduler_outbound_count_today_utc,
     scheduler_outbound_increment_utc,
-    telegram_user_id_normalize,
     tenant_exists,
     tenant_insert,
     tenants_list,
-    user_discord_user_id_get,
-    user_discord_user_id_set,
     user_external_sub,
     user_first_admin_id,
-    user_id_for_discord_user_id,
-    user_id_for_telegram_user_id,
-    user_id_tenant_for_discord_global,
-    user_id_tenant_for_telegram_global,
-    user_role,
-    user_telegram_user_id_get,
-    user_telegram_user_id_set,
     user_tenant_id,
     user_site_role,
+    user_site_admin,
+    user_effective_role,
+    user_capabilities,
     user_membership_role,
     tenant_membership_upsert,
+    move_user_tenant,
     tenant_get,
     tenant_update_org_profile,
     tenant_mark_setup_completed,
     user_is_tenant_admin,
 )
+from apps.backend.infrastructure.db.identity_messaging import (
+    discord_user_id_normalize,
+    telegram_user_id_normalize,
+    user_discord_user_id_get,
+    user_discord_user_id_set,
+    user_id_for_discord_user_id,
+    user_id_for_telegram_user_id,
+    user_id_tenant_for_discord_global,
+    user_id_tenant_for_telegram_global,
+)
+
+
 def _require_user_uuid() -> tuple[int, uuid.UUID]:
     tenant_id, user_id = get_identity()
     if user_id is None:
@@ -243,6 +264,8 @@ def list_tool_invocations_for_agent_run(
     *,
     limit: int = 100,
 ) -> list[dict[str, Any]]:
+    # tenant-scope: guarded by agent_run_id — the caller resolves the run within
+    # their own tenant first.
     lim = max(1, min(500, int(limit)))
     with pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
@@ -268,6 +291,17 @@ from apps.backend.infrastructure.db.user_secrets import (
     user_secret_list_service_keys,
     user_secret_register_with_otp,
     user_secret_upsert,
+)
+from apps.backend.infrastructure.db.workspace_secrets import (
+    resolve_secret_plaintext,
+    user_owns_workspace,
+    user_workspace_secret_delete,
+    user_workspace_secret_get_plaintext,
+    user_workspace_secret_list_service_keys,
+    user_workspace_secret_upsert,
+    workspace_env_bindings_load,
+    workspace_env_bindings_merge,
+    workspace_env_bindings_replace,
 )
 def kb_note_append(title: str, body: str) -> int:
     tenant_id, user_id = _require_user_uuid()
@@ -459,6 +493,7 @@ from apps.backend.infrastructure.db.tenant_profession_persistence import (
     profession_assignment_get,
     profession_assignment_upsert,
     profession_assignments_list,
+    profession_assignments_list_user,
     profession_role_get,
     profession_role_get_by_slug,
     profession_role_insert,

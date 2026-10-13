@@ -5,9 +5,9 @@ from __future__ import annotations
 import uuid
 from unittest.mock import patch
 
-from apps.backend.application.agent_runtime.use_cases.chat_turn_preparation import (
-    _agent_goal_tool_names,
-    _inject_conversation_goal_block,
+from apps.backend.application.agent_runtime.use_cases.chat_turn_agent_blocks import (
+    agent_goal_tool_names,
+    inject_conversation_goal_block,
 )
 from apps.backend.domain.agent_runtime.conversation_goal import PLAN_MODE_GUIDANCE
 
@@ -37,7 +37,7 @@ def _agent(tool_names: list[str]):
 
 
 def _inject(messages: list[dict], *, agent_id: str | None = "coding") -> list[dict]:
-    return _inject_conversation_goal_block(
+    return inject_conversation_goal_block(
         messages,
         agent_id=agent_id,
         user_id=uuid.uuid4(),
@@ -55,7 +55,7 @@ class TestGoalToolDiscovery:
     @patch(_REGISTRY)
     def test_keeps_only_goal_tools(self, mock_reg) -> None:
         mock_reg.return_value = _agent(["bash", "edit", "todo_write", "goal_get"])
-        assert _agent_goal_tool_names("coding") == frozenset({"todo_write", "goal_get"})
+        assert agent_goal_tool_names("coding") == frozenset({"todo_write", "goal_get"})
 
     @patch(_REGISTRY)
     def test_unknown_agent_has_none(self, mock_reg) -> None:
@@ -65,10 +65,10 @@ class TestGoalToolDiscovery:
                 return None
 
         mock_reg.return_value = _Empty()
-        assert _agent_goal_tool_names("nope") == frozenset()
+        assert agent_goal_tool_names("nope") == frozenset()
 
     def test_missing_agent_id_has_none(self) -> None:
-        assert _agent_goal_tool_names(None) == frozenset()
+        assert agent_goal_tool_names(None) == frozenset()
 
 
 class TestInjection:

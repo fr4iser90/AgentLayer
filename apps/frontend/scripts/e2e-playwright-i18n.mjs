@@ -78,6 +78,13 @@ const ROUTE_MARKERS = {
     de: ["Arbeitsbereich", "Dashboard"],
     en: ["Dashboard", "Workspace"],
   },
+  // Chrome-less public share: no app nav, so DEFAULT_MARKERS (Settings/Sign out/
+  // Agent Layer) never appear. The test visits without a token, so the page
+  // renders the missing-token state; the loaded state uses the share badge.
+  "/app/dashboard/shared": {
+    de: ["Freigabe", "Geteilt", "Öffentlich"],
+    en: ["share", "Shared", "Public"],
+  },
   "/app/schedules": { de: ["Zeitpläne", "Zeitplan"], en: ["Schedules", "Schedule"] },
   "/app/tasks": { de: ["Aufgaben", "Aufgabe"], en: ["Tasks", "Task"] },
   "/app/docs": { de: ["Dokumentation", "Docs"], en: ["Documentation", "Docs"] },
@@ -126,10 +133,6 @@ const ROUTE_MARKERS = {
   },
   "/app/admin/tools": { de: ["Tools", "Paket"], en: ["Tools", "package"] },
   "/app/admin/users": { de: ["Benutzer", "Users", "Tenant"], en: ["Users", "Tenant"] },
-  "/app/admin/scheduled-jobs": {
-    de: ["Jobs", "geplant", "Scheduled"],
-    en: ["Scheduled", "Jobs"],
-  },
   "/app/admin/schedules": { de: ["Zeitpläne", "Schedules"], en: ["Schedules"] },
   "/app/admin/run-traces": {
     de: ["Traces", "Trace", "Lauf"],

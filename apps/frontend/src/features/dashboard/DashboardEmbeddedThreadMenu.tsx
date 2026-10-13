@@ -1,6 +1,10 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ChatThread } from "../chat/chatThreadStorage";
+import { Listbox } from "../../ui/Listbox";
+import { Tooltip } from "../../ui/Tooltip";
+import { useClickOutside } from "../../ui/useClickOutside";
+import { Button } from "../../ui/Button";
 
 type LabelPack = { shared: string; personal: string; untitled: string };
 
@@ -30,21 +34,7 @@ export function DashboardEmbeddedThreadMenu({
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
+  useClickOutside(rootRef, () => setOpen(false), open);
 
   const labels: LabelPack = {
     shared: t("chat:visibilitySharedLabel"),
@@ -56,66 +46,41 @@ export function DashboardEmbeddedThreadMenu({
 
   return (
     <div ref={rootRef} className="relative min-w-0 max-w-[58%]">
-      <button
-        type="button"
-        disabled={!canPick}
-        className="flex max-w-full items-center gap-0.5 truncate text-left text-[10px] text-neutral-300 hover:text-white disabled:opacity-50"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-controls={menuId}
-        title={t("dashboard:embeddedChatThreadMenuHint")}
-        onClick={() => {
-          if (!canPick) return;
-          setOpen((o) => !o);
-        }}
+      <Tooltip label={t("dashboard:embeddedChatThreadMenuHint")}>
+      <Button
+        variant="plain"
+        block
+          type="button"
+          disabled={!canPick}
+          className="max-w-full items-center gap-hair truncate text-meta text-ink-secondary hover:text-white"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-controls={menuId}
+          onClick={() => {
+            if (!canPick) return;
+            setOpen((o) => !o);
+          }}
       >
-        <span className="truncate">{triggerLabel}</span>
-        {canPick ? <span className="shrink-0 text-surface-muted">▾</span> : null}
-      </button>
+          <span className="truncate">{triggerLabel}</span>
+          {canPick ? <span className="shrink-0 text-ink-muted">▾</span> : null}
+        </Button>
+      </Tooltip>
       {open ? (
-        <ul
+        <Listbox
           id={menuId}
-          role="listbox"
-          className="absolute left-0 top-full z-30 mt-1 max-h-[min(240px,40vh)] w-[min(280px,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-surface-border bg-[#141414] py-1 shadow-xl"
-        >
-          {!readOnly ? (
-            <li role="option" aria-selected={!activeThreadId}>
-              <button
-                type="button"
-                className={[
-                  "w-full px-3 py-2 text-left text-xs hover:bg-white/5",
-                  !activeThreadId ? "bg-sky-950/40 text-sky-100" : "text-neutral-200",
-                ].join(" ")}
-                onClick={() => {
-                  onSelect("");
-                  setOpen(false);
-                }}
-              >
-                {draftLabel}
-              </button>
-            </li>
-          ) : null}
-          {threads.map((row) => {
-            const selected = activeThreadId === row.id;
-            return (
-              <li key={row.id} role="option" aria-selected={selected}>
-                <button
-                  type="button"
-                  className={[
-                    "w-full px-3 py-2 text-left text-xs hover:bg-white/5",
-                    selected ? "bg-sky-950/40 text-sky-100" : "text-neutral-200",
-                  ].join(" ")}
-                  onClick={() => {
-                    onSelect(row.id);
-                    setOpen(false);
-                  }}
-                >
-                  <span className="line-clamp-2">{formatLabel(row, labels)}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+          ariaLabel={triggerLabel}
+          className="absolute left-0 top-full z-docked mt-tight w-[min(280px,calc(100vw-2rem))]"
+          value={activeThreadId ?? ""}
+          onSelect={(next) => onSelect(next)}
+          onClose={() => setOpen(false)}
+          options={[
+            // The draft is an entry in the list, not a special row above it: it
+            // is one of the things you can be looking at, and it is selected
+            // exactly when no thread is.
+            ...(readOnly ? [] : [{ value: "", label: draftLabel }]),
+            ...threads.map((row) => ({ value: row.id, label: formatLabel(row, labels) })),
+          ]}
+        />
       ) : null}
     </div>
   );

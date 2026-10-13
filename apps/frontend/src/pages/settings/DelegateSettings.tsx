@@ -3,6 +3,10 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { Checkbox } from "../../ui/Checkbox";
+import { Select, TextArea } from "../../ui/Field";
+import { Button } from "../../ui/Button";
+import { cardClasses } from "../../ui/Card";
 
 type Level = "low" | "medium" | "high";
 type PrimaryGoal = "security" | "stability" | "maintainability" | "speed";
@@ -139,17 +143,17 @@ function LevelSelect({
 }) {
   return (
     <label className="block text-sm" htmlFor={id}>
-      <span className="text-surface-muted">{label}</span>
-      <select
+      <span className="text-ink-muted">{label}</span>
+      <Select
         id={id}
-        className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+        className="mt-tight max-w-control"
         value={value}
         onChange={(e) => onChange(e.target.value as Level)}
       >
         <option value="low">low</option>
         <option value="medium">medium</option>
         <option value="high">high</option>
-      </select>
+      </Select>
     </label>
   );
 }
@@ -168,11 +172,11 @@ function ConfigEditor({
   const prioritiesText = config.engineering.priorities.join("\n");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-broad">
       <section>
-        <h3 className="text-sm font-medium text-white">{t("settings:delegateSectionDecisioning")}</h3>
-        <p className="mt-1 text-xs text-surface-muted">{t("settings:delegateDecisioningHelp")}</p>
-        <div className="mt-3">
+        <h3 className="text-sm font-medium text-ink-primary">{t("settings:delegateSectionDecisioning")}</h3>
+        <p className="mt-tight text-xs text-ink-muted">{t("settings:delegateDecisioningHelp")}</p>
+        <div className="mt-soft">
           <LevelSelect
             id={`${idPrefix}-risk`}
             label={t("settings:delegateRiskTolerance")}
@@ -188,9 +192,9 @@ function ConfigEditor({
       </section>
 
       <section>
-        <h3 className="text-sm font-medium text-white">{t("settings:delegateSectionEscalation")}</h3>
-        <p className="mt-1 text-xs text-surface-muted">{t("settings:delegateEscalationHelp")}</p>
-        <div className="mt-3 space-y-2 text-sm text-white">
+        <h3 className="text-sm font-medium text-ink-primary">{t("settings:delegateSectionEscalation")}</h3>
+        <p className="mt-tight text-xs text-ink-muted">{t("settings:delegateEscalationHelp")}</p>
+        <div className="mt-soft space-y-base text-sm text-ink-primary">
           {(
             [
               ["ask_on_production_changes", t("settings:delegateEscalateProduction")],
@@ -198,9 +202,8 @@ function ConfigEditor({
               ["ask_on_security_findings", t("settings:delegateEscalateSecurity")],
             ] as const
           ).map(([key, label]) => (
-            <label key={key} className="flex cursor-pointer items-center gap-2">
-              <input
-                type="checkbox"
+            <label key={key} className="flex cursor-pointer items-center gap-base">
+              <Checkbox
                 checked={config.escalation[key]}
                 onChange={(e) =>
                   onChange({
@@ -216,8 +219,8 @@ function ConfigEditor({
       </section>
 
       <section>
-        <h3 className="text-sm font-medium text-white">{t("settings:delegateSectionCommunication")}</h3>
-        <div className="mt-3 flex flex-wrap gap-4">
+        <h3 className="text-sm font-medium text-ink-primary">{t("settings:delegateSectionCommunication")}</h3>
+        <div className="mt-soft flex flex-wrap gap-wide">
           <LevelSelect
             id={`${idPrefix}-directness`}
             label={t("settings:delegateDirectness")}
@@ -241,9 +244,8 @@ function ConfigEditor({
             }
           />
         </div>
-        <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-white">
-          <input
-            type="checkbox"
+        <label className="mt-soft flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+          <Checkbox
             checked={config.communication.ask_before_major_changes}
             onChange={(e) =>
               onChange({
@@ -260,13 +262,13 @@ function ConfigEditor({
       </section>
 
       <section>
-        <h3 className="text-sm font-medium text-white">{t("settings:delegateSectionEngineering")}</h3>
-        <label className="mt-3 block text-sm text-surface-muted" htmlFor={`${idPrefix}-primary-goal`}>
+        <h3 className="text-sm font-medium text-ink-primary">{t("settings:delegateSectionEngineering")}</h3>
+        <label className="mt-soft block text-sm text-ink-muted" htmlFor={`${idPrefix}-primary-goal`}>
           {t("settings:delegatePrimaryGoal")}
         </label>
-        <select
+        <Select
           id={`${idPrefix}-primary-goal`}
-          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+          className="mt-tight max-w-control"
           value={config.engineering.primary_goal}
           onChange={(e) =>
             onChange({
@@ -283,10 +285,11 @@ function ConfigEditor({
               {tok}
             </option>
           ))}
-        </select>
-        <p className="mt-3 text-xs text-surface-muted">{t("settings:delegatePrioritiesHelp")}</p>
-        <textarea
-          className="mt-1 min-h-[72px] w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-xs text-white"
+        </Select>
+        <p className="mt-soft text-xs text-ink-muted">{t("settings:delegatePrioritiesHelp")}</p>
+        <TextArea
+          mono
+          className="mt-tight min-h-[72px] max-w-controlWide text-xs"
           value={prioritiesText}
           onChange={(e) => {
             const priorities = e.target.value
@@ -307,7 +310,7 @@ function ConfigEditor({
           }}
           placeholder={"security\nstability\nmaintainability\nspeed"}
         />
-        <div className="mt-3 space-y-2 text-sm text-white">
+        <div className="mt-soft space-y-base text-sm text-ink-primary">
           {(
             [
               ["security_first", t("settings:delegateSecurityFirst")],
@@ -315,9 +318,8 @@ function ConfigEditor({
               ["prefer_refactoring", t("settings:delegatePreferRefactoring")],
             ] as const
           ).map(([key, label]) => (
-            <label key={key} className="flex cursor-pointer items-center gap-2">
-              <input
-                type="checkbox"
+            <label key={key} className="flex cursor-pointer items-center gap-base">
+              <Checkbox
                 checked={config.engineering[key]}
                 onChange={(e) =>
                   onChange({
@@ -333,8 +335,8 @@ function ConfigEditor({
       </section>
 
       <section>
-        <h3 className="text-sm font-medium text-white">{t("settings:delegateSectionAutonomy")}</h3>
-        <div className="mt-3 space-y-2 text-sm text-white">
+        <h3 className="text-sm font-medium text-ink-primary">{t("settings:delegateSectionAutonomy")}</h3>
+        <div className="mt-soft space-y-base text-sm text-ink-primary">
           {(
             [
               ["can_fix_minor_issues", t("settings:delegateCanFixMinor")],
@@ -342,9 +344,8 @@ function ConfigEditor({
               ["can_force_push", t("settings:delegateCanForcePush")],
             ] as const
           ).map(([key, label]) => (
-            <label key={key} className="flex cursor-pointer items-center gap-2">
-              <input
-                type="checkbox"
+            <label key={key} className="flex cursor-pointer items-center gap-base">
+              <Checkbox
                 checked={config.autonomy[key]}
                 onChange={(e) =>
                   onChange({
@@ -360,10 +361,10 @@ function ConfigEditor({
       </section>
 
       <section>
-        <h3 className="text-sm font-medium text-white">{t("settings:delegateSectionGoals")}</h3>
-        <p className="mt-1 text-xs text-surface-muted">{t("settings:delegateGoalsHelp")}</p>
-        <textarea
-          className="mt-2 min-h-[100px] w-full max-w-2xl rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+        <h3 className="text-sm font-medium text-ink-primary">{t("settings:delegateSectionGoals")}</h3>
+        <p className="mt-tight text-xs text-ink-muted">{t("settings:delegateGoalsHelp")}</p>
+        <TextArea
+          className="mt-base min-h-[100px] max-w-measure"
           value={goalsText}
           onChange={(e) =>
             onChange({
@@ -497,62 +498,64 @@ export function DelegateSettings() {
   };
 
   if (loading) {
-    return <p className="text-sm text-surface-muted">{t("settings:agentLoading")}</p>;
+    return <p className="text-sm text-ink-muted">{t("settings:agentLoading")}</p>;
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <h1 className="text-xl font-semibold text-white">{t("settings:delegateTitle")}</h1>
-      <p className="mt-2 text-sm text-surface-muted">{t("settings:delegateSubtitle")}</p>
-      <p className="mt-2 text-xs text-surface-muted">
+    <div className="mx-auto max-w-pageNarrow">
+      <h1 className="text-xl font-semibold text-ink-primary">{t("settings:delegateTitle")}</h1>
+      <p className="mt-base text-sm text-ink-muted">{t("settings:delegateSubtitle")}</p>
+      <p className="mt-base text-xs text-ink-muted">
         {t("settings:delegateVsAgent")}{" "}
-        <Link to="/settings/agent" className="text-indigo-300 hover:underline">
+        <Link to="/settings/agent" className="text-accent hover:underline">
           {t("settings:agentTitle")}
         </Link>
       </p>
 
       {unavailable ? (
-        <p className="mt-4 text-sm text-amber-200/90">{t("settings:delegateStorageUnavailable")}</p>
+        <p className="mt-wide text-sm text-badge-warning">{t("settings:delegateStorageUnavailable")}</p>
       ) : null}
 
-      {msg ? <p className="mt-4 text-sm text-neutral-300">{msg}</p> : null}
+      {msg ? <p className="mt-wide text-sm text-ink-secondary">{msg}</p> : null}
 
-      <section className="mt-8 rounded-lg border border-surface-border bg-surface-raised/40 p-4">
-        <h2 className="text-sm font-medium text-white">{t("settings:delegateGlobalTitle")}</h2>
+      <section className={cardClasses("card", "wide", "mt-deep")}>
+        <h2 className="text-sm font-medium text-ink-primary">{t("settings:delegateGlobalTitle")}</h2>
         <ConfigEditor config={globalConfig} onChange={setGlobalConfig} idPrefix="global" />
-        <label className="mt-4 block text-sm text-white" htmlFor="delegate-notes">
+        <label className="mt-wide block text-sm text-ink-primary" htmlFor="delegate-notes">
           {t("settings:delegateNotesLabel")}
         </label>
-        <textarea
+        <TextArea
           id="delegate-notes"
-          className="mt-1 min-h-[72px] w-full max-w-2xl rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+          className="mt-tight min-h-[72px] max-w-measure"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder={t("settings:delegateNotesPlaceholder")}
         />
-        <button
+        <Button
+          variant="primary"
+          size="lg"
           type="button"
-          className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-500 disabled:opacity-50"
+          className="mt-wide px-wide py-base text-sm"
           disabled={savingGlobal || unavailable}
           onClick={() => void saveGlobal()}
         >
           {savingGlobal ? t("settings:saving") : t("settings:delegateSaveGlobal")}
-        </button>
+        </Button>
       </section>
 
-      <section className="mt-8 rounded-lg border border-surface-border bg-surface-raised/40 p-4">
-        <h2 className="text-sm font-medium text-white">{t("settings:delegateWorkspaceTitle")}</h2>
-        <p className="mt-1 text-xs text-surface-muted">{t("settings:delegateWorkspaceHelp")}</p>
+      <section className={cardClasses("card", "wide", "mt-deep")}>
+        <h2 className="text-sm font-medium text-ink-primary">{t("settings:delegateWorkspaceTitle")}</h2>
+        <p className="mt-tight text-xs text-ink-muted">{t("settings:delegateWorkspaceHelp")}</p>
         {workspaces.length === 0 ? (
-          <p className="mt-3 text-sm text-surface-muted">{t("settings:delegateNoWorkspaces")}</p>
+          <p className="mt-soft text-sm text-ink-muted">{t("settings:delegateNoWorkspaces")}</p>
         ) : (
           <>
-            <label className="mt-3 block text-sm text-surface-muted" htmlFor="delegate-ws">
+            <label className="mt-soft block text-sm text-ink-muted" htmlFor="delegate-ws">
               {t("settings:delegateWorkspacePick")}
             </label>
-            <select
+            <Select
               id="delegate-ws"
-              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+              className="mt-tight max-w-controlWide"
               value={workspaceId}
               onChange={(e) => setWorkspaceId(e.target.value)}
             >
@@ -561,25 +564,27 @@ export function DelegateSettings() {
                   {w.name}
                 </option>
               ))}
-            </select>
+            </Select>
             {selectedWorkspace ? (
-              <p className="mt-1 text-xs text-surface-muted">{selectedWorkspace.name}</p>
+              <p className="mt-tight text-xs text-ink-muted">{selectedWorkspace.name}</p>
             ) : null}
-            <div className="mt-4">
+            <div className="mt-wide">
               <ConfigEditor
                 config={workspaceConfig}
                 onChange={setWorkspaceConfig}
                 idPrefix="ws"
               />
             </div>
-            <button
+            <Button
+              variant="primary"
+              size="lg"
               type="button"
-              className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-500 disabled:opacity-50"
+              className="mt-wide px-wide py-base text-sm"
               disabled={savingWorkspace || unavailable || !workspaceId}
               onClick={() => void saveWorkspace()}
             >
               {savingWorkspace ? t("settings:saving") : t("settings:delegateSaveWorkspace")}
-            </button>
+            </Button>
           </>
         )}
       </section>

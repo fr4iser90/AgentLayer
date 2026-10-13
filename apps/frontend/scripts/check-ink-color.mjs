@@ -1,0 +1,255 @@
+#!/usr/bin/env node
+/**
+ * Ink-colour guard (ratchet).
+ *
+ * Welle 1 moved the grey/white text scale onto `ink-*`: raw text-white /
+ * text-neutral-* went from ~1280 occurrences to 131, and rendered on-token text
+ * area from 43.0 % to 85.2 %. What remains is foreign semantics — text-amber-*,
+ * text-sky-*, text-emerald-* and friends — which carry meaning and need a
+ * per-case mapping decision, not a mechanical sweep.
+ *
+ * So this is a ratchet, not a clean-room check: the current violations are
+ * recorded in scripts/ink-baseline.json and are tolerated. Any text colour that
+ * is neither a design token nor already in the baseline fails. Drift is caught
+ * immediately; the existing debt is tracked rather than hidden.
+ *
+ * Allow-list rather than deny-list, for the reason documented in
+ * check-field-surface.mjs: a deny-list of `white|neutral|gray|zinc` waves the
+ * next `text-slate-300` straight through.
+ *
+ * Run with --update to re-record the baseline after an intentional migration.
+ */
+import { readFile, readdir, writeFile } from "node:fs/promises";
+import { join, relative, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { bareClassName, intentionalReason, unhitIntentionalKeys } from "./intentional-colours.mjs";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const ROOT = join(__dirname, "..");
+const SRC = join(ROOT, "src");
+const BASELINE = join(__dirname, "ink-baseline.json");
+
+const SCAN_EXT = [".tsx", ".jsx"];
+const SKIP = [/node_modules/, /\.test\./, /\.snap$/];
+
+// Design tokens that may paint text.
+const TOKEN = new Set([
+  "ink",
+  "ink-primary",
+  "ink-secondary",
+  "ink-muted",
+  "ink-faint",
+  "ink-on-fill",
+  "accent",
+  "accent-hover",
+  "accent-press",
+  "success",
+  "success-hover",
+  "warning",
+  "warning-hover",
+  "danger",
+  "danger-hover",
+  "badge-accent",
+  "badge-success",
+  "badge-warning",
+  "badge-danger",
+  "transparent",
+  "inherit",
+  "current",
+]);
+
+// The trailing boundary must accept the quote that closes a className attribute,
+// not just whitespace. `(?=\s|$)` alone never matches the LAST class in every
+// class string — a planted `text-slate-300` walked straight through a guard
+// that then reported OK.
+//
+// The value class must also admit `/`, for the opacity modifier. Without it
+// `text-sky-400/90` fails the lookahead at the slash and is invisible: the
+// guard saw 314 raw text colours while 563 were in the tree, and a newly added
+// `text-red-500/50` would have passed. `check-border-token.mjs` already
+// carries `/` in its class for exactly this reason — the lesson was learned
+// there and never propagated here.
+//
+// The variant-prefix chain must be admitted too. Anchoring on whitespace alone
+// left `hover:text-sky-300`, `focus:text-amber-300/90` and `sm:hover:text-red-200`
+// unseen — 80 prefixed raw text colours in the tree, and a newly added
+// `hover:text-red-500` would have passed. This is the third shape of the same
+// defect in this file's lifetime: value class, then opacity, then prefix.
+//
+// The prefix is captured but NOT part of the reported key. `hover:text-sky-300`
+// and `text-sky-300` are the same colour decision in the same file, and this
+// guard tracks which raw colours appear where — keying by variant would count
+// one decision twice without adding information.
+const TEXT_CLASS =
+  /(^|\s|["'`])((?:[a-zA-Z0-9-]+:)*text-)([a-z0-9][a-z0-9/-]*)(?=[\s"'`]|$)/g;
+const GREYSCALE = /^(white|black|neutral-\d+|gray-\d+|zinc-\d+|slate-\d+)$/;
+const FOREIGN =
+  /^(red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d+$/;
+
+/**
+ * Blank out comments while preserving every character offset and newline, so
+ * line numbers stay correct after stripping.
+ *
+ * The guard used to scope itself to JSX tags, which meant a class string held
+ * in a module-level constant was invisible to it — 33 lines / 39 raw colours,
+ * including all four `ModelCatalogSelect` capability tones and the identical
+ * `hover:text-neutral-200` nav recipe duplicated across five layout files.
+ * Widening to the whole file is a strict superset of the tag scan, and comments
+ * are the one place a widened colour scan reliably picks up things that are not
+ * code: this very file documents `text-slate-300` and `text-red-500/50` as
+ * examples. Zero comment hits exist today; the filter is what keeps it that way.
+ *
+ * String contents are left alone, so a `//` inside a URL in an `href` is not
+ * mistaken for a comment start.
+ */
+// The implementation lives in scripts/strip-comments.mjs, shared with
+// spacing-scan.mjs. Two copies of a comment stripper is how one gets fixed and
+// the other stays blind — which is the exact failure this file has already
+// documented for its own regex three times over.
+import { stripComments } from "./strip-comments.mjs";
+
+function classify(token) {
+  const bare = token.split("/")[0];
+  if (TOKEN.has(bare)) return null;
+  if (GREYSCALE.test(bare)) return "greyscale";
+  if (FOREIGN.test(bare)) return "foreign";
+  return null;
+}
+
+/**
+ * Pure scan of one source string. Exported so the matcher itself is testable:
+ * every blind spot here is a silent undercount, and the only way to catch "the
+ * guard stopped seeing the thing it guards" is to assert the population, not
+ * just the verdict. Until recently this file exported only `checkInkColor()`,
+ * which needs a filesystem — so none of the three matcher defects above could
+ * be pinned.
+ */
+export function scanTextTokens(src) {
+  const tokens = [];
+  const code = stripComments(src);
+  TEXT_CLASS.lastIndex = 0;
+  let m;
+  while ((m = TEXT_CLASS.exec(code)) !== null) tokens.push(m[3]);
+  return tokens;
+}
+
+export { classify };
+
+export async function checkInkColor() {
+  let baseline = {};
+  try {
+    baseline = JSON.parse(await readFile(BASELINE, "utf8"));
+  } catch {
+    baseline = {};
+  }
+
+  const findings = [];
+  const current = {};
+  const hit = new Set();
+
+  for await (const file of walk(SRC)) {
+    const rel = relative(ROOT, file);
+    const text = await readFile(file, "utf8");
+    const allowed = new Set(baseline[rel] || []);
+    const here = new Set();
+    const reported = new Set();
+    const fresh = [];
+    // Whole file, line by line, comments blanked. Line-by-line gives the exact
+    // line for each finding; a colour class never spans a newline, so nothing
+    // is lost to the split.
+    stripComments(text)
+      .split("\n")
+      .forEach((line, i) => {
+        TEXT_CLASS.lastIndex = 0;
+        let t;
+        while ((t = TEXT_CLASS.exec(line)) !== null) {
+          const kind = classify(t[3]);
+          if (!kind) continue;
+          const key = `text-${t[3]}`;
+          // A justified raw label is not debt, so it must not enter `current`
+          // either: `--update` would write it back into the baseline, and a
+          // class listed as both "not yet" and "not ever" reads as the first.
+          // Keyed through the shared list (scripts/intentional-colours.mjs).
+          if (intentionalReason(rel, key)) {
+            hit.add(`${rel}::${bareClassName(key)}`);
+            continue;
+          }
+          here.add(key);
+          // One finding per colour per file, matching the baseline's model. The
+          // tag-scoped version reported the same class once per occurrence, so a
+          // file with three `text-sky-300` looked like three new violations.
+          if (!allowed.has(key) && !reported.has(key)) {
+            reported.add(key);
+            fresh.push({ line: i + 1, cls: key, kind });
+          }
+        }
+      });
+    if (here.size) current[rel] = [...here].sort();
+    if (fresh.length) findings.push({ file: rel, issues: fresh });
+  }
+
+  return {
+    ok: findings.length === 0,
+    findings,
+    current,
+    intentional: hit.size,
+    stale: unhitIntentionalKeys(hit, (cls) => cls.startsWith("text-")),
+  };
+}
+
+async function* walk(dir) {
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const p = join(dir, entry.name);
+    if (entry.isDirectory()) yield* walk(p);
+    else if (SCAN_EXT.some((e) => p.endsWith(e)) && !SKIP.some((re) => re.test(p))) yield p;
+  }
+}
+
+async function main() {
+  const { ok, findings, current, intentional, stale } = await checkInkColor();
+
+  if (process.argv.includes("--update")) {
+    await writeFile(BASELINE, JSON.stringify(current, null, 2) + "\n", "utf8");
+    const n = Object.values(current).reduce((a, v) => a + v.length, 0);
+    console.log(`[ink-color] baseline re-recorded: ${n} tolerated class(es) in ${Object.keys(current).length} file(s).`);
+    return;
+  }
+
+  // Before the drift report: a justification that stopped naming anything is a
+  // bigger lie than an unmigrated class, because it claims to have been decided.
+  if (stale.length) {
+    console.error(`[ink-color] FAILED - ${stale.length} begründete Ausnahme(n) treffen nichts mehr:`);
+    for (const k of stale) console.error(`  ${k}`);
+    console.error("[ink-color] Streiche sie aus scripts/intentional-colours.mjs, sonst lesen sie als Erlaubnis für etwas, das es nicht gibt.");
+    process.exit(1);
+  }
+
+  if (!ok) {
+    const total = findings.reduce((n, f) => n + f.issues.length, 0);
+    console.error(
+      `[ink-color] ${total} new raw text colour(s) in ${findings.length} file(s) — not a token, not in the baseline.`
+    );
+    for (const { file, issues } of findings) {
+      console.error(`  ${file}`);
+      for (const i of issues.slice(0, 8)) {
+        console.error(`    L${i.line} ${i.cls}  (${i.kind})`);
+      }
+      if (issues.length > 8) console.error(`    … +${issues.length - 8} more`);
+    }
+    console.error("\n[ink-color] Use text-ink-primary / secondary / muted / faint / on-fill.");
+    console.error("[ink-color] For semantic colour use accent|success|warning|danger or badge-*.");
+    console.error("[ink-color] If this is an intentional migration, re-record: node scripts/check-ink-color.mjs --update");
+    process.exit(1);
+  }
+  console.log(
+    `[ink-color] OK — ${intentional} begründet rohe Textfarbe(n), keine neue rohe Textfarbe über der aufgezeichneten Baseline.`
+  );
+}
+
+const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+if (isMain) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}

@@ -1,13 +1,177 @@
 {
   "profiles": {
-    "fast": ["ddd_layers", "ddd_quality", "agent_governance", "frontend_i18n"],
-    "precommit": ["ddd_layers", "ddd_quality", "agent_governance", "backend_unit", "frontend_i18n", "node_cve_full", "python_cve"],
-    "security": ["node_cve_full", "python_cve"],
-    "architecture": ["ddd_layers_report", "ddd_quality", "agent_governance"],
-    "quality": ["agent_governance", "backend_unit", "frontend_i18n", "bandit"],
-    "ci": ["ddd_layers_all", "ddd_quality", "agent_governance", "backend_unit", "frontend_i18n", "node_cve_full", "python_cve", "bandit"]
+    "fast": ["ddd_layers", "ddd_quality", "agent_governance", "tenant_scope", "legacy_role_reads", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder"],
+    "precommit": ["ddd_layers", "ddd_quality", "agent_governance", "tenant_scope", "legacy_role_reads", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder", "frontend_ink_color", "frontend_border_token", "frontend_radius", "frontend_spacing", "frontend_content_width", "frontend_fill_token", "frontend_z_index", "frontend_icon_label", "frontend_font_license", "frontend_silent_catch", "frontend_nav_depth", "frontend_dialog", "frontend_click_outside", "frontend_control_primitive", "frontend_primitive_coverage", "frontend_loading_placeholder", "node_cve_full", "python_cve"],
+    "security": ["node_cve_full", "python_cve", "tenant_scope_all", "legacy_role_reads"],
+    "architecture": ["ddd_layers_report", "ddd_quality", "agent_governance", "tenant_scope_all", "legacy_role_reads"],
+    "quality": ["agent_governance", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder", "bandit"],
+    "ci": ["ddd_layers_all", "ddd_quality", "agent_governance", "tenant_scope", "legacy_role_reads", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder", "frontend_ink_color", "frontend_border_token", "frontend_radius", "frontend_spacing", "frontend_content_width", "frontend_fill_token", "frontend_z_index", "frontend_icon_label", "frontend_font_license", "frontend_silent_catch", "frontend_nav_depth", "frontend_dialog", "frontend_click_outside", "frontend_control_primitive", "frontend_primitive_coverage", "frontend_loading_placeholder", "node_cve_full", "python_cve", "bandit"]
   },
   "checks": {
+    "legacy_role_reads": {
+      "module": "legacy_role_reads",
+      "scope": "all",
+      "include": ["apps/backend", "plugins", "scripts"],
+      "ignore": [
+        "apps/backend/infrastructure/db/migrations/**"
+      ],
+      "summary_limit": 20,
+      "identity_pair_readers": [
+        {
+          "path": "apps/backend/infrastructure/db/identity_tenants.py",
+          "reason": "the identity resolver: _role_columns() is the single paired read behind every role answer"
+        },
+        {
+          "path": "apps/backend/infrastructure/identity/auth.py",
+          "reason": "the identity choke point: the two user loads, the People list and provisioning, all normalized by effective_role()"
+        },
+        {
+          "path": "apps/backend/infrastructure/persistence/postgres/identity_repository.py",
+          "reason": "the identity ORM slice: paired read normalized by effective_role(), never writes the legacy column"
+        }
+      ]
+    },
+    "tenant_scope": {
+      "module": "tenant_scope",
+      "scope": "staged",
+      "include": ["apps/backend"],
+      "ignore": [
+        "apps/backend/infrastructure/db/migrations/**"
+      ],
+      "summary_limit": 20,
+      "tenant_scoped_tables": [
+        "agent_access_policies",
+        "agent_artifacts",
+        "agent_config_changelog",
+        "agent_config_model_overrides",
+        "agent_config_overrides",
+        "agent_config_sessions",
+        "agent_prompt_versions",
+        "agent_runs",
+        "agent_tasks",
+        "benchmark_experiments",
+        "benchmark_harness_config",
+        "benchmark_reviews",
+        "benchmark_runs",
+        "benchmark_tuning_sessions",
+        "chat_conversations",
+        "chat_message_feedback",
+        "chat_secret_vault",
+        "dashboard_block_share_grants",
+        "dashboard_public_share_tokens",
+        "delegate_runs",
+        "friend_requests",
+        "friends",
+        "media_items",
+        "media_share_grants",
+        "model_access_policies",
+        "model_default_policies",
+        "project_runs",
+        "provider_capability_policies",
+        "rag_documents",
+        "scheduler_job_runs",
+        "scheduler_jobs",
+        "tenant_content",
+        "tenant_content_audit_events",
+        "tenant_content_versions",
+        "tenant_dashboard_installed_template_kinds",
+        "tenant_departments",
+        "tenant_memberships",
+        "tenant_profession_roles",
+        "todos",
+        "tool_invocations",
+        "user_agent_persona",
+        "user_agent_profile",
+        "user_attachments",
+        "user_collections",
+        "user_dashboards",
+        "user_delegate",
+        "user_kb_notes",
+        "user_memory_facts",
+        "user_memory_graph_activation_log",
+        "user_memory_graph_edges",
+        "user_memory_graph_nodes",
+        "user_memory_notes",
+        "user_notification_prefs",
+        "user_notifications",
+        "user_profession_assignments",
+        "user_qualifications",
+        "user_voice_prefs",
+        "users",
+        "workspace_delegate"
+      ]
+    },
+    "tenant_scope_all": {
+      "module": "tenant_scope",
+      "scope": "all",
+      "report_only": true,
+      "summary_limit": 40,
+      "include": ["apps/backend"],
+      "ignore": [
+        "apps/backend/infrastructure/db/migrations/**"
+      ],
+      "tenant_scoped_tables": [
+        "agent_access_policies",
+        "agent_artifacts",
+        "agent_config_changelog",
+        "agent_config_model_overrides",
+        "agent_config_overrides",
+        "agent_config_sessions",
+        "agent_prompt_versions",
+        "agent_runs",
+        "agent_tasks",
+        "benchmark_experiments",
+        "benchmark_harness_config",
+        "benchmark_reviews",
+        "benchmark_runs",
+        "benchmark_tuning_sessions",
+        "chat_conversations",
+        "chat_message_feedback",
+        "chat_secret_vault",
+        "dashboard_block_share_grants",
+        "dashboard_public_share_tokens",
+        "delegate_runs",
+        "friend_requests",
+        "friends",
+        "media_items",
+        "media_share_grants",
+        "model_access_policies",
+        "model_default_policies",
+        "project_runs",
+        "provider_capability_policies",
+        "rag_documents",
+        "scheduler_job_runs",
+        "scheduler_jobs",
+        "tenant_content",
+        "tenant_content_audit_events",
+        "tenant_content_versions",
+        "tenant_dashboard_installed_template_kinds",
+        "tenant_departments",
+        "tenant_memberships",
+        "tenant_profession_roles",
+        "todos",
+        "tool_invocations",
+        "user_agent_persona",
+        "user_agent_profile",
+        "user_attachments",
+        "user_collections",
+        "user_dashboards",
+        "user_delegate",
+        "user_kb_notes",
+        "user_memory_facts",
+        "user_memory_graph_activation_log",
+        "user_memory_graph_edges",
+        "user_memory_graph_nodes",
+        "user_memory_notes",
+        "user_notification_prefs",
+        "user_notifications",
+        "user_profession_assignments",
+        "user_qualifications",
+        "user_voice_prefs",
+        "users",
+        "workspace_delegate"
+      ]
+    },
     "ddd_layers": {
       "module": "ddd_layers",
       "scope": "staged",
@@ -343,6 +507,139 @@
       "kind": "frontend_i18n",
       "cwd": "apps/frontend"
     },
+    "frontend_type_scale": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-type-scale.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-type-scale.mjs"
+    },
+    "frontend_field_surface": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-field-surface.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-field-surface.mjs"
+    },
+    "frontend_surface_ladder": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-surface-ladder.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-surface-ladder.mjs"
+    },
+    "frontend_ink_color": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-ink-color.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-ink-color.mjs"
+    },
+    "frontend_font_license": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-font-license.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-font-license.mjs"
+    },
+    "frontend_border_token": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-border-token.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-border-token.mjs"
+    },
+    "frontend_radius": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-radius.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-radius.mjs"
+    },
+    "frontend_spacing": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-spacing.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-spacing.mjs"
+    },
+    "frontend_content_width": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-content-width.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-content-width.mjs"
+    },
+    "frontend_fill_token": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-fill-token.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-fill-token.mjs"
+    },
+    "frontend_z_index": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-z-index.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-z-index.mjs"
+    },
+    "frontend_icon_label": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-icon-label.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-icon-label.mjs"
+    },
+    "frontend_silent_catch": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-silent-catch.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-silent-catch.mjs"
+    },
+    "frontend_nav_depth": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-nav-depth.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-nav-depth.mjs"
+    },
+    "frontend_dialog": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-dialog-primitive.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-dialog-primitive.mjs"
+    },
+    "frontend_click_outside": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-click-outside.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-click-outside.mjs"
+    },
+    "frontend_control_primitive": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-control-primitive.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-control-primitive.mjs"
+    },
+    "frontend_primitive_coverage": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-primitive-coverage.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-primitive-coverage.mjs"
+    },
+    "frontend_loading_placeholder": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-loading-placeholder.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-loading-placeholder.mjs"
+    },
     "node_cve": {
       "module": "command_check",
       "provider_env": "CVE_PROVIDER",
@@ -421,7 +718,7 @@
       "providers": {
         "local": {
           "required_python_module": "bandit",
-          "command": ["python3", "-m", "bandit", "-r", "apps/backend", "-c", "pyproject.toml"]
+          "command": ["python3", "-m", "bandit", "-r", "apps/backend", "-c", "pyproject.toml", "-lll"]
         },
         "semgrep": {
           "required_tool": "semgrep",

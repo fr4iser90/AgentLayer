@@ -9,9 +9,40 @@ RUN npm run build
 
 FROM python:3.11-slim-bookworm
 
+# Pin for reproducible Chromium deps + seed (coding workspaces share PLAYWRIGHT_BROWSERS_PATH).
+# Keep in sync with common project Playwright majors (e.g. LOGA3 → chromium-1208 / Playwright 1.58).
+ARG PLAYWRIGHT_VERSION=1.58.2
+
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends tzdata git ffmpeg \
+    && apt-get install -y --no-install-recommends tzdata git ffmpeg ca-certificates gosu \
     && rm -rf /var/lib/apt/lists/*
+
+# Node/npm/npx for coding-agent workspace shells (same major as UI builder).
+# Copy only Node bits — do not overwrite Python under /usr/local/bin.
+COPY --from=agent_ui_builder /usr/local/bin/node /usr/local/bin/node
+COPY --from=agent_ui_builder /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
+    && node --version \
+    && npm --version
+
+# Qwen Code CLI — coding agent runtimes behind the external-runtime port
+# (docs/features/external-agent-runtimes.md). Pinned; dev override:
+#   docker build --build-arg QWEN_CODE_VERSION=latest .
+ARG QWEN_CODE_VERSION=0.23.3
+RUN npm install -g "@qwen-code/qwen-code@${QWEN_CODE_VERSION}" \
+    && qwen --version \
+    && rm -rf /root/.npm /tmp/*
+
+# Playwright: OS libs + Chromium seed (copied onto the compose volume on first boot).
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright-seed
+RUN apt-get update \
+    && npx --yes "playwright@${PLAYWRIGHT_VERSION}" install-deps chromium \
+    && mkdir -p /opt/ms-playwright-seed \
+    && npx --yes "playwright@${PLAYWRIGHT_VERSION}" install chromium \
+    && chmod -R a+rX /opt/ms-playwright-seed \
+    && rm -rf /var/lib/apt/lists/* /root/.npm /tmp/*
+ENV PLAYWRIGHT_BROWSERS_PATH=/data/ms-playwright
 
 WORKDIR /app
 

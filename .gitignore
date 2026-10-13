@@ -2,11 +2,22 @@
 plugins/tools/agent_created/.tool_backups/
 # Generated local Playwright bundles (export_local_playwright_bundle)
 plugins/tools/capabilities/browser/output/
-# Cache
+# Cache / local tool junk (never commit)
 __pycache__/
+.pytest_cache/
+.venv-cov/
+.coverage
 output/
 
+# Dashboard UX-audit artifacts: regenerated per run against a live instance and
+# carrying that instance's dashboard ids, seed-account email and tenant names.
+# They used to be tracked, which meant every audit run produced unmergeable binary
+# diffs and published live instance data into the repo. Now written to
+# output/ux-audit/; this rule keeps a stale example/ tree from creeping back.
+example/dashboard-ux-audit/
+
 # secrets
+.qwen/
 .env
 .env.e2e
 benchmarks/results/
@@ -31,5 +42,10 @@ apps/tui/*.egg-info/
 # Traefik
 compose.traefik.yaml
 
-# Full upstream PIDEA checkout (optional local copy); prompts live under integrations/pidea/content-library/
-apps/backend/infrastructure/integrations/pidea/PIDEA/
+# Runtime project workspaces (AGENTLAYER_WORKSPACE_PATH bind mount target on the
+# host). Materialized per-user trees like agentlayer-self/ and e2e-agentlayer-git/
+# — runtime data, never source. Anchored to the repo root on purpose: an
+# unanchored `workspace/` also swallows apps/backend/infrastructure/workspace/,
+# which is real source.
+/workspace/
+apps/frontend/scripts/tooltip-probe/.probe-dist/

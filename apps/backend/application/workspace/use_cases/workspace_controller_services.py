@@ -5,11 +5,21 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from apps.backend.infrastructure.access.entity_access_service import (
+    EDIT,
+    MANAGE,
+    OWNED,
+    can_access_workspace_row,
+)
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure.platform.config import config
 from apps.backend.infrastructure.plugins.mcp_runtime import _parse_servers_payload
 from apps.backend.infrastructure.workspace import workspace_delegate_store, workspace_retrieval
-from apps.backend.infrastructure.workspace.workspace_columns import WORKSPACE_SELECT_SQL, workspace_row_to_api
+from apps.backend.infrastructure.workspace.workspace_columns import (
+    TENANT_ID_INDEX,
+    WORKSPACE_SELECT_SQL,
+    workspace_row_to_api,
+)
 from apps.backend.infrastructure.workspace.workspace_execution import (
     BROWSE_REFUSAL,
     INDEX_REFUSAL,
@@ -48,6 +58,13 @@ def row_to_workspace(row: tuple) -> dict[str, Any]:
     return api
 
 
+def workspace_tenant_id(row: tuple) -> int | None:
+    """Owning tenant of a workspace row, for admin scope checks."""
+    from apps.backend.infrastructure.workspace.workspace_columns import TENANT_ID_INDEX
+
+    return row[TENANT_ID_INDEX] if len(row) > TENANT_ID_INDEX else None
+
+
 def client_workspace_refusal(row: tuple | None, *, kind: str) -> str | None:
     """HTTP 400 detail when ``row`` is a client workspace; ``None`` otherwise."""
     if not row:
@@ -78,17 +95,25 @@ def fetch_owned_workspace_rows(user_id: uuid.UUID) -> list[tuple]:
             return list(cur.fetchall())
 
 
-def fetch_owned_workspace_row(workspace_id: str, user_id: uuid.UUID) -> tuple | None:
+def fetch_company_workspace_rows(tenant_id: int) -> list[tuple]:
+    """Tenant-visible workspaces of one tenant, whoever owns them.
+
+    ``fetch_owned_workspace_rows`` answers "mine"; this answers "the company's".
+    The tenant comes from the caller's resolved membership rather than the
+    request, and the visibility filter is what keeps everyone else's private
+    workspaces out of the result.
+    """
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT " + WORKSPACE_SELECT_SQL + """
                 FROM project_workspaces
-                WHERE id = %s AND owner_user_id = %s
+                WHERE tenant_id = %s AND visibility = 'tenant'
+                ORDER BY name ASC
                 """,
-                (workspace_id, user_id),
+                (int(tenant_id),),
             )
-            return cur.fetchone()
+            return list(cur.fetchall())
 
 
 def fetch_workspace_row_any_owner(workspace_id: str) -> tuple | None:
@@ -104,50 +129,29 @@ def fetch_workspace_row_any_owner(workspace_id: str) -> tuple | None:
             return cur.fetchone()
 
 
+def fetch_owned_workspace_row(workspace_id: str, user_id: uuid.UUID) -> tuple | None:
+    row = fetch_workspace_row_any_owner(workspace_id)
+    return row if can_access_workspace_row(row, user_id, OWNED) else None
+
+
 def fetch_editable_workspace_row(workspace_id: str, user_id: uuid.UUID) -> tuple | None:
-    with db.pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT " + WORKSPACE_SELECT_SQL + """
-                FROM project_workspaces
-                WHERE id = %s AND owner_user_id = %s AND access_role IN ('owner', 'editor')
-                """,
-                (workspace_id, user_id),
-            )
-            return cur.fetchone()
+    row = fetch_workspace_row_any_owner(workspace_id)
+    return row if can_access_workspace_row(row, user_id, EDIT) else None
 
 
 def fetch_owned_workspace_path_name(workspace_id: str, user_id: uuid.UUID) -> tuple | None:
-    with db.pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT path, name FROM project_workspaces WHERE id = %s AND owner_user_id = %s",
-                (workspace_id, user_id),
-            )
-            return cur.fetchone()
+    row = fetch_owned_workspace_row(workspace_id, user_id)
+    return (row[3], row[2]) if row else None
 
 
 def fetch_editable_workspace_tenant_name(workspace_id: str, user_id: uuid.UUID) -> tuple | None:
-    with db.pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT tenant_id, name FROM project_workspaces
-                WHERE id = %s AND owner_user_id = %s AND access_role IN ('owner', 'editor')
-                """,
-                (workspace_id, user_id),
-            )
-            return cur.fetchone()
+    row = fetch_editable_workspace_row(workspace_id, user_id)
+    return (row[TENANT_ID_INDEX], row[2]) if row else None
 
 
 def fetch_owned_delete_workspace_name(workspace_id: str, user_id: uuid.UUID) -> tuple | None:
-    with db.pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT name FROM project_workspaces WHERE id = %s AND owner_user_id = %s AND access_role = 'owner'",
-                (workspace_id, user_id),
-            )
-            return cur.fetchone()
+    row = fetch_workspace_row_any_owner(workspace_id)
+    return (row[2],) if can_access_workspace_row(row, user_id, MANAGE) else None
 
 
 def update_workspace_row(workspace_id: str, updates: list[str], params: list[Any]) -> None:

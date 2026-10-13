@@ -1,10 +1,13 @@
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { KeyRound } from "lucide-react";
 import type { AuthContextValue } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { buildUserSecretPostBody } from "./buildSecretPayload";
 import type { SecretPromptPayload } from "./chatThreadStorage";
+import { TextInput } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 type Props = {
   prompt: SecretPromptPayload;
@@ -31,7 +34,11 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
         ? { title: prompt.title, help: prompt.help, fields }
         : undefined,
       fieldValues,
-      rawSecret
+      rawSecret,
+      {
+        scope: prompt.scope === "workspace" ? "workspace" : "global",
+        workspaceId: prompt.workspaceId,
+      }
     );
     if (!body) {
       setLocalError(t("chat:secretCardFillRequired"));
@@ -66,6 +73,8 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
     prompt.help,
     prompt.promptId,
     prompt.serviceKey,
+    prompt.scope,
+    prompt.workspaceId,
     prompt.title,
     rawSecret,
     t,
@@ -80,30 +89,28 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
         : null;
 
   return (
-    <div className="w-full max-w-[min(100%,42rem)] rounded-xl border border-amber-900/45 bg-amber-950/20 px-3 py-3 text-sm shadow-sm">
-      <div className="flex items-start gap-2">
-        <span className="mt-0.5 shrink-0 text-base leading-none" aria-hidden>
-          🔑
-        </span>
+    <div className="w-full max-w-measure rounded-sheet border border-warning/45 bg-warning-subtle px-soft py-soft text-sm shadow-xs">
+      <div className="flex items-start gap-base">
+        <KeyRound aria-hidden className="mt-hair h-4 w-4 shrink-0" />
         <div className="min-w-0 flex-1">
-          <p className="font-medium text-amber-100/95">
+          <p className="font-medium text-badge-warning">
             {prompt.title || prompt.serviceKey}
           </p>
           {prompt.reason ? (
-            <p className="mt-0.5 text-[11px] text-amber-200/70">{prompt.reason}</p>
+            <p className="mt-hair text-meta text-badge-warning">{prompt.reason}</p>
           ) : null}
           {prompt.help ? (
-            <p className="mt-1 text-[11px] leading-snug text-neutral-400">{prompt.help}</p>
+            <p className="mt-tight text-meta leading-snug text-ink-muted">{prompt.help}</p>
           ) : null}
 
           {prompt.status === "saved" ? (
-            <p className="mt-2 text-xs text-emerald-400/90">{statusLabel}</p>
+            <p className="mt-base text-xs text-success">{statusLabel}</p>
           ) : (
-            <div className="mt-2 space-y-2">
+            <div className="mt-base space-y-base">
               {hasFields ? (
                 fields.map((f) => (
                   <label key={f.name} className="block">
-                    <span className="text-[11px] text-neutral-400">
+                    <span className="text-meta text-ink-muted">
                       {f.label || f.name}
                       {f.required ? " *" : ""}
                     </span>
@@ -115,38 +122,41 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
                       onChange={(e) =>
                         setFieldValues((prev) => ({ ...prev, [f.name]: e.target.value }))
                       }
-                      className="mt-0.5 w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-neutral-100 outline-none focus:border-amber-600/50"
+                      className="mt-hair w-full rounded-card border border-line bg-field px-firm py-snug text-sm text-ink-primary outline-hidden focus:border-warning/50"
                     />
                   </label>
                 ))
               ) : (
                 <label className="block">
-                  <span className="text-[11px] text-neutral-400">{t("chat:secretCardValueLabel")}</span>
-                  <input
+                  <span className="text-meta text-ink-muted">{t("chat:secretCardValueLabel")}</span>
+                  <TextInput
                     type="password"
                     autoComplete="off"
                     disabled={disabled}
                     value={rawSecret}
                     onChange={(e) => setRawSecret(e.target.value)}
-                    className="mt-0.5 w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-neutral-100 outline-none focus:border-amber-600/50"
+                    className="mt-hair outline-hidden"
                   />
                 </label>
               )}
               {localError ? (
-                <p className="text-xs text-red-400/90">{localError}</p>
+                <p className="text-xs text-danger">{localError}</p>
               ) : null}
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <button
+              <div className="flex flex-wrap items-center gap-base pt-tight">
+                <Button
+                  variant="primary"
+                  tone="warning"
+                  size="sm"
                   type="button"
                   disabled={disabled}
                   onClick={() => void save()}
-                  className="rounded-lg bg-amber-700/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600/90 disabled:opacity-50"
+                  className="px-soft py-snug text-xs"
                 >
                   {saving ? t("chat:secretCardSaving") : t("chat:secretCardSave")}
-                </button>
+                </Button>
                 <Link
                   to="/settings/connections"
-                  className="text-[11px] text-neutral-400 underline-offset-2 hover:text-neutral-300 hover:underline"
+                  className="text-meta text-ink-muted underline-offset-2 hover:text-neutral-300 hover:underline"
                 >
                   {t("chat:secretCardOpenConnections")}
                 </Link>

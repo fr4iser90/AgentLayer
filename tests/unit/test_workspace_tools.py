@@ -11,15 +11,15 @@ from apps.backend.domain.workspace.workspace_common import normalize_git_url
 
 def test_normalize_git_url_https() -> None:
     assert (
-        normalize_git_url("https://github.com/fr4iser90/PIDEA")
-        == "https://github.com/fr4iser90/PIDEA"
+        normalize_git_url("https://github.com/fr4iser90/AgentLayer")
+        == "https://github.com/fr4iser90/AgentLayer"
     )
 
 
 def test_normalize_git_url_owner_repo() -> None:
     assert (
-        normalize_git_url("fr4iser90/PIDEA")
-        == "https://github.com/fr4iser90/PIDEA.git"
+        normalize_git_url("fr4iser90/AgentLayer")
+        == "https://github.com/fr4iser90/AgentLayer.git"
     )
 
 
@@ -93,7 +93,7 @@ def test_find_owned_git_workspace_scoped_to_owner() -> None:
 
 def testworkspace_tool_bound_workspace_id() -> None:
     payload = (
-        '{"ok": true, "bound": true, "workspace": {"id": "abc-123", "name": "PIDEA"}}'
+        '{"ok": true, "bound": true, "workspace": {"id": "abc-123", "name": "DemoRepo"}}'
     )
     assert workspace_tool_bound_workspace_id("workspace.create", payload) == "abc-123"
     assert workspace_tool_bound_workspace_id("bind", payload) == "abc-123"

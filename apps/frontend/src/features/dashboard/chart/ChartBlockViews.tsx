@@ -3,10 +3,12 @@ import { useMemo } from "react";
 import { Bar, Doughnut, Line, Pie } from "react-chartjs-2";
 import { useTranslation } from "react-i18next";
 import i18n from "../../../i18n/config";
+import { Button } from "../../../ui/Button";
 
 import "./chartRegister";
 
 import { getPath, setPath } from "../dashboardDataPaths";
+import { Select, TextArea, TextInput } from "../../../ui/Field";
 
 export type ChartTypeName = "line" | "bar" | "pie" | "doughnut";
 
@@ -169,9 +171,9 @@ export function ChartBlockBody(props: {
     );
 
   return (
-    <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-4">
+    <section className="rounded-sheet border border-line bg-card p-wide">
       {displayMode === "grid" ? (
-        <h3 className="mb-3 text-sm font-medium text-white">{sectionTitle}</h3>
+        <h3 className="mb-soft text-sm font-medium text-ink-primary">{sectionTitle}</h3>
       ) : null}
       <div
         className={
@@ -183,11 +185,11 @@ export function ChartBlockBody(props: {
         {el}
       </div>
       {!readOnly ? (
-        <div className="dashboard-grid-no-drag mt-4 space-y-3 border-t border-white/5 pt-4">
+        <div className="dashboard-grid-no-drag mt-wide space-y-soft border-t border-line-subtle pt-wide">
           <div>
-            <label className="mb-1 block text-[10px] uppercase text-surface-muted">{t("dashboard:chartTypeLabel")}</label>
-            <select
-              className="w-full rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100"
+            <label className="mb-tight block text-meta uppercase text-ink-muted">{t("dashboard:chartTypeLabel")}</label>
+            <Select
+              className="text-xs"
               value={chart.chartType}
               onChange={(e) =>
                 patchChart(dp, setData, {
@@ -199,14 +201,14 @@ export function ChartBlockBody(props: {
               <option value="bar">{t("dashboard:chartTypeBar")}</option>
               <option value="pie">{t("dashboard:chartTypePie")}</option>
               <option value="doughnut">{t("dashboard:chartTypeDoughnut")}</option>
-            </select>
+            </Select>
           </div>
           <div>
-            <label className="mb-1 block text-[10px] uppercase text-surface-muted">
+            <label className="mb-tight block text-meta uppercase text-ink-muted">
               {t("dashboard:chartCategoriesLabel")}
             </label>
-            <textarea
-              className="min-h-[72px] w-full rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100"
+            <TextArea
+              className="min-h-[72px] text-xs"
               value={chart.labels.join("\n")}
               onChange={(e) => {
                 const labels = e.target.value.split("\n").map((s) => s.trimEnd());
@@ -229,13 +231,14 @@ export function ChartBlockBody(props: {
             />
           </div>
           {chart.series.map((s, si) => (
-            <div key={si} className="rounded-lg border border-white/5 bg-black/20 p-2">
-              <div className="mb-1 flex items-center justify-between gap-2">
-                <span className="text-[10px] text-surface-muted">{t("dashboard:chartSeriesN", { n: si + 1 })}</span>
+            <div key={si} className="rounded-card border border-line-subtle bg-black/20 p-base">
+              <div className="mb-tight flex items-center justify-between gap-base">
+                <span className="text-meta text-ink-muted">{t("dashboard:chartSeriesN", { n: si + 1 })}</span>
                 {chart.series.length > 1 ? (
-                  <button
+                  <Button
                     type="button"
-                    className="text-[10px] text-red-400 hover:underline"
+                    variant="danger"
+                    size="sm"
                     onClick={() =>
                       patchChart(dp, setData, (prev) => ({
                         ...prev,
@@ -244,12 +247,12 @@ export function ChartBlockBody(props: {
                     }
                   >
                     {t("dashboard:remove")}
-                  </button>
+                  </Button>
                 ) : null}
               </div>
-              <input
+              <TextInput
                 type="text"
-                className="mb-2 w-full rounded border border-surface-border bg-black/40 px-2 py-1 text-xs text-white"
+                className="mb-base text-xs"
                 placeholder={t("dashboard:chartSeriesLabelPlaceholder")}
                 value={s.label}
                 onChange={(e) =>
@@ -260,12 +263,12 @@ export function ChartBlockBody(props: {
                   })
                 }
               />
-              <label className="mb-1 block text-[10px] text-surface-muted">
+              <label className="mb-tight block text-meta text-ink-muted">
                 {t("dashboard:chartValuesLabel")}
               </label>
-              <input
+              <TextInput
                 type="text"
-                className="w-full rounded border border-surface-border bg-black/40 px-2 py-1 text-xs text-neutral-100"
+                className="text-xs"
                 value={s.data.join(", ")}
                 onChange={(e) => {
                   const parts = e.target.value.split(",").map((x) => Number(x.trim()) || 0);
@@ -285,9 +288,10 @@ export function ChartBlockBody(props: {
             </div>
           ))}
           {(chart.chartType === "line" || chart.chartType === "bar") && chart.series.length < 6 ? (
-            <button
+            <Button
+              size="sm"
               type="button"
-              className="rounded-md bg-white/10 px-2 py-1 text-xs text-white hover:bg-white/15"
+              className="bg-white/10 px-base py-tight text-xs hover:bg-white/15"
               onClick={() =>
                 patchChart(dp, setData, (prev) => {
                   const need = Math.max(prev.labels.length, 1);
@@ -303,7 +307,7 @@ export function ChartBlockBody(props: {
               }
             >
               {t("dashboard:chartAddSeries")}
-            </button>
+            </Button>
           ) : null}
         </div>
       ) : null}
@@ -367,17 +371,17 @@ export function SparklineBlockBody(props: {
   };
 
   return (
-    <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-3">
-      <p className="text-[10px] font-medium uppercase tracking-wide text-surface-muted">{sectionTitle}</p>
-      <div className="mt-2 h-16 w-full">
+    <section className="rounded-sheet border border-line bg-card p-soft">
+      <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">{sectionTitle}</p>
+      <div className="mt-base h-16 w-full">
         <Line data={chartData} options={options} />
       </div>
       {!readOnly ? (
-        <div className="dashboard-grid-no-drag mt-3">
-          <label className="mb-1 block text-[10px] text-surface-muted">{t("dashboard:sparklineValuesLabel")}</label>
-          <input
+        <div className="dashboard-grid-no-drag mt-soft">
+          <label className="mb-tight block text-meta text-ink-muted">{t("dashboard:sparklineValuesLabel")}</label>
+          <TextInput
             type="text"
-            className="w-full rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100"
+            className="text-xs"
             value={values.join(", ")}
             onChange={(e) => {
               const nums = e.target.value

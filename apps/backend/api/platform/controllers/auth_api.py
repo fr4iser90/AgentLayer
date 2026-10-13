@@ -27,7 +27,7 @@ from apps.backend.application.identity.use_cases.request_auth import (
     get_user_by_id,
     get_user_for_bearer_token,
     list_all_users,
-    require_admin,
+    require_site_admin,
     revoke_refresh_token,
     update_user_tenant,
     validate_refresh_token,
@@ -165,7 +165,9 @@ async def auth_logout(request: Request):
 class AuthSetupDeploymentModeBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    deployment_mode: Literal["agent_system", "multi_tenant"]
+    # Mirrors domain.setup.instance.DEPLOYMENT_MODES; Literal needs the values
+    # spelled out for the OpenAPI schema.
+    deployment_mode: Literal["single_user", "agent_system", "multi_tenant"]
     setup_token: str
 
 
@@ -216,7 +218,7 @@ async def auth_setup(request: Request, body: AuthSetupBody):
 @router.post("/auth/setup/llm")
 async def auth_setup_llm(request: Request, body: AuthSetupLlmBody):
     """Configure or test the OpenAI-compatible LLM endpoint (admin session required)."""
-    await require_admin(request)
+    await require_site_admin(request)
     if body.test_only:
         return await probe_llm_endpoint(base_url=body.base_url, api_key=body.api_key)
     probe = await probe_llm_endpoint(base_url=body.base_url, api_key=body.api_key)
@@ -236,7 +238,7 @@ async def auth_setup_llm(request: Request, body: AuthSetupLlmBody):
 @router.get("/auth/setup/catalog")
 async def auth_setup_catalog(request: Request):
     """Provider reachability and chat/embedding model lists for setup step 2."""
-    await require_admin(request)
+    await require_site_admin(request)
     return build_setup_catalog()
 
 
@@ -247,7 +249,7 @@ class AuthSetupPreferencesBody(SetupPreferencesBody):
 @router.post("/auth/setup/preferences")
 async def auth_setup_preferences(request: Request, body: AuthSetupPreferencesBody):
     """Persist preferred provider and profile models (general, coding, embedding)."""
-    await require_admin(request)
+    await require_site_admin(request)
     return apply_setup_preferences(body)
 
 
@@ -260,21 +262,21 @@ class AuthSetupTestEmbeddingBody(BaseModel):
 @router.post("/auth/setup/test-embedding")
 async def auth_setup_test_embedding(request: Request, body: AuthSetupTestEmbeddingBody):
     """Probe embedding dimension for a model id on the configured embedding API."""
-    await require_admin(request)
+    await require_site_admin(request)
     return await test_embedding_model(body.model)
 
 
 @router.post("/auth/setup/skip-profiles")
 async def auth_setup_skip_profiles(request: Request):
     """Skip provider wizard step; persist catalog suggestions when a chat provider is reachable."""
-    await require_admin(request)
+    await require_site_admin(request)
     return apply_setup_skip_suggestions()
 
 
 @router.post("/auth/setup/enable-chat-provider-embedding")
 async def auth_setup_enable_chat_provider_embedding(request: Request):
     """Opt-in: use chat provider host for embeddings (operator_settings)."""
-    await require_admin(request)
+    await require_site_admin(request)
     return apply_enable_chat_provider_embedding()
 
 
@@ -303,9 +305,11 @@ async def get_current_user_info(request: Request):
         "email": user.email,
         "role": user.role,
         "site_role": site_role,
+        "capabilities": db.user_capabilities(user.id),
         "tenant_id": tid,
         "membership_role": membership,
         "deployment_mode": deployment,
+        "friend_system_enabled": operator_settings.friend_system_enabled(),
         "org_setup_required": setup_required,
         "vertical_profile": (tenant_row or {}).get("vertical_profile"),
         "created_at": user.created_at.isoformat(),
@@ -327,9 +331,12 @@ async def get_current_user_info(request: Request):
             user_may_use_schedules,
         )
 
-        base["may_use_schedules"] = user_may_use_schedules(user=user, user_role=user.role)
+        base["may_use_schedules"] = user_may_use_schedules(user=user)
     except Exception:
-        base["may_use_schedules"] = str(user.role or "").strip().lower() == "admin"
+        # The hint says nothing on a failed read. Answering it from ``user.role``
+        # would hand a demoted account the schedules UI, which is the drift this
+        # field is supposed to stop.
+        base["may_use_schedules"] = False
     if deployment == "multi_tenant" and membership:
         ensure_tenant_profession_defaults(tid)
         base["profession_policy"] = effective_policy(user.id, tid).to_public_dict()

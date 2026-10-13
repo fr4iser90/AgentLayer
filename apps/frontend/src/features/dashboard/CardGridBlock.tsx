@@ -1,9 +1,12 @@
 import { useMemo, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
+import { Star } from "lucide-react";
 import { getPath } from "./dashboardDataPaths";
+import { Badge, type BadgeTone } from "../../ui/Badge";
 import { ProjectRowDetailDrawer } from "./ProjectRowDetailDrawer";
 import type { ColumnDef, UiBlock } from "./types";
+import { TextInput } from "../../ui/Field";
 
 type Row = Record<string, unknown>;
 
@@ -11,18 +14,18 @@ function normText(v: unknown): string {
   return String(v ?? "").trim().toLowerCase();
 }
 
-function badgeClass(status: string): string {
+function badgeTone(status: string): BadgeTone {
   const s = normText(status);
   if (s === "ok" || s === "secure" || s === "pass") {
-    return "bg-emerald-600/25 text-emerald-200 border-emerald-500/30";
+    return "success";
   }
   if (s === "warn" || s === "warning" || s === "outdated") {
-    return "bg-amber-600/25 text-amber-200 border-amber-500/30";
+    return "warning";
   }
   if (s === "fail" || s === "critical" || s === "vulnerable") {
-    return "bg-red-600/25 text-red-200 border-red-500/30";
+    return "danger";
   }
-  return "bg-white/10 text-surface-muted border-white/10";
+  return "neutral";
 }
 
 function gridColsClass(n: number): string {
@@ -120,25 +123,25 @@ export function CardGridBlockBody(props: {
   const sectionTitle = block.props.title?.trim() || t("dashboard:cardGridFallback");
 
   return (
-    <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-surface-muted">
+    <section className="rounded-sheet border border-line bg-card p-wide">
+      <div className="mb-soft flex flex-wrap items-center justify-between gap-base">
+        <span className="text-xs font-medium uppercase tracking-wide text-ink-muted">
           {sectionTitle}
         </span>
         {searchEnabled ? (
-          <input
+          <TextInput
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={searchPlaceholder}
-            className="w-full min-w-[12rem] max-w-xs rounded-md border border-surface-border bg-black/30 px-3 py-1.5 text-xs text-neutral-100 outline-none focus:border-sky-500/50 sm:w-56"
+            className="min-w-[12rem] max-w-control text-xs outline-hidden sm:w-56"
           />
         ) : null}
       </div>
 
       {filteredRows.length === 0 ? (
-        <p className="py-8 text-center text-sm text-surface-muted">{t("dashboard:cardGridEmpty")}</p>
+        <p className="py-deep text-center text-sm text-ink-muted">{t("dashboard:cardGridEmpty")}</p>
       ) : (
-        <div className={`grid gap-3 ${gridColsClass(gridColumns)}`}>
+        <div className={`grid gap-soft ${gridColsClass(gridColumns)}`}>
           {filteredRows.map((row) => {
             const id = String((row as any)?.id ?? "");
             const title = String((row as any)?.title ?? "").trim() || t("dashboard:untitled");
@@ -154,44 +157,44 @@ export function CardGridBlockBody(props: {
                 type="button"
                 disabled={!enableRowDetail}
                 className={[
-                  "dashboard-grid-no-drag flex min-h-[120px] flex-col rounded-xl border border-surface-border bg-gradient-to-br from-slate-900/90 to-black/60 p-4 text-left shadow-sm transition-colors",
-                  enableRowDetail ? "hover:border-sky-500/40 hover:bg-slate-900" : "cursor-default",
+                  "dashboard-grid-no-drag flex min-h-[120px] flex-col rounded-sheet border border-line bg-gradient-to-br from-slate-900/90 to-black/60 p-wide text-left shadow-xs transition-colors",
+                  enableRowDetail ? "hover:border-accent/40 hover:bg-slate-900" : "cursor-default",
                 ].join(" ")}
                 onClick={() => {
                   if (enableRowDetail && id) setDetailRowId(id);
                 }}
               >
-                <div className="mb-2 flex items-start justify-between gap-2">
-                  <h4 className="line-clamp-2 text-sm font-semibold text-white">{title}</h4>
+                <div className="mb-base flex items-start justify-between gap-base">
+                  <h4 className="line-clamp-2 text-sm font-semibold text-ink-primary">{title}</h4>
                   {pinned ? (
-                    <span className="shrink-0 text-[10px] text-amber-300" title={t("dashboard:pinned")}>
-                      ★
+                    <span className="shrink-0" title={t("dashboard:pinned")}>
+                      <Star
+                        aria-hidden
+                        fill="currentColor"
+                        className="inline h-3.5 w-3.5 text-badge-warning"
+                      />
                     </span>
                   ) : null}
                 </div>
                 {cardFields.includes("remote_url") && remote ? (
-                  <p className="mb-2 truncate font-mono text-[10px] text-sky-300/90">{remote}</p>
+                  <p className="mb-base truncate font-mono text-meta text-badge-accent">{remote}</p>
                 ) : null}
                 {cardFields.includes("tags") && tags ? (
-                  <p className="mb-2 line-clamp-2 text-xs text-surface-muted">{tags}</p>
+                  <p className="mb-base line-clamp-2 text-xs text-ink-muted">{tags}</p>
                 ) : null}
-                <div className="mt-auto flex flex-wrap gap-1.5 pt-2">
+                <div className="mt-auto flex flex-wrap gap-snug pt-base">
                   {cardFields.includes("status") && status ? (
-                    <span
-                      className={`rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase ${badgeClass(status)}`}
-                    >
+                    <Badge tone={badgeTone(status)} className="uppercase">
                       {status}
-                    </span>
+                    </Badge>
                   ) : null}
                   {cardFields.includes("security") && security ? (
-                    <span
-                      className={`rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase ${badgeClass(security)}`}
-                    >
+                    <Badge tone={badgeTone(security)} className="uppercase">
                       {security}
-                    </span>
+                    </Badge>
                   ) : null}
                   {enableRunNow && String((row as any)?.workspace_id ?? "").trim() ? (
-                    <span className="rounded-full border border-violet-500/30 bg-violet-600/20 px-2 py-0.5 text-[10px] text-violet-200">
+                    <span className="rounded-pill border border-violet-500/30 bg-violet-600/20 px-base py-hair text-meta text-violet-200">
                       {t("dashboard:workspaceLinked")}
                     </span>
                   ) : null}

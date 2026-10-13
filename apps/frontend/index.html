@@ -5,6 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Agent Layer</title>
     <link rel="icon" href="/app/favicon.png" type="image/png" />
+    <!-- Only the two Sans weights are preloaded: they paint the text that is on
+         screen at first paint. Mono is left to load on demand so 15 KB does not
+         compete with the JS bundle for the same early window. -->
+    <link
+      rel="preload"
+      href="/app/fonts/ibm-plex-sans-latin-400.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/app/fonts/ibm-plex-sans-latin-600.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
   </head>
   <body>
     <div id="root"></div>

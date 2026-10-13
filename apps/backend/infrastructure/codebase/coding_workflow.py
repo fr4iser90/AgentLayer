@@ -66,10 +66,7 @@ def normalize_coding_workflow(raw: Any, *, require_workspace: bool = False) -> d
     if not isinstance(raw, dict):
         raise ValueError("coding_workflow must be a JSON object")
 
-    legacy_pidea = {
-        "use_pidea_scheduler_pipeline",
-        "use_pidea_task_management_phases",
-        "pidea_workflow_name",
+    legacy_ide = {
         "phase_prompt_paths",
         "scheduler_pipeline_include_review",
         "attach_task_plans_to_execute",
@@ -83,10 +80,10 @@ def normalize_coding_workflow(raw: Any, *, require_workspace: bool = False) -> d
         "git_source_branch",
         "project_path",
     }
-    found_legacy = legacy_pidea & set(raw.keys())
+    found_legacy = legacy_ide & set(raw.keys())
     if found_legacy:
         raise ValueError(
-            f"legacy IDE/PIDEA workflow keys are not supported: {sorted(found_legacy)}"
+            f"legacy IDE workflow keys are not supported: {sorted(found_legacy)}"
         )
 
     extra = set(raw.keys()) - _ALLOWED_KEYS

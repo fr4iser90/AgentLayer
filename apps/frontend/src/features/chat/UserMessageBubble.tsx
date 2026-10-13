@@ -1,6 +1,8 @@
 import { useTranslation } from "react-i18next";
 import type { UiMessage } from "./chatThreadStorage";
 import { parseContentParts } from "./messageFormat";
+import { Tooltip } from "../../ui/Tooltip";
+import { Button } from "../../ui/Button";
 
 type Part = { type?: string; text?: string; image_url?: { url?: string } };
 
@@ -8,7 +10,7 @@ function MessageBody({ content }: { content: string }) {
   const { plain, parts } = parseContentParts(content);
   if (parts) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-base">
         {parts.map((p, i) => {
           if (p.type === "text" && p.text) {
             return (
@@ -23,7 +25,7 @@ function MessageBody({ content }: { content: string }) {
                 key={i}
                 src={p.image_url.url}
                 alt=""
-                className="max-h-64 max-w-full rounded-md border border-white/10 object-contain"
+                className="max-h-64 max-w-full rounded-tile border border-line object-contain"
               />
             );
           }
@@ -47,32 +49,36 @@ export function UserMessageBubble({ message, timeLabel, showRetry, onCopy, onRet
   const { t } = useTranslation(["chat"]);
 
   return (
-    <div className="group relative max-w-[min(100%,42rem)] rounded-2xl border border-sky-900/40 bg-[#1a2a3d] px-4 py-3 text-sm text-neutral-100 shadow-sm">
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+    <div className="group relative max-w-measure rounded-sheet border border-accent/40 bg-[#1a2a3d] px-wide py-soft text-sm text-ink-primary shadow-xs">
+      <div className="mb-tight flex items-center justify-between gap-base">
+        <span className="text-meta font-medium uppercase tracking-wide text-ink-muted">
           {t("chat:roleYou")}
           {timeLabel ? (
-            <span className="ml-2 font-normal normal-case">{timeLabel}</span>
+            <span className="ml-base font-normal normal-case">{timeLabel}</span>
           ) : null}
         </span>
-        <div className="flex shrink-0 items-center gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
-          <button
-            type="button"
-            onClick={onCopy}
-            className="rounded-md px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-sky-200/80 hover:bg-white/10 hover:text-sky-100"
-            title={t("chat:messageCopyTitle")}
-          >
-            {t("chat:messageCopy")}
-          </button>
-          {showRetry ? (
-            <button
+        <div className="flex shrink-0 items-center gap-tight opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+          <Tooltip label={t("chat:messageCopyTitle")}>
+          <Button
+            variant="ghost"
               type="button"
-              onClick={onRetry}
-              className="rounded-md px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-violet-200/80 hover:bg-white/10 hover:text-violet-100"
-              title={t("chat:messageRetryTitle")}
+              onClick={onCopy}
+              className="px-base py-hair text-meta uppercase tracking-wide text-badge-accent hover:bg-white/10 hover:text-badge-accent"
+          >
+              {t("chat:messageCopy")}
+            </Button>
+          </Tooltip>
+          {showRetry ? (
+            <Tooltip label={t("chat:messageRetryTitle")}>
+            <Button
+              variant="ghost"
+                type="button"
+                onClick={onRetry}
+                className="px-base py-hair text-meta uppercase tracking-wide text-violet-200/80 hover:bg-white/10 hover:text-violet-100"
             >
-              {t("chat:messageRetry")}
-            </button>
+                {t("chat:messageRetry")}
+              </Button>
+            </Tooltip>
           ) : null}
         </div>
       </div>

@@ -14,6 +14,9 @@ import {
   isHarnessKnob,
 } from "../../features/admin/agentConfig/agentConfigApi";
 import { fetchBenchmarkLlmProviders, type BenchmarkLlmProvider } from "../../features/admin/benchmarks/benchmarksApi";
+import { Button } from "../../ui/Button";
+import { Select, TextArea, TextInput } from "../../ui/Field";
+import { Tabs } from "../../ui/Tabs";
 
 type Tab = "knobs" | "models";
 
@@ -226,48 +229,48 @@ export function AdminAgentConfig() {
   }
 
   const knobEditor = (
-    <div className="grid min-h-0 flex-1 gap-4 md:grid-cols-2">
-      <section className="min-h-0 overflow-auto rounded-lg border border-surface-border bg-[#111] p-3">
-        <h2 className="mb-2 text-sm font-medium text-white">{t("admin:agentConfigKnobs")}</h2>
-        <ul className="space-y-1">
+    <div className="grid min-h-0 flex-1 gap-wide md:grid-cols-2">
+      <section className="min-h-0 overflow-auto rounded-card border border-line bg-[#111] p-soft">
+        <h2 className="mb-base text-sm font-medium text-ink-primary">{t("admin:agentConfigKnobs")}</h2>
+        <ul className="space-y-tight">
           {knobs.map((k) => (
             <li key={k.id}>
               <button
                 type="button"
                 onClick={() => setSelectedId(k.id)}
-                className={`w-full rounded px-2 py-1.5 text-left text-sm ${
-                  selectedId === k.id ? "bg-white/10 text-white" : "text-surface-muted hover:bg-white/5"
+                className={`w-full rounded-tile px-base py-snug text-left text-sm ${
+                  selectedId === k.id ? "bg-white/10 text-ink-primary" : "text-ink-muted hover:bg-white/5"
                 }`}
               >
                 <span className="font-mono text-xs">{k.id}</span>
                 {k.writable === false ? (
-                  <span className="ml-2 text-[10px] uppercase text-amber-400/80">
+                  <span className="ml-base text-meta uppercase text-warning">
                     {t("admin:agentConfigKnobsReadOnly")}
                   </span>
                 ) : null}
-                <span className="ml-2 text-xs opacity-70">{formatKnobValue(k)}</span>
+                <span className="ml-base text-xs opacity-70">{formatKnobValue(k)}</span>
               </button>
             </li>
           ))}
         </ul>
       </section>
 
-      <section className="flex min-h-0 flex-col gap-3 overflow-auto rounded-lg border border-surface-border bg-[#111] p-3">
-        <h2 className="text-sm font-medium text-white">{t("admin:agentConfigApply")}</h2>
+      <section className="flex min-h-0 flex-col gap-soft overflow-auto rounded-card border border-line bg-[#111] p-soft">
+        <h2 className="text-sm font-medium text-ink-primary">{t("admin:agentConfigApply")}</h2>
         {selected ? (
           <>
-            <p className="text-xs text-surface-muted">
+            <p className="text-xs text-ink-muted">
               {selected.layer ? `[${selected.layer}] ` : ""}
               {selected.doc}
             </p>
-            <div className="rounded border border-surface-border/60 bg-black/20 p-2 text-xs text-surface-muted">
+            <div className="rounded-tile border border-line/60 bg-black/20 p-base text-xs text-ink-muted">
               <p className="font-medium text-white/90">{t("admin:agentConfigEffectiveNow")}</p>
-              <p className="mt-1 font-mono">{formatKnobValue(selected)}</p>
-              <p className="mt-2">
+              <p className="mt-tight font-mono">{formatKnobValue(selected)}</p>
+              <p className="mt-base">
                 {t("admin:agentConfigEffectiveSource")}: {formatKnobSource(selected.source)}
               </p>
               {selected.default !== undefined && selected.default !== null ? (
-                <p className="mt-1">
+                <p className="mt-tight">
                   Registry default:{" "}
                   <span className="font-mono">
                     {typeof selected.default === "object"
@@ -277,50 +280,52 @@ export function AdminAgentConfig() {
                 </p>
               ) : null}
             </div>
-            <div className="rounded border border-blue-500/30 bg-blue-500/5 p-2 text-xs text-blue-100/90">
+            <div className="rounded-tile border border-blue-500/30 bg-blue-500/5 p-base text-xs text-blue-100/90">
               {t(`admin:${knobHelpKey(selected.id)}`, {
                 defaultValue: selected.doc || selected.id,
               })}
             </div>
             {selected.writable === false ? (
-              <p className="text-xs text-amber-300/90">{t("admin:agentConfigKnobsReadOnly")}</p>
+              <p className="text-xs text-badge-warning">{t("admin:agentConfigKnobsReadOnly")}</p>
             ) : null}
-            <label className="text-xs text-surface-muted">{t("admin:agentConfigValue")}</label>
-            <textarea
-              className="min-h-[80px] w-full rounded border border-surface-border bg-black/30 p-2 font-mono text-sm text-white disabled:opacity-50"
+            <label className="text-xs text-ink-muted">{t("admin:agentConfigValue")}</label>
+            <TextArea
+              mono
+              className="min-h-[80px]"
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               disabled={selected.writable === false}
             />
-            <label className="text-xs text-surface-muted">{t("admin:agentConfigHypothesis")}</label>
-            <p className="text-[11px] text-surface-muted/80">{t("admin:agentConfigHypothesisHint")}</p>
-            <input
-              className="w-full rounded border border-surface-border bg-black/30 p-2 text-sm text-white disabled:opacity-50"
+            <label className="text-xs text-ink-muted">{t("admin:agentConfigHypothesis")}</label>
+            <p className="text-meta text-ink-muted/80">{t("admin:agentConfigHypothesisHint")}</p>
+            <TextInput
               value={hypothesis}
               onChange={(e) => setHypothesis(e.target.value)}
               disabled={selected.writable === false}
             />
-            <button
+            <Button
+              variant="primary"
+              tone="success"
               type="button"
               disabled={applyBusy || selected.writable === false}
               onClick={() => void onApply()}
-              className="rounded bg-emerald-700 px-3 py-2 text-sm text-white hover:bg-emerald-600 disabled:opacity-50"
+              className="px-soft py-base text-sm"
             >
               {applyBusy ? t("admin:agentConfigApplying") : t("admin:agentConfigApplyBtn")}
-            </button>
+            </Button>
           </>
         ) : (
-          <p className="text-sm text-surface-muted">{t("admin:agentConfigSelectKnob")}</p>
+          <p className="text-sm text-ink-muted">{t("admin:agentConfigSelectKnob")}</p>
         )}
 
         {tab === "knobs" ? (
           <>
-            <h3 className="mt-4 text-sm font-medium text-white">{t("admin:agentConfigChangelog")}</h3>
-            <ul className="space-y-2 text-xs text-surface-muted">
+            <h3 className="mt-wide text-sm font-medium text-ink-primary">{t("admin:agentConfigChangelog")}</h3>
+            <ul className="space-y-base text-xs text-ink-muted">
               {(events as { id?: string; at?: string; patches?: unknown[] }[]).slice(0, 10).map((ev) => (
-                <li key={ev.id} className="rounded border border-surface-border/60 p-2">
+                <li key={ev.id} className="rounded-tile border border-line/60 p-base">
                   <div>{ev.at}</div>
-                  <pre className="mt-1 overflow-auto whitespace-pre-wrap">{JSON.stringify(ev.patches, null, 2)}</pre>
+                  <pre className="mt-tight overflow-auto whitespace-pre-wrap">{JSON.stringify(ev.patches, null, 2)}</pre>
                 </li>
               ))}
             </ul>
@@ -331,58 +336,56 @@ export function AdminAgentConfig() {
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden p-4 md:p-6">
-      <header className="mb-4 shrink-0">
-        <h1 className="text-lg font-semibold text-white">{t("admin:agentConfigTitle")}</h1>
-        <p className="mt-1 text-sm text-surface-muted">{t("admin:agentConfigSubtitle")}</p>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden p-wide md:p-broad">
+      <header className="mb-wide shrink-0">
+        <h1 className="text-lg font-semibold text-ink-primary">{t("admin:agentConfigTitle")}</h1>
+        <p className="mt-tight text-sm text-ink-muted">{t("admin:agentConfigSubtitle")}</p>
         {fingerprint ? (
-          <p className="mt-2 font-mono text-xs text-surface-muted break-all">{fingerprint}</p>
+          <p className="mt-base font-mono text-xs text-ink-muted break-all">{fingerprint}</p>
         ) : null}
         {gitSha ? (
-          <p className="mt-1 font-mono text-xs text-surface-muted">
+          <p className="mt-tight font-mono text-xs text-ink-muted">
             {t("admin:agentConfigGitSha")}: {gitSha}
           </p>
         ) : null}
-        <div className="mt-3 flex flex-wrap gap-2">
-          {(["knobs", "models"] as Tab[]).map((id) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setTab(id)}
-              className={`rounded px-3 py-1 text-xs ${
-                tab === id ? "bg-white/15 text-white" : "text-surface-muted hover:bg-white/5"
-              }`}
-            >
-              {t(`admin:agentConfigTab_${id}`)}
-            </button>
-          ))}
-        </div>
+        <Tabs
+          className="mt-soft"
+          ariaLabel={t("admin:agentConfigTabsAria")}
+          value={tab}
+          onChange={(id) => setTab(id === "models" ? "models" : "knobs")}
+          items={(["knobs", "models"] as Tab[]).map((id) => ({
+            id,
+            label: t(`admin:agentConfigTab_${id}`),
+          }))}
+        />
       </header>
 
       {error ? (
-        <p className="mb-3 rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+        <p className="mb-soft rounded-tile border border-danger/40 bg-danger-subtle px-soft py-base text-sm text-badge-danger">
           {error}
         </p>
       ) : null}
 
       {loading ? (
-        <p className="text-sm text-surface-muted">{t("admin:loading")}</p>
+        <p className="text-sm text-ink-muted">{t("admin:loading")}</p>
       ) : tab === "models" ? (
-        <div className="flex min-h-0 flex-1 flex-col gap-4">
-          <p className="text-xs text-surface-muted">{t("admin:agentConfigModelsHint")}</p>
-          <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[240px_1fr]">
-            <section className="min-h-0 overflow-auto rounded-lg border border-surface-border bg-[#111] p-3">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <h2 className="text-sm font-medium text-white">{t("admin:agentConfigModelsList")}</h2>
-                <button
+        <div className="flex min-h-0 flex-1 flex-col gap-wide">
+          <p className="text-xs text-ink-muted">{t("admin:agentConfigModelsHint")}</p>
+          <div className="grid min-h-0 flex-1 gap-wide lg:grid-cols-[240px_1fr]">
+            <section className="min-h-0 overflow-auto rounded-card border border-line bg-[#111] p-soft">
+              <div className="mb-base flex items-center justify-between gap-base">
+                <h2 className="text-sm font-medium text-ink-primary">{t("admin:agentConfigModelsList")}</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   type="button"
-                  className="text-xs text-sky-400 hover:underline"
+                  className="text-xs text-accent hover:underline"
                   onClick={() => selectModelOverride(null)}
                 >
                   {t("admin:agentConfigModelsNew")}
-                </button>
+                </Button>
               </div>
-              <ul className="space-y-1 text-sm">
+              <ul className="space-y-tight text-sm">
                 {modelOverrides.map((row) => {
                   const active = modelScopeOverrideId === row.id;
                   const modelLabel = row.model?.trim() || t("admin:agentConfigModelsModelHint");
@@ -391,13 +394,13 @@ export function AdminAgentConfig() {
                       <button
                         type="button"
                         onClick={() => selectModelOverride(row)}
-                        className={`w-full rounded px-2 py-1.5 text-left ${
-                          active ? "bg-white/10 text-white" : "text-surface-muted hover:bg-white/5"
+                        className={`w-full rounded-tile px-base py-snug text-left ${
+                          active ? "bg-white/10 text-ink-primary" : "text-ink-muted hover:bg-white/5"
                         }`}
                       >
-                        <div className="font-mono text-[11px]">{row.catalog_owned_by}</div>
+                        <div className="font-mono text-meta">{row.catalog_owned_by}</div>
                         <div className="truncate text-xs opacity-80">{modelLabel}</div>
-                        {row.label ? <div className="text-[10px] opacity-60">{row.label}</div> : null}
+                        {row.label ? <div className="text-meta opacity-60">{row.label}</div> : null}
                       </button>
                     </li>
                   );
@@ -405,18 +408,18 @@ export function AdminAgentConfig() {
               </ul>
             </section>
 
-            <div className="flex min-h-0 flex-1 flex-col gap-3">
-              <section className="shrink-0 rounded-lg border border-surface-border bg-[#111] p-3">
-                <div className="grid gap-3 md:grid-cols-3">
+            <div className="flex min-h-0 flex-1 flex-col gap-soft">
+              <section className="shrink-0 rounded-card border border-line bg-[#111] p-soft">
+                <div className="grid gap-soft md:grid-cols-3">
                   <label className="block text-sm">
-                    <span className="text-xs text-surface-muted">{t("admin:agentConfigModelsProvider")}</span>
-                    <select
+                    <span className="text-xs text-ink-muted">{t("admin:agentConfigModelsProvider")}</span>
+                    <Select
                       value={modelScopeCatalog}
                       onChange={(e) => {
                         setModelScopeOverrideId(null);
                         setModelScopeCatalog(e.target.value);
                       }}
-                      className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1.5 text-sm text-white"
+                      className="mt-tight"
                     >
                       <option value="">—</option>
                       {benchProviders.map((p) => (
@@ -424,43 +427,46 @@ export function AdminAgentConfig() {
                           {p.label} ({p.catalog_owned_by})
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </label>
                   <label className="block text-sm">
-                    <span className="text-xs text-surface-muted">{t("admin:agentConfigModelsModel")}</span>
-                    <input
+                    <span className="text-xs text-ink-muted">{t("admin:agentConfigModelsModel")}</span>
+                    <TextInput
+                      mono
                       value={modelScopeModel}
                       onChange={(e) => {
                         setModelScopeOverrideId(null);
                         setModelScopeModel(e.target.value);
                       }}
                       placeholder={t("admin:agentConfigModelsModelHint")}
-                      className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1.5 font-mono text-sm text-white"
+                      className="mt-tight"
                     />
                   </label>
                   <label className="block text-sm">
-                    <span className="text-xs text-surface-muted">{t("admin:agentConfigModelsLabel")}</span>
-                    <input
+                    <span className="text-xs text-ink-muted">{t("admin:agentConfigModelsLabel")}</span>
+                    <TextInput
                       value={modelScopeLabel}
                       onChange={(e) => setModelScopeLabel(e.target.value)}
-                      className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1.5 text-sm text-white"
+                      className="mt-tight"
                     />
                   </label>
                 </div>
                 {modelScopeOverrideId ? (
-                  <button
+                  <Button
                     type="button"
+                    variant="danger"
+                    size="sm"
+                    className="mt-soft"
                     disabled={applyBusy}
                     onClick={() => void onDeleteModelOverride()}
-                    className="mt-3 rounded border border-red-500/40 px-3 py-1 text-xs text-red-200 hover:bg-red-500/10 disabled:opacity-50"
                   >
                     {t("admin:agentConfigModelsDelete")}
-                  </button>
+                  </Button>
                 ) : null}
               </section>
 
               {modelScopeCatalog.trim() ? knobEditor : (
-                <p className="text-sm text-surface-muted">{t("admin:agentConfigModelsSelect")}</p>
+                <p className="text-sm text-ink-muted">{t("admin:agentConfigModelsSelect")}</p>
               )}
             </div>
           </div>

@@ -29,10 +29,16 @@ def build_user_secrets_bootstrap_snippet(user_id: uuid.UUID | None) -> str:
 
     if not keys:
         return (
-            "## User secrets (Settings → Connections)\n\n"
-            "No per-user secrets are stored yet. If a tool needs a credential, use "
-            "**``request_user_secret``** (in-chat card) or **``save_user_secret``** when they pasted "
-            "a key in chat, or Settings → Connections — do not write keys into ``.env`` files."
+            "## User secrets\n\n"
+            "No per-user secrets are stored yet. When the user pastes a credential in chat, "
+            "call **``save_user_secret``** immediately (signed-in users; not admin-only). "
+            "Derive ``service_key`` by lowercasing the env/var name (``FOO_BAR`` → ``foo_bar``), "
+            "or use a catalog key when declared. "
+            "Use **``request_user_secret``** for an in-chat card when they have not pasted a value. "
+            "Settings → Connections is optional"
+            "Do not write keys into ``.env`` files. Project env vars use "
+            "**workspace-scoped** secrets (``scope=workspace``); ``env_bindings`` are "
+            "created automatically so bash can inject them."
         )
 
     listed = ", ".join(f"``{k}``" for k in keys)
@@ -52,10 +58,14 @@ def build_user_secrets_bootstrap_snippet(user_id: uuid.UUID | None) -> str:
     extra = ("\n".join(f"- {h}" for h in hints)) if hints else ""
     block = (
         "## User secrets (configured keys only — values are never shown)\n\n"
-        f"Stored for this signed-in user: {listed}.\n"
+        f"Stored **globally** for this signed-in user: {listed}.\n"
+        "- Project CLI env vars (LOGA3_*, DATABASE_URL, …) should use **workspace** scope; "
+        "``save_user_secret`` auto-creates ``env_bindings`` so bash injects them "
+        "(projects do not share values).\n"
         "- Do **not** ask the user to re-paste credentials for keys listed above unless a tool "
         "returns an explicit auth error for that ``service_key``.\n"
-        "- Use **``user_secrets_status``** if you need to re-check which keys exist."
+        "- Use **``user_secrets_status``** if you need to re-check which keys exist "
+        "(includes workspace-scoped keys when a project is bound)."
     )
     if extra:
         block += "\n\n" + extra

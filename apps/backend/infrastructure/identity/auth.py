@@ -6,20 +6,32 @@ from __future__ import annotations
 
 import hashlib
 import os
-import secrets
 import bcrypt
 import jwt
 import uuid
 from datetime import datetime, timedelta, timezone
 from functools import wraps
-from typing import Optional, Callable, Any
+from typing import TYPE_CHECKING, Optional, Callable, Any
 
 from fastapi import Request, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 from apps.backend.infrastructure.db import db
+from apps.backend.infrastructure.identity.api_keys import (
+    API_KEY_PREFIX,
+    create_api_key,
+    generate_api_key,
+    hash_api_key,
+    list_api_keys,
+    revoke_api_key,
+)
+from apps.backend.domain.identity.roles import effective_role
 from apps.backend.domain.shared.identity import set_identity, reset_identity
 from apps.backend.infrastructure.dashboards.dashboard_persistence import ensure_default_dashboard_for_new_user
+from apps.backend.infrastructure.access.tenant_entity_transfer import guarded_move_user_tenant
+
+if TYPE_CHECKING:
+    from apps.backend.domain.access.capabilities import AdminScope
 
 
 # JWT Configuration
@@ -156,10 +168,12 @@ def decode_access_token(token: str) -> Optional[dict]:
 
 def get_user_by_email(email: str) -> Optional[User]:
     """Get user by email"""
+    # tenant-scope: site-wide — login happens before a tenant is known, and
+    # users_email_key is unique across the instance.
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT id, email, role, created_at, password_hash
+                SELECT id, email, role, site_role, created_at, password_hash
                 FROM users
                 WHERE email = %s
             """, (email,))
@@ -169,34 +183,61 @@ def get_user_by_email(email: str) -> Optional[User]:
             return User(
                 id=row[0],
                 email=row[1],
-                role=row[2],
-                created_at=row[3],
-                password_hash=row[4],
+                role=effective_role(row[3], row[2]),
+                created_at=row[4],
+                password_hash=row[5],
             )
 
 
-def list_all_users() -> list[dict[str, Any]]:
+def _normalize_capabilities(raw: Any) -> list[str]:
+    """Normalize a JSONB capabilities value to a sorted list of lowercase slugs."""
+    if not raw:
+        return []
+    if isinstance(raw, (list, tuple)):
+        items = [str(x).strip().lower() for x in raw if str(x).strip()]
+        return sorted(set(items))
+    return []
+
+
+def list_all_users(tenant_ids: frozenset[int] | None = None) -> list[dict[str, Any]]:
     """
     All ``users`` rows for admin UI. ``email`` is nullable in the schema; do not build ``User``
     here or Pydantic rejects NULL emails.
+
+    ``tenant_ids=None`` means every tenant — pass it only for a site admin. A
+    delegated ``user.manage`` holder must pass their :meth:`AdminScope.tenant_filter`
+    result so the People list cannot read mailboxes across companies.
     """
+    where = ""
+    params: tuple[Any, ...] = ()
+    if tenant_ids is not None:
+        if not tenant_ids:
+            return []
+        placeholders = ", ".join(["%s"] * len(tenant_ids))
+        where = f"WHERE u.tenant_id IN ({placeholders}) "
+        params = tuple(sorted(tenant_ids))
+
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """
-                SELECT u.id, u.email, u.role, u.created_at, u.external_sub, u.display_name,
+                f"""
+                SELECT u.id, u.email, u.role, u.site_role, u.created_at, u.external_sub, u.display_name,
                        u.tenant_id, t.name AS tenant_name, u.discord_user_id, u.telegram_user_id,
                        COALESCE(u.workspace_quota, 10) AS workspace_quota,
                        COALESCE(u.workspace_self_allowed, false) AS workspace_self_allowed,
                        COALESCE(u.schedules_allowed, false) AS schedules_allowed,
+                       COALESCE(u.dashboards_allowed, true) AS dashboards_allowed,
+                       COALESCE(u.dashboard_quota, 1) AS dashboard_quota,
                        u.media_storage_quota_mb,
                        u.media_enabled,
                        u.media_upload_enabled,
-                       u.llm_queue_priority
+                       u.llm_queue_priority,
+                       COALESCE(u.capabilities, '[]'::jsonb) AS capabilities
                 FROM users u
                 LEFT JOIN tenants t ON t.id = u.tenant_id
-                ORDER BY u.created_at ASC NULLS LAST, u.email ASC NULLS LAST, u.external_sub ASC
-                """
+                {where}ORDER BY u.created_at ASC NULLS LAST, u.email ASC NULLS LAST, u.external_sub ASC
+                """,
+                params,
             )
             rows = cur.fetchall()
     out: list[dict[str, Any]] = []
@@ -205,6 +246,7 @@ def list_all_users() -> list[dict[str, Any]]:
             uid,
             email,
             role,
+            site_role,
             created_at,
             external_sub,
             display_name,
@@ -215,10 +257,13 @@ def list_all_users() -> list[dict[str, Any]]:
             workspace_quota,
             workspace_self_allowed,
             schedules_allowed,
+            dashboards_allowed,
+            dashboard_quota,
             media_storage_quota_mb,
             media_enabled,
             media_upload_enabled,
             llm_queue_priority,
+            capabilities,
         ) = row
         tid = int(tenant_id) if tenant_id is not None else 1
         du = str(discord_uid).strip() if discord_uid is not None else ""
@@ -227,7 +272,8 @@ def list_all_users() -> list[dict[str, Any]]:
             {
                 "id": str(uid),
                 "email": email or "",
-                "role": role,
+                "role": effective_role(site_role, role),
+                "site_role": site_role,
                 "created_at": created_at.isoformat() if created_at else "",
                 "external_sub": external_sub,
                 "display_name": display_name,
@@ -238,6 +284,8 @@ def list_all_users() -> list[dict[str, Any]]:
                 "workspace_quota": workspace_quota if workspace_quota is not None else 10,
                 "workspace_self_allowed": bool(workspace_self_allowed) if workspace_self_allowed is not None else False,
                 "schedules_allowed": bool(schedules_allowed) if schedules_allowed is not None else False,
+                "dashboards_allowed": bool(dashboards_allowed) if dashboards_allowed is not None else True,
+                "dashboard_quota": int(dashboard_quota) if dashboard_quota is not None else 1,
                 "media_storage_quota_mb": int(media_storage_quota_mb)
                 if media_storage_quota_mb is not None
                 else None,
@@ -246,6 +294,7 @@ def list_all_users() -> list[dict[str, Any]]:
                 "llm_queue_priority": int(llm_queue_priority)
                 if llm_queue_priority is not None
                 else None,
+                "capabilities": _normalize_capabilities(capabilities),
             }
         )
     return out
@@ -253,10 +302,12 @@ def list_all_users() -> list[dict[str, Any]]:
 
 def get_user_by_id(user_id: uuid.UUID) -> Optional[User]:
     """Get user by id"""
+    # tenant-scope: site-wide — canonical identity lookup; callers decide what
+    # the user's tenant permits.
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT id, email, role, created_at
+                SELECT id, email, role, site_role, created_at
                 FROM users
                 WHERE id = %s
             """, (user_id,))
@@ -266,12 +317,9 @@ def get_user_by_id(user_id: uuid.UUID) -> Optional[User]:
             return User(
                 id=row[0],
                 email=row[1],
-                role=row[2],
-                created_at=row[3],
+                role=effective_role(row[3], row[2]),
+                created_at=row[4],
             )
-
-
-API_KEY_PREFIX = "al_"
 
 
 async def get_current_user(request: Request) -> User:
@@ -312,86 +360,6 @@ def bearer_is_interactive_session(token: str) -> bool:
     its own revocation.
     """
     return bool(decode_access_token((token or "").strip()))
-
-
-def hash_api_key(token: str) -> str:
-    """Fixed-length digest for indexed DB lookup (not bcrypt — API keys are high-entropy)."""
-    return hashlib.sha256(token.encode("utf-8")).hexdigest()
-
-
-def generate_api_key() -> str:
-    """Opaque bearer secret. The prefix makes it recognisable in logs and secret scanners."""
-    return f"{API_KEY_PREFIX}{secrets.token_urlsafe(32)}"
-
-
-def create_api_key(
-    user_id: uuid.UUID,
-    name: str,
-    expires_at: Optional[datetime] = None,
-) -> tuple[str, dict[str, Any]]:
-    """Mint a key. Returns (secret, metadata) — the secret is not recoverable afterwards."""
-    token = generate_api_key()
-    with db.pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO api_keys (user_id, key_hash, name, expires_at)
-                VALUES (%s, %s, %s, %s)
-                RETURNING id, name, created_at, last_used_at, expires_at
-                """,
-                (user_id, hash_api_key(token), name, expires_at),
-            )
-            row = cur.fetchone()
-        conn.commit()
-    meta = {
-        "id": str(row[0]),
-        "name": row[1],
-        "created_at": row[2],
-        "last_used_at": row[3],
-        "expires_at": row[4],
-    }
-    return token, meta
-
-
-def list_api_keys(user_id: uuid.UUID) -> list[dict[str, Any]]:
-    """Metadata only — the secret is never stored and cannot be listed."""
-    with db.pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, name, created_at, last_used_at, expires_at
-                FROM api_keys
-                WHERE user_id = %s
-                ORDER BY created_at DESC
-                """,
-                (user_id,),
-            )
-            rows = cur.fetchall()
-        conn.commit()
-    return [
-        {
-            "id": str(r[0]),
-            "name": r[1],
-            "created_at": r[2],
-            "last_used_at": r[3],
-            "expires_at": r[4],
-            "expired": bool(r[4] and r[4] <= datetime.now(timezone.utc)),
-        }
-        for r in rows
-    ]
-
-
-def revoke_api_key(user_id: uuid.UUID, key_id: uuid.UUID) -> bool:
-    """Scoped by user_id so one user cannot revoke another's key."""
-    with db.pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "DELETE FROM api_keys WHERE id = %s AND user_id = %s",
-                (key_id, user_id),
-            )
-            deleted = cur.rowcount
-        conn.commit()
-    return deleted > 0
 
 
 def get_user_for_bearer_token(token: str) -> Optional[User]:
@@ -459,13 +427,57 @@ async def require_site_admin(request: Request) -> User:
     return user
 
 
+async def require_admin_capability(request: Request, capability: str) -> User:
+    """Require a platform/admin capability (P6, Weg B). Site admin holds all.
+
+    Fails closed for unknown capability slugs. The capability set is read from
+    ``users.capabilities`` (cumulative JSONB). Non-site-admins without the
+    granted capability are denied.
+    """
+    from apps.backend.domain.access.capabilities import (
+        ALL_ADMIN_CAPABILITIES,
+        evaluate_access,
+    )
+
+    if capability not in ALL_ADMIN_CAPABILITIES:
+        raise HTTPException(status_code=403, detail=f"unknown capability: {capability}")
+    user = await get_current_user(request)
+    if not evaluate_access(
+        site_role=db.user_site_role(user.id),
+        capabilities=db.user_capabilities(user.id),
+        capability=capability,
+    ):
+        raise HTTPException(status_code=403, detail="capability required")
+    return user
+
+
+async def require_admin_scope(request: Request, capability: str) -> AdminScope:
+    """Require ``capability`` and return the tenant range it may act within.
+
+    Same gate as :func:`require_admin_capability`, plus the confinement. The
+    capability alone only says *what* kind of admin action is allowed, never
+    *where* — a handler that creates, moves or grants against a target must check
+    that target against the returned scope.
+    """
+    from apps.backend.domain.access.capabilities import AdminScope
+
+    user = await require_admin_capability(request, capability)
+    return AdminScope.for_identity(
+        actor_id=user.id,
+        site_role=db.user_site_role(user.id),
+        tenant_id=db.user_tenant_id(user.id),
+    )
+
+
 async def require_tenant_admin(request: Request) -> User:
     from apps.backend.infrastructure.settings import operator_settings
 
     user = await get_current_user(request)
-    mode = operator_settings.deployment_mode()
-    if mode != "multi_tenant":
-        raise HTTPException(status_code=404, detail="organization admin not available in agent_system mode")
+    if not operator_settings.has_org_surface():
+        raise HTTPException(
+            status_code=404,
+            detail="organization admin not available in this deployment mode",
+        )
     tid = db.user_tenant_id(user.id)
     if db.user_is_tenant_admin(user.id, tid):
         return user
@@ -477,9 +489,11 @@ async def require_tenant_member(request: Request) -> User:
     from apps.backend.infrastructure.settings import operator_settings
 
     user = await get_current_user(request)
-    mode = operator_settings.deployment_mode()
-    if mode != "multi_tenant":
-        raise HTTPException(status_code=404, detail="organization not available in agent_system mode")
+    if not operator_settings.has_org_surface():
+        raise HTTPException(
+            status_code=404,
+            detail="organization not available in this deployment mode",
+        )
     tid = db.user_tenant_id(user.id)
     if db.user_membership_role(user.id, tid) is None:
         raise HTTPException(status_code=403, detail="tenant membership required")
@@ -513,7 +527,12 @@ def require_permission(action: str, resource_type: Optional[str] = None) -> Call
 
 
 def insert_user_with_cursor(cur, email: str, password: str, role: str = "user", tenant_id: int = 1) -> User:
-    """Insert a user row using an existing cursor (same transaction as caller)."""
+    """Insert a user row using an existing cursor (same transaction as caller).
+
+    ``site_role`` is written from the requested role — provisioning is the one place a
+    role is *granted*, not read — and the returned user's role word comes from the stored
+    pair, not from the argument.
+    """
     user_id = uuid.uuid4()
     password_hash = hash_password(password)
     external_sub = f"manual:{email}"
@@ -539,7 +558,7 @@ def insert_user_with_cursor(cur, email: str, password: str, role: str = "user", 
     return User(
         id=user_id,
         email=email,
-        role=role,
+        role=effective_role(site_role, role),
         created_at=created_at,
     )
 
@@ -555,20 +574,20 @@ def create_user(email: str, password: str, role: str = "user", tenant_id: int = 
 
 
 def update_user_tenant(user_id: uuid.UUID, tenant_id: int) -> bool:
-    """Set ``users.tenant_id``. Returns True if a row was updated."""
-    with db.pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "UPDATE users SET tenant_id = %s WHERE id = %s",
-                (tenant_id, user_id),
-            )
-            n = cur.rowcount or 0
-            conn.commit()
-    return n > 0
+    """Move a user to another tenant, keeping ``tenant_memberships`` in step.
+
+    The membership row has to follow ``users.tenant_id`` — the two are read by
+    different code paths and must not disagree. Goes through the guarded move,
+    so a person still owning tenant-visible entities is refused rather than
+    dragging company data into the new tenant.
+    """
+    return guarded_move_user_tenant(user_id, tenant_id)
 
 
 def update_user_password(user_id: uuid.UUID, password: str) -> None:
     """Update existing user password"""
+    # tenant-scope: site-wide — the caller holds the user id; password changes
+    # are not tenant-partitioned.
     password_hash = hash_password(password)
 
     with db.pool().connection() as conn:

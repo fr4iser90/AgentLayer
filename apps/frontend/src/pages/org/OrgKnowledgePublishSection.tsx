@@ -1,7 +1,10 @@
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
+import { hasOrgSurface } from "../../auth/deploymentMode";
 import { apiFetch } from "../../lib/api";
+import { TextArea, TextInput } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 type ContentResponse = {
   content?: { id?: string };
@@ -18,9 +21,9 @@ function titleFromFilename(name: string): string {
 export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () => void }) {
   const { t } = useTranslation(["org"]);
   const auth = useAuth();
-  const deploymentMode = auth.user?.deployment_mode ?? "multi_tenant";
-  const base =
-    deploymentMode === "agent_system" ? "/v1/admin/tenant-content" : "/v1/org/tenant-content";
+  const base = hasOrgSurface(auth.user)
+    ? "/v1/org/tenant-content"
+    : "/v1/admin/tenant-content";
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
@@ -96,17 +99,17 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
   }, [auth, base, onPublished, t, text, title]);
 
   return (
-    <section className="rounded-xl border border-surface-border bg-surface-raised p-5">
-      <h2 className="text-sm font-medium text-white">{t("org:knowledgePublishTitle")}</h2>
-      <p className="mt-2 text-xs text-surface-muted">{t("org:cmsSetupHint")}</p>
+    <section className="rounded-sheet border border-line bg-card p-roomy">
+      <h2 className="text-sm font-medium text-ink-primary">{t("org:knowledgePublishTitle")}</h2>
+      <p className="mt-base text-xs text-ink-muted">{t("org:cmsSetupHint")}</p>
 
-      <div className="mt-4">
-        <label className="block text-xs text-surface-muted" htmlFor="org-knowledge-title">
+      <div className="mt-wide">
+        <label className="block text-xs text-ink-muted" htmlFor="org-knowledge-title">
           {t("org:knowledgeTitleLabel")}
         </label>
-        <input
+        <TextInput
           id="org-knowledge-title"
-          className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+          className="mt-tight"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder={t("org:knowledgeTitlePlaceholder")}
@@ -114,18 +117,19 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
         />
       </div>
 
-      <label className="mt-4 block text-xs text-surface-muted" htmlFor="org-knowledge-text">
+      <label className="mt-wide block text-xs text-ink-muted" htmlFor="org-knowledge-text">
         {t("org:knowledgeTextLabel")}
       </label>
-      <textarea
+      <TextArea
+        mono
         id="org-knowledge-text"
-        className="mt-1 min-h-48 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+        className="mt-tight min-h-48"
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={t("org:knowledgeTextPlaceholder")}
       />
 
-      <div className="mt-3 flex flex-wrap items-center gap-3">
+      <div className="mt-soft flex flex-wrap items-center gap-soft">
         <input
           ref={fileInputRef}
           type="file"
@@ -133,25 +137,27 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
           className="hidden"
           onChange={(e) => onFileSelected(e.target.files?.[0])}
         />
-        <button
+        <Button
           type="button"
-          className="rounded-md border border-surface-border px-3 py-1.5 text-sm text-neutral-200 hover:bg-white/5"
+          className="px-soft py-snug text-sm hover:bg-white/5"
           onClick={() => fileInputRef.current?.click()}
         >
           {t("org:knowledgeFileButton")}
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="primary"
+          size="lg"
           type="button"
           disabled={busy}
-          className="rounded-md bg-sky-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+          className="px-wide py-snug text-sm"
           onClick={() => void publish()}
         >
           {busy ? t("org:knowledgePublishing") : t("org:cmsPublish")}
-        </button>
+        </Button>
       </div>
 
-      {msg ? <p className="mt-3 text-sm text-emerald-400/90">{msg}</p> : null}
-      {err ? <p className="mt-3 text-sm text-red-400/90">{err}</p> : null}
+      {msg ? <p className="mt-soft text-sm text-success">{msg}</p> : null}
+      {err ? <p className="mt-soft text-sm text-danger">{err}</p> : null}
     </section>
   );
 }

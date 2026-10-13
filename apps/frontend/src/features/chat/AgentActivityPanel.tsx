@@ -1,6 +1,7 @@
 import type { TFunction } from "i18next";
 import type { AgentTimelineEntry } from "./chatThreadStorage";
 import { useTranslation } from "react-i18next";
+import { Checkbox } from "../../ui/Checkbox";
 
 type Props = {
   entries: AgentTimelineEntry[];
@@ -17,8 +18,8 @@ type Props = {
 };
 
 function borderForKind(kind: string): string {
-  if (kind === "subagent_start") return "border-indigo-500/55";
-  if (kind === "subagent_done") return "border-indigo-400/45";
+  if (kind === "subagent_start") return "border-subagent/55";
+  if (kind === "subagent_done") return "border-subagent/45";
   if (kind === "tool_start") return "border-sky-500/50";
   if (kind === "tool_done") return "border-emerald-500/50";
   if (kind === "llm" || kind === "think") return "border-violet-500/45";
@@ -28,9 +29,10 @@ function borderForKind(kind: string): string {
   if (kind === "llm_queue") return "border-amber-500/45";
   if (kind === "deferred_wait" || kind === "scan_queue") return "border-orange-500/45";
   if (kind === "permission") return "border-amber-500/50";
-  if (kind === "session") return "border-neutral-600";
+  if (kind === "session") return "border-line-strong";
+  if (kind === "context_inject") return "border-amber-500/45";
   if (kind === "agent.done") return "border-emerald-600/40";
-  return "border-surface-border";
+  return "border-line";
 }
 
 function labelForKind(kind: string, tr: TFunction<"chat">): string {
@@ -47,6 +49,7 @@ function labelForKind(kind: string, tr: TFunction<"chat">): string {
   if (kind === "deferred_wait" || kind === "scan_queue") return tr("chat:activityKindDeferredWait");
   if (kind === "permission") return tr("chat:activityKindPerm");
   if (kind === "session") return tr("chat:activityKindSession");
+  if (kind === "context_inject") return tr("chat:activityKindContextInject");
   if (kind.startsWith("agent.")) return kind.replace("agent.", "");
   return kind;
 }
@@ -65,8 +68,8 @@ export function AgentActivityPanel({
   const { t } = useTranslation(["chat"]);
   const scrollClass =
     layout === "header"
-      ? "min-h-[7rem] max-h-[min(11rem,28vh)] overflow-y-auto overscroll-contain px-2.5 py-1.5"
-      : "min-h-0 max-h-32 overflow-y-auto overscroll-contain px-2.5 py-1.5";
+      ? "min-h-[7rem] max-h-[min(11rem,28vh)] overflow-y-auto overscroll-contain px-firm py-snug"
+      : "min-h-0 max-h-32 overflow-y-auto overscroll-contain px-firm py-snug";
 
   const visible = (showSubagents ? entries : entries.filter(
         (e) =>
@@ -74,22 +77,22 @@ export function AgentActivityPanel({
           e.kind !== "subagent_done" &&
           e.kind !== "subagent_step"
       )).filter(
-    (e) => e.kind !== "subagent_step" || e.stepPhase !== "done"
+    (e) =>
+      e.kind !== "context_inject" &&
+      (e.kind !== "subagent_step" || e.stepPhase !== "done")
   );
 
   return (
     <div
-      className={`flex min-h-0 flex-col overflow-hidden rounded-lg border border-white/10 bg-black/30 ${className}`}
+      className={`flex min-h-0 flex-col overflow-hidden rounded-card border border-line bg-black/30 ${className}`}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/5 px-2.5 py-1.5">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-surface-muted">
+      <div className="flex shrink-0 items-center justify-between gap-base border-b border-line-subtle px-firm py-snug">
+        <span className="text-meta font-semibold uppercase tracking-wide text-ink-muted">
           {t("chat:agentActivity")}
         </span>
         {showSubagentToggle ? (
-          <label className="flex cursor-pointer items-center gap-1.5 text-[10px] text-surface-muted">
-            <input
-              type="checkbox"
-              className="rounded border-surface-border bg-[#1a1a1a] text-indigo-500"
+          <label className="flex cursor-pointer items-center gap-snug text-meta text-ink-muted">
+            <Checkbox
               checked={showSubagents}
               onChange={(e) => onShowSubagentsChange?.(e.target.checked)}
             />
@@ -99,30 +102,30 @@ export function AgentActivityPanel({
       </div>
       <div className={scrollClass}>
         {visible.length === 0 && !loading ? (
-          <p className="text-[11px] leading-snug text-surface-muted">
+          <p className="text-meta leading-snug text-ink-muted">
             {emptyHint ?? t("chat:noActivityYet")}
           </p>
         ) : (
-          <ul className="space-y-1">
+          <ul className="space-y-tight">
             {visible.map((e) => (
               <li
                 key={e.id}
                 className={[
-                  "border-l-2 text-[11px] leading-snug",
+                  "border-l-2 text-meta leading-snug",
                   borderForKind(e.kind),
-                  e.nested ? "ml-3 pl-2" : "pl-2",
+                  e.nested ? "ml-soft pl-base" : "pl-base",
                 ].join(" ")}
               >
-                <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0">
-                  <span className="text-[9px] font-medium uppercase tracking-wide text-surface-muted">
+                <div className="flex flex-wrap items-baseline gap-x-snug gap-y-0">
+                  <span className="text-meta font-medium uppercase tracking-wide text-ink-muted">
                     {labelForKind(e.kind, t)}
                   </span>
                   {e.subagentAgentId ? (
-                    <span className="text-[9px] text-indigo-300/90">{e.subagentAgentId}</span>
+                    <span className="text-meta text-badge-subagent/90">{e.subagentAgentId}</span>
                   ) : null}
-                  <span className="text-neutral-300">{e.text}</span>
+                  <span className="text-ink-secondary">{e.text}</span>
                   {e.durationMs != null && e.durationMs >= 0 ? (
-                    <span className="tabular-nums text-neutral-500">
+                    <span className="tabular-nums text-ink-muted">
                       {e.durationMs < 1000
                         ? `${e.durationMs}ms`
                         : `${(e.durationMs / 1000).toFixed(1)}s`}
@@ -132,8 +135,8 @@ export function AgentActivityPanel({
               </li>
             ))}
             {loading ? (
-              <li className="flex items-center gap-1.5 border-l-2 border-violet-500/40 pl-2 text-[11px] text-violet-200/80">
-                <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400" />
+              <li className="flex items-center gap-snug border-l-2 border-accent/40 pl-base text-meta text-badge-accent">
+                <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-pill bg-accent" />
                 {loadingHint?.trim() || t("chat:running")}
               </li>
             ) : null}

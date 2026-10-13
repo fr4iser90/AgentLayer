@@ -61,8 +61,52 @@ def test_save_user_secret_upserts(mock_ident, mock_cfg, mock_db):
     assert out["ok"] is True
     assert out["stored"] is True
     assert out["service_key"] == sk
+    assert out.get("scope") == "global"
     mock_db.user_secret_upsert.assert_called_once_with(uid, sk, token)
 
+
+@patch("plugins.tools.platform.secrets.save_user_secret._catalog_service_keys", return_value=[])
+@patch("plugins.tools.workspace.lib.env_secret_bridge.ensure_env_binding_for_secret")
+@patch("plugins.tools.platform.secrets.save_user_secret.db")
+@patch("plugins.tools.platform.secrets.save_user_secret.config")
+@patch("plugins.tools.platform.secrets.save_user_secret.get_identity")
+def test_save_user_secret_workspace_scope(mock_ident, mock_cfg, mock_db, mock_bind, _catalog):
+    mock_cfg.SECRETS_MASTER_KEY = "test-key"
+    uid = uuid.uuid4()
+    wid = uuid.uuid4()
+    mock_ident.return_value = (1, uid)
+    mock_bind.return_value = {
+        "bound": True,
+        "env": "LOGA3_PASSWORD",
+        "service_key": "loga3_password",
+        "bindings_count": 1,
+    }
+    out = json.loads(
+        save_user_secret(
+            {"service_key": "loga3_password", "secret": "pw", "scope": "workspace"},
+            context={"workspace": {"id": str(wid), "path": "/tmp/ws"}},
+        )
+    )
+    assert out["ok"] is True
+    assert out["scope"] == "workspace"
+    assert out["workspace_id"] == str(wid)
+    assert out["env_binding"]["bound"] is True
+    assert out["env_binding"]["env"] == "LOGA3_PASSWORD"
+    mock_db.user_workspace_secret_upsert.assert_called_once_with(
+        uid, wid, "loga3_password", "pw"
+    )
+    mock_db.user_secret_upsert.assert_not_called()
+    mock_bind.assert_called_once()
+    assert mock_bind.call_args.kwargs["service_key"] == "loga3_password"
+    assert mock_bind.call_args.kwargs["workspace_id"] == wid
+
+
+def test_service_key_to_default_env_name():
+    from plugins.tools.workspace.lib.env_secret_bridge import service_key_to_default_env_name
+
+    assert service_key_to_default_env_name("loga3_password") == "LOGA3_PASSWORD"
+    assert service_key_to_default_env_name("foo-bar") == "FOO_BAR"
+    assert service_key_to_default_env_name("a.b.c") == "A_B_C"
 
 @patch("plugins.tools.platform.secrets.save_user_secret.db")
 @patch("plugins.tools.platform.secrets.save_user_secret.config")

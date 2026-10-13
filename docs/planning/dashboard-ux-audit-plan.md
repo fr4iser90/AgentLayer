@@ -2,7 +2,9 @@
 
 **Stand:** 2026-09-07 (Seed-Felder + Schedules-Crash nachgezogen)  
 **Methode:** Demo-Board mit allen Block-Typen + Demo-Daten → Playwright Chromium → Einzel-Screenshots → visuelle Bewertung.  
-**Artefakte:** `example/dashboard-ux-audit/`  
+**Artefakte:** `output/ux-audit/` (gitignored — wird bei jedem Lauf gegen eine
+lebende Instanz neu erzeugt und enthält deren Dashboard-IDs und Seed-Account-Email;
+seit 2026-09-21 nicht mehr unter `example/` versioniert)  
 **Wiederholen:** `bash scripts/run-e2e-playwright-dashboard-ux-audit.sh`
 
 **Seed-Fixes (2. Pass):** Timeline `date`/`note`, KPI `trend: up`, Media `source_kind: embed`, Friend-User für Share, 2 Scheduler-Jobs.  

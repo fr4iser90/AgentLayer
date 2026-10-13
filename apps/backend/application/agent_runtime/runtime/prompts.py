@@ -18,6 +18,7 @@ from apps.backend.application.agent_runtime.dependencies import (
     apply_repetition_guard_to_completion,
     build_retrieval_bootstrap_snippet,
     build_user_secrets_bootstrap_snippet,
+    build_workspace_agent_instructions_snippet,
     build_workspace_bound_snippet,
     dashboard_db,
     external_llm_should_failover,
@@ -191,18 +192,12 @@ def _inject_agent_system_prompt(messages: list[dict[str, Any]], agent_id: str | 
     system_prompt = agent.get("system_prompt", "")
     if not system_prompt:
         return messages
-    if not messages:
-        return [{"role": "system", "content": system_prompt}]
-    out = list(messages)
-    if out[0].get("role") == "system":
-        existing = out[0].get("content") or ""
-        out[0] = {
-            **out[0],
-            "content": (existing + "\n\n" + system_prompt).strip() if existing else system_prompt,
-        }
-    else:
-        out.insert(0, {"role": "system", "content": system_prompt})
-    return out
+    return _append_system_block(
+        messages,
+        system_prompt,
+        kind="agent_system_prompt",
+        label=f"Agent system prompt ({agent_id})",
+    )
 
 
 def _inject_system_prompt(
@@ -212,19 +207,12 @@ def _inject_system_prompt(
 ) -> list[dict[str, Any]]:
     if not system_prompt_extra:
         return messages
-    extra = system_prompt_extra
-    if not messages:
-        return [{"role": "system", "content": extra}]
-    out = list(messages)
-    if out[0].get("role") == "system":
-        existing = out[0].get("content") or ""
-        out[0] = {
-            **out[0],
-            "content": (existing + "\n\n" + extra).strip() if existing else extra,
-        }
-    else:
-        out.insert(0, {"role": "system", "content": extra})
-    return out
+    return _append_system_block(
+        messages,
+        system_prompt_extra,
+        kind="system_extra",
+        label="Platform system extra",
+    )
 
 
 _AGENTS_AUTO_WORKSPACE_FROM_GIT_URL = frozenset({"coding", "general"})
@@ -332,18 +320,7 @@ def _inject_dashboard_context(
                     "dashboard.patch_layout with set_props/set_grid on this block_id (and dashboard.read first if needed). "
                     "Do not redesign the whole board unless they ask for a full layout proposal."
                 )
-    out = list(messages)
-    if not out:
-        return [{"role": "system", "content": note}]
-    if out[0].get("role") == "system":
-        existing = out[0].get("content") or ""
-        out[0] = {
-            **out[0],
-            "content": (existing + "\n\n" + note).strip() if existing else note,
-        }
-    else:
-        out.insert(0, {"role": "system", "content": note})
-    return out
+    return _append_system_block(messages, note, kind="dashboard", label="Dashboard context")
 
 
 def _inject_user_memory_context(messages: list[dict[str, Any]], raw_dashboard_ctx: Any) -> list[dict[str, Any]]:
@@ -370,19 +347,7 @@ def _inject_user_memory_context(messages: list[dict[str, Any]], raw_dashboard_ct
         snippet = ""
     if not snippet:
         return messages
-
-    out = list(messages)
-    if not out:
-        return [{"role": "system", "content": snippet}]
-    if out[0].get("role") == "system":
-        existing = out[0].get("content") or ""
-        out[0] = {
-            **out[0],
-            "content": (existing + "\n\n" + snippet).strip() if existing else snippet,
-        }
-    else:
-        out.insert(0, {"role": "system", "content": snippet})
-    return out
+    return _append_system_block(messages, snippet, kind="user_memory", label="User memory")
 
 
 def _inject_user_secrets_bootstrap(
@@ -396,7 +361,9 @@ def _inject_user_secrets_bootstrap(
         return messages
     if not snippet:
         return messages
-    return _append_system_block(messages, snippet)
+    return _append_system_block(
+        messages, snippet, kind="secrets_bootstrap", label="Secrets bootstrap"
+    )
 
 
 def _inject_workspace_bound_context(
@@ -412,7 +379,9 @@ def _inject_workspace_bound_context(
         return messages
     if not snippet:
         return messages
-    return _append_system_block(messages, snippet)
+    return _append_system_block(
+        messages, snippet, kind="workspace_bound", label="Bound workspace"
+    )
 
 
 def _inject_workspace_retrieval_bootstrap(
@@ -434,18 +403,9 @@ def _inject_workspace_retrieval_bootstrap(
         return messages
     if not snippet:
         return messages
-    out = list(messages)
-    if not out:
-        return [{"role": "system", "content": snippet}]
-    if out[0].get("role") == "system":
-        existing = out[0].get("content") or ""
-        out[0] = {
-            **out[0],
-            "content": (existing + "\n\n" + snippet).strip() if existing else snippet,
-        }
-    else:
-        out.insert(0, {"role": "system", "content": snippet})
-    return out
+    return _append_system_block(
+        messages, snippet, kind="workspace_retrieval", label="Workspace bootstrap"
+    )
 
 
 def _inject_workspace_verify_hints(
@@ -471,19 +431,33 @@ def _inject_workspace_verify_hints(
     if not lines:
         return messages
     snippet = "\n".join(lines)
-    out = list(messages)
-    if not out:
-        return [{"role": "system", "content": snippet}]
-    if out[0].get("role") == "system":
-        existing = out[0].get("content") or ""
-        out[0] = {
-            **out[0],
-            "content": (existing + "\n\n" + snippet).strip() if existing else snippet,
-        }
-    else:
-        out.insert(0, {"role": "system", "content": snippet})
-    return out
+    return _append_system_block(
+        messages, snippet, kind="workspace_verify", label="Workspace verify policy"
+    )
 
+
+def _inject_workspace_agent_instructions(
+    messages: list[dict[str, Any]],
+    workspace: dict[str, Any] | None,
+    agent_id: str | None,
+) -> list[dict[str, Any]]:
+    """Inject bounded AGENTS.md / CLAUDE.md (untrusted; agent-scoped sections)."""
+    if not workspace or not isinstance(workspace, dict):
+        return messages
+    try:
+        snippet = build_workspace_agent_instructions_snippet(
+            workspace, agent_id=agent_id if isinstance(agent_id, str) else None
+        )
+    except Exception:
+        return messages
+    if not snippet:
+        return messages
+    return _append_system_block(
+        messages,
+        snippet,
+        kind="agents_md",
+        label="AGENTS.md / workspace instructions",
+    )
 
 from apps.backend.domain.agent_runtime.tool_catalog import (  # noqa: E402
     _CATALOG_PARAM_HINT,
@@ -512,6 +486,7 @@ __all__ = [
     '_inject_workspace_bound_context',
     '_inject_workspace_retrieval_bootstrap',
     '_inject_workspace_verify_hints',
+    '_inject_workspace_agent_instructions',
     '_merge_tools',
     '_parse_capability_hints',
     '_parse_disabled_tool_names',

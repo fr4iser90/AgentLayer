@@ -38,19 +38,19 @@ export function LegalPage() {
 
   return (
     <div className="h-full min-h-0 overflow-y-auto">
-      <div className="mx-auto max-w-3xl px-6 py-10">
-        <p className="mb-6">
-          <Link to="/login" className="text-sm text-sky-400 hover:underline">
+      <div className="mx-auto max-w-measure px-broad py-page">
+        <p className="mb-broad">
+          <Link to="/login" className="text-sm text-accent hover:underline">
             {t("legal.back")}
           </Link>
         </p>
         {loading ? (
-          <p className="text-sm text-surface-muted">{t("nav.loading")}</p>
+          <p className="text-sm text-ink-muted">{t("nav.loading")}</p>
         ) : missing || !page ? (
-          <p className="text-sm text-surface-muted">{t("legal.notFound")}</p>
+          <p className="text-sm text-ink-muted">{t("legal.notFound")}</p>
         ) : (
           <>
-            <h1 className="mb-6 text-2xl font-semibold text-white">{page.title}</h1>
+            <h1 className="mb-broad text-2xl font-semibold text-ink-primary">{page.title}</h1>
             <LegalMarkdown markdown={page.body_md} />
           </>
         )}

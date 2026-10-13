@@ -53,13 +53,13 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "list",
-            "TOOL_DESCRIPTION": "List recent scans (debug/history)." + NO_WAIT_SUFFIX,
+            "description": "List recent scans (debug/history)." + NO_WAIT_SUFFIX,
             "parameters": {
                 "type": "object",
                 "properties": {
                     "limit": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "Max scans (1–50, default 10)",
+                        "description": "Max scans (1–50, default 10)",
                     },
                 },
             },

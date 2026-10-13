@@ -11,6 +11,7 @@ from apps.backend.infrastructure.platform.config import config
 
 from plugins.tools.workspace.lib.common import (
     json_workspace_missing_error,
+    resolve_in_workspace,
     workspace_binding_from_context,
 )
 
@@ -55,7 +56,7 @@ def read_file(arguments: dict[str, Any], context: dict | None = None) -> str:
             },
             ensure_ascii=False,
         )
-    resolved = (root / rel).resolve()
+    resolved = resolve_in_workspace(root, rel)
     if not resolved.is_file():
         return json.dumps(
             {"ok": False, "error": "not a regular file", "path": rel},
@@ -146,22 +147,22 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "read_file",
-            "TOOL_DESCRIPTION": "Read a UTF-8 text file within the coding workspace. "
+            "description": "Read a UTF-8 text file within the coding workspace. "
             "Paths are relative to the coding root. Supports start_line and limit_lines for large files.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "path": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "File path relative to coding root",
+                        "description": "File path relative to coding root",
                     },
                     "start_line": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "1-based line to start from (default 1)",
+                        "description": "1-based line to start from (default 1)",
                     },
                     "limit_lines": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "If set, return only this many lines from start_line",
+                        "description": "If set, return only this many lines from start_line",
                     },
                 },
                 "required": ["path"],

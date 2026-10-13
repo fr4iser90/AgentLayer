@@ -26,9 +26,54 @@ def resource_type_label(resource_type: str, *, lang: str = "en") -> str:
 
 
 def catalog_for_api(*, lang: str = "en") -> list[dict[str, Any]]:
-    """No fixed catalog — callers use live grants or any resource_type string."""
-    _ = lang
-    return []
+    """The shareable types, read from the live adapter registry (step 5).
+
+    This used to return ``[]`` under a "no fixed catalog" rule, which left
+    the share UI and the agent tool with nothing true to show — they had to
+    hardcode types, or show nothing. The registry is now the source, because
+    the registry is what actually knows which types have an adapter that
+    enforces a grant.
+
+    Readable, not grantable. Any well-formed type id can still be stored as
+    a grant (§1.4); a type absent from this list simply has no adapter, so
+    granting it does nothing yet and reading it is refused. The list is
+    deliberately not presented as "everything you may share" — it is
+    "everything that will actually work", which is the distinction the
+    pre-registry code blurred.
+
+    Deferred import: ``registry`` imports ``canonical_resource_type`` from
+    this module at load time.
+
+    Key names follow the contract ``SharesSettings.tsx`` already codes
+    against (``id`` / ``name`` / ``policy_fields``), so feeding the existing
+    picker needs no frontend rename.
+    """
+    from apps.backend.domain.shares.registry import describe_shareable_types
+
+    return [
+        {
+            "id": entry["resource_type"],
+            "name": resource_type_label(entry["resource_type"], lang=lang),
+            "default_identifier": entry["default_identifier"],
+            "policy_fields": entry["policy_fields"],
+            "listable": entry["listable"],
+            "aliases": entry["aliases"],
+            # Empty means the type is read live and has no shape to choose.
+            # A UI that offers a projection picker should offer it only
+            # where this is non-empty, rather than assuming every shareable
+            # type has one.
+            "projection_kinds": entry["projection_kinds"],
+            "default_projection_kind": entry["default_projection_kind"],
+            # Stated rather than left for the UI to infer. A widget needs to
+            # know whether a preview exists before offering a type, and
+            # "has projection kinds" is a backend rule about what the read
+            # actually returns — re-deriving it in the caller is how the
+            # two drift the next time a type gains a projection without
+            # gaining content worth drawing.
+            "previewable": bool(entry["projection_kinds"]),
+        }
+        for entry in describe_shareable_types()
+    ]
 
 
 def resource_type_variants(resource_type: str) -> tuple[str, ...]:

@@ -64,15 +64,15 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "get_latest_release",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Get the latest published GitHub release (tag_name, name, body, URL). "
                 "Returns found=false when the repo has no releases yet."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "owner": {"type": "string", "TOOL_DESCRIPTION": "Repository owner (user or org)"},
-                    "repo": {"type": "string", "TOOL_DESCRIPTION": "Repository name without .git"},
+                    "owner": {"type": "string", "description": "Repository owner (user or org)"},
+                    "repo": {"type": "string", "description": "Repository name without .git"},
                 },
                 "required": ["owner", "repo"],
             },

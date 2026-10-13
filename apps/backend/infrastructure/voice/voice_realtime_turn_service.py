@@ -13,7 +13,7 @@ from apps.backend.infrastructure.db import db
 class _VoiceRealtimeTurnDeps:
     @staticmethod
     def user_role(user_id: uuid.UUID) -> str:
-        return db.user_role(user_id)
+        return db.user_effective_role(user_id)
 
     @staticmethod
     async def chat_completion(body: dict[str, Any], *, bearer_user_role: str | None = None) -> Any:

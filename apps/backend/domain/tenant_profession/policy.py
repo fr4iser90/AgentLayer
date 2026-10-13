@@ -42,6 +42,20 @@ _TENANT_ADMIN_CAPS = frozenset(
     }
 )
 
+# Seed map (role_kind -> capabilities). Used to migrate legacy rows and create
+# default roles. At runtime ``tenant_profession_roles.capabilities`` (stored JSONB)
+# is authoritative; ``role_kind`` is only a display/legacy label.
+_CAPABILITIES_FOR_KIND: dict[str, frozenset[str]] = _KIND_CAPABILITIES
+
+
+def capabilities_for_role_kind(kind: str) -> frozenset[str]:
+    """Authoritative capability set for a role kind.
+
+    Unknown kinds still grant base knowledge search (read-open, not write).
+    """
+    return _CAPABILITIES_FOR_KIND.get(str(kind or "").strip().lower(), frozenset({CAP_KNOWLEDGE_SEARCH}))
+
+
 DEFAULT_DEPARTMENTS: tuple[tuple[str, str], ...] = (
     ("anesthesia", "Anesthesia"),
     ("or", "Operating room"),

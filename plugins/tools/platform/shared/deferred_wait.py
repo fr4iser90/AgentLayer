@@ -123,7 +123,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "deferred_wait",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Wait for async/deferred work when estimated_time_seconds is known. "
                 "Polls poll_tool until status is terminal. Call after resolve/start when "
                 "a scan is still running; repeat as needed."
@@ -133,44 +133,44 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "estimated_time_seconds": {
                         "type": "integer",
-                        "TOOL_DESCRIPTION": "Server estimate from async API response",
+                        "description": "Server estimate from async API response",
                     },
                     "poll_tool": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Registered tool name to call each poll interval",
+                        "description": "Registered tool name to call each poll interval",
                     },
                     "poll_arguments": {
                         "type": "object",
-                        "TOOL_DESCRIPTION": "Arguments passed to poll_tool on each poll",
+                        "description": "Arguments passed to poll_tool on each poll",
                     },
                     "terminal_statuses": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "TOOL_DESCRIPTION": "Status values that end the wait (default ready/completed/failed/...)",
+                        "description": "Status values that end the wait (default ready/completed/failed/...)",
                     },
                     "status_field": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Field on poll JSON for status (default status)",
+                        "description": "Field on poll JSON for status (default status)",
                     },
                     "wait_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Optional id for UI/events (e.g. scan_id)",
+                        "description": "Optional id for UI/events (e.g. scan_id)",
                     },
                     "wait_label": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Optional label for UI (e.g. security_scan)",
+                        "description": "Optional label for UI (e.g. security_scan)",
                     },
                     "initial_status": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Status before first poll",
+                        "description": "Status before first poll",
                     },
                     "poll_interval_sec": {
                         "type": "number",
-                        "TOOL_DESCRIPTION": "Seconds between poll_tool calls (default 15)",
+                        "description": "Seconds between poll_tool calls (default 15)",
                     },
                     "skip_wait": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Skip waiting and return immediately",
+                        "description": "Skip waiting and return immediately",
                     },
                 },
                 "required": ["poll_tool"],

@@ -1,5 +1,7 @@
 import { useTranslation } from "react-i18next";
+import { Badge } from "../../ui/Badge";
 import type { DashboardOnboarding } from "./types";
+import { Button } from "../../ui/Button";
 
 const DISMISS_PREFIX = "dashboard-onboarding-dismiss:";
 
@@ -40,54 +42,56 @@ export function DashboardOnboardingBanner({
   const starters = onboarding.chat_starters ?? [];
 
   return (
-    <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4">
-      <div className="flex items-start justify-between gap-3">
+    <div className="mb-wide rounded-sheet border border-success/30 bg-success-subtle p-wide">
+      <div className="flex items-start justify-between gap-soft">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-200/90">
+          <p className="text-xs font-semibold uppercase tracking-wide text-badge-success">
             {t("dashboard:onboardingTitle")}
           </p>
-          <p className="mt-2 text-sm text-emerald-50/95">{onboarding.greeting}</p>
+          <p className="mt-base text-sm text-badge-success">{onboarding.greeting}</p>
         </div>
-        <button
+        <Button
           type="button"
-          className="shrink-0 rounded-md border border-white/10 px-2 py-1 text-[10px] text-surface-muted hover:bg-white/5"
+          className="shrink-0 px-base py-tight text-meta text-ink-muted hover:bg-white/5"
           onClick={() => {
             dismissOnboarding(dashboardId);
             onDismiss();
           }}
         >
           {t("dashboard:onboardingDismiss")}
-        </button>
+        </Button>
       </div>
 
       {steps.length > 0 ? (
-        <ul className="mt-3 flex flex-wrap gap-2">
+        <ul className="mt-soft flex flex-wrap gap-base">
           {steps.map((step) => (
-            <li
-              key={step.id}
-              className="rounded-full border border-emerald-500/25 bg-black/20 px-2.5 py-1 text-[11px] text-emerald-100/90"
-            >
-              {step.label}
+            <li key={step.id} className="flex items-center">
+              <Badge tone="success">{step.label}</Badge>
             </li>
           ))}
         </ul>
       ) : null}
 
       {!readOnly && starters.length > 0 ? (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-soft flex flex-wrap gap-base">
           {starters.map((starter) => (
-            <button
+            <Button
+              variant="plain"
+              block
               key={starter}
               type="button"
-              className="rounded-lg border border-emerald-500/35 bg-emerald-900/30 px-3 py-1.5 text-left text-xs text-emerald-50 hover:bg-emerald-800/40"
+              className="rounded-card border border-success/35 bg-success-subtle px-soft py-snug text-xs text-badge-success hover:bg-success-subtle"
               onClick={() => onStartChat(starter)}
             >
               {starter}
-            </button>
+            </Button>
           ))}
-          <button
+          <Button
+            variant="primary"
+            tone="success"
+            size="sm"
             type="button"
-            className="rounded-lg bg-emerald-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-500"
+            className="px-soft py-snug text-xs"
             onClick={() =>
               onStartChat(
                 t("dashboard:onboardingGenericStarter", {
@@ -97,7 +101,7 @@ export function DashboardOnboardingBanner({
             }
           >
             {t("dashboard:onboardingStartChat")}
-          </button>
+          </Button>
         </div>
       ) : null}
     </div>

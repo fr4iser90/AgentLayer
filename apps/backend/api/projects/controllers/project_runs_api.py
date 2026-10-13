@@ -8,10 +8,11 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from apps.backend.application.identity.use_cases.request_auth import require_admin
+from apps.backend.application.identity.use_cases.request_auth import require_admin_scope
 from apps.backend.application.scheduling.use_cases.scheduling_controller_services import normalize_coding_workflow
 from apps.backend.application.platform.use_cases.platform_controller_services import db
 from apps.backend.application.scheduling.use_cases.scheduling_controller_services import project_runs_store
+from apps.backend.domain.access.capabilities import CAP_DASHBOARD_MANAGE
 
 router = APIRouter(prefix="/v1/project-runs", tags=["project-runs"])
 
@@ -30,8 +31,8 @@ class ProjectRunCreateBody(BaseModel):
 
 @router.post("")
 async def project_run_create(request: Request, body: ProjectRunCreateBody) -> dict:
-    user = await require_admin(request)
-    tenant_id = db.user_tenant_id(user.id)
+    user = await require_admin_scope(request, CAP_DASHBOARD_MANAGE)
+    tenant_id = db.user_tenant_id(user.actor_id)
 
     instr = body.instructions.strip()
     if not instr:
@@ -51,8 +52,8 @@ async def project_run_create(request: Request, body: ProjectRunCreateBody) -> di
         wf = normalize_coding_workflow(wf_raw, require_workspace=True)
         row = project_runs_store.insert_run(
             tenant_id=tenant_id,
-            created_by_user_id=user.id,
-            execution_user_id=user.id,
+            created_by_user_id=user.actor_id,
+            execution_user_id=user.actor_id,
             scheduler_job_id=None,
             dashboard_id=ws_id,
             project_row_id=(body.project_row_id or "").strip() or None,
@@ -75,8 +76,8 @@ async def project_run_list(
     project_row_id: str | None = None,
     limit: int = 50,
 ) -> dict:
-    user = await require_admin(request)
-    tenant_id = db.user_tenant_id(user.id)
+    user = await require_admin_scope(request, CAP_DASHBOARD_MANAGE)
+    tenant_id = db.user_tenant_id(user.actor_id)
     ws_id: uuid.UUID | None = None
     if dashboard_id is not None and str(dashboard_id).strip():
         try:
@@ -94,8 +95,8 @@ async def project_run_list(
 
 @router.get("/{run_id}")
 async def project_run_get(request: Request, run_id: str) -> dict:
-    user = await require_admin(request)
-    tenant_id = db.user_tenant_id(user.id)
+    user = await require_admin_scope(request, CAP_DASHBOARD_MANAGE)
+    tenant_id = db.user_tenant_id(user.actor_id)
     try:
         rid = uuid.UUID(run_id.strip())
     except (ValueError, TypeError) as e:

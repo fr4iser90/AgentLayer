@@ -1,3 +1,5 @@
+"""Map embedded sub-agent events to the parent WebSocket."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -20,6 +22,28 @@ def _forward_subagent_tool_event(
         payload["subagent_run_id"] = sub_run_id
         payload["agent_id"] = agent_id
         notify(payload)
+        return
+    if typ == "agent.llm_delta":
+        channel = str(ev.get("channel") or "").strip().lower()
+        reasoning = ev.get("reasoning_delta")
+        delta = ev.get("delta")
+        text = ""
+        if channel == "reasoning" or (isinstance(reasoning, str) and reasoning):
+            text = str(reasoning or delta or "")
+            out_type = "agent.subagent_reasoning"
+        else:
+            text = str(delta or "")
+            out_type = "agent.subagent_delta"
+        if not text:
+            return
+        notify(
+            {
+                "type": out_type,
+                "subagent_run_id": sub_run_id,
+                "agent_id": agent_id,
+                "delta": text,
+            }
+        )
         return
     if typ not in ("agent.tool_start", "agent.tool_done"):
         return
@@ -50,6 +74,15 @@ def _forward_subagent_tool_event(
         result_error = ev.get("result_error")
         if isinstance(result_error, str) and result_error.strip():
             payload["error"] = result_error.strip()[:500]
+        result_display = ev.get("result_display")
+        if isinstance(result_display, str) and result_display.strip():
+            payload["result_display"] = result_display.strip()[:4000]
+        result_chars = ev.get("result_chars")
+        if result_chars is not None:
+            try:
+                payload["result_chars"] = int(result_chars)
+            except (TypeError, ValueError):
+                pass
     notify(payload)
 
 

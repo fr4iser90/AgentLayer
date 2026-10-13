@@ -71,6 +71,11 @@ def definition_from_yaml(
     if tool_domain is not None:
         tool_domain = str(tool_domain).strip() or None
 
+    # When set, an adapter from infrastructure/agent_runtime/external_runtimes runs the
+    # turn instead of AgentLayer's planner loop. ``None`` = AgentLayer-internal loop.
+    external_runtime_val = data.get("external_runtime")
+    external_runtime = (str(external_runtime_val).strip() or None) if external_runtime_val is not None else None
+
     if source_root is not None:
         try:
             rel_source = yaml_path.relative_to(source_root).as_posix()
@@ -86,6 +91,7 @@ def definition_from_yaml(
         "description": str(data.get("description") or ""),
         "system_prompt": _read_system_prompt(agent_dir, data),
         "tool_domain": tool_domain,
+        "external_runtime": external_runtime,
         "requires_workspace": bool(data.get("requires_workspace", False)),
         "schedulable": bool(data.get("schedulable", True)),
         "execution_context": str(data.get("execution_context") or "auto"),

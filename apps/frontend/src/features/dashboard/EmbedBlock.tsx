@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getPath, setPath } from "./dashboardDataPaths";
+import { TextInput } from "../../ui/Field";
 
 /**
  * HTTPS hostnames allowed for iframe `src`. Only these may load — no arbitrary URLs.
@@ -77,64 +78,64 @@ export function EmbedBlockBody(props: {
   const title = st.title.trim() || sectionTitle;
 
   return (
-    <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-3 md:p-4">
-      <h3 className="mb-2 text-sm font-medium text-white">{title}</h3>
+    <section className="rounded-sheet border border-line bg-card p-soft md:p-wide">
+      <h3 className="mb-base text-sm font-medium text-ink-primary">{title}</h3>
       {!readOnly ? (
-        <div className="dashboard-grid-no-drag mb-3 space-y-2">
+        <div className="dashboard-grid-no-drag mb-soft space-y-base">
           <div>
-            <label className="mb-1 block text-[10px] uppercase text-surface-muted">
+            <label className="mb-tight block text-meta uppercase text-ink-muted">
               {t("dashboard:embedTitleOptionalLabel")}
             </label>
-            <input
+            <TextInput
               type="text"
-              className="w-full rounded-lg border border-surface-border bg-black/40 px-3 py-2 text-sm text-white"
               placeholder={sectionTitle}
               value={st.title}
               onChange={(e) => patch({ title: e.target.value })}
             />
           </div>
           <div>
-            <label className="mb-1 block text-[10px] uppercase text-surface-muted">
+            <label className="mb-tight block text-meta uppercase text-ink-muted">
               {t("dashboard:embedUrlLabel")}
             </label>
-            <input
+            <TextInput
+              mono
               type="url"
-              className="w-full rounded-lg border border-surface-border bg-black/40 px-3 py-2 font-mono text-xs text-neutral-100"
+              className="text-xs"
               placeholder={t("dashboard:embedUrlPlaceholder")}
               value={st.url}
               onChange={(e) => patch({ url: e.target.value })}
             />
           </div>
-          <div className="flex flex-wrap items-end gap-2">
+          <div className="flex flex-wrap items-end gap-base">
             <div>
-              <label className="mb-1 block text-[10px] uppercase text-surface-muted">
+              <label className="mb-tight block text-meta uppercase text-ink-muted">
                 {t("dashboard:embedHeightLabel")}
               </label>
-              <input
+              <TextInput
                 type="number"
                 min={120}
                 max={2000}
                 step={20}
-                className="w-28 rounded-lg border border-surface-border bg-black/40 px-2 py-1.5 text-sm text-white"
+                className="w-28"
                 value={st.height}
                 onChange={(e) => patch({ height: Number(e.target.value) || 480 })}
               />
             </div>
           </div>
           {st.url && !allowed ? (
-            <p className="rounded-lg border border-amber-500/40 bg-amber-950/30 px-2 py-1.5 text-xs text-amber-200">
+            <p className="rounded-card border border-warning/40 bg-warning-subtle px-base py-snug text-xs text-badge-warning">
               {t("dashboard:embedUrlNotAllowed")}{" "}
               {EMBED_ALLOWED_HOSTNAMES.slice(0, 4).join(", ")} …
             </p>
           ) : null}
-          <p className="text-[10px] leading-snug text-surface-muted">
+          <p className="text-meta leading-snug text-ink-muted">
             {t("dashboard:embedGoogleCalendarHint")}
           </p>
         </div>
       ) : null}
       {allowed ? (
         <div
-          className="overflow-hidden rounded-lg border border-white/10 bg-black/40"
+          className="overflow-hidden rounded-card border border-line bg-black/40"
           style={{ height: st.height }}
         >
           <iframe
@@ -147,11 +148,11 @@ export function EmbedBlockBody(props: {
           />
         </div>
       ) : st.url && readOnly ? (
-        <p className="rounded-lg border border-red-500/30 bg-red-950/20 px-3 py-4 text-sm text-red-200">
+        <p className="rounded-card border border-danger/30 bg-danger-subtle px-soft py-wide text-sm text-badge-danger">
           {t("dashboard:embedUnavailableReadOnly")}
         </p>
       ) : !st.url ? (
-        <p className="rounded-lg border border-dashed border-white/15 py-10 text-center text-sm text-surface-muted">
+        <p className="rounded-card border border-dashed border-line-strong py-page text-center text-sm text-ink-muted">
           {readOnly
             ? t("dashboard:embedEmptyReadOnly")
             : t("dashboard:embedEmptyEditable")}

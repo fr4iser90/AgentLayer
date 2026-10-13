@@ -1,0 +1,14 @@
+# Co-located router phrases for environment.router.py — locale keys are authoring-only.
+en:
+  - environment
+  - what tools are installed
+  - is node available
+  - check runtime
+  - missing executable
+  - host toolchain
+de:
+  - umgebung
+  - welche tools
+  - ist node verfügbar
+  - runtime prüfen
+  - fehlende binaries

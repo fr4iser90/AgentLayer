@@ -1,44 +1,45 @@
 import { useOperatorSettings } from "../../../features/admin/operatorSettings/OperatorSettingsProvider";
 import { useTranslation } from "react-i18next";
+import { Checkbox } from "../../../ui/Checkbox";
+import { Select, TextArea, TextInput } from "../../../ui/Field";
 
 export function AdminInterfacesAutomationSection() {
   const { t } = useTranslation(["admin"]);
   const s = useOperatorSettings();
   if (s.loading) {
-    return <p className="text-sm text-surface-muted">{t("admin:loading")}</p>;
+    return <p className="text-sm text-ink-muted">{t("admin:loading")}</p>;
   }
   return (
     <>
-      <section className="mt-8 rounded-xl border border-surface-border bg-surface-raised p-5">
-        <h2 className="text-sm font-medium text-white">{t("admin:ifAutoSchedulerTitle")}</h2>
-        <p className="mt-2 text-xs text-surface-muted">{t("admin:ifAutoSchedulerIntro")}</p>
-        <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
-          <input
-            type="checkbox"
-            className="rounded border-surface-border"
+      <section className="mt-deep rounded-sheet border border-line bg-card p-roomy">
+        <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifAutoSchedulerTitle")}</h2>
+        <p className="mt-base text-xs text-ink-muted">{t("admin:ifAutoSchedulerIntro")}</p>
+        <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+          <Checkbox
             checked={s.schedulerEnabled}
             onChange={(e) => s.setSchedulerEnabled(e.target.checked)}
           />
           {t("admin:ifAutoSchedulerEnable")}
         </label>
-        <label className="mt-4 block text-xs text-surface-muted" htmlFor="hb-interval">
+        <label className="mt-wide block text-xs text-ink-muted" htmlFor="hb-interval">
           {t("admin:ifAutoInterval")}
         </label>
-        <input
+        <TextInput
+          mono
           id="hb-interval"
           type="number"
           min={5}
           max={1440}
-          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-tight max-w-control"
           value={s.schedulerIntervalMin}
           onChange={(e) => s.setSchedulerIntervalMin(e.target.value)}
         />
-        <label className="mt-4 block text-xs text-surface-muted" htmlFor="hb-user">
+        <label className="mt-wide block text-xs text-ink-muted" htmlFor="hb-user">
           {t("admin:ifAutoUser")}
         </label>
-        <select
+        <Select
           id="hb-user"
-          className="mt-1 w-full max-w-xl rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-tight max-w-controlWide"
           value={s.schedulerUserId}
           onChange={(e) => s.setSchedulerUserId(e.target.value)}
         >
@@ -48,111 +49,112 @@ export function AdminInterfacesAutomationSection() {
               {(u.email || u.display_name || u.id).trim() || u.id}
             </option>
           ))}
-        </select>
-        <label className="mt-4 block text-xs text-surface-muted" htmlFor="hb-model">
+        </Select>
+        <label className="mt-wide block text-xs text-ink-muted" htmlFor="hb-model">
           {t("admin:ifAutoModel")}
         </label>
-        <input
+        <TextInput
+          mono
           id="hb-model"
-          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-tight max-w-controlWide"
           value={s.schedulerModel}
           onChange={(e) => s.setSchedulerModel(e.target.value)}
           placeholder={t("admin:ifAutomationModelPlaceholder")}
         />
-        <label className="mt-4 block text-xs text-surface-muted" htmlFor="hb-rounds">
+        <label className="mt-wide block text-xs text-ink-muted" htmlFor="hb-rounds">
           {t("admin:ifAutoMaxRounds")}
         </label>
-        <input
+        <TextInput
+          mono
           id="hb-rounds"
           type="number"
           min={1}
           max={64}
-          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-tight max-w-control"
           value={s.schedulerMaxRounds}
           onChange={(e) => s.setSchedulerMaxRounds(e.target.value)}
           placeholder={t("admin:ifAutomationConcurrencyPlaceholder")}
         />
-        <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
-          <input
-            type="checkbox"
-            className="rounded border-surface-border"
+        <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+          <Checkbox
             checked={s.schedulerNotifyOnlyIfNotOk}
             onChange={(e) => s.setSchedulerNotifyOnlyIfNotOk(e.target.checked)}
           />
           {t("admin:ifAutoNotifyOnly")}
         </label>
-        <label className="mt-4 block text-xs text-surface-muted" htmlFor="hb-out">
+        <label className="mt-wide block text-xs text-ink-muted" htmlFor="hb-out">
           {t("admin:ifAutoMaxOutbound")}
         </label>
-        <input
+        <TextInput
+          mono
           id="hb-out"
           type="number"
           min={0}
           max={100000}
-          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-tight max-w-control"
           value={s.schedulerMaxOutbound}
           onChange={(e) => s.setSchedulerMaxOutbound(e.target.value)}
         />
-        <label className="mt-4 block text-xs text-surface-muted" htmlFor="hb-pkg">
+        <label className="mt-wide block text-xs text-ink-muted" htmlFor="hb-pkg">
           {t("admin:ifAutoPackages")}
         </label>
-        <input
+        <TextInput
+          mono
           id="hb-pkg"
-          className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-tight"
           value={s.schedulerPackages}
           onChange={(e) => s.setSchedulerPackages(e.target.value)}
           placeholder={t("admin:ifAutomationPluginsPlaceholder")}
         />
-        <label className="mt-4 block text-xs text-surface-muted" htmlFor="hb-llm">
+        <label className="mt-wide block text-xs text-ink-muted" htmlFor="hb-llm">
           {t("admin:ifAutoLlmBackend")}
         </label>
-        <select
+        <Select
           id="hb-llm"
-          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-tight max-w-control"
           value={s.schedulerLlmBackend}
           onChange={(e) => s.setSchedulerLlmBackend(e.target.value)}
         >
           <option value="inherit">{t("admin:ifAutoLlmInherit")}</option>
           <option value="provider">{t("admin:ifAutoLlmProvider")}</option>
           <option value="provider_db">{t("admin:ifAutoLlmProviderDb")}</option>
-        </select>
-        <label className="mt-4 block text-xs text-surface-muted" htmlFor="hb-tools">
+        </Select>
+        <label className="mt-wide block text-xs text-ink-muted" htmlFor="hb-tools">
           {t("admin:ifAutoToolsMode")}
         </label>
-        <select
+        <Select
           id="hb-tools"
-          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-tight max-w-control"
           value={s.schedulerToolsMode}
           onChange={(e) => s.setSchedulerToolsMode(e.target.value)}
         >
           <option value="none">{t("admin:ifAutoToolsNone")}</option>
           <option value="allowlist">{t("admin:ifAutoToolsAllowlist")}</option>
           <option value="full">{t("admin:ifAutoToolsFull")}</option>
-        </select>
-        <p className="mt-4 rounded-md border border-white/10 bg-black/20 px-3 py-2 text-xs text-surface-muted">
+        </Select>
+        <p className="mt-wide rounded-tile border border-line bg-black/20 px-soft py-base text-xs text-ink-muted">
           {t("admin:ifAutoLegacyNote")}
         </p>
-        <label className="mt-4 block text-xs text-surface-muted" htmlFor="hb-instr">
+        <label className="mt-wide block text-xs text-ink-muted" htmlFor="hb-instr">
           {t("admin:ifAutoInstructions")}
         </label>
-        <textarea
+        <TextArea
+          mono
           id="hb-instr"
           rows={4}
-          className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-tight"
           value={s.schedulerInstructions}
           onChange={(e) => s.setSchedulerInstructions(e.target.value)}
           placeholder={t("admin:ifAutomationHeartbeatPlaceholder")}
         />
-        <p className="mt-6 text-xs font-medium uppercase tracking-wide text-surface-muted">
+        <p className="mt-broad text-xs font-medium uppercase tracking-wide text-ink-muted">
           {t("admin:ifAutoPersistedJobs")}
         </p>
-        <p className="mt-1 text-xs text-surface-muted">
+        <p className="mt-tight text-xs text-ink-muted">
           {t("admin:ifAutoPersistedJobsIntro")} {t("admin:ifAutomationDbHint")}
         </p>
-        <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-white">
-          <input
-            type="checkbox"
-            className="rounded border-surface-border"
+        <label className="mt-soft flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+          <Checkbox
             checked={s.schedulerJobsWorkerEnabled}
             onChange={(e) => s.setSchedulerJobsWorkerEnabled(e.target.checked)}
           />

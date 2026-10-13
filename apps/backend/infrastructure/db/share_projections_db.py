@@ -1,0 +1,258 @@
+"""Persistence for owner-published share projections (ADR 0014 step 6).
+
+Implements the ``ShareProjectionStore`` port from
+``apps.backend.domain.shares.projections``. The domain never sees this
+module; the service that registers it does.
+
+Every read here is keyed on the **owner**. There is deliberately no
+by-grantee lookup, because a lookup path that accepts a grantee id is a
+lookup path where someone can eventually be talked into passing the wrong
+one. Authorization happens above; this layer only answers "what did this
+owner publish".
+"""
+
+from __future__ import annotations
+
+import json
+import uuid
+from datetime import datetime
+from typing import Any
+
+from psycopg.rows import dict_row
+
+from apps.backend.infrastructure.db.db import pool
+
+_TABLE = "share_projections"
+
+
+def _payload(raw: Any) -> dict[str, Any]:
+    """Normalise the JSONB column.
+
+    The driver hands back a dict for JSONB, but a row written by an older
+    path or a manual insert can arrive as a string, and a projection that
+    silently reads as empty is worse than one that fails loudly upstream.
+    """
+    if isinstance(raw, dict):
+        return dict(raw)
+    if isinstance(raw, str) and raw.strip():
+        try:
+            parsed = json.loads(raw)
+            return dict(parsed) if isinstance(parsed, dict) else {}
+        except (ValueError, TypeError):
+            return {}
+    return {}
+
+
+def projection_get(
+    *, owner_user_id: uuid.UUID, resource_type: str, resource_identifier: str
+) -> dict[str, Any] | None:
+    with pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                f"""
+                SELECT owner_user_id, resource_type, resource_identifier,
+                       projection_kind, payload, generated_at, expires_at
+                FROM {_TABLE}
+                WHERE owner_user_id = %s
+                  AND resource_type = %s
+                  AND resource_identifier = %s
+                LIMIT 1
+                """,
+                (owner_user_id, resource_type, resource_identifier),
+            )
+            row = cur.fetchone()
+    if not row:
+        return None
+    out = dict(row)
+    out["payload"] = _payload(out.get("payload"))
+    return out
+
+
+def projection_upsert(
+    *,
+    owner_user_id: uuid.UUID,
+    resource_type: str,
+    resource_identifier: str,
+    kind: str,
+    payload: dict[str, Any],
+    expires_at: datetime,
+) -> None:
+    """Replace the owner's projection for one resource.
+
+    A single upsert rather than read-modify-write: two publishes racing must
+    not interleave into a payload that is half one narrowing and half the
+    other.
+    """
+    with pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                INSERT INTO {_TABLE}
+                    (owner_user_id, resource_type, resource_identifier,
+                     projection_kind, payload, generated_at, expires_at)
+                VALUES (%s, %s, %s, %s, %s::jsonb, now(), %s)
+                ON CONFLICT (owner_user_id, resource_type, resource_identifier)
+                DO UPDATE SET
+                    projection_kind = EXCLUDED.projection_kind,
+                    payload = EXCLUDED.payload,
+                    generated_at = now(),
+                    expires_at = EXCLUDED.expires_at
+                """,
+                (
+                    owner_user_id,
+                    resource_type,
+                    resource_identifier,
+                    kind,
+                    json.dumps(payload),
+                    expires_at,
+                ),
+            )
+        conn.commit()
+
+
+def projection_delete_cursor(
+    cur: Any,
+    *,
+    owner_user_id: uuid.UUID,
+    resource_type: str,
+    resource_identifier: str,
+) -> int:
+    """Delete on a cursor the caller owns.
+
+    This exists so the revoke cascade can delete inside *its* transaction.
+    A cascade that opens its own connection commits ahead of the revoke it
+    is cascading from, which is worse than no cascade: if the revoke then
+    rolls back, the projection is gone while the grant survives.
+    """
+    cur.execute(
+        f"""
+        DELETE FROM {_TABLE}
+        WHERE owner_user_id = %s
+          AND resource_type = %s
+          AND resource_identifier = %s
+        """,
+        (owner_user_id, resource_type, resource_identifier),
+    )
+    return int(cur.rowcount or 0)
+
+
+def projection_delete(
+    *, owner_user_id: uuid.UUID, resource_type: str, resource_identifier: str
+) -> int:
+    with pool().connection() as conn:
+        with conn.cursor() as cur:
+            deleted = projection_delete_cursor(
+                cur,
+                owner_user_id=owner_user_id,
+                resource_type=resource_type,
+                resource_identifier=resource_identifier,
+            )
+        conn.commit()
+    return deleted
+
+
+def projection_list_for_owner(*, owner_user_id: uuid.UUID) -> list[dict[str, Any]]:
+    """Everything this owner has published, for their own settings screen.
+
+    By-owner, never by-grantee. The owner is choosing what shape their own
+    resource has, and that question has one answer per resource rather
+    than one per friend — which is exactly why the picker cannot live in
+    the per-friend share editor without implying something that is not true.
+
+    The payload is not selected. The screen shows the shape's name and
+    whether it is current, not its contents.
+    """
+    with pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                f"""
+                SELECT resource_type, resource_identifier, projection_kind,
+                       generated_at, expires_at
+                FROM {_TABLE}
+                WHERE owner_user_id = %s
+                ORDER BY resource_type, resource_identifier
+                """,
+                (owner_user_id,),
+            )
+            rows = cur.fetchall()
+    return [dict(r) for r in rows]
+
+
+def projection_list_due(*, limit: int = 20, within_seconds: int = 300) -> list[dict[str, Any]]:
+    """Rows whose freshness bound falls inside the refresh window.
+
+    Already-expired rows are included: the predicate is "expires by
+    ``now() + W``" and a row past ``now()`` satisfies it. Oldest-first so
+    a pass with a small limit clears the most overdue work before the
+    merely upcoming, which is the order a backlog should drain in.
+
+    The payload is deliberately not selected. This runs on a timer over
+    every projection in the database, and pulling each row's full narrowed
+    view to decide whether it needs republishing is the kind of query that
+    is fine at ten rows and expensive at ten thousand.
+    """
+    try:
+        capped = max(1, min(int(limit), 500))
+    except (TypeError, ValueError):
+        capped = 20
+    try:
+        window = max(0, min(int(within_seconds), 24 * 60 * 60))
+    except (TypeError, ValueError):
+        window = 300
+
+    with pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                f"""
+                SELECT owner_user_id, resource_type, resource_identifier,
+                       projection_kind, expires_at
+                FROM {_TABLE}
+                WHERE expires_at <= now() + make_interval(secs => %s)
+                ORDER BY expires_at ASC
+                LIMIT {capped}
+                """,
+                (window,),
+            )
+            rows = cur.fetchall()
+    return [dict(r) for r in rows]
+
+
+def projection_delete_expired(*, limit: int = 200, grace_seconds: int = 0) -> int:
+    """Bulk-remove projections past their bound plus a retention grace.
+
+    Bounded by ``limit`` because this runs on a timer: an unbounded delete
+    on a table that happens to be large would hold a write lock for as long
+    as it takes, and this is a janitor, not a migration.
+
+    ``grace_seconds`` shifts the cut off the freshness bound. Deleting at
+    ``expires_at <= now()`` would remove the rows a failed refresh just
+    produced, which are the stale fallback a grantee is answered from
+    during an upstream outage. The read path enforces the same bound in
+    ``StoredProjection.is_retained``; this only stops rows nobody read
+    from piling up.
+    """
+    try:
+        capped = max(1, min(int(limit), 5000))
+    except (TypeError, ValueError):
+        capped = 200
+    try:
+        grace = max(0, min(int(grace_seconds), 30 * 24 * 60 * 60))
+    except (TypeError, ValueError):
+        grace = 0
+    with pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                DELETE FROM {_TABLE}
+                WHERE (owner_user_id, resource_type, resource_identifier) IN (
+                    SELECT owner_user_id, resource_type, resource_identifier
+                    FROM {_TABLE}
+                    WHERE expires_at <= now() - make_interval(secs => %s)
+                    LIMIT {capped}
+                )
+                """,
+                (grace,),
+            )
+            deleted = cur.rowcount
+        conn.commit()
+    return int(deleted or 0)

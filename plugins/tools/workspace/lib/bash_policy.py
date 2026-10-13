@@ -123,6 +123,37 @@ _ENV_ASSIGN_PREFIX = re.compile(
 
 _BARE_SHELL_BUILTINS = frozenset({"cd", "export", "test", "true", "false", "[", "]", "exec"})
 
+# Builtins that are not OS executables under ``subprocess shell=False`` (unlike ``true``/``test``).
+_UNSUPPORTED_SHELL_BUILTINS = frozenset(
+    {
+        "cd",
+        "export",
+        "source",
+        ".",
+        "alias",
+        "declare",
+        "typeset",
+        "readonly",
+        "local",
+        "unset",
+        "set",
+        "eval",
+        "pushd",
+        "popd",
+        "dirs",
+        "exec",
+        "ulimit",
+        "umask",
+        "wait",
+        "fg",
+        "bg",
+        "jobs",
+        "shift",
+        "getopts",
+        "read",
+    }
+)
+
 _SECRET_ENV_MARKERS = (
     "SECRET",
     "PASSWORD",
@@ -180,6 +211,7 @@ _SAFE_ENV_PREFIXES = (
     "BUN_",
     "COMPOSE_",
     "DOCKER_",
+    "PLAYWRIGHT_",
 )
 
 
@@ -211,6 +243,111 @@ def is_blocked(command: str) -> str | None:
             return f"command blocked: matches dangerous pattern '{_BLOCKED_PATTERNS[i]}' (2)"
     return None
 
+
+def unsupported_shell_chain_reason(command: str) -> str | None:
+    """Reject shell chaining — commands run with ``shell=False``."""
+    raw = command or ""
+    if not raw.strip():
+        return None
+    # Detect common shell operators that shlex.split would turn into fake argv tokens.
+    if re.search(r"(?<!\|)\|\|(?!\|)", raw) or re.search(r"&&", raw):
+        return (
+            "shell operators not supported: `&&` / `||` cannot run "
+            "(commands use shell=False). Issue one simple command per bash call."
+        )
+    # `;` with or without surrounding spaces (e.g. `sleep 5;ls`)
+    if re.search(r"(?<![;&|]);(?![;&|])", raw):
+        return (
+            "shell operators not supported: `;` cannot run "
+            "(commands use shell=False). Issue one simple command per bash call."
+        )
+    # background `&` (not `&&` / `>&` / `2>&1` — those handled by redirect strip/reject)
+    if re.search(r"(?<![>&|])&(?![>&|])", raw):
+        return (
+            "shell operators not supported: background `&` cannot run "
+            "(commands use shell=False). Issue one simple command per bash call."
+        )
+    if re.search(r"(?<!\|)\|(?!\|)", raw):
+        return (
+            "shell pipes not supported: `|` cannot run under shell=False. "
+            "Run one command per bash call."
+        )
+    return None
+
+
+# No-op redirects under coding bash (stdout/stderr already captured by subprocess).
+_NOOP_REDIRECT_PATTERNS = (
+    re.compile(r"(?:(?<=\s)|^)2>&1(?=\s|$)"),
+    re.compile(r"(?:(?<=\s)|^)&>\s*/dev/null(?=\s|$)"),
+    re.compile(r"(?:(?<=\s)|^)&>(?=\s|$)"),
+    re.compile(r"(?:(?<=\s)|^)\d?>>?\s*/dev/null(?=\s|$)"),
+    re.compile(r"(?:(?<=\s)|^)\d?>>?/dev/null(?=\s|$)"),
+    re.compile(r"(?:(?<=\s)|^)\d?>&\d+(?=\s|$)"),
+)
+
+
+def strip_noop_shell_redirects(command: str) -> tuple[str, bool]:
+    """
+    Remove common redirects that coding bash already captures.
+
+    Returns ``(cleaned_command, did_strip)``. Does not touch pipes or chains.
+    """
+    raw = (command or "").strip()
+    if not raw:
+        return raw, False
+    cleaned = raw
+    for pat in _NOOP_REDIRECT_PATTERNS:
+        cleaned = pat.sub(" ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned, cleaned != raw
+
+
+def prepare_coding_bash_command(command: str) -> tuple[str | None, str | None, bool]:
+    """
+    Sanitize then validate a coding bash command.
+
+    Returns ``(cleaned_or_None, error_or_None, redirects_stripped)``.
+    """
+    cleaned, stripped = strip_noop_shell_redirects(command)
+    chain_err = unsupported_shell_chain_reason(cleaned)
+    if chain_err:
+        return None, chain_err, stripped
+    # Leftover file redirects (e.g. `> out.txt`) are not safe to auto-strip
+    if re.search(r"(?:(?<=\s)|^)\d?>>?(?![&=])\s*\S", cleaned):
+        return (
+            None,
+            (
+                "shell redirects not supported under shell=False. "
+                "Omit `>` / `2>` — stderr/stdout are already captured; "
+                "write files with coding tools instead of shell redirects."
+            ),
+            stripped,
+        )
+    return cleaned, None, stripped
+
+
+def unsupported_shell_builtin_reason(command: str) -> str | None:
+    """Reject shell builtins that cannot run under ``subprocess.run(..., shell=False)``."""
+    chain = unsupported_shell_chain_reason(command)
+    if chain:
+        return chain
+    word = _first_word(command).strip()
+    if not word:
+        return None
+    # Basename for accidental absolute paths like /usr/bin/cd (still not useful).
+    bare = word.rsplit("/", 1)[-1].lower()
+    if bare not in _UNSUPPORTED_SHELL_BUILTINS and word.lower() not in _UNSUPPORTED_SHELL_BUILTINS:
+        return None
+    if bare == "cd" or word.lower() == "cd":
+        return (
+            "shell builtin not supported: `cd` cannot run (commands use shell=False). "
+            "Pass a relative `workdir` on the bash tool instead, e.g. "
+            '{"command": "ls", "workdir": "bin"}.'
+        )
+    return (
+        f"shell builtin not supported: `{bare}` is not an OS executable under shell=False. "
+        "Run one real program per call; use `workdir` instead of `cd`."
+    )
 
 def strict_allowed_prefixes() -> frozenset[str]:
     from apps.backend.infrastructure.platform.config import config

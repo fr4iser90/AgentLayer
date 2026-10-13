@@ -17,6 +17,7 @@ from apps.backend.infrastructure.settings.operator_settings import (
     normalize_scheduler_tools_mode,
 )
 from apps.backend.infrastructure.settings.operator_settings_llm_transport import normalize_model_catalog_owned_by
+from apps.backend.infrastructure.settings.operator_settings_forms import DEPLOYMENT_MODES
 from apps.backend.infrastructure.db import db
 
 logger = logging.getLogger(__name__)
@@ -26,9 +27,35 @@ def delegate_enabled() -> bool:
     return bool(_cached_row().get("delegate_enabled", True))
 
 
+def friend_system_enabled() -> bool:
+    """Operator kill-switch for friendship and peer sharing (default true).
+
+    Coarse on purpose. There is no per-user or per-tenant granularity here: the
+    subsystem has no per-user entitlement column, and friendship is deliberately
+    cross-tenant, so neither level would have anything to key on.
+    """
+    return bool(_cached_row().get("friend_system_enabled", True))
+
+
 def deployment_mode() -> str:
     v = str(_cached_row().get("deployment_mode") or "multi_tenant").strip().lower()
-    return v if v in ("agent_system", "multi_tenant") else "multi_tenant"
+    return v if v in DEPLOYMENT_MODES else "multi_tenant"
+
+
+def has_org_surface() -> bool:
+    """Whether the organization (/org) product surface exists.
+
+    Prefer this over ``deployment_mode() != "multi_tenant"``. The bare
+    comparison answers "is this not multi_tenant", which silently answers for
+    every mode that gets added later; this one answers the question that was
+    actually meant, so a new mode has to be considered here on purpose.
+    """
+    return deployment_mode() == "multi_tenant"
+
+
+def is_single_user() -> bool:
+    """One person: no user administration, tenant picker or /org surface."""
+    return deployment_mode() == "single_user"
 
 
 def rag_docs_ingest_fingerprint() -> str:
@@ -362,47 +389,11 @@ def effective_dashboard_upload_mime() -> frozenset[str]:
     return app_config.WORKSPACE_upload_env_allowed_mime()
 
 
-def pidea_effective_enabled() -> bool:
-    """DB ``pidea_enabled`` unless :envvar:`AGENT_PIDEA_ENABLED` overrides (true/false)."""
-    raw = (os.environ.get("AGENT_PIDEA_ENABLED") or "").strip().lower()
-    if raw in ("0", "false", "no", "off"):
-        return False
-    if raw in ("1", "true", "yes", "on"):
-        return True
-    return bool(_cached_row().get("pidea_enabled", False))
-
-
-# def resolved_pidea_connection_config() -> Any:
-#     """``ConnectionConfig`` for PIDEA (DB overrides, sonst ``config``)."""
-#     from apps.backend.infrastructure.integrations.pidea.types import ConnectionConfig
-
-#     r = _cached_row()
-#     cdp = (
-#         str(r.get("pidea_cdp_http_url") or "").strip().rstrip("/")
-#         or str(getattr(config, "PIDEA_CDP_HTTP_URL", "") or "").strip().rstrip("/")
-#         or "http://0.0.0.0:9222"
-#     )
-#     ide = (
-#         str(r.get("pidea_selector_ide") or "").strip().lower()
-#         or str(getattr(config, "PIDEA_SELECTOR_IDE", "cursor") or "").strip().lower()
-#     )
-#     ver = (
-#         str(r.get("pidea_selector_version") or "").strip()
-#         or str(getattr(config, "PIDEA_SELECTOR_VERSION", "1.7.17") or "").strip()
-#     )
-#     timeout = int(getattr(config, "PIDEA_DEFAULT_TIMEOUT_MS", 30_000))
-#     return ConnectionConfig(
-#         cdp_http_url=cdp,
-#         selector_ide=ide,
-#         selector_version=ver,
-#         default_timeout_ms=timeout,
-#     )
-
-
 def public_dict() -> dict[str, Any]:
     from apps.backend.infrastructure.settings.operator_voice_settings_service import voice_settings_public_fields
     from apps.backend.infrastructure.providers.extractor_catalog_providers import extractor_providers_public_fields
     from apps.backend.infrastructure.media.operator_media_settings import media_settings_public_fields
+    from apps.backend.infrastructure.platform.chat_storage_quota import chat_quota_settings_public_fields
 
     r = _cached_row()
     dtok = (r.get("discord_bot_token") or "").strip()
@@ -477,11 +468,6 @@ def public_dict() -> dict[str, Any]:
         "rag_tenant_shared_domains": (str(r.get("rag_tenant_shared_domains") or "").strip()),
         "rag_tenant_shared_domains_effective": sorted(effective_rag_tenant_shared_domains()),
         "docs_root": (str(r.get("docs_root") or "").strip()),
-        "pidea_enabled": bool(r.get("pidea_enabled", False)),
-        "pidea_effective_enabled": pidea_effective_enabled(),
-        "pidea_cdp_http_url": (str(r.get("pidea_cdp_http_url") or "").strip()),
-        "pidea_selector_ide": (str(r.get("pidea_selector_ide") or "").strip()),
-        "pidea_selector_version": (str(r.get("pidea_selector_version") or "").strip()),
         "expose_internal_errors": bool(r.get("expose_internal_errors", False)),
         "http_client_log_level": _normalize_http_client_log_level_str(r.get("http_client_log_level")),
         "scheduler_enabled": bool(r.get("scheduler_enabled", False)),
@@ -496,13 +482,8 @@ def public_dict() -> dict[str, Any]:
         "scheduler_allowed_tool_packages": (str(r.get("scheduler_allowed_tool_packages") or "").strip()),
         "scheduler_llm_backend": normalize_scheduler_llm_backend(r.get("scheduler_llm_backend")),
         "scheduler_tools_mode": normalize_scheduler_tools_mode(r.get("scheduler_tools_mode")),
-        "scheduler_pidea_enabled": bool(r.get("scheduler_pidea_enabled", False)),
         "scheduler_instructions": (str(r.get("scheduler_instructions") or "").strip()),
         "scheduler_jobs_worker_enabled": bool(r.get("scheduler_jobs_worker_enabled", True)),
-        "scheduler_jobs_ide_pidea_enabled": bool(r.get("scheduler_jobs_ide_pidea_enabled", True)),
-        "scheduler_jobs_ide_pidea_timeout_sec": _bound_float(
-            r.get("scheduler_jobs_ide_pidea_timeout_sec"), 300.0, 30.0, 900.0
-        ),
         "workspace_allow_self_editing": bool(r.get("workspace_allow_self_editing", False)),
         "workspace_index_on_write_default": str(r.get("workspace_index_on_write_default") or "debounced"),
         "workspace_reindex_after_git_pull": bool(r.get("workspace_reindex_after_git_pull", False)),
@@ -524,7 +505,10 @@ def public_dict() -> dict[str, Any]:
         "legal_impressum_md": (str(r.get("legal_impressum_md") or "").strip()),
         "legal_privacy_md": (str(r.get("legal_privacy_md") or "").strip()),
         "legal_terms_md": (str(r.get("legal_terms_md") or "").strip()),
+        "dashboards_allowed": bool(r.get("dashboards_allowed", True)),
+        "friend_system_enabled": bool(r.get("friend_system_enabled", True)),
         **media_settings_public_fields(),
+        **chat_quota_settings_public_fields(),
         **voice_settings_public_fields(),
     }
 

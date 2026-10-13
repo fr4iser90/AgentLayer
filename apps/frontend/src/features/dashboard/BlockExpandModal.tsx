@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { blockExpandTitle } from "./blockRegistry";
 import { DashboardBlockTile } from "./DashboardBlocks";
 import type { UiBlock } from "./types";
+import { Button } from "../../ui/Button";
 
 export function BlockExpandModal(props: {
   block: UiBlock;
@@ -33,23 +34,23 @@ export function BlockExpandModal(props: {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex flex-col bg-neutral-950/98"
+      className="fixed inset-0 z-modal flex flex-col bg-neutral-950/98"
       role="dialog"
       aria-modal="true"
       aria-label={t("dashboard:blockExpandDialogLabel", { title })}
     >
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-6">
-        <h2 className="min-w-0 truncate text-sm font-medium text-white sm:text-base">{title}</h2>
-        <button
+      <header className="flex shrink-0 items-center justify-between gap-soft border-b border-line px-wide py-soft sm:px-broad">
+        <h2 className="min-w-0 truncate text-sm font-medium text-ink-primary sm:text-base">{title}</h2>
+        <Button
           type="button"
-          className="shrink-0 rounded-lg bg-white/10 px-3 py-1.5 text-sm text-white hover:bg-white/20"
+          className="shrink-0 bg-white/10 px-soft py-snug text-sm hover:bg-white/20"
           onClick={onClose}
         >
           {t("dashboard:blockExpandClose")}
-        </button>
+        </Button>
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 sm:p-6">
-        <div className="mx-auto max-w-6xl rounded-xl border border-surface-border bg-surface-raised/90 p-3 sm:p-4">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-wide sm:p-broad">
+        <div className="mx-auto max-w-pageWide rounded-sheet border border-line bg-card p-soft sm:p-wide">
           <DashboardBlockTile
             block={block}
             data={data}

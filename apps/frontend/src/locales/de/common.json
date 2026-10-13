@@ -8,15 +8,27 @@
     "chat": "Chat",
     "studio": "Bildgenerierung",
     "dashboard": "Arbeitsbereich",
+    "projects": "Projekte",
     "schedules": "Zeitpläne",
     "tasks": "Aufgaben",
     "shares": "Shares",
-    "connections": "Verbindungen",
-    "more": "Mehr",
-    "signIn": "Anmelden"
+    "friends": "Friends",
+    "docs": "Dokumentation",
+    "github": "GitHub",
+    "signIn": "Anmelden",
+    "sectionsAria": "Bereiche",
+    "workspace": "Arbeitsbereich",
+    "sharing": "Freigaben",
+    "resources": "Hilfe",
+    "management": "Verwaltung",
+    "admin": "Plattform-Admin",
+    "org": "Organisation",
+    "backToApp": "Zurück zur App",
+    "openMenu": "Menü öffnen",
+    "expandGroup": "{{group}}-Seiten einblenden",
+    "collapseGroup": "{{group}}-Seiten ausblenden"
   },
   "footer": {
-    "github": "GitHub",
     "docs": "Dokumentation",
     "brand": "Agent Layer"
   },
@@ -27,9 +39,6 @@
   "settings": "Einstellungen",
   "userMenu": {
     "account": "Konto",
-    "settings": "Einstellungen",
-    "organization": "Organisation",
-    "platformAdmin": "Plattform-Admin",
     "signOut": "Abmelden"
   },
   "language": {
@@ -46,6 +55,7 @@
     "hubTitle": "Arbeitsbereich",
     "hubIntro": "Dieser Tenant nutzt eine vom Operator konfigurierte, eingeschränkte Oberfläche.",
     "hubDashboardDesc": "Boards und Rechner, die für Ihre Organisation freigeschaltet sind",
+    "hubProjectsDesc": "Deine Coding-Workspaces — Dateien browsen, löschen und bereinigen",
     "hubChatDesc": "Chat mit den für diesen Tenant erlaubten Agenten"
   },
   "docs": {
@@ -73,5 +83,29 @@
     "result": "Ergebnis",
     "generatedImageAlt": "Generiertes Bild",
     "noPresetSelected": "Kein Preset ausgewählt."
+  },
+  "toast": {
+    "region": "Benachrichtigungen",
+    "bannerRegion": "Wichtige Meldungen",
+    "dismiss": "Meldung schließen"
+  },
+  "modal": {
+    "close": "Dialog schließen"
+  },
+  "drawer": {
+    "close": "Bereich schließen"
+  },
+  "errorBoundary": {
+    "title": "Dieser Bereich hat aufgehört zu antworten",
+    "hint": "Der Rest der App funktioniert — erneut versuchen oder eine andere Seite öffnen.",
+    "retry": "Erneut versuchen"
+  },
+  "session": {
+    "expiredTitle": "Sitzung abgelaufen",
+    "expiredBody": "Melde dich erneut an, um weiterzuarbeiten.",
+    "signIn": "Anmelden",
+    "networkTitle": "Server nicht erreichbar",
+    "networkBody": "Die Anfrage lief nach {{seconds}} s ab. Prüfe die Verbindung.",
+    "retry": "Erneut versuchen"
   }
 }

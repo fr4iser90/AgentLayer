@@ -10,6 +10,14 @@ import {
   labelForExecutionTarget,
   normalizeExecutionTargetInput,
 } from "../lib/schedulerExecutionTarget";
+import { Button } from "../ui/Button";
+import { Modal } from "../ui/Modal";
+import { Badge, type BadgeTone } from "../ui/Badge";
+import { EmptyState } from "../ui/EmptyState";
+import { Select, TextArea, TextInput } from "../ui/Field";
+import { Checkbox } from "../ui/Checkbox";
+import { SkeletonRows } from "../ui/Skeleton";
+import { Table, type TableColumn } from "../ui/Table";
 
 type SchedulerJobRow = {
   id: string;
@@ -19,7 +27,9 @@ type SchedulerJobRow = {
   interval_minutes: number;
   enabled: boolean;
   last_run_at: string | null;
+  deleted_at?: string | null;
   created_at: string;
+  coding_workflow?: unknown;
   instructions?: string;
 };
 
@@ -43,16 +53,16 @@ type SchedulerJobRun = {
   finished_at: string | null;
 };
 
-function runStatusPill(status: SchedulerJobRun["status"]) {
+function runStatusPill(status: SchedulerJobRun["status"]): BadgeTone {
   switch (status) {
     case "succeeded":
-      return "bg-emerald-600/25 text-emerald-200 border-emerald-500/40";
+      return "success";
     case "partial":
-      return "bg-amber-600/25 text-amber-200 border-amber-500/40";
+      return "warning";
     case "failed":
-      return "bg-red-600/25 text-red-200 border-red-500/40";
+      return "danger";
     default:
-      return "bg-sky-600/25 text-sky-200 border-sky-500/40";
+      return "accent";
   }
 }
 
@@ -76,13 +86,34 @@ type SchedulerJobPreset = {
   };
 };
 
-function pill(enabled: boolean) {
-  return enabled
-    ? "bg-emerald-600/25 text-emerald-200 border-emerald-500/40"
-    : "bg-white/10 text-surface-muted border-surface-border";
+/** The admin list's owner filter, mirroring `GET /v1/admin/scheduler-jobs`. */
+type JobOwnerScope = "all" | "global_only" | "dashboard";
+
+function pill(enabled: boolean): BadgeTone {
+  return enabled ? "success" : "neutral";
 }
 
-export function MySchedulesPage() {
+export type SchedulesScope = "user" | "admin";
+
+/**
+ * One schedules surface, read through one of two endpoint families.
+ *
+ * `/schedules` lists the signed-in user's own jobs on
+ * `/v1/user/scheduler-jobs`; `/admin/schedules` lists the company's on
+ * `/v1/admin/scheduler-jobs`, the family gated by `schedule.manage` on the
+ * server. Only the list, who may archive a job, and which rows the filters can
+ * reach differ — everything else (create, edit, enable, run history) was the
+ * same dialog written twice, so the admin half lives here as a scope instead of
+ * a second file that has to be taught every change twice.
+ *
+ * The create defaults stay split on purpose: a self-service job is born
+ * disabled at a daily interval so nobody's agent starts running before they
+ * saved it deliberately, while an admin job gets the worker's own default — a
+ * hourly row that starts enabled.
+ */
+export function MySchedulesPage({ scope = "user" }: { scope?: SchedulesScope }) {
+  const admin = scope === "admin";
+  const jobsPath = admin ? "/v1/admin/scheduler-jobs" : "/v1/user/scheduler-jobs";
   const { t } = useTranslation(["settings", "admin"]);
   const auth = useAuth();
   const [jobs, setJobs] = useState<SchedulerJobRow[] | null>(null);
@@ -90,13 +121,20 @@ export function MySchedulesPage() {
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const [scopeFilter, setScopeFilter] = useState<JobOwnerScope>("all");
+  const [dashboardId, setDashboardId] = useState("");
+  const [includeGlobal, setIncludeGlobal] = useState(true);
+  const [targetFilter, setTargetFilter] = useState<"all" | string>("all");
+  const [enabledFilter, setEnabledFilter] = useState<"all" | "true" | "false">("all");
+  const [includeArchived, setIncludeArchived] = useState(false);
+
   const [createOpen, setCreateOpen] = useState(false);
   const [createPresetId, setCreatePresetId] = useState<string>("");
   const [targetCatalog, setTargetCatalog] = useState<ExecutionTargetCatalogRow[]>([]);
   const [createTarget, setCreateTarget] = useState(EXECUTION_GENERAL);
   const [createWorkspaceId, setCreateWorkspaceId] = useState("");
-  const [createInterval, setCreateInterval] = useState(1440);
-  const [createEnabled, setCreateEnabled] = useState(false);
+  const [createInterval, setCreateInterval] = useState(admin ? 60 : 1440);
+  const [createEnabled, setCreateEnabled] = useState(admin);
   const [createTitle, setCreateTitle] = useState("");
   const [createInstructions, setCreateInstructions] = useState("");
   const [createDashboardId, setCreateDashboardId] = useState("");
@@ -117,17 +155,37 @@ export function MySchedulesPage() {
 
   const query = useMemo(() => {
     const q = new URLSearchParams();
+    if (admin) {
+      if (scopeFilter === "global_only") {
+        q.set("include_global", "true");
+      } else if (scopeFilter === "dashboard") {
+        if (dashboardId.trim()) q.set("dashboard_id", dashboardId.trim());
+        q.set("include_global", includeGlobal ? "true" : "false");
+      }
+      if (targetFilter !== "all") q.set("execution_target", targetFilter);
+      if (enabledFilter !== "all") q.set("enabled", enabledFilter);
+      if (includeArchived) q.set("include_archived", "true");
+    }
     q.set("limit", "200");
     return q;
-  }, []);
+  }, [admin, scopeFilter, dashboardId, includeGlobal, targetFilter, enabledFilter, includeArchived]);
+
+  // `min_role: "admin"` in the catalog is decided server-side by
+  // `agent_effective_role()`, which reads the `user_site_admin()` flag and only
+  // falls back to the legacy `users.role` column when that lookup has no value.
+  // Mirroring it here keeps the picker from offering a target the run would
+  // refuse — and from hiding one the flag already grants a site admin.
+  const elevated =
+    auth.user?.site_role === "site_admin" ||
+    (!auth.user?.site_role && auth.user?.role === "admin");
 
   const createTargetOptions = useMemo(
     () =>
       targetCatalog.filter((o) => {
         const role = (o.min_role || "user").toLowerCase();
-        return role !== "admin" || auth.user?.role === "admin";
+        return role !== "admin" || elevated;
       }),
-    [targetCatalog, auth.user?.role]
+    [targetCatalog, elevated]
   );
 
   const createNeedsWorkspace = useMemo(
@@ -139,7 +197,7 @@ export function MySchedulesPage() {
     setLoading(true);
     setErr(null);
     try {
-      const res = await apiFetch(`/v1/user/scheduler-jobs?${query.toString()}`, auth);
+      const res = await apiFetch(`${jobsPath}?${query.toString()}`, auth);
       const j = (await res.json().catch(() => null)) as any;
       if (!res.ok || !j?.ok) {
         setErr(String(j?.detail ?? j?.error ?? res.status));
@@ -158,7 +216,7 @@ export function MySchedulesPage() {
   useEffect(() => {
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [query.toString()]);
 
   useEffect(() => {
     const loadCatalog = async () => {
@@ -179,6 +237,8 @@ export function MySchedulesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // One preset directory for both scopes: the admin list read the same
+  // enabled-preset set, so a single endpoint keeps the dialogs identical.
   useEffect(() => {
     const loadPresets = async () => {
       try {
@@ -238,9 +298,24 @@ export function MySchedulesPage() {
   }, [createOpen, createNeedsWorkspace, auth]);
 
   const toggleEnabled = async (jobId: string, next: boolean) => {
-    const res = await apiFetch(`/v1/user/scheduler-jobs/${jobId}/enabled`, auth, {
+    const res = await apiFetch(`${jobsPath}/${jobId}/enabled`, auth, {
       method: "PATCH",
       body: JSON.stringify({ enabled: next }),
+    });
+    const j = (await res.json().catch(() => null)) as any;
+    if (!res.ok || !j?.ok) {
+      setErr(String(j?.detail ?? j?.error ?? res.status));
+      return;
+    }
+    await refresh();
+  };
+
+  // Soft delete exists on the admin family only: a user's own job is either
+  // there or hard-deleted, so the archive control has nothing to do in `/schedules`.
+  const archiveJob = async (jobId: string, archived: boolean) => {
+    const res = await apiFetch(`${jobsPath}/${jobId}/archived`, auth, {
+      method: "PATCH",
+      body: JSON.stringify({ archived }),
     });
     const j = (await res.json().catch(() => null)) as any;
     if (!res.ok || !j?.ok) {
@@ -259,7 +334,7 @@ export function MySchedulesPage() {
 
   const saveEdit = async () => {
     if (!editJob) return;
-    const res = await apiFetch(`/v1/user/scheduler-jobs/${editJob.id}`, auth, {
+    const res = await apiFetch(`${jobsPath}/${editJob.id}`, auth, {
       method: "PATCH",
       body: JSON.stringify({
         title: editTitle,
@@ -278,7 +353,7 @@ export function MySchedulesPage() {
 
   const hardDelete = async (jobId: string) => {
     if (!window.confirm(t("admin:schedulesPermanentDeleteConfirm"))) return;
-    const res = await apiFetch(`/v1/user/scheduler-jobs/${jobId}`, auth, { method: "DELETE" });
+    const res = await apiFetch(`${jobsPath}/${jobId}`, auth, { method: "DELETE" });
     const j = (await res.json().catch(() => null)) as any;
     if (!res.ok || !j?.ok) {
       setErr(String(j?.detail ?? j?.error ?? res.status));
@@ -294,7 +369,7 @@ export function MySchedulesPage() {
     setRunsErr(null);
     setRunsLoading(true);
     try {
-      const res = await apiFetch(`/v1/user/scheduler-jobs/${j.id}/runs?limit=25`, auth);
+      const res = await apiFetch(`${jobsPath}/${j.id}/runs?limit=25`, auth);
       const body = (await res.json().catch(() => null)) as { ok?: boolean; runs?: SchedulerJobRun[]; detail?: string };
       if (!res.ok || !body?.ok) {
         setRunsErr(String(body?.detail ?? res.status));
@@ -319,7 +394,7 @@ export function MySchedulesPage() {
     if (createCodingWorkflow.prompt_preamble?.trim()) {
       wf.prompt_preamble = createCodingWorkflow.prompt_preamble.trim();
     }
-    const res = await apiFetch(`/v1/user/scheduler-jobs`, auth, {
+    const res = await apiFetch(`${jobsPath}`, auth, {
       method: "POST",
       body: JSON.stringify({
         execution_target: createTarget,
@@ -351,148 +426,289 @@ export function MySchedulesPage() {
     await refresh();
   };
 
-  return (
-    <div className="mx-auto max-w-5xl px-6 py-10">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-white">{t("common:schedules")}</h1>
-          <p className="mt-2 text-sm text-surface-muted">
-            {t("settings:schedulesPageIntro")}{" "}
-            <span className="font-mono">general</span>{" "}
-            <span className="font-mono">coding</span>
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
+  // Built inside the component because the headers and two of the cells read
+  // `t`, and the target column reads the catalog the page fetches separately.
+  const jobColumns: Array<TableColumn<SchedulerJobRow>> = [
+    {
+      key: "enabled",
+      header: t("settings:schedulesEnabledHeader"),
+      width: "7rem",
+      render: (j) => (
+        <>
+          <Badge tone={pill(j.enabled)}>
+            {j.enabled ? t("settings:schedulesEnabled") : t("settings:schedulesDisabled")}
+          </Badge>
+          {admin && j.deleted_at ? (
+            <Badge tone="neutral" className="ml-base">
+              {t("admin:schedulesArchivedLabel")}
+            </Badge>
+          ) : null}
+        </>
+      ),
+    },
+    {
+      key: "target",
+      header: t("settings:schedulesTargetHeader"),
+      render: (j) => labelForExecutionTarget(j.execution_target, targetCatalog),
+    },
+    {
+      key: "title",
+      header: t("settings:schedulesTitleHeader"),
+      render: (j) => <span className="text-ink-primary">{j.title || "—"}</span>,
+    },
+    {
+      key: "interval",
+      header: t("settings:schedulesIntervalHeader"),
+      render: (j) => t("settings:schedulesIntervalMinutes", { minutes: j.interval_minutes }),
+    },
+    {
+      key: "dashboard",
+      header: t("settings:schedulesDashboardHeader"),
+      render: (j) => (
+        <span className="font-mono text-ink-muted">
+          {j.dashboard_id || t("settings:schedulesDashboardGlobal")}
+        </span>
+      ),
+    },
+    {
+      key: "last_run",
+      header: t("settings:schedulesLastRunHeader"),
+      render: (j) => formatDateTimeLocal(j.last_run_at),
+    },
+    {
+      key: "created",
+      header: t("settings:schedulesCreatedHeader"),
+      render: (j) => formatDateTimeLocal(j.created_at),
+    },
+    {
+      key: "actions",
+      header: t("settings:schedulesActionsHeader"),
+      render: (j) => (
+        <div className="flex flex-wrap items-center gap-base">
+          <Button
+            size="sm"
             type="button"
-            className="rounded-md border border-surface-border px-3 py-2 text-sm text-neutral-100 hover:bg-white/5"
+            className="px-base py-tight text-xs hover:bg-white/5"
+            onClick={() => void toggleEnabled(j.id, !j.enabled)}
+          >
+            {j.enabled ? t("admin:schedulesDisable") : t("admin:schedulesEnable")}
+          </Button>
+          {executionTargetRequiresWorkspace(j.execution_target, targetCatalog) ? (
+            <Button
+              size="sm"
+              type="button"
+              className="px-base py-tight text-xs hover:bg-white/5"
+              onClick={() => void openRuns(j)}
+            >
+              {t("settings:schedulesRuns")}
+            </Button>
+          ) : null}
+          <Button
+            size="sm"
+            type="button"
+            className="px-base py-tight text-xs hover:bg-white/5"
+            onClick={() => openEdit(j)}
+          >
+            {t("admin:schedulesEdit")}
+          </Button>
+          {admin ? (
+            <Button
+              size="sm"
+              type="button"
+              className="px-base py-tight text-xs hover:bg-white/5"
+              onClick={() => void archiveJob(j.id, !j.deleted_at)}
+            >
+              {j.deleted_at ? t("admin:schedulesUnarchive") : t("admin:schedulesArchive")}
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="danger"
+            size="sm"
+            onClick={() => void hardDelete(j.id)}
+          >
+            {t("admin:schedulesDelete")}
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="mx-auto max-w-pageWide px-broad py-page">
+      <div className="flex items-start justify-between gap-wide">
+        <div>
+          <h1 className="text-2xl font-semibold text-ink-primary">
+            {admin ? t("admin:schedulesTitle") : t("common:nav.schedules")}
+          </h1>
+          {admin ? (
+            <p className="mt-base text-sm text-ink-muted">{t("admin:schedulesIntro")}</p>
+          ) : (
+            <p className="mt-base text-sm text-ink-muted">
+              {t("settings:schedulesPageIntro")}{" "}
+              <span className="font-mono">general</span>{" "}
+              <span className="font-mono">coding</span>
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-base">
+          <Button
+            type="button"
+            className="px-soft py-base text-sm hover:bg-white/5"
             onClick={() => setCreateOpen(true)}
           >
-            {t("settings:schedulesCreate")}
-          </button>
-          <button
+            {t("admin:schedulesCreate")}
+          </Button>
+          <Button
             type="button"
-            className="rounded-md border border-surface-border px-3 py-2 text-sm text-neutral-100 hover:bg-white/5 disabled:opacity-60"
+            className="px-soft py-base text-sm hover:bg-white/5"
             onClick={() => void refresh()}
             disabled={loading}
           >
             {loading ? t("settings:schedulesLoading") : t("settings:schedulesRefresh")}
-          </button>
+          </Button>
         </div>
       </div>
 
-      {err ? <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">{err}</div> : null}
+      {admin ? (
+        <div className="mt-broad rounded-sheet border border-line bg-card p-wide">
+          <div className="grid gap-soft md:grid-cols-5">
+            <label className="text-xs text-ink-muted">
+              {t("admin:schedulesScope")}
+              <Select
+                className="mt-tight"
+                value={scopeFilter}
+                onChange={(e) => setScopeFilter(e.target.value as JobOwnerScope)}
+              >
+                <option value="all">{t("admin:schedulesScopeAll")}</option>
+                <option value="global_only">{t("admin:schedulesScopeGlobalOnly")}</option>
+                <option value="dashboard">{t("admin:schedulesScopeDashboard")}</option>
+              </Select>
+            </label>
+            <label className="text-xs text-ink-muted md:col-span-2">
+              {t("admin:schedulesDashboardId")}
+              <TextInput
+                className="mt-tight"
+                value={dashboardId}
+                onChange={(e) => setDashboardId(e.target.value)}
+                placeholder={t("admin:optional")}
+                disabled={scopeFilter !== "dashboard"}
+              />
+            </label>
+            <label className="text-xs text-ink-muted">
+              {t("admin:schedulesTarget")}
+              <Select
+                className="mt-tight"
+                value={targetFilter}
+                onChange={(e) => setTargetFilter(e.target.value)}
+              >
+                <option value="all">{t("admin:schedulesScopeAll")}</option>
+                {targetCatalog.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label className="text-xs text-ink-muted">
+              {t("admin:schedulesEnabledFilter")}
+              <Select
+                className="mt-tight"
+                value={enabledFilter}
+                onChange={(e) => setEnabledFilter(e.target.value as "all" | "true" | "false")}
+              >
+                <option value="all">{t("admin:schedulesScopeAll")}</option>
+                <option value="true">{t("admin:schedulesEnabledFilterEnabled")}</option>
+                <option value="false">{t("admin:schedulesEnabledFilterDisabled")}</option>
+              </Select>
+            </label>
+          </div>
+          {scopeFilter === "dashboard" ? (
+            <label className="mt-soft flex items-center gap-base text-xs text-ink-muted">
+              <Checkbox
+                checked={includeGlobal}
+                onChange={(e) => setIncludeGlobal(e.target.checked)}
+              />
+              {t("admin:schedulesIncludeGlobal")}
+            </label>
+          ) : null}
+          <label className="mt-soft flex items-center gap-base text-xs text-ink-muted">
+            <Checkbox
+              checked={includeArchived}
+              onChange={(e) => setIncludeArchived(e.target.checked)}
+            />
+            {t("admin:schedulesShowArchived")}
+          </label>
+        </div>
+      ) : null}
 
-      <div className="mt-6 overflow-x-auto rounded-xl border border-surface-border">
-        <table className="min-w-full text-left text-sm">
-          <thead className="bg-white/5 text-xs uppercase tracking-wide text-surface-muted">
-            <tr>
-              <th className="px-3 py-3">{t("settings:schedulesEnabledHeader")}</th>
-              <th className="px-3 py-3">{t("settings:schedulesTargetHeader")}</th>
-              <th className="px-3 py-3">{t("settings:schedulesTitleHeader")}</th>
-              <th className="px-3 py-3">{t("settings:schedulesIntervalHeader")}</th>
-              <th className="px-3 py-3">{t("settings:schedulesDashboardHeader")}</th>
-              <th className="px-3 py-3">{t("settings:schedulesLastRunHeader")}</th>
-              <th className="px-3 py-3">{t("settings:schedulesCreatedHeader")}</th>
-              <th className="px-3 py-3">{t("settings:schedulesActionsHeader")}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-surface-border">
-            {jobs === null ? (
-              <tr>
-                <td className="px-3 py-4 text-surface-muted" colSpan={8}>
-                  {loading ? t("settings:schedulesLoading") : t("settings:schedulesNoData")}
-                </td>
-              </tr>
-            ) : jobs.length === 0 ? (
-              <tr>
-                <td className="px-3 py-4 text-surface-muted" colSpan={8}>
-                  {t("settings:schedulesNoneYet")}
-                </td>
-              </tr>
-            ) : (
-              jobs.map((j) => (
-                <tr key={j.id} className="hover:bg-white/2">
-                  <td className="px-3 py-3">
-                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${pill(j.enabled)}`}>
-                      {j.enabled ? t("settings:schedulesEnabled") : t("settings:schedulesDisabled")}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 text-xs text-neutral-200">
-                    {labelForExecutionTarget(j.execution_target, targetCatalog)}
-                  </td>
-                  <td className="px-3 py-3 text-neutral-100">{j.title || "—"}</td>
-                  <td className="px-3 py-3 text-neutral-100">
-                    {t("settings:schedulesIntervalMinutes", { minutes: j.interval_minutes })}
-                  </td>
-                  <td className="px-3 py-3 font-mono text-xs text-surface-muted">
-                    {j.dashboard_id || t("settings:schedulesDashboardGlobal")}
-                  </td>
-                  <td className="px-3 py-3 text-xs text-surface-muted">{formatDateTimeLocal(j.last_run_at)}</td>
-                  <td className="px-3 py-3 text-xs text-surface-muted">{formatDateTimeLocal(j.created_at)}</td>
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        className="rounded-md border border-surface-border px-2 py-1 text-xs text-neutral-100 hover:bg-white/5"
-                        onClick={() => void toggleEnabled(j.id, !j.enabled)}
-                      >
-                        {j.enabled ? t("admin:schedulesDisable") : t("admin:schedulesEnable")}
-                      </button>
-                      {executionTargetRequiresWorkspace(j.execution_target, targetCatalog) ? (
-                        <button
-                          type="button"
-                          className="rounded-md border border-surface-border px-2 py-1 text-xs text-neutral-100 hover:bg-white/5"
-                          onClick={() => void openRuns(j)}
-                        >
-                          {t("settings:schedulesRuns")}
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        className="rounded-md border border-surface-border px-2 py-1 text-xs text-neutral-100 hover:bg-white/5"
-                        onClick={() => openEdit(j)}
-                      >
-                        {t("admin:schedulesEdit")}
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-100 hover:bg-red-500/20"
-                        onClick={() => void hardDelete(j.id)}
-                      >
-                        {t("admin:schedulesDelete")}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      {err ? <div className="mt-wide rounded-card border border-danger/30 bg-danger-subtle p-soft text-sm text-badge-danger">{err}</div> : null}
+
+      {/* No `rowHeight`: the tallest cell is the `h-7` action Button, so a job row is
+          28 + `py-base` (8+8) = 44 px — the height the skeleton already uses for the
+          `normal` density, which is why the list does not jump when the jobs land. */}
+      <Table
+        className="mt-broad rounded-sheet border border-line"
+        columns={jobColumns}
+        rows={jobs ?? []}
+        rowKey={(j) => j.id}
+        minWidth={admin ? "900px" : undefined}
+        loading={jobs === null && !err}
+        empty={
+          admin ? (
+            <EmptyState
+              pose={jobs ? "noResults" : "waiting"}
+              title={jobs ? t("admin:schedulesNone") : t("admin:schedulesNoDataYet")}
+              animated={false}
+            />
+          ) : jobs === null ? (
+            t("settings:schedulesNoData")
+          ) : (
+            t("settings:schedulesNoneYet")
+          )
+        }
+      />
 
       {createOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-2xl rounded-xl border border-surface-border bg-surface-raised p-4">
-            <div className="mb-3 flex items-start justify-between gap-3">
-              <div>
-                <div className="text-lg font-semibold text-white">{t("admin:createScheduleTitle")}</div>
-                <div className="text-xs text-surface-muted">{t("admin:schedulesCreateHelpUser")}</div>
-              </div>
-              <button
+        <Modal
+          open
+          onClose={() => setCreateOpen(false)}
+          title={t("admin:createScheduleTitle")}
+          size="dialogWide"
+          footer={
+            <>
+              <Button
                 type="button"
-                className="rounded-md border border-surface-border px-3 py-1.5 text-xs text-neutral-100 hover:bg-white/5"
+                variant="secondary"
+                size="md"
                 onClick={() => setCreateOpen(false)}
               >
-                {t("admin:close")}
-              </button>
-            </div>
+                {t("admin:cancel")}
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                onClick={() => void createJob()}
+                disabled={
+                  !createInstructions.trim() ||
+                  (createNeedsWorkspace && !createWorkspaceId.trim())
+                }
+              >
+                {t("admin:create")}
+              </Button>
+            </>
+          }
+        >
+          <p className="text-meta text-ink-muted">
+            {admin ? t("admin:createScheduleHelp") : t("admin:schedulesCreateHelpUser")}
+          </p>
 
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="text-xs text-surface-muted md:col-span-2">
+          <div className="mt-soft grid gap-soft md:grid-cols-2">
+              <label className="text-xs text-ink-muted md:col-span-2">
                 {t("admin:schedulesPresetOptional")}
-                <select
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
+                <Select
+                  className="mt-tight"
                   value={createPresetId}
                   onChange={(e) => {
                     const pid = e.target.value;
@@ -506,18 +722,18 @@ export function MySchedulesPage() {
                       {p.label}
                     </option>
                   ))}
-                </select>
+                </Select>
                 {createPresetId && (presets || []).find((p) => p.id === createPresetId)?.description ? (
-                  <div className="mt-1 text-[11px] text-surface-muted">
+                  <div className="mt-tight text-meta text-ink-muted">
                     {(presets || []).find((p) => p.id === createPresetId)?.description}
                   </div>
                 ) : null}
               </label>
 
-              <label className="text-xs text-surface-muted">
-                {t("admin:schedulesTarget")}
-                <select
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
+              <label className="text-xs text-ink-muted">
+                {t("settings:schedulesTargetHeader")}
+                <Select
+                  className="mt-tight"
                   value={createTarget}
                   onChange={(e) =>
                     setCreateTarget(normalizeExecutionTargetInput(e.target.value, targetCatalog))
@@ -528,13 +744,13 @@ export function MySchedulesPage() {
                       {o.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               {createNeedsWorkspace ? (
-                <label className="text-xs text-surface-muted md:col-span-2">
+                <label className="text-xs text-ink-muted md:col-span-2">
                   {t("settings:schedulesWorkspaceRequired")}
-                  <select
-                    className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100 disabled:opacity-60"
+                  <Select
+                    className="mt-tight"
                     value={createWorkspaceId}
                     onChange={(e) => setCreateWorkspaceId(e.target.value)}
                     disabled={workspacesLoading}
@@ -551,203 +767,185 @@ export function MySchedulesPage() {
                         {w.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   {createWorkspaceId ? (
-                    <div className="mt-1 break-all font-mono text-[11px] text-surface-muted">
+                    <div className="mt-tight break-all font-mono text-meta text-ink-muted">
                       {createWorkspaceId}
                     </div>
                   ) : null}
                   {createCodingWorkflow.agent_id ? (
-                    <div className="mt-1 font-mono text-[11px] text-surface-muted">
+                    <div className="mt-tight font-mono text-meta text-ink-muted">
                       Agent: {createCodingWorkflow.agent_id}
                     </div>
                   ) : null}
                 </label>
               ) : null}
-              <label className="text-xs text-surface-muted">
+              <label className="text-xs text-ink-muted">
                 {t("settings:schedulesIntervalHeader")} (minutes)
-                <input
+                <TextInput
                   type="number"
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
+                  className="mt-tight"
                   value={createInterval}
                   onChange={(e) => setCreateInterval(Number(e.target.value))}
                   min={5}
                   max={10080}
                 />
               </label>
-              <label className="text-xs text-surface-muted md:col-span-2">
-                Title
-                <input
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
+              <label className="text-xs text-ink-muted md:col-span-2">
+                {t("settings:schedulesTitleHeader")}
+                <TextInput
+                  className="mt-tight"
                   value={createTitle}
                   onChange={(e) => setCreateTitle(e.target.value)}
                   placeholder={t("admin:optional")}
                 />
               </label>
-              <label className="text-xs text-surface-muted md:col-span-2">
+              <label className="text-xs text-ink-muted md:col-span-2">
                 {t("admin:schedulesDashboardIdOptional")}
-                <input
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
+                <TextInput
+                  className="mt-tight"
                   value={createDashboardId}
                   onChange={(e) => setCreateDashboardId(e.target.value)}
                   placeholder={t("admin:optional")}
                 />
               </label>
-              <label className="text-xs text-surface-muted md:col-span-2">
+              <label className="text-xs text-ink-muted md:col-span-2">
                 <span>{t("admin:instructionsPlaceholder")}</span>
-                <textarea
-                  className="mt-1 min-h-[120px] w-full resize-y rounded-md border border-surface-border bg-black/30 px-2 py-2 text-sm text-neutral-100"
+                <TextArea
+                  className="mt-tight min-h-[120px] resize-y"
                   value={createInstructions}
                   onChange={(e) => setCreateInstructions(e.target.value)}
                   placeholder={t("admin:instructionsPlaceholder")}
                 />
               </label>
-              <label className="flex items-center gap-2 text-xs text-surface-muted">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-surface-border"
+              <label className="flex items-center gap-base text-xs text-ink-muted">
+                <Checkbox
                   checked={createEnabled}
                   onChange={(e) => setCreateEnabled(e.target.checked)}
                 />
-                Enabled
+                {t("settings:schedulesEnabledHeader")}
               </label>
             </div>
-
-            <div className="mt-4 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                className="rounded-md border border-surface-border px-3 py-2 text-sm text-neutral-100 hover:bg-white/5"
-                onClick={() => setCreateOpen(false)}
-              >
-                {t("admin:cancel")}
-              </button>
-              <button
-                type="button"
-                className="rounded-md bg-violet-600/80 px-3 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-60"
-                onClick={() => void createJob()}
-                disabled={
-                  !createInstructions.trim() ||
-                  (createNeedsWorkspace && !createWorkspaceId.trim())
-                }
-              >
-                Create
-              </button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       ) : null}
 
       {editJob ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-2xl rounded-xl border border-surface-border bg-surface-raised p-4">
-            <div className="mb-3 flex items-start justify-between gap-3">
-              <div>
-                <div className="text-lg font-semibold text-white">{t("settings:schedulesEditTitle")}</div>
-                <div className="text-xs text-surface-muted font-mono">id: {editJob.id}</div>
-              </div>
-              <button
+        <Modal
+          open
+          onClose={() => setEditJob(null)}
+          title={t("settings:schedulesEditTitle")}
+          size="dialogWide"
+          footer={
+            <>
+              <Button
                 type="button"
-                className="rounded-md border border-surface-border px-3 py-1.5 text-xs text-neutral-100 hover:bg-white/5"
+                variant="secondary"
+                size="md"
                 onClick={() => setEditJob(null)}
               >
-                {t("admin:close")}
-              </button>
-            </div>
-            <div className="grid gap-3">
-              <label className="text-xs text-surface-muted">
-                Title
-                <input
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
+                {t("admin:cancel")}
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                onClick={() => void saveEdit()}
+                disabled={!editInstructions.trim()}
+              >
+                {t("admin:save")}
+              </Button>
+            </>
+          }
+        >
+          <p className="font-mono text-meta text-ink-muted">id: {editJob.id}</p>
+          <div className="mt-soft grid gap-soft">
+              <label className="text-xs text-ink-muted">
+                {t("settings:schedulesTitleHeader")}
+                <TextInput
+                  className="mt-tight"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                 />
               </label>
-              <label className="text-xs text-surface-muted">
+              <label className="text-xs text-ink-muted">
                 {t("settings:schedulesIntervalHeader")} (minutes)
-                <input
+                <TextInput
                   type="number"
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
+                  className="mt-tight"
                   value={editInterval}
                   onChange={(e) => setEditInterval(Number(e.target.value))}
                   min={5}
                   max={10080}
                 />
               </label>
-              <label className="text-xs text-surface-muted">
-                Instructions
-                <textarea
-                  className="mt-1 min-h-[140px] w-full resize-y rounded-md border border-surface-border bg-black/30 px-2 py-2 text-sm text-neutral-100"
+              <label className="text-xs text-ink-muted">
+                <span>{t("admin:instructionsPlaceholder")}</span>
+                <TextArea
+                  className="mt-tight min-h-[140px] resize-y"
                   value={editInstructions}
                   onChange={(e) => setEditInstructions(e.target.value)}
                 />
               </label>
             </div>
-            <div className="mt-4 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                className="rounded-md border border-surface-border px-3 py-2 text-sm text-neutral-100 hover:bg-white/5"
-                onClick={() => setEditJob(null)}
-              >
-                {t("admin:cancel")}
-              </button>
-              <button
-                type="button"
-                className="rounded-md bg-violet-600/80 px-3 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-60"
-                onClick={() => void saveEdit()}
-                disabled={!editInstructions.trim()}
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       ) : null}
 
       {runsJob ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-xl border border-surface-border bg-surface-raised p-4">
-            <div className="mb-3 flex shrink-0 items-start justify-between gap-3">
-              <div>
-                <div className="text-lg font-semibold text-white">{t("settings:schedulesRunHistoryTitle")}</div>
-                <div className="text-sm text-surface-muted">{runsJob.title || "—"}</div>
-                <div className="font-mono text-[11px] text-surface-muted">{runsJob.id}</div>
-              </div>
-              <button
-                type="button"
-                className="rounded-md border border-surface-border px-3 py-1.5 text-xs text-neutral-100 hover:bg-white/5"
-                onClick={() => {
-                  setRunsJob(null);
-                  setSelectedRun(null);
-                }}
-              >
-                {t("admin:close")}
-              </button>
-            </div>
+        <Modal
+          open
+          onClose={() => {
+            setRunsJob(null);
+            setSelectedRun(null);
+          }}
+          title={t("settings:schedulesRunHistoryTitle")}
+          size="dialogFull"
+        >
+          <p className="text-body text-ink-muted">{runsJob.title || "—"}</p>
+          <p className="font-mono text-meta text-ink-muted">{runsJob.id}</p>
 
-            {runsErr ? (
-              <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-100">{runsErr}</div>
-            ) : null}
+          {runsErr ? (
+            <p className="mt-base rounded-card border border-danger bg-danger-subtle p-base text-sm text-badge-danger">
+              {runsErr}
+            </p>
+          ) : null}
 
-            <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-2">
-              <div className="min-h-0 overflow-auto rounded-lg border border-surface-border">
+          {/*
+            The panel is `max-h-full` inside a centred overlay, so its height
+            follows its content: while the runs are in flight the dialog is a
+            few lines tall and every later state — the list landing, a run
+            being selected — grows it and pulls the whole dialog back to the
+            middle. `md:h-[min(58vh,34rem)]` gives the two panes a frame that
+            the request cannot change, and turns their `overflow-auto` into a
+            real scroller instead of a grower. The row placeholder below covers
+            the stacked layout, where no frame is set.
+          */}
+          <div className="mt-soft grid min-h-0 gap-soft md:h-[min(58vh,34rem)] md:grid-cols-2">
+              <div className="min-h-0 overflow-auto rounded-card border border-line">
                 <table className="min-w-full text-left text-xs">
-                  <thead className="sticky top-0 bg-surface-raised text-surface-muted">
+                  <thead className="sticky top-0 bg-raised text-ink-muted">
                     <tr>
-                      <th className="px-2 py-2">{t("settings:schedulesRunColStatus")}</th>
-                      <th className="px-2 py-2">{t("settings:schedulesRunColStarted")}</th>
-                      <th className="px-2 py-2">{t("settings:schedulesRunColTools")}</th>
+                      <th className="px-base py-base">{t("settings:schedulesRunColStatus")}</th>
+                      <th className="px-base py-base">{t("settings:schedulesRunColStarted")}</th>
+                      <th className="px-base py-base">{t("settings:schedulesRunColTools")}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-surface-border">
+                  <tbody className="divide-y divide-line">
                     {runsLoading ? (
+                      // 36 px is one real row: `py-base` (8+8) around the tallest
+                      // cell content, which is the status `Badge` (py-hair 4 + the
+                      // 16 px `text-label` line). Eight of them is what the pane
+                      // shows at the frame height — the request asks for 25, and
+                      // reserving all 25 would leave a metre of grey bars on a job
+                      // that ran twice.
                       <tr>
-                        <td className="px-2 py-3 text-surface-muted" colSpan={3}>
-                          {t("settings:schedulesRunsLoading")}
+                        <td className="p-0" colSpan={3}>
+                          <span className="sr-only">{t("settings:schedulesRunsLoading")}</span>
+                          <SkeletonRows rows={8} rowHeight={36} columns={["22%", "52%", "12%"]} />
                         </td>
                       </tr>
                     ) : !runs?.length ? (
                       <tr>
-                        <td className="px-2 py-3 text-surface-muted" colSpan={3}>
+                        <td className="px-base py-soft text-ink-muted" colSpan={3}>
                           {t("settings:schedulesNoRunsRecorded")}
                         </td>
                       </tr>
@@ -758,17 +956,13 @@ export function MySchedulesPage() {
                           className={`cursor-pointer hover:bg-white/5 ${selectedRun?.id === r.id ? "bg-white/10" : ""}`}
                           onClick={() => setSelectedRun(r)}
                         >
-                          <td className="px-2 py-2">
-                            <span
-                              className={`inline-flex rounded-full border px-2 py-0.5 ${runStatusPill(r.status)}`}
-                            >
-                              {r.status}
-                            </span>
+                          <td className="px-base py-base">
+                            <Badge tone={runStatusPill(r.status)}>{r.status}</Badge>
                           </td>
-                          <td className="px-2 py-2 text-[10px] text-surface-muted">
+                          <td className="px-base py-base text-meta text-ink-muted">
                             {formatDateTimeLocal(r.started_at)}
                           </td>
-                          <td className="px-2 py-2 text-surface-muted">
+                          <td className="px-base py-base text-ink-muted">
                             {r.summary_json?.tool_count ?? r.summary_json?.tools?.length ?? 0}
                           </td>
                         </tr>
@@ -778,31 +972,31 @@ export function MySchedulesPage() {
                 </table>
               </div>
 
-              <div className="min-h-0 overflow-auto rounded-lg border border-surface-border p-3 text-xs">
+              <div className="min-h-0 overflow-auto rounded-card border border-line p-soft text-xs">
                 {!selectedRun ? (
-                <p className="text-surface-muted">{t("settings:schedulesRunSelectHint")}</p>
+                <p className="text-ink-muted">{t("settings:schedulesRunSelectHint")}</p>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-soft">
                     <div>
-                      <span className={`inline-flex rounded-full border px-2 py-0.5 ${runStatusPill(selectedRun.status)}`}>
+                      <Badge tone={runStatusPill(selectedRun.status)}>
                         {selectedRun.status}
-                      </span>
+                      </Badge>
                       {selectedRun.summary_json?.outcome ? (
-                        <span className="ml-2 text-surface-muted">({selectedRun.summary_json.outcome})</span>
+                        <span className="ml-base text-ink-muted">({selectedRun.summary_json.outcome})</span>
                       ) : null}
                       {selectedRun.summary_json?.duration_ms != null ? (
-                        <span className="ml-2 text-surface-muted">
+                        <span className="ml-base text-ink-muted">
                           {Math.round(selectedRun.summary_json.duration_ms / 1000)}s
                         </span>
                       ) : null}
                     </div>
                     {selectedRun.error ? (
-                      <div className="rounded border border-red-500/30 bg-red-500/10 p-2 text-red-100">{selectedRun.error}</div>
+                      <div className="rounded-tile border border-danger/30 bg-danger-subtle p-base text-badge-danger">{selectedRun.error}</div>
                     ) : null}
                     {selectedRun.summary_json?.git ? (
                       <div>
-                        <div className="font-medium text-neutral-200">{t("settings:schedulesRunGit")}</div>
-                        <div className="text-surface-muted">
+                        <div className="font-medium text-ink-primary">{t("settings:schedulesRunGit")}</div>
+                        <div className="text-ink-muted">
                           branch: {selectedRun.summary_json.git.branch || "—"} · changes:{" "}
                           {selectedRun.summary_json.git.has_changes ? "yes" : "no"}
                         </div>
@@ -810,8 +1004,8 @@ export function MySchedulesPage() {
                     ) : null}
                     {(selectedRun.summary_json?.files_changed?.length ?? 0) > 0 ? (
                       <div>
-                        <div className="font-medium text-neutral-200">{t("settings:schedulesRunChangedFiles")}</div>
-                        <ul className="mt-1 space-y-0.5 font-mono text-[11px] text-surface-muted">
+                        <div className="font-medium text-ink-primary">{t("settings:schedulesRunChangedFiles")}</div>
+                        <ul className="mt-tight space-y-hair font-mono text-meta text-ink-muted">
                           {selectedRun.summary_json.files_changed!.map((f) => (
                             <li key={f.path}>
                               {f.path} {f.stat ? `| ${f.stat}` : ""}
@@ -822,12 +1016,12 @@ export function MySchedulesPage() {
                     ) : null}
                     {(selectedRun.summary_json?.tools?.length ?? 0) > 0 ? (
                       <div>
-                        <div className="font-medium text-neutral-200">{t("settings:schedulesRunTools")}</div>
-                        <ul className="mt-1 max-h-48 space-y-1 overflow-auto font-mono text-[11px]">
+                        <div className="font-medium text-ink-primary">{t("settings:schedulesRunTools")}</div>
+                        <ul className="mt-tight max-h-48 space-y-tight overflow-auto font-mono text-meta">
                           {selectedRun.summary_json.tools!.map((t, i) => (
                             <li
                               key={`${t.round}-${t.name}-${i}`}
-                              className={t.ok ? "text-emerald-200/90" : "text-red-200/90"}
+                              className={t.ok ? "text-badge-success" : "text-badge-danger"}
                             >
                               r{t.round} {t.name}
                               {t.args?.path ? ` path=${String(t.args.path)}` : ""}
@@ -839,8 +1033,8 @@ export function MySchedulesPage() {
                     ) : null}
                     {selectedRun.summary_json?.final_reply_excerpt ? (
                       <div>
-                        <div className="font-medium text-neutral-200">{t("settings:schedulesRunReplyExcerpt")}</div>
-                        <pre className="mt-1 whitespace-pre-wrap rounded bg-black/30 p-2 text-[11px] text-surface-muted">
+                        <div className="font-medium text-ink-primary">{t("settings:schedulesRunReplyExcerpt")}</div>
+                        <pre className="mt-tight whitespace-pre-wrap rounded-tile bg-black/30 p-base text-meta text-ink-muted">
                           {selectedRun.summary_json.final_reply_excerpt}
                         </pre>
                       </div>
@@ -849,10 +1043,8 @@ export function MySchedulesPage() {
                 )}
               </div>
             </div>
-          </div>
-        </div>
+        </Modal>
       ) : null}
     </div>
   );
 }
-

@@ -84,27 +84,9 @@ def _insert_chat_message(
     position: int,
     m: dict[str, Any],
 ) -> None:
-    role = m.get("role") or "user"
-    content = _serialize_message_content(m.get("content"))
-    if role not in ("user", "assistant", "system"):
-        role = "user"
-    created = _parse_message_created_at(m.get("created_at"))
-    if created is not None:
-        cur.execute(
-            """
-            INSERT INTO chat_messages (conversation_id, position, role, content, created_at)
-            VALUES (%s, %s, %s, %s, %s)
-            """,
-            (conversation_id, position, role, content, created),
-        )
-    else:
-        cur.execute(
-            """
-            INSERT INTO chat_messages (conversation_id, position, role, content)
-            VALUES (%s, %s, %s, %s)
-            """,
-            (conversation_id, position, role, content),
-        )
+    from apps.backend.infrastructure.platform.conversation_common import insert_chat_message
+
+    insert_chat_message(cur, conversation_id, position, m)
 
 
 def _user_tenant_id(user_id: uuid.UUID) -> int:
@@ -261,14 +243,6 @@ def conversations_list(
     return [_row_to_list_item(r) for r in rows]
 
 
-def _pref_workspace_allowed(cur: Any, user_id: uuid.UUID, wid: uuid.UUID) -> bool:
-    cur.execute(
-        "SELECT 1 FROM project_workspaces WHERE id = %s AND owner_user_id = %s",
-        (wid, user_id),
-    )
-    return cur.fetchone() is not None
-
-
 def _pref_active_task_allowed(
     cur: Any, user_id: uuid.UUID, tenant_id: int, tid: uuid.UUID
 ) -> bool:
@@ -296,7 +270,8 @@ def _pref_active_task_allowed(
 def _fetch_messages(cur: Any, conversation_id: uuid.UUID) -> list[dict[str, Any]]:
     cur.execute(
         """
-        SELECT role, content, created_at FROM chat_messages
+        SELECT role, content, created_at, client_message_id, reasoning
+        FROM chat_messages
         WHERE conversation_id = %s
         ORDER BY position ASC
         """,
@@ -312,13 +287,19 @@ def _fetch_messages(cur: Any, conversation_id: uuid.UUID) -> list[dict[str, Any]
             created_s = ca.strip()
         else:
             created_s = ""
-        out.append(
-            {
-                "role": mr[0],
-                "content": _deserialize_message_content(mr[1]),
-                "created_at": created_s,
-            }
-        )
+        row: dict[str, Any] = {
+            "role": mr[0],
+            "content": _deserialize_message_content(mr[1]),
+            "created_at": created_s,
+        }
+        client_id = mr[3]
+        if isinstance(client_id, str) and client_id.strip():
+            row["id"] = client_id.strip()
+            row["client_message_id"] = client_id.strip()
+        reasoning = mr[4]
+        if isinstance(reasoning, str) and reasoning.strip():
+            row["reasoning"] = reasoning
+        out.append(row)
     return out
 
 

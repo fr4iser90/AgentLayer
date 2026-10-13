@@ -20,7 +20,7 @@ class _WorkspaceCommonDeps:
     workspace_select_sql = WORKSPACE_SELECT_SQL
     agentlayer_self_name = AGENTLAYER_SELF_NAME
     pool = staticmethod(db.pool)
-    user_role = staticmethod(db.user_role)
+    user_role = staticmethod(db.user_effective_role)
     workspace_row_to_api = staticmethod(workspace_row_to_api)
     self_editing_allowed = staticmethod(self_editing_allowed)
     ensure_workspace = staticmethod(ensure_workspace)

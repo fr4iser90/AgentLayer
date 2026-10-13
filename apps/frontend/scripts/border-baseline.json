@@ -1,0 +1,29 @@
+{
+  "classes": [
+    "src/features/admin/benchmarks/BenchmarkRunOverridePanel.tsx::border-blue-500/30",
+    "src/features/chat/MessageTurnActivity.tsx::border-violet-500/30",
+    "src/features/chat/MessageTurnActivity.tsx::border-violet-500/40",
+    "src/features/chat/MessageTurnActivity.tsx::border-white/8",
+    "src/features/dashboard/CardGridBlock.tsx::border-violet-500/30",
+    "src/features/dashboard/ProjectRowDetailDrawer.tsx::focus:border-violet-400/60",
+    "src/features/dashboard/ProjectWorkspaceControls.tsx::border-violet-500/40",
+    "src/features/dashboard/ProjectWorkspaceControls.tsx::focus:border-violet-400/60",
+    "src/features/dashboard/gallery/GalleryBlockBody.tsx::border-violet-400/70",
+    "src/features/voice/VoiceHandsFreeBar.tsx::border-violet-500/30",
+    "src/features/workspace/WorkspaceRetrievalBar.tsx::border-violet-500/35",
+    "src/pages/ChatPage.tsx::border-violet-500/25",
+    "src/pages/ChatPage.tsx::border-violet-500/50",
+    "src/pages/DashboardPage.tsx::border-violet-500/25",
+    "src/pages/DashboardPage.tsx::border-violet-500/40",
+    "src/pages/DashboardPage.tsx::focus:border-violet-500/50",
+    "src/pages/DashboardPublicSharePage.tsx::focus:border-violet-500/50",
+    "src/pages/StudioPage.tsx::border-white/30",
+    "src/pages/admin/AdminAgentConfig.tsx::border-blue-500/30",
+    "src/pages/admin/AdminBenchmarks.tsx::border-violet-400/80",
+    "src/pages/admin/AdminBenchmarks.tsx::border-violet-500/25",
+    "src/pages/admin/AdminBenchmarks.tsx::border-violet-500/35",
+    "src/pages/admin/AdminBenchmarks.tsx::border-violet-500/40",
+    "src/pages/settings/FriendsSettings.tsx::hover:border-white/40"
+  ],
+  "note": "Tolerated off-token border classes. Re-record with --update after an intentional migration; new ones fail."
+}

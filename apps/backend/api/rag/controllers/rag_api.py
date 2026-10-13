@@ -12,7 +12,11 @@ from pydantic import BaseModel, Field
 from apps.backend.application.rag.use_cases.rag_controller_services import ingest_markdown_tree, resolve_docs_root
 from apps.backend.application.rag.use_cases.rag_controller_services import operator_settings
 from apps.backend.application.platform.use_cases.platform_controller_services import http_500_detail
-from apps.backend.application.identity.use_cases.request_auth import require_admin
+from apps.backend.application.identity.use_cases.request_auth import (
+    require_admin_scope,
+    require_site_admin,
+)
+from apps.backend.domain.access.capabilities import CAP_KNOWLEDGE_MANAGE
 from apps.backend.application.org.use_cases.org_surface_guard import (
     reject_admin_tenant_knowledge_rag_ingest,
 )
@@ -47,7 +51,7 @@ async def admin_rag_ingest(request: Request):
     """
     Ingest plain text into pgvector-backed RAG for the admin's tenant (``users.tenant_id``).
     """
-    user = await require_admin(request)
+    user = await require_admin_scope(request, CAP_KNOWLEDGE_MANAGE)
     if not operator_settings.rag_settings()["enabled"]:
         raise HTTPException(status_code=503, detail="RAG disabled (operator settings)")
     try:
@@ -65,10 +69,10 @@ async def admin_rag_ingest(request: Request):
     source_uri = body.get("source_uri")
     su = source_uri if isinstance(source_uri, str) and source_uri.strip() else None
 
-    tenant_id = db.user_tenant_id(user.id)
+    tenant_id = db.user_tenant_id(user.actor_id)
     try:
         out = rag_service.ingest_for_user(
-            tenant_id, user.id, domain, title, text, su
+            tenant_id, user.actor_id, domain, title, text, su
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -101,8 +105,12 @@ async def admin_rag_ingest_docs(
     """
     Walk ``docs_root`` for ``*.md``, ingest each file under ``domain`` (default ``agentlayer_docs``).
     Default: incremental sync (hash + source_uri). Set ``purge_first`` for a full rebuild.
+
+    Site admin only: ``docs_root`` is a caller-supplied path on the server
+    filesystem, so this is not tenant data and cannot be delegated.
     """
-    user = await require_admin(request)
+    # tenant-scope: site-wide caller-supplied server filesystem path
+    user = await require_site_admin(request)
     if not operator_settings.rag_settings()["enabled"]:
         raise HTTPException(status_code=503, detail="RAG disabled (operator settings)")
     opts = body or IngestDocsBody()

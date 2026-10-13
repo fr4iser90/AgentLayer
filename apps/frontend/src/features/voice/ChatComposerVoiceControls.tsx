@@ -8,6 +8,8 @@ import {
   type VoicePrefs,
   type VoiceStatus,
 } from "./voiceApi";
+import { Checkbox } from "../../ui/Checkbox";
+import { Select } from "../../ui/Field";
 
 type Props = {
   auth: AuthContextValue;
@@ -39,18 +41,18 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
   if (!voiceStatus) {
     return (
       <div className="w-full">
-        <p className="text-[10px] leading-snug text-surface-muted">{t("chat:voiceComposerLoading")}</p>
+        <p className="text-meta leading-snug text-ink-muted">{t("chat:voiceComposerLoading")}</p>
       </div>
     );
   }
 
   if (!operatorOn || !anyConfigured) {
     return (
-      <div className="w-full rounded-lg border border-amber-500/20 bg-amber-950/20 px-2.5 py-2">
-        <p className="text-[10px] leading-snug text-amber-100/90">{t("chat:voiceComposerDisabled")}</p>
+      <div className="w-full rounded-card border border-warning/20 bg-warning-subtle px-firm py-base">
+        <p className="text-meta leading-snug text-badge-warning">{t("chat:voiceComposerDisabled")}</p>
         <Link
           to="/settings/voice"
-          className="mt-1 inline-block text-[10px] text-sky-400/90 hover:text-sky-300 hover:underline"
+          className="mt-tight inline-block text-meta text-accent hover:text-badge-accent hover:underline"
         >
           {t("chat:voiceComposerSettingsLink")}
         </Link>
@@ -59,62 +61,58 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
   }
 
   return (
-    <div className="w-full space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+    <div className="w-full space-y-base">
+      <div className="flex items-center justify-between gap-base">
+        <span className="text-meta font-medium uppercase tracking-wide text-ink-muted">
           {t("chat:voiceComposerTitle")}
         </span>
         <Link
           to="/settings/voice"
-          className="shrink-0 text-[10px] text-sky-400/80 hover:text-sky-300 hover:underline"
+          className="shrink-0 text-meta text-accent hover:text-badge-accent hover:underline"
         >
           {t("chat:voiceComposerSettingsLink")}
         </Link>
       </div>
       <label
-        className={`flex cursor-pointer items-center gap-2 text-[10px] font-medium uppercase tracking-wide ${
-          ttsOk ? "text-surface-muted" : "text-neutral-500"
+        className={`flex cursor-pointer items-center gap-base text-meta font-medium uppercase tracking-wide ${
+          ttsOk ? "text-ink-muted" : "text-ink-muted"
         }`}
         title={ttsOk ? t("chat:voiceComposerReadAloudHint") : t("chat:voiceComposerTtsOff")}
       >
-        <input
-          type="checkbox"
-          className="rounded border-surface-border bg-[#1a1a1a] text-sky-500"
+        <Checkbox
           checked={voiceStatus.prefs.output_enabled}
           disabled={!ttsOk || saving}
           onChange={(e) => void patchPrefs({ output_enabled: e.target.checked })}
         />
         <span>{t("chat:voiceComposerReadAloud")}</span>
       </label>
-      <p className="pl-6 text-[10px] leading-snug text-surface-muted">
+      <p className="pl-broad text-meta leading-snug text-ink-muted">
         {ttsOk ? t("chat:voiceComposerReadAloudHint") : t("chat:voiceComposerTtsOff")}
       </p>
       <label
-        className={`flex cursor-pointer items-center gap-2 text-[10px] font-medium uppercase tracking-wide ${
-          sttOk ? "text-surface-muted" : "text-neutral-500"
+        className={`flex cursor-pointer items-center gap-base text-meta font-medium uppercase tracking-wide ${
+          sttOk ? "text-ink-muted" : "text-ink-muted"
         }`}
         title={sttOk ? t("chat:voiceComposerInputHint") : t("chat:voiceComposerSttOff")}
       >
-        <input
-          type="checkbox"
-          className="rounded border-surface-border bg-[#1a1a1a] text-sky-500"
+        <Checkbox
           checked={voiceStatus.prefs.input_enabled}
           disabled={!sttOk || saving}
           onChange={(e) => void patchPrefs({ input_enabled: e.target.checked })}
         />
         <span>{t("chat:voiceComposerInput")}</span>
       </label>
-      <p className="pl-6 text-[10px] leading-snug text-surface-muted">
+      <p className="pl-broad text-meta leading-snug text-ink-muted">
         {sttOk ? t("chat:voiceComposerInputHint") : t("chat:voiceComposerSttOff")}
       </p>
       {sttOk &&
       voiceStatus.prefs.input_enabled &&
       (voiceStatus.prefs.mode_web === "push_to_talk" ||
         voiceStatus.prefs.mode_web === "toggle") ? (
-        <label className="block text-[10px] text-surface-muted">
+        <label className="block text-meta text-ink-muted">
           {t("chat:voiceComposerMicMode")}
-          <select
-            className="mt-1 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
+          <Select
+            className="mt-tight"
             value={
               voiceStatus.prefs.mode_web === "toggle" ? "toggle" : "push_to_talk"
             }
@@ -128,8 +126,8 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
           >
             <option value="push_to_talk">{t("chat:voiceComposerMicHold")}</option>
             <option value="toggle">{t("chat:voiceComposerMicToggle")}</option>
-          </select>
-          <span className="mt-1 block leading-snug">{t("chat:voiceComposerMicModeHint")}</span>
+          </Select>
+          <span className="mt-tight block leading-snug">{t("chat:voiceComposerMicModeHint")}</span>
         </label>
       ) : null}
     </div>

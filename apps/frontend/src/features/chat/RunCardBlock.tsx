@@ -1,7 +1,10 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { Bot, Check, FileText, Package, Wrench, X } from "lucide-react";
 import type { RunCard } from "./buildRunCards";
+import { Button } from "../../ui/Button";
 
 type Props = {
   card: RunCard;
@@ -14,24 +17,24 @@ type Props = {
 };
 
 function borderForKind(kind: RunCard["kind"]): string {
-  if (kind === "subagent") return "border-indigo-500/45";
+  if (kind === "subagent") return "border-subagent/45";
   if (kind === "index") return "border-violet-500/45";
   if (kind === "compaction") return "border-amber-500/45";
   return "border-sky-500/35";
 }
 
 function bgForKind(kind: RunCard["kind"]): string {
-  if (kind === "subagent") return "bg-indigo-950/25";
+  if (kind === "subagent") return "bg-subagent-subtle";
   if (kind === "index") return "bg-violet-950/20";
   if (kind === "compaction") return "bg-amber-950/20";
   return "bg-sky-950/15";
 }
 
-function iconForKind(kind: RunCard["kind"]): string {
-  if (kind === "subagent") return "🤖";
-  if (kind === "index") return "📇";
-  if (kind === "compaction") return "📦";
-  return "🔧";
+function iconForKind(kind: RunCard["kind"]): ReactNode {
+  if (kind === "subagent") return <Bot className="h-4 w-4" />;
+  if (kind === "index") return <FileText className="h-4 w-4" />;
+  if (kind === "compaction") return <Package className="h-4 w-4" />;
+  return <Wrench className="h-4 w-4" />;
 }
 
 const COLLAPSED_PREVIEW_RUNNING = 2;
@@ -48,46 +51,72 @@ function formatDuration(ms: number | undefined): string | null {
 function collapsedStepPreview(card: RunCard): string[] {
   const steps = allSubagentStepLabels(card);
   if (steps.length > 0) {
-    const max = card.status === "running" ? COLLAPSED_PREVIEW_RUNNING : COLLAPSED_PREVIEW_DONE;
+  const max = card.status === "running" ? COLLAPSED_PREVIEW_RUNNING : COLLAPSED_PREVIEW_DONE;
     return steps.slice(-max);
   }
   const cur = card.currentStep?.trim();
   return cur ? [cur] : [];
 }
 
-type SubagentStepRow = { label: string; failed: boolean };
+type SubagentStepRow = { label: string; failed: boolean; resultDisplay?: string };
 
 function allSubagentStepRows(card: RunCard): SubagentStepRow[] {
   const steps = card.details.filter((d) => d.kind === "subagent_step");
   const rows: SubagentStepRow[] = [];
+  const usedDoneIds = new Set<string>();
   for (const d of steps) {
     if (d.stepPhase !== "start") continue;
     const label = d.text.trim();
     if (!label) continue;
     const tool = d.toolName;
     const failedDone = steps.find(
-      (x) => x.stepPhase === "done" && x.toolOk === false && tool && x.toolName === tool
+      (x) =>
+        x.stepPhase === "done" &&
+        x.toolOk === false &&
+        tool &&
+        x.toolName === tool &&
+        !usedDoneIds.has(x.id)
     );
     if (failedDone) {
-      rows.push({ label: failedDone.text.trim() || label, failed: true });
+      usedDoneIds.add(failedDone.id);
+      rows.push({
+        label: failedDone.text.trim() || label,
+        failed: true,
+        resultDisplay: failedDone.resultDisplay?.trim() || undefined,
+      });
       continue;
     }
     const done = steps.find(
-      (x) => x.stepPhase === "done" && tool && x.toolName === tool
+      (x) =>
+        x.stepPhase === "done" &&
+        tool &&
+        x.toolName === tool &&
+        !usedDoneIds.has(x.id)
     );
     if (!done || done.toolOk !== false) {
-      rows.push({ label, failed: false });
+      if (done) usedDoneIds.add(done.id);
+      rows.push({
+        label,
+        failed: false,
+        resultDisplay: done?.resultDisplay?.trim() || undefined,
+      });
     }
   }
   for (const d of steps) {
-    if (d.stepPhase !== "done" || d.toolOk !== false) continue;
+    if (d.stepPhase !== "done" || d.toolOk !== false || usedDoneIds.has(d.id)) continue;
     const tool = d.toolName;
     const hasStart = steps.some(
       (x) => x.stepPhase === "start" && tool && x.toolName === tool
     );
     if (!hasStart) {
       const label = d.text.trim();
-      if (label) rows.push({ label, failed: true });
+      if (label) {
+        rows.push({
+          label,
+          failed: true,
+          resultDisplay: d.resultDisplay?.trim() || undefined,
+        });
+      }
     }
   }
   return rows;
@@ -166,7 +195,9 @@ export function RunCardBlock({
       ? t("chat:runCardStatusRunning")
       : card.status === "failed"
         ? t("chat:runCardStatusFailed")
-        : t("chat:runCardStatusDone");
+        : card.status === "cancelled"
+          ? t("chat:runCardStatusCancelled")
+          : t("chat:runCardStatusDone");
 
   const meta: string[] = [statusLabel];
   if (duration) meta.push(duration);
@@ -199,6 +230,18 @@ export function RunCardBlock({
   }
 
   const allSteps = card.kind === "subagent" ? allSubagentStepLabels(card) : [];
+  const stepRows = card.kind === "subagent" ? allSubagentStepRows(card) : [];
+  const lastOutputRow = !expanded
+    ? [...stepRows].reverse().find((r) => r.resultDisplay?.trim())
+    : undefined;
+  const toolCardOutput =
+    !expanded && card.kind === "tool"
+      ? card.details
+          .slice()
+          .reverse()
+          .find((d) => d.kind === "tool_done" && d.resultDisplay?.trim())
+          ?.resultDisplay?.trim()
+      : undefined;
   const compactionDetailLines =
     card.kind === "compaction"
       ? [
@@ -222,68 +265,98 @@ export function RunCardBlock({
 
   return (
     <div
-      className={`w-full max-w-[min(100%,42rem)] rounded-xl border ${borderForKind(card.kind)} ${bgForKind(card.kind)} px-3 py-2.5 text-sm shadow-sm`}
+      className={`w-full max-w-measure rounded-sheet border ${borderForKind(card.kind)} ${bgForKind(card.kind)} px-soft py-firm text-sm shadow-xs`}
     >
-      <div className="flex items-start gap-2">
-        <span className="mt-0.5 text-base leading-none" aria-hidden>
+      <div className="flex items-start gap-base">
+        <span className="mt-hair text-base leading-none" aria-hidden>
           {iconForKind(card.kind)}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <span className="font-medium text-neutral-100">{title}</span>
-            <span className="text-[10px] text-surface-muted">{meta.join(" · ")}</span>
+          <div className="flex flex-wrap items-baseline gap-x-base gap-y-hair">
+            <span className="font-medium text-ink-primary">{title}</span>
+            <span className="text-meta text-ink-muted">{meta.join(" · ")}</span>
             {card.status === "running" ? (
-              <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400" />
+              <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-pill bg-accent" />
             ) : null}
           </div>
           {compactionSubtitle ?? card.subtitle ? (
-            <p className="mt-1 text-[11px] leading-snug text-neutral-400">
+            <p className="mt-tight text-meta leading-snug text-ink-muted">
               {compactionSubtitle ?? card.subtitle}
             </p>
           ) : null}
           {card.kind === "subagent" && card.subagentRunId ? (
-            <p className="mt-1 text-[10px]">
+            <p className="mt-tight text-meta">
               <Link
                 to={`/admin/run-traces?run=${encodeURIComponent(card.subagentRunId)}`}
-                className="font-mono text-sky-400/90 hover:text-sky-300 hover:underline"
+                className="font-mono text-accent hover:text-badge-accent hover:underline"
                 title={t("chat:runCardOpenTrace")}
               >
                 {t("chat:runCardRunId", { id: card.subagentRunId.slice(0, 8) })}
               </Link>
             </p>
           ) : null}
+          {card.kind === "subagent" &&
+          (card.reasoningExcerpt?.trim() || card.assistantExcerpt?.trim()) ? (
+            <div className="mt-base space-y-snug">
+              {card.reasoningExcerpt?.trim() ? (
+                <details className="group/r">
+                  <summary className="cursor-pointer list-none text-meta font-medium text-badge-accent marker:content-none [&::-webkit-details-marker]:hidden">
+                    {t("chat:runCardThinking", { defaultValue: "Thinking" })}
+                    <span className="ml-tight font-normal text-badge-accent group-open/r:hidden">
+                      {t("chat:contextInjectExpandHint")}
+                    </span>
+                  </summary>
+                  <pre className="mt-tight max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-accent/20 bg-black/25 px-base py-snug font-sans text-meta leading-relaxed text-ink-muted">
+                    {card.reasoningExcerpt.trim()}
+                  </pre>
+                </details>
+              ) : null}
+              {card.assistantExcerpt?.trim() ? (
+                <details className="group/a" open={card.status === "running"}>
+                  <summary className="cursor-pointer list-none text-meta font-medium text-badge-subagent/85 marker:content-none [&::-webkit-details-marker]:hidden">
+                    {t("chat:runCardOutput", { defaultValue: "Output" })}
+                    <span className="ml-tight font-normal text-badge-subagent/50 group-open/a:hidden">
+                      {t("chat:contextInjectExpandHint")}
+                    </span>
+                  </summary>
+                  <pre className="mt-tight max-h-40 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-subagent/20 bg-black/25 px-base py-snug font-sans text-meta leading-relaxed text-ink-secondary">
+                    {card.assistantExcerpt.trim()}
+                  </pre>
+                </details>
+              ) : null}
+            </div>
+          ) : null}
           {!expanded && previewSteps.length > 0 ? (
-            <ul className="mt-1 space-y-0.5" aria-live="polite">
+            <ul className="mt-tight space-y-hair" aria-live="polite">
               {previewSteps.map((step, i) => {
                 const isLatest = i === previewSteps.length - 1;
                 const running = card.status === "running";
-                const stepRows = allSubagentStepRows(card);
                 const failed =
                   card.kind === "subagent" &&
-                  stepRows[i]?.failed === true;
+                  stepRows[stepRows.length - previewSteps.length + i]?.failed === true;
                 return (
                   <li
                     key={`preview-${i}-${step}`}
-                    className="flex min-w-0 items-baseline gap-1 truncate text-[11px] leading-snug"
+                    className="flex min-w-0 items-baseline gap-tight truncate text-meta leading-snug"
                   >
                     {running ? (
                       isLatest ? (
-                        <span className="shrink-0 text-sky-400/90">→</span>
+                        <span className="shrink-0 text-accent">→</span>
                       ) : (
-                        <span className="shrink-0 text-neutral-600">·</span>
+                        <span className="shrink-0 text-ink-faint">·</span>
                       )
                     ) : failed ? (
-                      <span className="shrink-0 text-rose-400/90" title={t("chat:runCardStepFailed")}>
-                        ✗
+                      <span className="shrink-0" title={t("chat:runCardStepFailed")}>
+                        <X aria-hidden className="h-3.5 w-3.5 text-danger/90" />
                       </span>
                     ) : (
-                      <span className="shrink-0 text-emerald-400/70">✓</span>
+                      <Check aria-hidden className="h-3.5 w-3.5 shrink-0 text-success" />
                     )}
                     <span
                       className={
                         running && isLatest
-                          ? "truncate text-sky-300/90"
-                          : "truncate text-neutral-500"
+                          ? "truncate text-badge-accent"
+                          : "truncate text-ink-muted"
                       }
                     >
                       {step}
@@ -293,51 +366,98 @@ export function RunCardBlock({
               })}
             </ul>
           ) : null}
+          {!expanded && (lastOutputRow?.resultDisplay || toolCardOutput) ? (
+            <details
+              className="group/out mt-snug"
+              open={lastOutputRow?.failed === true || card.status === "failed"}
+            >
+              <summary className="cursor-pointer list-none text-meta font-medium text-badge-success marker:content-none [&::-webkit-details-marker]:hidden">
+                {t("chat:runCardCommandOutput")}
+                <span className="ml-tight font-normal text-badge-success group-open/out:hidden">
+                  {t("chat:contextInjectExpandHint")}
+                </span>
+              </summary>
+              <pre className="mt-tight max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-success/20 bg-black/30 px-base py-snug font-mono text-meta leading-relaxed text-ink-secondary">
+                {lastOutputRow?.resultDisplay || toolCardOutput}
+              </pre>
+            </details>
+          ) : null}
           {expandableDetails ? (
-            <button
+            <Button
+              variant="ghost"
               type="button"
-              className="mt-1.5 text-[10px] text-sky-400/90 hover:text-sky-300 hover:underline"
+              className="mt-snug text-meta text-accent hover:text-badge-accent hover:underline"
               onClick={() => {
                 if (onToggleExpanded) onToggleExpanded();
                 else setExpanded(!expanded);
               }}
             >
               {expanded ? t("chat:runCardHideDetails") : t("chat:runCardShowDetails")}
-            </button>
+            </Button>
           ) : null}
           {expanded ? (
-            <ul className="mt-2 space-y-1 border-t border-white/5 pt-2">
+            <ul className="mt-base space-y-tight border-t border-line-subtle pt-base">
               {card.kind === "compaction"
                 ? compactionDetailLines.map((line, i) => (
-                    <li key={`cmp-${i}`} className="text-[10px] leading-snug text-neutral-400">
+                    <li key={`cmp-${i}`} className="text-meta leading-snug text-ink-muted">
                       {line}
                     </li>
                   ))
                 : allSubagentStepRows(card).length > 0
                 ? allSubagentStepRows(card).map((row, i) => (
-                    <li key={`step-${i}`} className="text-[10px] leading-snug text-neutral-500">
-                      {card.status === "running" ? (
-                        <span className="text-sky-400/70">→</span>
-                      ) : row.failed ? (
-                        <span className="text-rose-400/90" title={t("chat:runCardStepFailed")}>
-                          ✗
+                    <li key={`step-${i}`} className="text-meta leading-snug text-ink-muted">
+                      <div>
+                        {card.status === "running" ? (
+                          <span className="text-accent">→</span>
+                        ) : row.failed ? (
+                          <span className="inline" title={t("chat:runCardStepFailed")}>
+                            <X aria-hidden className="inline h-3.5 w-3.5 text-danger/90" />
+                          </span>
+                        ) : (
+                          <Check aria-hidden className="inline h-3.5 w-3.5 text-success" />
+                        )}
+                        <span className={row.failed ? "text-badge-danger/85" : "text-ink-muted"}>
+                          {" "}
+                          {row.label}
                         </span>
-                      ) : (
-                        <span className="text-emerald-400/70">✓</span>
-                      )}
-                      <span className={row.failed ? "text-rose-200/85" : "text-neutral-400"}>
-                        {" "}
-                        {row.label}
-                      </span>
+                      </div>
+                      {row.resultDisplay ? (
+                        <details className="group/out mt-tight" open={row.failed}>
+                          <summary className="cursor-pointer list-none text-meta font-medium text-badge-success marker:content-none [&::-webkit-details-marker]:hidden">
+                            {t("chat:runCardCommandOutput")}
+                            <span className="ml-tight font-normal text-badge-success group-open/out:hidden">
+                              {t("chat:contextInjectExpandHint")}
+                            </span>
+                          </summary>
+                          <pre className="mt-tight max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-success/20 bg-black/30 px-base py-snug font-mono text-meta leading-relaxed text-ink-secondary">
+                            {row.resultDisplay}
+                          </pre>
+                        </details>
+                      ) : null}
                     </li>
                   ))
                 : card.details.map((d) => (
-                    <li key={d.id} className="text-[10px] leading-snug text-neutral-500">
-                      <span className="font-medium uppercase tracking-wide text-surface-muted">
-                        {d.kind}
-                      </span>
-                      {d.toolName ? <span className="text-indigo-300/80"> {d.toolName}</span> : null}
-                      {d.text ? <span className="text-neutral-400"> — {d.text}</span> : null}
+                    <li key={d.id} className="text-meta leading-snug text-ink-muted">
+                      <div>
+                        <span className="font-medium uppercase tracking-wide text-ink-muted">
+                          {d.kind}
+                        </span>
+                        {d.toolName ? <span className="text-badge-subagent/80"> {d.toolName}</span> : null}
+                        {d.text ? <span className="text-ink-muted"> — {d.text}</span> : null}
+                      </div>
+                      {d.resultDisplay?.trim() ? (
+                        <details className="group/out mt-tight" open={d.toolOk === false}>
+                          <summary className="cursor-pointer list-none text-meta font-medium text-badge-success marker:content-none [&::-webkit-details-marker]:hidden">
+                            {t("chat:runCardCommandOutput")}
+                            <span className="ml-tight font-normal text-badge-success group-open/out:hidden">
+                              {t("chat:contextInjectExpandHint")}
+                            </span>
+                          </summary>
+                          <pre className="mt-tight max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-success/20 bg-black/30 px-base py-snug font-mono text-meta leading-relaxed text-ink-secondary">
+                            {d.resultDisplay.trim()}
+                          </pre>
+                        </details>
+                      ) : null}
                     </li>
                   ))}
             </ul>
@@ -356,7 +476,7 @@ export function RunCardsRow({ cards }: RunCardsRowProps) {
   if (cards.length === 0) return null;
   return (
     <li className="flex w-full justify-center">
-      <div className="flex w-full max-w-[min(100%,42rem)] flex-col gap-2">
+      <div className="flex w-full max-w-measure flex-col gap-base">
         {cards.map((c) => (
           <RunCardBlock key={c.id} card={c} />
         ))}

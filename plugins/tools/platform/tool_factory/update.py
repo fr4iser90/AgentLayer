@@ -43,7 +43,7 @@ def update(arguments: dict[str, Any]) -> str:
                 "ok": False,
                 "error": "old_string is required (exact substring from read_tool output)",
                 "hint": (
-                    "update_tool is a text patch, not codegen. Use create_tool with tool_name/TOOL_DESCRIPTION to regenerate, "
+                    "update_tool is a text patch, not codegen. Use create_tool with tool_name/description to regenerate, "
                     "or replace_tool with full source. Optional: read_tool with registered_tool_name first."
                 ),
             },
@@ -127,28 +127,28 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "update",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Patch a dynamic tool module under AGENT_TOOLS_EXTRA_DIR: old_string → new_string (not codegen). "
                 "Use filename **or** registered_tool_name / tool_name / name (e.g. fishing_index). "
-                "Do NOT pass overwrite/TOOL_DESCRIPTION/source here — those belong on create_tool or replace_tool. "
+                "Do NOT pass overwrite/description/source here — those belong on create_tool or replace_tool. "
                 "Unless replace_all is true, old_string must match exactly once. "
                 "Flow: read_tool (same identifier) → update_tool. Full file: replace_tool."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "filename": {"type": "string", "TOOL_DESCRIPTION": "Basename e.g. fishing_index.py"},
+                    "filename": {"type": "string", "description": "Basename e.g. fishing_index.py"},
                     "registered_tool_name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Registered tool function name if file is under AGENT_TOOLS_EXTRA_DIR (alternative to filename)",
+                        "description": "Registered tool function name if file is under AGENT_TOOLS_EXTRA_DIR (alternative to filename)",
                     },
-                    "tool_name": {"type": "string", "TOOL_DESCRIPTION": "Alias for registered_tool_name"},
-                    "name": {"type": "string", "TOOL_DESCRIPTION": "Alias for registered_tool_name"},
-                    "old_string": {"type": "string", "TOOL_DESCRIPTION": "Exact substring to replace (use enough context to be unique)"},
-                    "new_string": {"type": "string", "TOOL_DESCRIPTION": "Replacement text (may be empty to delete old_string)"},
+                    "tool_name": {"type": "string", "description": "Alias for registered_tool_name"},
+                    "name": {"type": "string", "description": "Alias for registered_tool_name"},
+                    "old_string": {"type": "string", "description": "Exact substring to replace (use enough context to be unique)"},
+                    "new_string": {"type": "string", "description": "Replacement text (may be empty to delete old_string)"},
                     "replace_all": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "If true, replace every occurrence of old_string",
+                        "description": "If true, replace every occurrence of old_string",
                     },
                 },
                 "required": ["old_string"],

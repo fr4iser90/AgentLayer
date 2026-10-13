@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ThumbsDown, ThumbsUp } from "lucide-react";
 import type { AuthContextValue } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 
@@ -56,22 +57,22 @@ export function MessageFeedbackButtons({
   if (!conversationId) return null;
 
   return (
-    <div className="mt-2 flex items-center gap-1 border-t border-white/5 pt-2">
-      <span className="mr-1 text-[10px] text-surface-muted">{t("chat:feedbackPrompt")}</span>
+    <div className="mt-base flex items-center gap-tight border-t border-line-subtle pt-base">
+      <span className="mr-tight text-meta text-ink-muted">{t("chat:feedbackPrompt")}</span>
       <button
         type="button"
         disabled={busy}
         aria-pressed={rating === "up"}
         aria-label={t("chat:feedbackUp")}
         className={[
-          "rounded px-1.5 py-0.5 text-sm transition-colors",
+          "rounded-tile px-snug py-hair text-sm transition-colors",
           rating === "up"
-            ? "bg-emerald-900/50 text-emerald-300"
-            : "text-neutral-500 hover:bg-white/5 hover:text-neutral-300",
+            ? "bg-success-subtle text-badge-success"
+            : "text-ink-muted hover:bg-white/5 hover:text-neutral-300",
         ].join(" ")}
         onClick={() => void submit("up")}
       >
-        👍
+        <ThumbsUp aria-hidden className="h-4 w-4" />
       </button>
       <button
         type="button"
@@ -79,14 +80,14 @@ export function MessageFeedbackButtons({
         aria-pressed={rating === "down"}
         aria-label={t("chat:feedbackDown")}
         className={[
-          "rounded px-1.5 py-0.5 text-sm transition-colors",
+          "rounded-tile px-snug py-hair text-sm transition-colors",
           rating === "down"
-            ? "bg-red-900/40 text-red-300"
-            : "text-neutral-500 hover:bg-white/5 hover:text-neutral-300",
+            ? "bg-danger-subtle text-badge-danger"
+            : "text-ink-muted hover:bg-white/5 hover:text-neutral-300",
         ].join(" ")}
         onClick={() => void submit("down")}
       >
-        👎
+        <ThumbsDown aria-hidden className="h-4 w-4" />
       </button>
     </div>
   );

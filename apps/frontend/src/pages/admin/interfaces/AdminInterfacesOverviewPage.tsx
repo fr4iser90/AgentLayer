@@ -18,12 +18,12 @@ function StatusCard({
   return (
     <Link
       to={to}
-      className="block rounded-xl border border-surface-border bg-surface-raised/80 p-4 transition-colors hover:border-white/20 hover:bg-white/5"
+      className="block rounded-sheet border border-line bg-card p-wide transition-colors hover:border-line-strong hover:bg-white/5"
     >
-      <p className="text-[10px] font-medium uppercase tracking-wide text-surface-muted">{title}</p>
-      <p className="mt-2 text-sm font-medium text-white">{status}</p>
-      {detail ? <p className="mt-1 text-xs text-surface-muted">{detail}</p> : null}
-      <p className="mt-3 text-xs text-sky-400/90">{t("admin:configureCta")}</p>
+      <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">{title}</p>
+      <p className="mt-base text-sm font-medium text-ink-primary">{status}</p>
+      {detail ? <p className="mt-tight text-xs text-ink-muted">{detail}</p> : null}
+      <p className="mt-soft text-xs text-accent">{t("admin:configureCta")}</p>
     </Link>
   );
 }
@@ -38,7 +38,7 @@ export function AdminInterfacesOverviewPage() {
         title={t("admin:interfacesTitle")}
         description={t("admin:interfacesLoadingOperatorSettings")}
       >
-        <p className="text-sm text-surface-muted">{t("admin:loading")}</p>
+        <p className="text-sm text-ink-muted">{t("admin:loading")}</p>
       </AdminInterfacesPageShell>
     );
   }
@@ -49,14 +49,14 @@ export function AdminInterfacesOverviewPage() {
       description={
         <>
           {t("admin:interfacesOverviewDescriptionPrefix")}{" "}
-          <span className="font-mono text-neutral-300">{s.baseUrl}</span> — Bearer JWT or user API key.{" "}
-          <a href="/auth/policy" className="text-sky-400 hover:underline">
+          <span className="font-mono text-ink-secondary">{s.baseUrl}</span> — Bearer JWT or user API key.{" "}
+          <a href="/auth/policy" className="text-accent hover:underline">
             {t("admin:authPolicyEndpoint")}
           </a>
         </>
       }
     >
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-soft sm:grid-cols-2">
         <StatusCard
           title={t("admin:discord")}
           status={s.bridgeEnabled ? t("admin:bridgeOn") : t("admin:bridgeOff")}
@@ -121,14 +121,10 @@ export function AdminInterfacesOverviewPage() {
           to="/admin/interfaces/platform"
         />
       </div>
-      <p className="mt-6 text-xs text-surface-muted">
+      <p className="mt-broad text-xs text-ink-muted">
         {t("admin:persistedUserSchedules")}{" "}
-        <Link to="/admin/schedules" className="text-sky-400 hover:underline">
+        <Link to="/admin/schedules" className="text-accent hover:underline">
           {t("admin:adminToSchedules")}
-        </Link>
-        . {t("admin:pluginCronRegistry")}{" "}
-        <Link to="/admin/scheduled-jobs" className="text-sky-400 hover:underline">
-          {t("admin:adminToPluginCron")}
         </Link>
         .
       </p>

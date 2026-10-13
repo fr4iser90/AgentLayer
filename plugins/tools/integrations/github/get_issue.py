@@ -67,7 +67,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "get_issue",
-            "TOOL_DESCRIPTION": (
+            "description": (
                 "Get one issue or pull request by number (body may be truncated). "
                 "PRs are returned via the issues API when pull_request is present."
             ),

@@ -15,6 +15,7 @@ from apps.backend.api.dashboards.controllers.dashboard_common import (
 )
 from apps.backend.application.dashboards.use_cases.dashboard_controller_services import db
 from apps.backend.application.dashboards.use_cases.dashboard_controller_services import dashboard_db
+from apps.backend.application.dashboards.use_cases.dashboard_controller_services import current_dashboards_count
 from apps.backend.application.dashboards.use_cases.dashboard_controller_services import render_block_from_dashboard
 from apps.backend.application.dashboards.use_cases.dashboard_controller_services import dashboard_tables_exist
 from apps.backend.application.dashboards.use_cases.dashboard_controller_services import apply_layout_proposal, get_latest_proposal_set, get_proposal_set
@@ -66,6 +67,13 @@ async def list_dashboards(request: Request):
             "installed_template_kinds": [],
         }
     items = dashboard_db.dashboard_list(user.id, tid)
+    from apps.backend.application.dashboards.use_cases.dashboard_controller_services import (
+        dashboards_quota_for,
+    )
+
+    quota = dashboards_quota_for(user.id)
+    if quota and 0 < quota < len(items):
+        items = items[:quota]
     installed_kinds = dashboard_db.tenant_installed_template_kinds(tid)
     return {
         "ok": True,
@@ -114,6 +122,19 @@ async def create_dashboard(request: Request, body: DashboardCreateBody):
     serr = validate_structure_edit_for_user(tid, user.id)
     if serr:
         raise HTTPException(status_code=403, detail=serr)
+    from apps.backend.application.dashboards.use_cases.dashboard_controller_services import (
+        dashboards_feature_permission_error,
+        dashboards_quota_for,
+    )
+
+    quota = dashboards_quota_for(user.id)
+    acc_err = dashboards_feature_permission_error(
+        user=user,
+        current_count=current_dashboards_count(user.id, tid),
+        quota=quota,
+    )
+    if acc_err:
+        raise HTTPException(status_code=403, detail=acc_err)
     row = dashboard_db.dashboard_create(
         user.id,
         tid,
@@ -151,6 +172,19 @@ async def create_dashboard_from_template(request: Request, body: DashboardFromTe
     serr = validate_structure_edit_for_user(tid, user.id)
     if serr:
         raise HTTPException(status_code=403, detail=serr)
+    from apps.backend.application.dashboards.use_cases.dashboard_controller_services import (
+        dashboards_feature_permission_error,
+        dashboards_quota_for,
+    )
+
+    quota = dashboards_quota_for(user.id)
+    acc_err = dashboards_feature_permission_error(
+        user=user,
+        current_count=current_dashboards_count(user.id, tid),
+        quota=quota,
+    )
+    if acc_err:
+        raise HTTPException(status_code=403, detail=acc_err)
     ul, dt, err = validate_template_import(
         kind=kind,
         template_id=template_id,

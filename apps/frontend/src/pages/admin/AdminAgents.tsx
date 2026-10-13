@@ -2,7 +2,10 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
+import { hasOrgSurface } from "../../auth/deploymentMode";
 import { apiFetch } from "../../lib/api";
+import { Select, TextArea, TextInput } from "../../ui/Field";
+import { Button } from "../../ui/Button";
 
 type AgentRow = {
   id: string;
@@ -26,7 +29,7 @@ function AgentIcon({ icon, name }: { icon?: string; name: string }): ReactNode {
   if (isKey || !raw) {
     return (
       <span
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-border/60 text-xs font-medium text-surface-muted"
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-card bg-surface-border/60 text-xs font-medium text-ink-muted"
         aria-hidden
         title={isKey ? raw : undefined}
       >
@@ -128,6 +131,14 @@ export function AdminAgents() {
   const [policyScope, setPolicyScope] = useState<"global" | "tenant" | "user">("tenant");
   const [policyTenantId, setPolicyTenantId] = useState("");
   const [policyUserId, setPolicyUserId] = useState("");
+  // Tenant-scoped access policy is a tenant-selection surface: with no org surface
+  // there is one tenant and nothing to scope against. The default scope is
+  // "tenant", so it has to be coerced rather than just hidden — a select left on
+  // an option it no longer offers renders blank and would still save that value.
+  const showTenantScope = hasOrgSurface(auth.user);
+  useEffect(() => {
+    if (!showTenantScope && policyScope === "tenant") setPolicyScope("global");
+  }, [showTenantScope, policyScope]);
   const [directState, setDirectState] = useState<"inherit" | "allow" | "deny">("inherit");
   const [delegateState, setDelegateState] = useState<"inherit" | "allow" | "deny">("inherit");
   const [policyBusy, setPolicyBusy] = useState(false);
@@ -353,22 +364,22 @@ export function AdminAgents() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-      <h1 className="text-2xl font-semibold text-white">{t("admin:agentsTitle")}</h1>
-      <p className="mt-2 max-w-3xl text-sm text-surface-muted">{t("admin:agentsIntro")}</p>
+    <div className="mx-auto max-w-pageWide px-wide py-deep sm:px-broad">
+      <h1 className="text-2xl font-semibold text-ink-primary">{t("admin:agentsTitle")}</h1>
+      <p className="mt-base max-w-measure text-sm text-ink-muted">{t("admin:agentsIntro")}</p>
 
-      <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised/80 p-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <section className="mt-broad rounded-sheet border border-line bg-card p-wide">
+        <div className="flex flex-col gap-base sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-white">{t("admin:agentsImportTitle")}</h2>
-            <p className="mt-1 max-w-3xl text-xs text-surface-muted">{t("admin:agentsImportIntro")}</p>
+            <h2 className="text-sm font-semibold text-ink-primary">{t("admin:agentsImportTitle")}</h2>
+            <p className="mt-tight max-w-measure text-xs text-ink-muted">{t("admin:agentsImportIntro")}</p>
           </div>
           <label className="sr-only" htmlFor="agents-import-source-type">
             {t("admin:agentsImportSourceType")}
           </label>
-          <select
+          <Select
             id="agents-import-source-type"
-            className="w-full rounded-md border border-surface-border bg-black/30 px-2 py-1.5 text-xs text-white sm:w-56"
+            className="text-xs sm:w-56"
             value={importSourceType}
             onChange={(e) => setImportSourceType(e.target.value)}
           >
@@ -379,123 +390,126 @@ export function AdminAgents() {
             <option value="crewai_agent">{t("admin:agentsImportCrewAI")}</option>
             <option value="autogen_agent">{t("admin:agentsImportAutoGen")}</option>
             <option value="generic_agent">{t("admin:agentsImportGeneric")}</option>
-          </select>
+          </Select>
         </div>
 
-        <div className="mt-4 grid gap-3 lg:grid-cols-2">
-          <label className="flex flex-col gap-1 text-xs text-surface-muted">
+        <div className="mt-wide grid gap-soft lg:grid-cols-2">
+          <label className="flex flex-col gap-tight text-xs text-ink-muted">
             <span>{t("admin:agentsImportPaste")}</span>
-            <textarea
-              className="min-h-40 rounded-md border border-surface-border bg-black/30 px-3 py-2 font-mono text-xs text-white placeholder:text-neutral-500"
+            <TextArea
+              mono
+              className="min-h-40 text-xs"
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
               placeholder={t("admin:agentsImportPastePlaceholder")}
             />
           </label>
-          <div className="rounded-md border border-white/10 bg-black/20 p-3 text-xs text-surface-muted">
+          <div className="rounded-tile border border-line bg-black/20 p-soft text-xs text-ink-muted">
             <label className="block">
               <span>{t("admin:agentsImportUpload")}</span>
               <input
-                className="mt-2 block w-full text-xs text-neutral-200 file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:text-white hover:file:bg-white/15"
+                className="mt-base block w-full text-xs text-ink-primary file:mr-soft file:rounded-tile file:border-0 file:bg-white/10 file:px-soft file:py-snug file:text-xs file:text-white hover:file:bg-white/15"
                 type="file"
                 multiple
                 accept=".md,.markdown,.txt,.yaml,.yml,.json,.zip"
                 onChange={(e) => setImportFiles(e.target.files)}
               />
             </label>
-            <ul className="mt-3 list-disc space-y-1 pl-4 text-[11px]">
+            <ul className="mt-soft list-disc space-y-tight pl-wide text-meta">
               <li>{t("admin:toolsImportAllowed")}</li>
               <li>{t("admin:toolsImportLimits")}</li>
               <li>{t("admin:toolsImportZipSafety")}</li>
               <li>{t("admin:agentsImportAnalyzeOnly")}</li>
             </ul>
-            <button
+            <Button
+              variant="primary"
+              size="lg"
               type="button"
               disabled={importBusy || (!importText.trim() && !(importFiles?.length))}
-              className="mt-4 rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+              className="mt-wide px-wide py-base text-sm"
               onClick={() => void analyzeImport()}
             >
               {importBusy ? t("admin:agentsImportAnalyzing") : t("admin:agentsImportAnalyze")}
-            </button>
+            </Button>
           </div>
         </div>
 
-        {importMsg ? <p className="mt-3 text-sm text-surface-muted">{importMsg}</p> : null}
+        {importMsg ? <p className="mt-soft text-sm text-ink-muted">{importMsg}</p> : null}
         {importResult ? (
-          <div className="mt-4 space-y-3">
-            <div className="rounded-md border border-white/10 bg-black/20 p-3 text-xs text-neutral-300">
+          <div className="mt-wide space-y-soft">
+            <div className="rounded-tile border border-line bg-black/20 p-soft text-xs text-ink-secondary">
               {t("admin:toolsImportDetected")}:{" "}
-              <span className="font-mono text-white">{importResult.source_type}</span>{" "}
-              <span className="text-surface-muted">
+              <span className="font-mono text-ink-primary">{importResult.source_type}</span>{" "}
+              <span className="text-ink-muted">
                 ({Math.round(importResult.source_type_confidence * 100)}%)
               </span>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-base flex flex-wrap gap-base">
                 {importResult.sources.map((s) => (
-                  <span key={s.path} className="rounded bg-white/5 px-2 py-1 font-mono text-[11px]">
+                  <span key={s.path} className="rounded-tile bg-white/5 px-base py-tight font-mono text-meta">
                     {s.path} · {t("admin:toolsImportChars", { count: s.chars })}
                   </span>
                 ))}
               </div>
             </div>
 
-            <div className="grid gap-3 lg:grid-cols-2">
-              <article className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-neutral-200">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-sm font-semibold text-white">
+            <div className="grid gap-soft lg:grid-cols-2">
+              <article className="rounded-card border border-line bg-black/20 p-soft text-xs text-ink-primary">
+                <div className="flex flex-wrap items-center gap-base">
+                  <span className="font-mono text-sm font-semibold text-ink-primary">
                     {String(importResult.agent_draft.agent_yaml.id ?? "")}
                   </span>
-                  <span className="rounded bg-amber-900/60 px-1.5 py-0.5 text-[10px] text-amber-100">
+                  <span className="rounded-tile bg-warning-subtle px-snug py-hair text-meta text-badge-warning">
                     {t("admin:toolsImportRisk", { risk: importResult.agent_draft.risk })}
                   </span>
                 </div>
-                <p className="mt-2 font-mono text-[11px] text-surface-muted">
+                <p className="mt-base font-mono text-meta text-ink-muted">
                   {importResult.agent_draft.target_dir}
                 </p>
-                <pre className="mt-3 max-h-56 overflow-auto rounded bg-black/40 p-2 text-[11px] text-neutral-300">
+                <pre className="mt-soft max-h-56 overflow-auto rounded-tile bg-black/40 p-base text-meta text-ink-secondary">
                   {JSON.stringify(importResult.agent_draft.agent_yaml, null, 2)}
                 </pre>
               </article>
 
-              <article className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-neutral-200">
-                <h3 className="text-sm font-semibold text-white">{t("admin:agentsImportSystemPrompt")}</h3>
-                <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap rounded bg-black/40 p-2 text-[11px] text-neutral-300">
+              <article className="rounded-card border border-line bg-black/20 p-soft text-xs text-ink-primary">
+                <h3 className="text-sm font-semibold text-ink-primary">{t("admin:agentsImportSystemPrompt")}</h3>
+                <pre className="mt-soft max-h-56 overflow-auto whitespace-pre-wrap rounded-tile bg-black/40 p-base text-meta text-ink-secondary">
                   {importResult.agent_draft.system_prompt_preview || "—"}
                 </pre>
               </article>
             </div>
 
-            <div className="grid gap-3 lg:grid-cols-2">
-              <article className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-neutral-200">
-                <h3 className="text-sm font-semibold text-white">{t("admin:agentsImportToolMapping")}</h3>
-                <ul className="mt-2 space-y-1">
+            <div className="grid gap-soft lg:grid-cols-2">
+              <article className="rounded-card border border-line bg-black/20 p-soft text-xs text-ink-primary">
+                <h3 className="text-sm font-semibold text-ink-primary">{t("admin:agentsImportToolMapping")}</h3>
+                <ul className="mt-base space-y-tight">
                   {importResult.tool_mapping.matched_existing.map((m) => (
-                    <li key={`${m.package_id}:${m.domain}`} className="font-mono text-[11px] text-neutral-300">
+                    <li key={`${m.package_id}:${m.domain}`} className="font-mono text-meta text-ink-secondary">
                       {m.package_id} · {m.domain} · {(m.tools ?? []).join(", ")}
                     </li>
                   ))}
                 </ul>
                 {importResult.tool_mapping.missing_or_ambiguous.length ? (
-                  <p className="mt-2 text-[11px] text-amber-200">
+                  <p className="mt-base text-meta text-badge-warning">
                     {t("admin:agentsImportMissingTools")}:{" "}
                     {importResult.tool_mapping.missing_or_ambiguous.join(", ")}
                   </p>
                 ) : null}
               </article>
 
-              <article className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-neutral-200">
-                <h3 className="text-sm font-semibold text-white">{t("admin:agentsImportConfigPatches")}</h3>
-                <ul className="mt-2 space-y-2">
+              <article className="rounded-card border border-line bg-black/20 p-soft text-xs text-ink-primary">
+                <h3 className="text-sm font-semibold text-ink-primary">{t("admin:agentsImportConfigPatches")}</h3>
+                <ul className="mt-base space-y-base">
                   {importResult.config_patches.map((p) => (
-                    <li key={p.knob_id} className="rounded bg-white/5 p-2">
-                      <p className="font-mono text-[11px] text-neutral-200">
+                    <li key={p.knob_id} className="rounded-tile bg-white/5 p-base">
+                      <p className="font-mono text-meta text-ink-primary">
                         {p.knob_id} = {JSON.stringify(p.value)}
                       </p>
-                      {p.reason ? <p className="mt-1 text-[11px] text-surface-muted">{p.reason}</p> : null}
+                      {p.reason ? <p className="mt-tight text-meta text-ink-muted">{p.reason}</p> : null}
                     </li>
                   ))}
                 </ul>
                 {importResult.config_patches.length === 0 ? (
-                  <p className="mt-2 text-[11px] text-surface-muted">{t("admin:agentsImportNoPatches")}</p>
+                  <p className="mt-base text-meta text-ink-muted">{t("admin:agentsImportNoPatches")}</p>
                 ) : null}
               </article>
             </div>
@@ -503,51 +517,53 @@ export function AdminAgents() {
         ) : null}
       </section>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <button
+      <div className="mt-wide flex flex-wrap gap-base">
+        <Button
+          variant="primary"
+          size="lg"
           type="button"
-          className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
+          className="px-wide py-base text-sm"
           onClick={() => void loadList()}
         >
           {t("admin:agentsRefresh")}
-        </button>
+        </Button>
         <Link
           to="/admin/tools"
-          className="rounded-md bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/15"
+          className="rounded-tile bg-white/10 px-wide py-base text-sm font-medium text-ink-primary hover:bg-white/15"
         >
           {t("admin:agentsOpenTools")}
         </Link>
       </div>
 
-      {msg ? <p className="mt-4 text-sm text-amber-300">{msg}</p> : null}
-      {loading ? <p className="mt-6 text-sm text-surface-muted">{t("admin:agentsLoading")}</p> : null}
+      {msg ? <p className="mt-wide text-sm text-badge-warning">{msg}</p> : null}
+      {loading ? <p className="mt-broad text-sm text-ink-muted">{t("admin:agentsLoading")}</p> : null}
 
       {!loading && agents.length === 0 ? (
-        <p className="mt-6 text-sm text-surface-muted">{t("admin:agentsNone")}</p>
+        <p className="mt-broad text-sm text-ink-muted">{t("admin:agentsNone")}</p>
       ) : null}
 
       {!loading && agents.length > 0 ? (
-        <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-          <ul className="space-y-2">
+        <div className="mt-broad grid gap-wide lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+          <ul className="space-y-base">
             {agents.map((a) => (
               <li key={a.id}>
                 <button
                   type="button"
                   onClick={() => setSelectedId(a.id)}
-                  className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${
+                  className={`w-full rounded-sheet border px-soft py-soft text-left transition-colors ${
                     selectedId === a.id
-                      ? "border-sky-500/40 bg-sky-950/20"
-                      : "border-surface-border bg-surface-raised/60 hover:border-white/15"
+                      ? "border-accent/40 bg-accent-subtle"
+                      : "border-line bg-card hover:border-line-strong"
                   }`}
                 >
-                  <div className="flex items-start gap-2">
+                  <div className="flex items-start gap-base">
                     <AgentIcon icon={a.icon} name={a.name} />
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-white">
+                      <p className="font-medium text-ink-primary">
                         {a.name}{" "}
-                        <span className="font-mono text-xs text-surface-muted">({a.id})</span>
+                        <span className="font-mono text-xs text-ink-muted">({a.id})</span>
                       </p>
-                      <p className="mt-1 text-xs text-surface-muted">
+                      <p className="mt-tight text-xs text-ink-muted">
                         {t("admin:agentsToolsCount", { count: a.tool_names_count })} ·{" "}
                         {t("admin:agentsMinRole", { role: a.min_role })}
                       </p>
@@ -559,56 +575,56 @@ export function AdminAgents() {
           </ul>
 
           {selected ? (
-            <div className="rounded-xl border border-surface-border bg-surface-raised/50 p-4">
-              <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
+            <div className="rounded-sheet border border-line bg-card p-wide">
+              <h2 className="flex items-center gap-base text-lg font-semibold text-ink-primary">
                 <AgentIcon icon={selected.icon} name={selected.name} />
                 {selected.name}
               </h2>
-              <p className="mt-1 text-sm text-surface-muted">{selected.description}</p>
+              <p className="mt-tight text-sm text-ink-muted">{selected.description}</p>
 
-              <dl className="mt-4 grid gap-2 text-xs sm:grid-cols-2">
+              <dl className="mt-wide grid gap-base text-xs sm:grid-cols-2">
                 <div>
-                  <dt className="text-surface-muted">{t("admin:agentsSource")}</dt>
-                  <dd className="font-mono text-neutral-200">
+                  <dt className="text-ink-muted">{t("admin:agentsSource")}</dt>
+                  <dd className="font-mono text-ink-primary">
                     {detail?.source_path ?? selected.source_path ?? "—"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-surface-muted">{t("admin:agentsDiscipline")}</dt>
-                  <dd className="text-neutral-200">{detail?.tool_discipline_preset ?? "—"}</dd>
+                  <dt className="text-ink-muted">{t("admin:agentsDiscipline")}</dt>
+                  <dd className="text-ink-primary">{detail?.tool_discipline_preset ?? "—"}</dd>
                 </div>
               </dl>
 
-              <div className="mt-4">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+              <div className="mt-wide">
+                <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
                   {t("admin:agentsToolDomains")}
                 </p>
-                <p className="mt-1 font-mono text-xs text-neutral-300">
+                <p className="mt-tight font-mono text-xs text-ink-secondary">
                   {(detail?.tool_domains ?? selected.tool_domains).join(", ") || "—"}
                 </p>
               </div>
 
-              <div className="mt-3">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+              <div className="mt-soft">
+                <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
                   {t("admin:agentsToolCapabilities")}
                 </p>
-                <p className="mt-1 font-mono text-xs text-neutral-300">
+                <p className="mt-tight font-mono text-xs text-ink-secondary">
                   {(detail?.tool_capability_any ?? selected.tool_capability_any).join(", ") || "—"}
                 </p>
               </div>
 
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <label className="text-xs text-surface-muted">{t("admin:agentsEffectivePreview")}</label>
-                <select
-                  className="rounded border border-surface-border bg-black/30 px-2 py-1 text-xs text-white"
+              <div className="mt-wide flex flex-wrap items-center gap-base">
+                <label className="text-xs text-ink-muted">{t("admin:agentsEffectivePreview")}</label>
+                <Select
+                  className="text-xs"
                   value={previewRole}
                   onChange={(e) => setPreviewRole(e.target.value as "admin" | "user")}
                 >
                   <option value="admin">{t("admin:toolsMinRoleAdmin")}</option>
                   <option value="user">{t("admin:toolsMinRoleUser")}</option>
-                </select>
-                <input
-                  className="w-72 rounded border border-surface-border bg-black/30 px-2 py-1 text-xs text-white placeholder:text-neutral-500"
+                </Select>
+                <TextInput
+                  className="w-72 text-xs"
                   value={previewUserId}
                   onChange={(e) => setPreviewUserId(e.target.value)}
                   placeholder={t("admin:agentsPreviewUserIdPlaceholder")}
@@ -616,133 +632,140 @@ export function AdminAgents() {
               </div>
 
               {detailLoading ? (
-                <p className="mt-3 text-xs text-surface-muted">{t("admin:agentsLoadingDetail")}</p>
+                <p className="mt-soft text-xs text-ink-muted">{t("admin:agentsLoadingDetail")}</p>
               ) : (
                 <>
-                  <div className="mt-4 rounded-lg border border-white/10 bg-black/20 p-3">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="mt-wide rounded-card border border-line bg-black/20 p-soft">
+                    <div className="flex flex-wrap items-start justify-between gap-soft">
                       <div>
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                        <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
                           {t("admin:agentsAccessGovernance")}
                         </p>
-                        <p className="mt-1 text-xs text-neutral-300">
+                        <p className="mt-tight text-xs text-ink-secondary">
                           {t("admin:agentsDirectAccess")}:{" "}
-                          <span className={detail?.governance?.access.direct_allowed ? "text-emerald-300" : "text-rose-300"}>
+                          <span className={detail?.governance?.access.direct_allowed ? "text-badge-success" : "text-danger"}>
                             {detail?.governance?.access.direct_allowed ? t("admin:agentsAllowed") : t("admin:agentsDenied")}
                           </span>{" "}
-                          <span className="text-surface-muted">
+                          <span className="text-ink-muted">
                             ({detail?.governance?.access.direct_source ?? "—"})
                           </span>
                         </p>
-                        <p className="mt-1 text-xs text-neutral-300">
+                        <p className="mt-tight text-xs text-ink-secondary">
                           {t("admin:agentsDelegateAccess")}:{" "}
-                          <span className={detail?.governance?.access.delegate_allowed ? "text-emerald-300" : "text-rose-300"}>
+                          <span className={detail?.governance?.access.delegate_allowed ? "text-badge-success" : "text-danger"}>
                             {detail?.governance?.access.delegate_allowed ? t("admin:agentsAllowed") : t("admin:agentsDenied")}
                           </span>{" "}
-                          <span className="text-surface-muted">
+                          <span className="text-ink-muted">
                             ({detail?.governance?.access.delegate_source ?? "—"})
                           </span>
                         </p>
                       </div>
                       <div className="min-w-64 flex-1">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                        <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
                           {t("admin:agentsPromptBudget")}
                         </p>
-                        <p className="mt-1 text-xs text-neutral-300">
+                        <p className="mt-tight text-xs text-ink-secondary">
                           {detail?.governance?.prompt.chars ?? 0} {t("admin:agentsChars")} · ~
                           {detail?.governance?.prompt.approx_tokens ?? 0} {t("admin:agentsTokens")}
                         </p>
-                        <p className="mt-1 text-[11px] text-surface-muted">
+                        <p className="mt-tight text-meta text-ink-muted">
                           {detail?.governance?.prompt.note ?? "—"}
                         </p>
                       </div>
                     </div>
 
-                    <div className="mt-4 grid gap-2 md:grid-cols-5">
-                      <label className="text-xs text-surface-muted">
+                    <div className="mt-wide grid gap-base md:grid-cols-5">
+                      <label className="text-xs text-ink-muted">
                         {t("admin:agentsPolicyScope")}
-                        <select
-                          className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1 text-xs text-white"
+                        <Select
+                          className="mt-tight text-xs"
                           value={policyScope}
                           onChange={(e) => setPolicyScope(e.target.value as "global" | "tenant" | "user")}
                         >
                           <option value="global">{t("admin:agentsScopeGlobal")}</option>
-                          <option value="tenant">{t("admin:agentsScopeTenant")}</option>
+                          {showTenantScope ? (
+                            <option value="tenant">{t("admin:agentsScopeTenant")}</option>
+                          ) : null}
                           <option value="user">{t("admin:agentsScopeUser")}</option>
-                        </select>
+                        </Select>
                       </label>
-                      <label className="text-xs text-surface-muted">
-                        {t("admin:agentsTenantId")}
-                        <input
-                          className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1 text-xs text-white placeholder:text-neutral-500"
-                          value={policyTenantId}
-                          onChange={(e) => setPolicyTenantId(e.target.value)}
-                          placeholder={t("admin:agentsTenantIdPlaceholder")}
-                        />
-                      </label>
-                      <label className="text-xs text-surface-muted">
+                      {showTenantScope ? (
+                        <label className="text-xs text-ink-muted">
+                          {t("admin:agentsTenantId")}
+                          <TextInput
+                            className="mt-tight text-xs"
+                            value={policyTenantId}
+                            onChange={(e) => setPolicyTenantId(e.target.value)}
+                            placeholder={t("admin:agentsTenantIdPlaceholder")}
+                          />
+                        </label>
+                      ) : null}
+                      <label className="text-xs text-ink-muted">
                         {t("admin:agentsUserId")}
-                        <input
-                          className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1 text-xs text-white placeholder:text-neutral-500"
+                        <TextInput
+                          className="mt-tight text-xs"
                           value={policyUserId}
                           onChange={(e) => setPolicyUserId(e.target.value)}
                           placeholder={t("admin:agentsUserIdPlaceholder")}
                         />
                       </label>
-                      <label className="text-xs text-surface-muted">
+                      <label className="text-xs text-ink-muted">
                         {t("admin:agentsDirectAccess")}
-                        <select
-                          className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1 text-xs text-white"
+                        <Select
+                          className="mt-tight text-xs"
                           value={directState}
                           onChange={(e) => setDirectState(e.target.value as "inherit" | "allow" | "deny")}
                         >
                           <option value="inherit">{t("admin:agentsInherit")}</option>
                           <option value="allow">{t("admin:agentsAllow")}</option>
                           <option value="deny">{t("admin:agentsDeny")}</option>
-                        </select>
+                        </Select>
                       </label>
-                      <label className="text-xs text-surface-muted">
+                      <label className="text-xs text-ink-muted">
                         {t("admin:agentsDelegateAccess")}
-                        <select
-                          className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1 text-xs text-white"
+                        <Select
+                          className="mt-tight text-xs"
                           value={delegateState}
                           onChange={(e) => setDelegateState(e.target.value as "inherit" | "allow" | "deny")}
                         >
                           <option value="inherit">{t("admin:agentsInherit")}</option>
                           <option value="allow">{t("admin:agentsAllow")}</option>
                           <option value="deny">{t("admin:agentsDeny")}</option>
-                        </select>
+                        </Select>
                       </label>
                     </div>
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <button
+                    <div className="mt-soft flex flex-wrap items-center gap-base">
+                      <Button
+                        variant="primary"
+                        size="sm"
                         type="button"
                         disabled={policyBusy}
-                        className="rounded-md bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+                        className="px-soft py-snug text-xs"
                         onClick={() => void saveAccessPolicy()}
                       >
                         {t("admin:agentsSavePolicy")}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        size="sm"
                         type="button"
                         disabled={policyBusy}
-                        className="rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/15 disabled:opacity-50"
+                        className="bg-white/10 px-soft py-snug text-xs hover:bg-white/15"
                         onClick={() => void deleteAccessPolicy()}
                       >
                         {t("admin:agentsDeletePolicy")}
-                      </button>
-                      {policyMsg ? <span className="text-xs text-surface-muted">{policyMsg}</span> : null}
+                      </Button>
+                      {policyMsg ? <span className="text-xs text-ink-muted">{policyMsg}</span> : null}
                     </div>
-                    <div className="mt-3">
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                    <div className="mt-soft">
+                      <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
                         {t("admin:agentsActivePolicies")}
                       </p>
-                      <div className="mt-1 space-y-1">
+                      <div className="mt-tight space-y-tight">
                         {(detail?.governance?.policies ?? []).length === 0 ? (
-                          <p className="text-xs text-surface-muted">—</p>
+                          <p className="text-xs text-ink-muted">—</p>
                         ) : (
                           (detail?.governance?.policies ?? []).map((p) => (
-                            <p key={p.id} className="font-mono text-[11px] text-neutral-300">
+                            <p key={p.id} className="font-mono text-meta text-ink-secondary">
                               {p.scope} {p.tenant_id ?? ""} {p.user_id ?? ""} · direct={p.direct_state} · delegate=
                               {p.delegate_state}
                             </p>
@@ -752,76 +775,80 @@ export function AdminAgents() {
                     </div>
                   </div>
 
-                  <div className="mt-4 rounded-lg border border-white/10 bg-black/20 p-3">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="mt-wide rounded-card border border-line bg-black/20 p-soft">
+                    <div className="flex flex-wrap items-start justify-between gap-soft">
                       <div>
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                        <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
                           {t("admin:agentsPromptEditor")}
                         </p>
-                        <p className="mt-1 text-xs text-surface-muted">
+                        <p className="mt-tight text-xs text-ink-muted">
                           {t("admin:agentsPromptEditorHint")}
                         </p>
                       </div>
-                      <p className="font-mono text-[11px] text-neutral-400">
+                      <p className="font-mono text-meta text-ink-muted">
                         {t("admin:agentsPromptSource")}: {detail?.governance?.prompt.effective_source ?? "file_default"}
                         {detail?.governance?.prompt.published_version
                           ? ` · v${detail.governance.prompt.published_version}`
                           : ""}
                       </p>
                     </div>
-                    <textarea
-                      className="mt-3 min-h-52 w-full rounded-md border border-surface-border bg-black/30 px-3 py-2 font-mono text-xs text-white placeholder:text-neutral-500"
+                    <TextArea
+                      mono
+                      className="mt-soft min-h-52 text-xs"
                       value={promptText}
                       onChange={(e) => setPromptText(e.target.value)}
                       maxLength={12000}
                     />
-                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-[11px] text-surface-muted">
+                    <div className="mt-base flex flex-wrap items-center justify-between gap-base">
+                      <p className="text-meta text-ink-muted">
                         {promptText.length} / 12000 {t("admin:agentsChars")} · ~{Math.max(1, Math.floor(promptText.length / 4))}{" "}
                         {t("admin:agentsTokens")}
                       </p>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
+                      <div className="flex flex-wrap items-center gap-base">
+                        <Button
+                          variant="primary"
+                          size="sm"
                           type="button"
                           disabled={promptBusy || !promptText.trim()}
-                          className="rounded-md bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+                          className="px-soft py-snug text-xs"
                           onClick={() => void savePromptDraft()}
                         >
                           {t("admin:agentsSavePromptDraft")}
-                        </button>
-                        {promptMsg ? <span className="text-xs text-surface-muted">{promptMsg}</span> : null}
+                        </Button>
+                        {promptMsg ? <span className="text-xs text-ink-muted">{promptMsg}</span> : null}
                       </div>
                     </div>
-                    <div className="mt-4">
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                    <div className="mt-wide">
+                      <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
                         {t("admin:agentsPromptVersions")}
                       </p>
-                      <div className="mt-2 space-y-2">
+                      <div className="mt-base space-y-base">
                         {promptVersions.length === 0 ? (
-                          <p className="text-xs text-surface-muted">—</p>
+                          <p className="text-xs text-ink-muted">—</p>
                         ) : (
                           promptVersions.map((v) => (
                             <div
                               key={v.id}
-                              className="flex flex-wrap items-center justify-between gap-2 rounded border border-white/10 bg-white/[0.03] px-2 py-2"
+                              className="flex flex-wrap items-center justify-between gap-base rounded-tile border border-line bg-white/[0.03] px-base py-base"
                             >
                               <div>
-                                <p className="font-mono text-xs text-neutral-200">
+                                <p className="font-mono text-xs text-ink-primary">
                                   v{v.version} · {v.status} · {v.prompt_text.length} {t("admin:agentsChars")}
                                 </p>
-                                <p className="mt-0.5 text-[11px] text-surface-muted">
+                                <p className="mt-hair text-meta text-ink-muted">
                                   {v.created_at ?? "—"}
                                   {v.published_at ? ` · ${t("admin:agentsPublishedAt")} ${v.published_at}` : ""}
                                 </p>
                               </div>
-                              <button
+                              <Button
+                                size="sm"
                                 type="button"
                                 disabled={promptBusy || v.status === "published"}
-                                className="rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/15 disabled:opacity-50"
+                                className="bg-white/10 px-soft py-snug text-xs hover:bg-white/15"
                                 onClick={() => void publishPromptVersion(v.id)}
                               >
                                 {t("admin:agentsPublishPrompt")}
-                              </button>
+                              </Button>
                             </div>
                           ))
                         )}
@@ -829,26 +856,26 @@ export function AdminAgents() {
                     </div>
                   </div>
 
-                  <div className="mt-3">
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                  <div className="mt-soft">
+                    <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
                       {t("admin:agentsResolvedTools")} ({detail?.tool_names?.length ?? 0})
                     </p>
-                    <p className="mt-1 max-h-32 overflow-y-auto break-all font-mono text-[11px] text-neutral-400">
+                    <p className="mt-tight max-h-32 overflow-y-auto break-all font-mono text-meta text-ink-muted">
                       {(detail?.tool_names ?? []).join(", ") || "—"}
                     </p>
                   </div>
-                  <div className="mt-3">
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                  <div className="mt-soft">
+                    <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
                       {t("admin:agentsEffectiveTools")} ({detail?.effective_tool_names?.length ?? 0})
                     </p>
-                    <p className="mt-1 max-h-32 overflow-y-auto break-all font-mono text-[11px] text-emerald-300/90">
+                    <p className="mt-tight max-h-32 overflow-y-auto break-all font-mono text-meta text-badge-success">
                       {(detail?.effective_tool_names ?? []).join(", ") || "—"}
                     </p>
                   </div>
                 </>
               )}
 
-              <p className="mt-4 text-xs text-surface-muted">{t("admin:agentsEditHint")}</p>
+              <p className="mt-wide text-xs text-ink-muted">{t("admin:agentsEditHint")}</p>
             </div>
           ) : null}
         </div>

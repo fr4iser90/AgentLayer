@@ -30,6 +30,7 @@ from apps.backend.api.agents.controllers.agent_config_admin_api import router as
 from apps.backend.api.agents.controllers.agents_admin_api import router as agents_admin_router
 from apps.backend.api.agents.controllers.agents_api import router as agents_router
 from apps.backend.api.agents.controllers.agents_import_admin_api import router as agents_import_admin_router
+from apps.backend.api.agents.controllers.agent_submissions_api import router as agent_submissions_router
 from apps.backend.api.agents.controllers.chat_runtime_api import router as chat_runtime_router
 from apps.backend.api.agents.controllers.conversation_goal_api import router as conversation_goal_router
 from apps.backend.api.benchmarks.controllers.benchmark_harness_admin_api import router as benchmark_harness_admin_router
@@ -44,6 +45,7 @@ from apps.backend.api.conversations.controllers.conversations_api import router 
 from apps.backend.api.dashboards.controllers.dashboard_api import router as dashboard_router
 from apps.backend.api.media.controllers.media_api import router as media_router
 from apps.backend.api.notifications.controllers.notifications_api import router as notifications_router
+from apps.backend.api.platform.controllers.admin_grants_api import router as admin_grants_router
 from apps.backend.api.platform.controllers.admin_users_api import router as admin_users_router
 from apps.backend.api.platform.controllers.auth_api import router as auth_router
 from apps.backend.api.platform.controllers.health_api import merge_model_catalog_rows
@@ -61,7 +63,6 @@ from apps.backend.api.tenant_content.controllers.tenant_content_api import (
     router as tenant_content_router,
 )
 from apps.backend.api.rag.controllers.rag_api import router as rag_router
-from apps.backend.api.scheduling.controllers.scheduler_job_presets_api import router as scheduler_job_presets_router
 from apps.backend.api.scheduling.controllers.scheduler_job_presets_user_api import router as scheduler_job_presets_user_router
 from apps.backend.api.scheduling.controllers.scheduler_job_runs_api import admin_router as scheduler_job_runs_admin_router
 from apps.backend.api.scheduling.controllers.scheduler_job_runs_api import user_router as scheduler_job_runs_user_router
@@ -114,7 +115,6 @@ for router in (
     chat_completions_router,
     studio_router,
     scheduler_jobs_admin_router,
-    scheduler_job_presets_router,
     scheduler_jobs_user_router,
     scheduler_job_runs_user_router,
     scheduler_job_runs_admin_router,
@@ -129,6 +129,7 @@ for router in (
     agents_router,
     agents_admin_router,
     agents_import_admin_router,
+    agent_submissions_router,
     tools_admin_router,
     tools_import_admin_router,
     chat_runtime_router,
@@ -141,6 +142,7 @@ for router in (
     auth_router,
     operator_admin_router,
     admin_users_router,
+    admin_grants_router,
     health_router,
     legal_router,
     openapi_tools_router,

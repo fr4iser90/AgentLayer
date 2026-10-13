@@ -4,6 +4,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { DashboardGridCanvas } from "./DashboardGridCanvas";
 import { applyLayoutProposal } from "./layoutProposalShared";
 import { useLayoutProposalSet } from "./useLayoutProposalSet";
+import { Button } from "../../ui/Button";
 
 type Props = {
   dashboardId: string;
@@ -48,7 +49,7 @@ export function DashboardLayoutProposalInline({
 
   if (loading) {
     return (
-      <div className="mt-2 rounded-lg border border-white/10 bg-black/30 px-2 py-3 text-[11px] text-surface-muted">
+      <div className="mt-base rounded-card border border-line bg-black/30 px-base py-soft text-meta text-ink-muted">
         {t("dashboard:layoutProposalsLoading")}
       </div>
     );
@@ -56,39 +57,41 @@ export function DashboardLayoutProposalInline({
 
   if (notFound || error || !proposalSet) {
     return (
-      <div className="mt-2 rounded-lg border border-red-500/30 bg-red-950/20 px-2 py-2 text-[11px] text-red-200">
+      <div className="mt-base rounded-card border border-danger/30 bg-danger-subtle px-base py-base text-meta text-badge-danger">
         {t("dashboard:layoutProposalsEmpty")}
       </div>
     );
   }
 
   return (
-    <div className="mt-2 space-y-2">
-      <p className="text-[10px] font-medium uppercase tracking-wide text-emerald-400/90">
+    <div className="mt-base space-y-base">
+      <p className="text-meta font-medium uppercase tracking-wide text-success">
         {t("dashboard:layoutProposalsInlineHint")}
       </p>
       {applyErr ? (
-        <p className="rounded border border-red-500/30 bg-red-950/20 px-2 py-1 text-[10px] text-red-200">
+        <p className="rounded-tile border border-danger/30 bg-danger-subtle px-base py-tight text-meta text-badge-danger">
           {applyErr}
         </p>
       ) : null}
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-base">
         {proposalSet.proposals.map((p) => {
           const confirming = confirmId === p.id;
           return (
             <article
               key={p.id}
-              className="overflow-hidden rounded-lg border border-emerald-500/25 bg-[#0d1210]"
+              className="overflow-hidden rounded-card border border-success/25 bg-[#0d1210]"
             >
-              <div className="border-b border-white/5 px-2 py-1.5">
-                <div className="text-[11px] font-semibold text-white">{p.title}</div>
+              <div className="border-b border-line-subtle px-base py-snug">
+                <div className="text-meta font-semibold text-ink-primary">{p.title}</div>
                 {p.summary ? (
-                  <div className="mt-0.5 text-[10px] leading-snug text-neutral-400">{p.summary}</div>
+                  <div className="mt-hair text-meta leading-snug text-ink-muted">{p.summary}</div>
                 ) : null}
               </div>
-              <button
+              <Button
+                variant="plain"
+                block
                 type="button"
-                className="block w-full cursor-zoom-in text-left"
+                className="block w-full cursor-zoom-in"
                 onClick={() => onEnlarge(p.id)}
                 aria-label={t("dashboard:layoutProposalsEnlarge", { title: p.title })}
               >
@@ -108,43 +111,48 @@ export function DashboardLayoutProposalInline({
                     </div>
                   </div>
                 </div>
-              </button>
-              <div className="flex items-center justify-end gap-1.5 border-t border-white/5 px-2 py-1.5">
-                <button
+              </Button>
+              <div className="flex items-center justify-end gap-snug border-t border-line-subtle px-base py-snug">
+                <Button
                   type="button"
-                  className="rounded border border-surface-border px-2 py-0.5 text-[10px] text-neutral-300 hover:bg-white/5"
+                  className="px-base py-hair text-meta text-ink-secondary hover:bg-white/5"
                   onClick={() => onEnlarge(p.id)}
                 >
                   {t("dashboard:layoutProposalsEnlargeShort")}
-                </button>
+                </Button>
                 {confirming ? (
                   <>
-                    <button
+                    <Button
                       type="button"
+                      variant="secondary"
+                      size="sm"
                       disabled={applyBusy}
-                      className="rounded border border-surface-border px-2 py-0.5 text-[10px] text-neutral-300 hover:bg-white/5"
                       onClick={() => setConfirmId(null)}
                     >
                       {t("dashboard:layoutProposalsCancel")}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="primary"
+                      tone="success"
                       type="button"
                       disabled={applyBusy}
-                      className="rounded bg-emerald-600 px-2 py-0.5 text-[10px] font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+                      className="px-base py-hair text-meta"
                       onClick={() => void handleApply(p.id)}
                     >
                       {applyBusy ? t("dashboard:saving") : t("dashboard:layoutProposalsApplyConfirm")}
-                    </button>
+                    </Button>
                   </>
                 ) : (
-                  <button
+                  <Button
+                    variant="primary"
+                    tone="success"
                     type="button"
                     disabled={applyBusy}
-                    className="rounded bg-emerald-600 px-2 py-0.5 text-[10px] font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+                    className="px-base py-hair text-meta"
                     onClick={() => setConfirmId(p.id)}
                   >
                     {t("dashboard:layoutProposalsApply")}
-                  </button>
+                  </Button>
                 )}
               </div>
             </article>

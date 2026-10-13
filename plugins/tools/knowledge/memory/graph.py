@@ -149,12 +149,12 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "graph_node_add",
-            "TOOL_DESCRIPTION": "Add one graph memory node (short label + summary). Only on explicit user request.",
+            "description": "Add one graph memory node (short label + summary). Only on explicit user request.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "dashboard_id": {"type": "string"},
-                    "kind": {"type": "string", "TOOL_DESCRIPTION": "e.g. event, entity, task"},
+                    "kind": {"type": "string", "description": "e.g. event, entity, task"},
                     "label": {"type": "string"},
                     "summary": {"type": "string"},
                     "payload": {"type": "object"},
@@ -162,7 +162,7 @@ TOOLS: list[dict[str, Any]] = [
                     "confidence": {"type": "number"},
                     "source": {"type": "string"},
                     "subject_key": {"type": "string"},
-                    "stability": {"type": "string", "TOOL_DESCRIPTION": "volatile, normal, or stable"},
+                    "stability": {"type": "string", "description": "volatile, normal, or stable"},
                     "priority": {"type": "number"},
                 },
                 "required": ["label"],
@@ -173,7 +173,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "graph_propose",
-            "TOOL_DESCRIPTION": "Propose graph nodes/edges from free text via local LLM; set apply=true to persist.",
+            "description": "Propose graph nodes/edges from free text via local LLM; set apply=true to persist.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -189,7 +189,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "graph_edge_add",
-            "TOOL_DESCRIPTION": "Link two existing graph nodes (same user).",
+            "description": "Link two existing graph nodes (same user).",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -206,7 +206,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "graph_nodes_list",
-            "TOOL_DESCRIPTION": "List this user's graph memory nodes (most recent first).",
+            "description": "List this user's graph memory nodes (most recent first).",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -221,7 +221,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "graph_node_delete",
-            "TOOL_DESCRIPTION": "Soft-delete one graph node by id.",
+            "description": "Soft-delete one graph node by id.",
             "parameters": {
                 "type": "object",
                 "properties": {

@@ -7,6 +7,7 @@ import type { RunCard } from "./buildRunCards";
 import { RunCardBlock } from "./RunCardBlock";
 import { SecretRegisterCard } from "./SecretRegisterCard";
 import { MessageFeedbackButtons } from "./MessageFeedbackButtons";
+import { ContextInjectionGroup } from "./ContextInjectionGroup";
 import {
   buildInterleavedTurnSegments,
   type TurnSegment,
@@ -14,17 +15,41 @@ import {
 import type { AgentTimelineEntry } from "./chatThreadStorage";
 import type { Proposal, ProposalOption } from "../../lib/proposalParser";
 import { TurnElapsedRuntime } from "./TurnElapsedRuntime";
+import { Mascot, agentTurnState } from "../../ui/Mascot";
+import { Badge } from "../../ui/Badge";
 
-const ReasoningPanel = memo(function ReasoningPanel({ text }: { text: string }) {
+const ReasoningPanel = memo(function ReasoningPanel({
+  text,
+  running = false,
+}: {
+  text: string;
+  running?: boolean;
+}) {
   const { t } = useTranslation(["chat"]);
   const trimmed = text.trim();
-  if (!trimmed || !getAgentShowReasoning()) return null;
+  if (!trimmed) return null;
+  const defaultOpen = getAgentShowReasoning();
   return (
-    <details className="mb-3 rounded-md border border-white/5 bg-black/25 px-3 py-2 text-xs text-neutral-500">
-      <summary className="cursor-pointer select-none font-medium uppercase tracking-wide text-neutral-500">
-        {t("chat:reasoningPanelLabel")}
+    <details className="mb-soft group" defaultOpen={defaultOpen}>
+      <summary className="inline-flex cursor-pointer list-none items-center gap-snug rounded-tile border border-accent/35 bg-accent-subtle px-base py-tight text-meta font-medium text-badge-accent marker:content-none [&::-webkit-details-marker]:hidden hover:bg-accent-subtle">
+        <span
+          className={`relative flex h-1.5 w-1.5 shrink-0 ${running ? "animate-pulse" : ""}`}
+          aria-hidden
+        >
+          <span className="absolute inline-flex h-full w-full rounded-pill bg-accent opacity-75" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-pill bg-accent" />
+        </span>
+        {t("chat:thinkingBadge")}
+        <span className="text-meta font-normal text-badge-accent group-open:hidden">
+          {t("chat:thinkingBadgeExpandHint")}
+        </span>
+        <span className="hidden text-meta font-normal text-badge-accent group-open:inline">
+          {t("chat:thinkingBadgeCollapseHint")}
+        </span>
       </summary>
-      <pre className="mt-2 whitespace-pre-wrap break-words font-sans text-neutral-500">{trimmed}</pre>
+      <pre className="mt-base max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-line-subtle bg-black/30 px-soft py-base font-sans text-xs leading-relaxed text-ink-muted">
+        {trimmed}
+      </pre>
     </details>
   );
 });
@@ -50,6 +75,10 @@ type Props = {
   waitHint?: string | null;
 };
 
+function timelineTurnCancelled(entries: AgentTimelineEntry[]): boolean {
+  return entries.some((e) => e.kind === "agent.cancelled" || e.kind === "agent.aborted");
+}
+
 const InterleavedStreamBody = memo(function InterleavedStreamBody({
   segments,
   auth,
@@ -68,7 +97,7 @@ const InterleavedStreamBody = memo(function InterleavedStreamBody({
   onToggleRunCardExpanded?: (cardId: string) => void;
 }) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-soft">
       {segments.map((seg) => {
         if (seg.type === "text") {
           const trimmed = seg.text.trim();
@@ -91,6 +120,9 @@ const InterleavedStreamBody = memo(function InterleavedStreamBody({
               onSaved={onSecretSaved}
             />
           );
+        }
+        if (seg.type === "context_inject_group") {
+          return <ContextInjectionGroup key={seg.key} items={seg.items} />;
         }
         return (
           <RunCardBlock
@@ -135,8 +167,18 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
     (s) =>
       (s.type === "text" && s.text.trim().length > 0) ||
       s.type === "card" ||
-      s.type === "secret_prompt"
+      s.type === "secret_prompt" ||
+      s.type === "context_inject_group"
   );
+  const turnCancelled = timelineTurnCancelled(timelineEntries);
+
+  const hasReasoning = Boolean(reasoningContent && reasoningContent.trim());
+  const mascotState = agentTurnState({
+    running: Boolean(running),
+    hasReasoning,
+    cancelled: turnCancelled,
+  });
+
   const timeLabel =
     createdAt != null
       ? new Date(createdAt).toLocaleTimeString(undefined, {
@@ -147,25 +189,23 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
 
   return (
     <li className="flex w-full justify-end scroll-mt-4">
-      <div className="max-w-[min(100%,42rem)] rounded-2xl border border-white/10 bg-[#1e1e1e] px-4 py-3 text-sm text-neutral-200 shadow-sm">
-        <span className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-surface-muted">
-          {running && !hasStreamBody ? (
-            <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-sky-400" />
-          ) : null}
+      <div className="max-w-measure rounded-sheet border border-line bg-[#1e1e1e] px-wide py-soft text-sm text-ink-primary shadow-xs">
+        <span className="mb-tight flex items-center gap-base text-meta font-medium uppercase tracking-wide text-ink-muted">
+          <Mascot character="volt" state={mascotState} size={20} ariaLabel={null} />
           {t("chat:roleAssistant")}
           {standInAuto ? (
-            <span className="rounded bg-violet-900/40 px-1.5 py-0.5 text-[9px] font-normal normal-case text-violet-200">
+            <span className="rounded-tile bg-violet-900/40 px-snug py-hair text-meta font-normal normal-case text-violet-200">
               {t("chat:standInAutoBadge")}
             </span>
           ) : null}
           {timeLabel ? (
-            <span className="font-normal normal-case text-surface-muted">{timeLabel}</span>
+            <span className="font-normal normal-case text-ink-muted">{timeLabel}</span>
           ) : null}
         </span>
         {running && runStartedAtMs != null ? (
-          <TurnElapsedRuntime startedAtMs={runStartedAtMs} className="mb-2" />
+          <TurnElapsedRuntime startedAtMs={runStartedAtMs} className="mb-base" />
         ) : null}
-        <ReasoningPanel text={reasoningContent ?? ""} />
+        <ReasoningPanel text={reasoningContent ?? ""} running={running} />
         {hasStreamBody ? (
           <InterleavedStreamBody
             segments={segments}
@@ -178,6 +218,13 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
           />
         ) : running ? (
           <p className="text-neutral-300/90">{waitHint?.trim() || t("chat:agentRunning")}</p>
+        ) : null}
+        {turnCancelled && !running ? (
+          <div className="mt-soft flex justify-start">
+            <Badge tone="warning" className="uppercase tracking-wide">
+              {t("chat:turnCancelledBadge")}
+            </Badge>
+          </div>
         ) : null}
         {!running && messagePosition != null ? (
           <MessageFeedbackButtons

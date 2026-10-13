@@ -10,6 +10,8 @@ import {
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n/config";
+import { Button } from "../ui/Button";
+import { Badge } from "../ui/Badge";
 import { useAuth } from "../auth/AuthContext";
 import { apiFetch } from "../lib/api";
 import { DashboardEmbeddedChat } from "../features/dashboard/DashboardEmbeddedChat";
@@ -18,7 +20,9 @@ import {
   isOnboardingDismissed,
 } from "../features/dashboard/DashboardOnboardingBanner";
 import { DashboardGridCanvas } from "../features/dashboard/DashboardGridCanvas";
-import { DashboardSettingsDrawer } from "../features/dashboard/DashboardSettingsDrawer";
+import { Drawer } from "../ui/Drawer";
+import { Modal } from "../ui/Modal";
+import { DashboardBoardFilesPanel } from "../features/dashboard/DashboardBoardFilesPanel";
 import { DashboardSidebarNav } from "../features/dashboard/DashboardSidebarNav";
 import { DashboardOverviewPanel } from "../features/dashboard/DashboardOverviewPanel";
 import { ProjectsImportModal } from "../features/dashboard/ProjectsImportModal";
@@ -44,6 +48,9 @@ import type {
   DashboardSummary,
 } from "../features/dashboard/types";
 import { layoutModeOf, parseUiLayout, withLayoutMode } from "../features/dashboard/layoutMode";
+import { Tooltip } from "../ui/Tooltip";
+import { Select, TextArea, TextInput } from "../ui/Field";
+import { Checkbox } from "../ui/Checkbox";
 
 function asUiLayout(raw: unknown): UiLayout | null {
   return parseUiLayout(raw);
@@ -1157,93 +1164,79 @@ export function DashboardPage() {
   if (!loading && schemaInstalled === false) {
     return (
       <div className="h-full min-h-0 overflow-y-auto">
-        <div className="mx-auto max-w-4xl px-6 py-10">
-          <h1 className="text-xl font-semibold text-white">{t("dashboard:catalogTitle")}</h1>
-          <p className="mt-1 text-sm text-surface-muted">
+        <div className="mx-auto max-w-page px-broad py-page">
+          <h1 className="text-xl font-semibold text-ink-primary">{t("dashboard:catalogTitle")}</h1>
+          <p className="mt-tight text-sm text-ink-muted">
             {t("dashboard:catalogIntro")}
           </p>
 
           {installableCatalog.length === 0 ? (
-            <p className="mt-8 text-sm text-surface-muted">{t("dashboard:noInstallablePacks")}</p>
+            <p className="mt-deep text-sm text-ink-muted">{t("dashboard:noInstallablePacks")}</p>
           ) : (
-            <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="mt-deep grid gap-wide sm:grid-cols-2 lg:grid-cols-3">
               {installableCatalog.map((row) => (
                 <li key={row.kind}>
-                  <button
+                  <Button
+                    variant="plain"
+                    block
                     type="button"
                     onClick={() => confirmInstallCatalogRow(row)}
-                    className="flex h-full min-h-[148px] w-full flex-col rounded-xl border border-surface-border bg-surface-raised p-5 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
+                    className="h-full min-h-[148px] w-full flex-col rounded-sheet border border-line bg-card p-roomy transition hover:border-accent/35 hover:bg-white/[0.03]"
                   >
-                    <span className="text-base font-medium text-white">{row.label}</span>
+                    <span className="text-base font-medium text-ink-primary">{row.label}</span>
                     {row.description ? (
-                      <span className="mt-2 text-sm leading-snug text-surface-muted">{row.description}</span>
+                      <span className="mt-base text-sm leading-snug text-ink-muted">{row.description}</span>
                     ) : null}
-                    <span className="mt-auto pt-4 text-sm font-medium text-sky-400">{t("dashboard:install")}</span>
-                  </button>
+                    <span className="mt-auto pt-wide text-sm font-medium text-accent">{t("dashboard:install")}</span>
+                  </Button>
                 </li>
               ))}
             </ul>
           )}
 
           {error ? (
-            <div className="mt-6 rounded-lg border border-red-500/40 bg-red-950/30 px-3 py-2 text-sm text-red-200">
+            <div className="mt-broad rounded-card border border-danger/40 bg-danger-subtle px-soft py-base text-sm text-badge-danger">
               {error}
             </div>
           ) : null}
         </div>
 
         {installModalRow ? (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="presentation">
-            <div
-              className="absolute inset-0 bg-black/70"
-              role="button"
-              tabIndex={0}
-              aria-label={t("dashboard:close")}
-              onClick={() => {
-                if (!installBusy) setInstallModalRow(null);
-              }}
-              onKeyDown={(e) => {
-                if ((e.key === "Enter" || e.key === " ") && !installBusy) {
-                  e.preventDefault();
-                  setInstallModalRow(null);
-                }
-              }}
-            />
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="ws-install-title"
-              className="relative w-full max-w-md rounded-xl border border-surface-border bg-surface-raised p-6 shadow-xl"
-            >
-              <h2 id="ws-install-title" className="text-lg font-semibold text-white">
-                {t("dashboard:installPackConfirmTitle", { label: installModalRow.label })}
-              </h2>
-              {installModalRow.description ? (
-                <p className="mt-2 text-sm text-surface-muted">{installModalRow.description}</p>
-              ) : null}
-              <p className="mt-3 text-sm text-surface-muted">
-                {t("dashboard:installPackConfirmBody")}
-              </p>
-              <div className="mt-6 flex justify-end gap-2">
-                <button
+          <Modal
+            open
+            onClose={() => setInstallModalRow(null)}
+            title={t("dashboard:installPackConfirmTitle", { label: installModalRow.label })}
+            dismissOnScrim={!installBusy}
+            footer={(
+              <>
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="lg"
                   disabled={installBusy}
-                  className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5 disabled:opacity-50"
                   onClick={() => setInstallModalRow(null)}
                 >
                   {t("admin:cancel")}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="primary"
+                  size="lg"
                   disabled={installBusy || !installModalRow.has_schema}
-                  className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={() => void runInstallFromModal()}
                 >
                   {installBusy ? t("dashboard:installing") : t("dashboard:install")}
-                </button>
-              </div>
-            </div>
-          </div>
+                </Button>
+              </>
+            )}
+          >
+            {installModalRow.description ? (
+              <p className="text-body text-ink-muted">{installModalRow.description}</p>
+            ) : null}
+            <p className="text-body text-ink-muted">
+              {t("dashboard:installPackConfirmBody")}
+            </p>
+          </Modal>
         ) : null}
       </div>
     );
@@ -1251,7 +1244,7 @@ export function DashboardPage() {
 
   if (loading || schemaInstalled === null) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-surface-muted">
+      <div className="flex h-full items-center justify-center text-sm text-ink-muted">
         {t("dashboard:loading")}
       </div>
     );
@@ -1259,13 +1252,15 @@ export function DashboardPage() {
 
   const dashboardSidebar = (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 border-b border-surface-border p-2">
-        <p className="px-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wide text-surface-muted">
+      <div className="shrink-0 border-b border-line p-base">
+        <p className="px-snug pb-tight text-meta font-semibold uppercase tracking-wide text-ink-muted">
           {t("dashboard:actions")}
         </p>
-        <div className="flex flex-col gap-0.5">
+        <div className="flex flex-col gap-hair">
           {structureEditAllowed ? (
-            <button
+            <Button
+              variant="plain"
+              block
               type="button"
               onClick={() => {
                 setNewWsModalOpen(true);
@@ -1273,10 +1268,10 @@ export function DashboardPage() {
                 setSelectedId(null);
                 setActionsSidebarOpen(false);
               }}
-              className="rounded-md px-2 py-1.5 text-left text-xs text-neutral-200 transition hover:bg-white/5"
+              className="rounded-tile px-base py-snug text-xs text-ink-primary transition hover:bg-white/5"
             >
               {t("dashboard:createNew")}
-            </button>
+            </Button>
           ) : null}
           <button
             type="button"
@@ -1286,26 +1281,29 @@ export function DashboardPage() {
               setActionsSidebarOpen(false);
             }}
             className={[
-              "rounded-md px-2 py-1.5 text-left text-xs transition hover:bg-white/5",
-              !selectedId && hubPanel === "overview" ? "bg-white/10 text-white" : "text-neutral-200",
+              "rounded-tile px-base py-snug text-left text-xs transition hover:bg-white/5",
+              !selectedId && hubPanel === "overview" ? "bg-white/10 text-ink-primary" : "text-ink-primary",
             ].join(" ")}
           >
             {t("dashboard:overviewTitle")}
           </button>
-          <button
-            type="button"
-            disabled
-            className="cursor-not-allowed rounded-md px-2 py-1.5 text-left text-xs text-white/30"
-            title={t("dashboard:comingSoon")}
+          <Tooltip label={t("dashboard:comingSoon")}>
+          <Button
+            variant="plain"
+            block
+              type="button"
+              disabled
+              className="cursor-not-allowed rounded-tile px-base py-snug text-xs text-white/30"
           >
-            {t("dashboard:import")}
-          </button>
+              {t("dashboard:import")}
+            </Button>
+          </Tooltip>
           <button
             type="button"
             onClick={() => openCatalog()}
             className={[
-              "rounded-md px-2 py-1.5 text-left text-xs transition hover:bg-white/5",
-              !selectedId && hubPanel === "catalog" ? "bg-white/10 text-white" : "text-neutral-200",
+              "rounded-tile px-base py-snug text-left text-xs transition hover:bg-white/5",
+              !selectedId && hubPanel === "catalog" ? "bg-white/10 text-ink-primary" : "text-ink-primary",
             ].join(" ")}
           >
             {t("dashboard:catalogTitle")}
@@ -1324,9 +1322,9 @@ export function DashboardPage() {
   );
 
   const overviewMain = (
-    <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
+    <div className="min-h-0 flex-1 overflow-y-auto p-wide md:p-broad">
       {error ? (
-        <div className="mb-4 rounded-lg border border-red-500/40 bg-red-950/30 px-3 py-2 text-sm text-red-200">
+        <div className="mb-wide rounded-card border border-danger/40 bg-danger-subtle px-soft py-base text-sm text-badge-danger">
           {error}
         </div>
       ) : null}
@@ -1340,45 +1338,51 @@ export function DashboardPage() {
   );
 
   const hubHomeMain = (
-    <div className="mx-auto max-w-3xl space-y-8 py-6">
+    <div className="mx-auto max-w-pageNarrow space-y-deep py-broad">
       <div>
-        <h1 className="text-xl font-semibold text-white">{t("dashboard:hubHomeTitle")}</h1>
-        <p className="mt-1 text-sm text-surface-muted">{t("dashboard:hubHomeSubtitle")}</p>
+        <h1 className="text-xl font-semibold text-ink-primary">{t("dashboard:hubHomeTitle")}</h1>
+        <p className="mt-tight text-sm text-ink-muted">{t("dashboard:hubHomeSubtitle")}</p>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <button
+      <div className="grid gap-wide sm:grid-cols-2">
+        <Button
+          variant="plain"
+          block
           type="button"
           onClick={() => setNewWsModalOpen(true)}
-          className="flex flex-col rounded-xl border border-surface-border bg-surface-raised p-6 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
+          className="flex-col rounded-sheet border border-line bg-card p-broad transition hover:border-accent/35 hover:bg-white/[0.03]"
         >
-          <span className="text-base font-semibold text-white">{t("dashboard:newDashboardTitle")}</span>
-          <span className="mt-2 text-sm text-surface-muted">{t("dashboard:newDashboardSubtitle")}</span>
-        </button>
-        <button
+          <span className="text-base font-semibold text-ink-primary">{t("dashboard:newDashboardTitle")}</span>
+          <span className="mt-base text-sm text-ink-muted">{t("dashboard:newDashboardSubtitle")}</span>
+        </Button>
+        <Button
+          variant="plain"
+          block
           type="button"
           onClick={() => openCatalog()}
-          className="flex flex-col rounded-xl border border-surface-border bg-surface-raised p-6 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
+          className="flex-col rounded-sheet border border-line bg-card p-broad transition hover:border-accent/35 hover:bg-white/[0.03]"
         >
-          <span className="text-base font-semibold text-white">{t("dashboard:catalogTitle")}</span>
-          <span className="mt-2 text-sm text-surface-muted">{t("dashboard:catalogIntro")}</span>
-        </button>
+          <span className="text-base font-semibold text-ink-primary">{t("dashboard:catalogTitle")}</span>
+          <span className="mt-base text-sm text-ink-muted">{t("dashboard:catalogIntro")}</span>
+        </Button>
       </div>
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-surface-muted">{t("dashboard:recentActivity")}</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{t("dashboard:recentActivity")}</p>
         {recentActivity.length === 0 ? (
-          <p className="mt-2 text-sm text-surface-muted">{t("dashboard:noActivityYet")}</p>
+          <p className="mt-base text-sm text-ink-muted">{t("dashboard:noActivityYet")}</p>
         ) : (
-          <ul className="mt-2 space-y-1.5 text-sm text-neutral-300">
+          <ul className="mt-base space-y-snug text-sm text-ink-secondary">
             {recentActivity.map((w) => (
               <li key={w.id}>
-                <button
+                <Button
+                  variant="plain"
+                  block
                   type="button"
-                  className="w-full rounded-md px-2 py-1.5 text-left hover:bg-white/5"
+                  className="w-full rounded-tile px-base py-snug hover:bg-white/5"
                   onClick={() => selectDashboard(w.id)}
                 >
-                  <span className="text-white">{w.title || w.kind}</span>
-                  <span className="text-surface-muted"> — {relativeActivityEn(w.updated_at)}</span>
-                </button>
+                  <span className="text-ink-primary">{w.title || w.kind}</span>
+                  <span className="text-ink-muted"> — {relativeActivityEn(w.updated_at)}</span>
+                </Button>
               </li>
             ))}
           </ul>
@@ -1388,77 +1392,79 @@ export function DashboardPage() {
   );
 
   const catalogMain = (
-    <div className="min-h-0 flex-1 space-y-4 p-4 md:p-6">
-      <div className="flex flex-wrap items-end gap-3">
-        <button
+    <div className="min-h-0 flex-1 space-y-wide p-wide md:p-broad">
+      <div className="flex flex-wrap items-end gap-soft">
+        <Button
+          variant="ghost"
           type="button"
           onClick={() => setHubPanel("home")}
-          className="text-sm text-sky-400 hover:text-sky-300"
+          className="text-sm text-accent hover:text-badge-accent"
         >
           {t("dashboard:backToDashboards")}
-        </button>
+        </Button>
       </div>
-      <h1 className="text-xl font-semibold text-white">{t("dashboard:catalogTitle")}</h1>
-      <div className="flex flex-wrap items-end gap-3">
+      <h1 className="text-xl font-semibold text-ink-primary">{t("dashboard:catalogTitle")}</h1>
+      <div className="flex flex-wrap items-end gap-soft">
         <div className="min-w-[200px] flex-1">
-          <label className="mb-1 block text-xs text-surface-muted">{t("dashboard:catalogSearchLabel")}</label>
-          <input
+          <label className="mb-tight block text-xs text-ink-muted">{t("dashboard:catalogSearchLabel")}</label>
+          <TextInput
             value={catalogQuery}
             onChange={(e) => setCatalogQuery(e.target.value)}
             placeholder={t("dashboard:filterByNamePlaceholder")}
-            className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50"
+            className="outline-hidden"
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-surface-muted">{t("dashboard:catalogCategoryLabel")}</label>
-          <select
+          <label className="mb-tight block text-xs text-ink-muted">{t("dashboard:catalogCategoryLabel")}</label>
+          <Select
             disabled
-            className="rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white/50"
+            className="text-white/50"
             value="all"
             onChange={() => {}}
           >
             <option value="all">{t("dashboard:catalogCategoryAll")}</option>
-          </select>
+          </Select>
         </div>
       </div>
       {catalogRows.length === 0 ? (
-        <p className="text-sm text-surface-muted">{t("dashboard:catalogNoMatches")}</p>
+        <p className="text-sm text-ink-muted">{t("dashboard:catalogNoMatches")}</p>
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid gap-wide sm:grid-cols-2 lg:grid-cols-3">
           {catalogRows.map((row) => {
             const isInstalled = installedKindSet.has(row.kind);
             return (
               <li
                 key={row.kind}
-                className="flex flex-col rounded-xl border border-surface-border bg-surface-raised p-5"
+                className="flex flex-col rounded-sheet border border-line bg-card p-roomy"
               >
-                <span className="text-base font-medium text-white">{row.label}</span>
+                <span className="text-base font-medium text-ink-primary">{row.label}</span>
                 {row.description ? (
-                  <span className="mt-2 text-sm leading-snug text-surface-muted">{row.description}</span>
+                  <span className="mt-base text-sm leading-snug text-ink-muted">{row.description}</span>
                 ) : null}
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-wide flex flex-wrap gap-base">
                   {isInstalled ? (
-                    <span className="rounded-md border border-white/10 px-2 py-1 text-xs text-surface-muted">
+                    <Badge tone="neutral">
                       {t("dashboard:catalogInstalledBadge")}
-                    </span>
+                    </Badge>
                   ) : (
-                    <button
+                    <Button
+                      variant="primary"
                       type="button"
                       disabled={installBusy || !row.has_schema}
-                      className="rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+                      className="px-soft py-snug text-sm"
                       onClick={() => confirmInstallCatalogRow(row)}
                     >
                       {t("dashboard:install")}
-                    </button>
+                    </Button>
                   )}
                   {isInstalled && row.has_template ? (
-                    <button
+                    <Button
                       type="button"
-                      className="rounded-lg border border-surface-border px-3 py-1.5 text-sm text-neutral-200 hover:bg-white/5"
+                      className="px-soft py-snug text-sm hover:bg-white/5"
                       onClick={() => void createWs(row)}
                     >
                       {t("dashboard:catalogCreateDashboardBtn")}
-                    </button>
+                    </Button>
                   ) : null}
                 </div>
               </li>
@@ -1474,10 +1480,10 @@ export function DashboardPage() {
     main = (
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {!(boardFocus && isCanvasBoard) ? (
-          <div className="shrink-0 border-b border-surface-border px-4 py-3 md:px-6">
-            <p className="text-sm text-surface-muted">
+          <div className="shrink-0 border-b border-line px-wide py-soft md:px-broad">
+            <p className="text-sm text-ink-muted">
               Dashboard /{" "}
-              <span className="text-white">
+              <span className="text-ink-primary">
                 {dashboardReady ? detail?.title || title || "…" : "…"}
               </span>
             </p>
@@ -1489,35 +1495,35 @@ export function DashboardPage() {
               className={[
                 "min-h-0 flex-1",
                 isCanvasBoard
-                  ? "flex flex-col overflow-hidden p-3 md:p-4"
-                  : "overflow-y-auto p-4 md:p-6",
-                boardFocus && isCanvasBoard ? "p-2 md:p-2" : "",
+                  ? "flex flex-col overflow-hidden p-soft md:p-wide"
+                  : "overflow-y-auto p-wide md:p-broad",
+                boardFocus && isCanvasBoard ? "p-base md:p-base" : "",
               ].join(" ")}
             >
             {error ? (
-              <div className="mb-4 shrink-0 rounded-lg border border-red-500/40 bg-red-950/30 px-3 py-2 text-sm text-red-200">
+              <div className="mb-wide shrink-0 rounded-card border border-danger/40 bg-danger-subtle px-soft py-base text-sm text-badge-danger">
                 {error}
               </div>
             ) : null}
             {!dashboardReady ? (
-            <p className="text-sm text-surface-muted">{t("dashboard:loading")}</p>
+            <p className="text-sm text-ink-muted">{t("dashboard:loading")}</p>
             ) : (
               <>
                 {isCanvasBoard ? (
-                  <div className="mb-2 flex shrink-0 flex-wrap items-center gap-2">
+                  <div className="mb-base flex shrink-0 flex-wrap items-center gap-base">
                     <button
                       type="button"
                       className={[
-                        "rounded-lg border px-3 py-1.5 text-xs",
+                        "rounded-card border px-soft py-snug text-xs",
                         boardFocus
-                          ? "border-sky-500/50 bg-sky-950/40 text-sky-100"
-                          : "border-surface-border text-neutral-200 hover:bg-white/5",
+                          ? "border-accent/50 bg-accent-subtle text-badge-accent"
+                          : "border-line text-ink-primary hover:bg-white/5",
                       ].join(" ")}
                       onClick={() => setBoardFocus((v) => !v)}
                     >
                       {boardFocus ? t("dashboard:boardFocusExit") : t("dashboard:boardFocusEnter")}
                     </button>
-                    <div className="flex overflow-hidden rounded-lg border border-surface-border text-xs">
+                    <div className="flex overflow-hidden rounded-card border border-line text-xs">
                       {(
                         [
                           ["full", "chatDockFull"],
@@ -1529,10 +1535,10 @@ export function DashboardPage() {
                           key={mode}
                           type="button"
                           className={[
-                            "px-2.5 py-1.5",
+                            "px-firm py-snug",
                             chatDock === mode
-                              ? "bg-sky-600 text-white"
-                              : "text-neutral-200 hover:bg-white/5",
+                              ? "bg-accent text-ink-on-fill"
+                              : "text-ink-primary hover:bg-white/5",
                           ].join(" ")}
                           onClick={() => setChatDock(mode)}
                         >
@@ -1545,7 +1551,7 @@ export function DashboardPage() {
                 {!boardFocus ? (
                   <>
                 {isViewer ? (
-                  <p className="mb-4 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-surface-muted">
+                  <p className="mb-wide rounded-card border border-line bg-white/[0.03] px-soft py-base text-xs text-ink-muted">
                     {detail?.access_scope === "granular" ? (
                       <>{t("dashboard:viewerReadOnlyGranular")}</>
                     ) : (
@@ -1553,36 +1559,37 @@ export function DashboardPage() {
                     )}
                   </p>
                 ) : null}
-                <div className="mb-4 flex flex-wrap items-end gap-3">
+                <div className="mb-wide flex flex-wrap items-end gap-soft">
                   <div className="min-w-[200px] flex-1">
-                    <label className="mb-1 block text-xs text-surface-muted">{t("dashboard:dashboardTitleLabel")}</label>
-                    <input
+                    <label className="mb-tight block text-xs text-ink-muted">{t("dashboard:dashboardTitleLabel")}</label>
+                    <TextInput
                       readOnly={!canEditStructure}
-                      className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50 read-only:cursor-default read-only:opacity-90"
+                      className="outline-hidden"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                     />
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-base">
                     {canEditStructure ? (
                       !layoutEditMode ? (
-                        <button
+                        <Button
+                          size="lg"
                           type="button"
-                          className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5"
+                          className="px-wide py-base text-sm hover:bg-white/5"
                           onClick={() => startLayoutEdit()}
                         >
                           {t("dashboard:editLayout")}
-                        </button>
+                        </Button>
                       ) : (
                         <>
-                          <div className="flex overflow-hidden rounded-lg border border-surface-border">
+                          <div className="flex overflow-hidden rounded-card border border-line">
                             <button
                               type="button"
                               className={[
-                                "px-3 py-2 text-sm",
+                                "px-soft py-base text-sm",
                                 layoutModeOf(layoutDraft) === "grid"
-                                  ? "bg-sky-600 text-white"
-                                  : "bg-transparent text-neutral-200 hover:bg-white/5",
+                                  ? "bg-accent text-ink-on-fill"
+                                  : "bg-transparent text-ink-primary hover:bg-white/5",
                               ].join(" ")}
                               onClick={() =>
                                 setLayoutDraft((prev) => withLayoutMode(prev, "grid"))
@@ -1593,10 +1600,10 @@ export function DashboardPage() {
                             <button
                               type="button"
                               className={[
-                                "px-3 py-2 text-sm",
+                                "px-soft py-base text-sm",
                                 layoutModeOf(layoutDraft) === "canvas"
-                                  ? "bg-sky-600 text-white"
-                                  : "bg-transparent text-neutral-200 hover:bg-white/5",
+                                  ? "bg-accent text-ink-on-fill"
+                                  : "bg-transparent text-ink-primary hover:bg-white/5",
                               ].join(" ")}
                               onClick={() =>
                                 setLayoutDraft((prev) => withLayoutMode(prev, "canvas"))
@@ -1605,67 +1612,72 @@ export function DashboardPage() {
                               {t("dashboard:layoutModeCanvas")}
                             </button>
                           </div>
-                          <button
+                          <Button
                             type="button"
-                            className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5"
+                            variant="secondary"
+                            size="lg"
                             onClick={() => cancelLayoutEdit()}
                           >
                             {t("admin:cancel")}
-                          </button>
+                          </Button>
                         </>
                       )
                     ) : null}
                     {canEditStructure || (useMode && canEditContent) ? (
-                      <button
+                      <Button
+                        variant="primary"
+                        size="lg"
                         type="button"
                         disabled={saving}
-                        className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+                        className="px-wide py-base text-sm"
                         onClick={() => void save()}
                       >
                         {saving ? t("dashboard:saving") : t("admin:save")}
-                      </button>
+                      </Button>
                     ) : null}
                     {canEditStructure && selectedId && layoutHasImportableList(uiLayout) ? (
-                      <button
+                      <Button
+                        size="lg"
                         type="button"
-                        className="rounded-lg border border-violet-500/40 bg-violet-950/25 px-4 py-2 text-sm text-violet-100 hover:bg-violet-900/35"
+                        className="border-violet-500/40 bg-violet-950/25 px-wide py-base text-sm text-violet-100 hover:bg-violet-900/35"
                         onClick={() => setProjectsImportOpen(true)}
                       >
                         {t("dashboard:importFromGithub")}
-                      </button>
+                      </Button>
                     ) : null}
                     {detail && canEditStructure ? (
-                      <button
+                      <Button
+                        size="lg"
                         type="button"
-                        className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5"
+                        className="px-wide py-base text-sm hover:bg-white/5"
                         onClick={() => setSettingsOpen(true)}
                       >
                         {t("dashboard:settingsLabel")}
-                      </button>
+                      </Button>
                     ) : null}
                     {isPrimaryOwner && canEditStructure ? (
-                      <button
+                      <Button
                         type="button"
-                        className="rounded-lg border border-white/10 px-4 py-2 text-sm text-red-300 hover:bg-red-950/40"
+                        variant="danger"
+                        size="lg"
                         onClick={() => void removeWs()}
                       >
-                        Delete
-                      </button>
+                        {t("dashboard:delete")}
+                      </Button>
                     ) : null}
                   </div>
                 </div>
                 {canManageMembers && canEditStructure ? (
-                  <p className="mb-4 text-xs text-surface-muted">
-                    {t("dashboard:membersMovedHint")}{" "}
-                    <span className="text-white/80">{t("dashboard:settingsLabel")}</span>.
+                  <p className="mb-wide text-xs text-ink-muted">
+                    {t("dashboard:membersMovedHint")}
                   </p>
                 ) : null}
                 {useMode ? (
-                  <p className="mb-4 rounded-lg border border-sky-500/30 bg-sky-950/30 px-3 py-2 text-xs text-sky-100">
+                  <p className="mb-wide rounded-card border border-accent/30 bg-accent-subtle px-soft py-base text-xs text-badge-accent">
                     {t("dashboard:useModeHint")}
                   </p>
                 ) : (
-                  <p className="mb-4 text-xs text-surface-muted">
+                  <p className="mb-wide text-xs text-ink-muted">
                     {t("dashboard:templateLabel")}:{" "}
                     <span className="text-white/80">
                       {subtitleForDashboardKind(detail!.kind, kindCatalog, detail!.template_id)}
@@ -1689,47 +1701,53 @@ export function DashboardPage() {
                 ) : null}
                   </>
                 ) : (
-                  <div className="mb-2 flex shrink-0 flex-wrap items-center gap-2">
-                    <span className="min-w-0 flex-1 truncate text-sm text-white">
+                  <div className="mb-base flex shrink-0 flex-wrap items-center gap-base">
+                    <span className="min-w-0 flex-1 truncate text-sm text-ink-primary">
                       {title || detail?.title || "…"}
                     </span>
                     {canEditStructure ? (
                       !layoutEditMode ? (
-                        <button
+                        <Button
+                          size="sm"
                           type="button"
-                          className="rounded-lg border border-surface-border px-3 py-1.5 text-xs text-neutral-200 hover:bg-white/5"
+                          className="px-soft py-snug text-xs hover:bg-white/5"
                           onClick={() => startLayoutEdit()}
                         >
                           {t("dashboard:editLayout")}
-                        </button>
+                        </Button>
                       ) : (
-                        <button
+                        <Button
+                          variant="primary"
+                          size="sm"
                           type="button"
-                          className="rounded-lg border border-sky-500/50 bg-sky-950/40 px-3 py-1.5 text-xs text-sky-100"
+                          className="border-accent/50 px-soft py-snug text-xs text-badge-accent"
                           onClick={() => cancelLayoutEdit()}
                         >
                           {t("admin:cancel")}
-                        </button>
+                        </Button>
                       )
                     ) : null}
                     {canEditStructure || (useMode && canEditContent) ? (
-                      <button
+                      <Button
+                        variant="primary"
+                        size="sm"
                         type="button"
                         disabled={saving}
-                        className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+                        className="px-soft py-snug text-xs"
                         onClick={() => void save()}
                       >
                         {saving ? t("dashboard:saving") : t("admin:save")}
-                      </button>
+                      </Button>
                     ) : null}
                     {detail && canEditStructure ? (
-                      <button
+                      <Button
+                        size="sm"
                         type="button"
-                        className="rounded-lg border border-surface-border px-3 py-1.5 text-xs text-neutral-200 hover:bg-white/5"
+                        className="px-soft py-snug text-xs hover:bg-white/5"
                         onClick={() => setSettingsOpen(true)}
                       >
                         {t("dashboard:settingsLabel")}
-                      </button>
+                      </Button>
                     ) : null}
                   </div>
                 )}
@@ -1771,16 +1789,16 @@ export function DashboardPage() {
           {dashboardReady && chatDock !== "hidden" ? (
             <aside
               className={[
-                "flex w-full shrink-0 flex-col border-t border-surface-border bg-[#0d0d0d]/80 lg:min-h-0 lg:border-t-0 lg:border-l lg:border-surface-border",
+                "flex w-full shrink-0 flex-col border-t border-line bg-panel lg:min-h-0 lg:border-t-0 lg:border-l lg:border-line",
                 chatDock === "mini"
-                  ? "lg:w-[min(220px,28vw)] lg:max-w-[220px]"
-                  : "lg:w-[min(400px,36vw)] lg:max-w-md",
+                  ? "lg:w-[min(220px,28vw)] lg:max-w-railNarrow"
+                  : "lg:w-[min(400px,36vw)] lg:max-w-rail",
               ].join(" ")}
             >
               <div
                 className={[
-                  "flex min-h-[280px] flex-1 flex-col p-3 md:p-4 lg:min-h-0",
-                  chatDock === "mini" ? "lg:max-h-none lg:p-2" : "lg:max-h-[calc(100vh-7rem)]",
+                  "flex min-h-[280px] flex-1 flex-col p-soft md:p-wide lg:min-h-0",
+                  chatDock === "mini" ? "lg:max-h-none lg:p-base" : "lg:max-h-[calc(100vh-7rem)]",
                   isCanvasBoard ? "lg:max-h-none" : "",
                 ].join(" ")}
               >
@@ -1810,13 +1828,15 @@ export function DashboardPage() {
               </div>
             </aside>
           ) : dashboardReady && chatDock === "hidden" && isCanvasBoard ? (
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               type="button"
-              className="fixed bottom-6 right-6 z-20 rounded-lg border border-sky-500/40 bg-sky-950/90 px-3 py-2 text-xs font-medium text-sky-100 shadow-lg hover:bg-sky-900/90 lg:bottom-8 lg:right-8"
+              className="fixed bottom-6 right-6 z-canvas border-accent/40 px-soft py-base text-xs text-badge-accent shadow-lg lg:bottom-8 lg:right-8"
               onClick={() => setChatDock("mini")}
             >
               {t("dashboard:chatDockShow")}
-            </button>
+            </Button>
           ) : null}
         </div>
       </div>
@@ -1827,9 +1847,9 @@ export function DashboardPage() {
     main = overviewMain;
   } else {
     main = (
-      <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
+      <div className="min-h-0 flex-1 overflow-y-auto p-wide md:p-broad">
         {error ? (
-          <div className="mb-4 rounded-lg border border-red-500/40 bg-red-950/30 px-3 py-2 text-sm text-red-200">
+          <div className="mb-wide rounded-card border border-danger/40 bg-danger-subtle px-soft py-base text-sm text-badge-danger">
             {error}
           </div>
         ) : null}
@@ -1841,71 +1861,73 @@ export function DashboardPage() {
   return (
     <>
       <CollapsibleSidebarShell
-        className="bg-surface"
+        className="bg-canvas"
         mobileOpen={actionsSidebarOpen}
         onMobileOpenChange={setActionsSidebarOpen}
         sidebarAriaLabel={t("dashboard:sidebarNavAria")}
         closeSidebarAriaLabel={t("dashboard:closeActionsSidebar")}
         desktopWidthClass="md:w-64"
-        sidebarSurfaceClass="bg-surface-raised/40"
         sidebar={dashboardSidebar}
       >
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="flex shrink-0 items-center gap-2 border-b border-surface-border px-4 py-2 md:hidden">
-            <button
+          <div className="flex shrink-0 items-center gap-base border-b border-line px-wide py-base md:hidden">
+            <Button
               type="button"
-              className="rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-[11px] font-medium text-neutral-300 hover:bg-white/10"
+              className="bg-black/30 px-firm py-snug text-meta text-ink-secondary hover:bg-white/10"
               aria-expanded={actionsSidebarOpen}
               aria-label={t("dashboard:openActionsSidebar")}
               onClick={() => setActionsSidebarOpen(true)}
             >
               {t("dashboard:openActionsSidebarShort")}
-            </button>
+            </Button>
           </div>
           {main}
         </div>
       </CollapsibleSidebarShell>
 
       {dashboardReady && detail ? (
-        <DashboardSettingsDrawer
+        <Drawer
           open={settingsOpen}
           title={`Settings — ${detail.title || subtitleForDashboardKind(detail.kind, kindCatalog, detail.template_id)}`}
+          width="drawerWide"
           onClose={() => setSettingsOpen(false)}
         >
-          <div className="space-y-4">
-            <div className="rounded-xl border border-surface-border bg-black/20 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-surface-muted">
+          <div className="space-y-wide">
+            <div className="rounded-sheet border border-line bg-black/20 p-wide">
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                 {t("dashboard:dashboardInfoTitle")}
               </p>
-              <div className="mt-2 space-y-1 text-sm text-neutral-200">
+              <div className="mt-base space-y-tight text-sm text-ink-primary">
                 <p>
-                  <span className="text-surface-muted">{t("dashboard:dashboardInfoKind")}</span> {detail.kind}
+                  <span className="text-ink-muted">{t("dashboard:dashboardInfoKind")}</span> {detail.kind}
                 </p>
                 <p>
-                  <span className="text-surface-muted">{t("dashboard:dashboardInfoAccess")}</span> {accessRole}
+                  <span className="text-ink-muted">{t("dashboard:dashboardInfoAccess")}</span> {accessRole}
                 </p>
                 <p>
-                  <span className="text-surface-muted">{t("dashboard:dashboardInfoUpdated")}</span> {detail.updated_at}
+                  <span className="text-ink-muted">{t("dashboard:dashboardInfoUpdated")}</span> {detail.updated_at}
                 </p>
               </div>
             </div>
 
+            <DashboardBoardFilesPanel dashboardId={detail.id} />
+
             {canEditContent ? (
-              <div className="rounded-xl border border-surface-border bg-black/20 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-surface-muted">
+              <div className="rounded-sheet border border-line bg-black/20 p-wide">
+                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                   {t("dashboard:templateExport")} / {t("dashboard:templateImport")}
                 </p>
-                <p className="mt-1 text-xs text-surface-muted">{t("dashboard:templateImportHint")}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
+                <p className="mt-tight text-xs text-ink-muted">{t("dashboard:templateImportHint")}</p>
+                <div className="mt-soft flex flex-wrap gap-base">
+                  <Button
                     type="button"
                     disabled={templateBusy}
-                    className="rounded-lg border border-surface-border px-3 py-2 text-sm text-neutral-200 hover:bg-white/5 disabled:opacity-50"
+                    className="px-soft py-base text-sm hover:bg-white/5"
                     onClick={() => void exportTemplate()}
                   >
                     {t("dashboard:templateExport")}
-                  </button>
-                  <label className="cursor-pointer rounded-lg bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-500">
+                  </Button>
+                  <label className="cursor-pointer rounded-card bg-accent px-soft py-base text-sm font-medium text-ink-on-fill hover:bg-accent-hover">
                     {t("dashboard:templateImport")}
                     <input
                       type="file"
@@ -1923,17 +1945,18 @@ export function DashboardPage() {
               </div>
             ) : null}
 
-            <div className="rounded-xl border border-surface-border bg-black/20 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-surface-muted">
+            <div className="rounded-sheet border border-line bg-black/20 p-wide">
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                 {t("dashboard:dashboardAgentTitle")}
               </p>
-              <p className="mt-2 text-xs text-surface-muted">
+              <p className="mt-base text-xs text-ink-muted">
                 {t("dashboard:dashboardAgentIntro")} {t("dashboard:saveInMainToolbarHint")}
               </p>
-              <label className="mt-3 block text-[10px] text-surface-muted" htmlFor="ws-agent-prompt">
+              <label className="mt-soft block text-meta text-ink-muted" htmlFor="ws-agent-prompt">
                 {t("dashboard:dashboardAgentPromptLabel")}
               </label>
-              <textarea
+              <TextArea
+                mono
                 id="ws-agent-prompt"
                 readOnly={!canEditContent}
                 rows={8}
@@ -1953,58 +1976,56 @@ export function DashboardPage() {
                   });
                 }}
                 placeholder={t("dashboard:agentPromptExtraPlaceholder")}
-                className="mt-1 w-full resize-y rounded-lg border border-surface-border bg-black/30 px-3 py-2 font-mono text-sm leading-relaxed text-white outline-none placeholder:text-white/25 focus:border-sky-500/50 read-only:cursor-default read-only:opacity-90"
+                className="mt-tight resize-y leading-relaxed outline-hidden"
               />
-              <p className="mt-2 text-[10px] text-surface-muted">{t("dashboard:agentPromptExtraSavedHint")}</p>
-              <p className="mt-3 text-[11px] text-surface-muted">{t("dashboard:agentPromptScrollHint")}</p>
+              <p className="mt-base text-meta text-ink-muted">{t("dashboard:agentPromptExtraSavedHint")}</p>
+              <p className="mt-soft text-meta text-ink-muted">{t("dashboard:agentPromptScrollHint")}</p>
             </div>
 
-            <div className="rounded-xl border border-surface-border bg-black/20 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-surface-muted">
+            <div className="rounded-sheet border border-line bg-black/20 p-wide">
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                 {t("dashboard:dashboardToolPrefsTitle")}
               </p>
-              <p className="mt-2 text-xs text-surface-muted">{t("dashboard:dashboardToolPrefsIntro")}</p>
+              <p className="mt-base text-xs text-ink-muted">{t("dashboard:dashboardToolPrefsIntro")}</p>
               {toolsCatalogErr ? (
-                <p className="mt-2 text-xs text-amber-300/90">
+                <p className="mt-base text-xs text-badge-warning">
                   {t("dashboard:dashboardToolCatalogErr", { err: toolsCatalogErr })}
                 </p>
               ) : null}
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-soft flex flex-wrap gap-base">
                 {dashboardToolAllowlist.length === 0 ? (
-                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-surface-muted">
+                  <Badge tone="neutral">
                     {t("dashboard:dashboardToolDefaultAll")}
-                  </span>
+                  </Badge>
                 ) : (
                   dashboardToolAllowlist.map((name) => (
-                    <span
-                      key={name}
-                      className="inline-flex max-w-full items-center gap-1 rounded-full border border-sky-500/35 bg-sky-950/50 px-2.5 py-1 text-xs text-sky-100"
-                    >
+                    <Badge key={name} tone="accent" className="max-w-full">
                       <span className="truncate font-mono">{name}</span>
                       {canEditContent ? (
-                        <button
+                        <Button
+                          variant="ghost"
                           type="button"
-                          className="shrink-0 text-sky-300 hover:text-white"
+                          className="shrink-0 text-badge-accent hover:text-white"
                           aria-label={t("dashboard:dashboardToolRemoveAria", { name })}
                           onClick={() => removeToolFromDashboardAllowlist(name)}
                         >
                           ×
-                        </button>
+                        </Button>
                       ) : null}
-                    </span>
+                    </Badge>
                   ))
                 )}
               </div>
               {canEditContent ? (
-                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+                <div className="mt-soft flex flex-col gap-base sm:flex-row sm:flex-wrap sm:items-end">
                   <div className="min-w-[min(100%,220px)] flex-1">
-                    <label className="mb-1 block text-[10px] text-surface-muted" htmlFor="ws-tool-pick">
+                    <label className="mb-tight block text-meta text-ink-muted" htmlFor="ws-tool-pick">
                       {t("dashboard:dashboardToolFromCatalog")}
                     </label>
-                    <select
+                    <Select
                       id="ws-tool-pick"
                       disabled={pickableCatalogTools.length === 0}
-                      className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="outline-hidden"
                       defaultValue=""
                       onChange={(e) => {
                         const v = e.currentTarget.value;
@@ -2020,14 +2041,15 @@ export function DashboardPage() {
                           {n}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                   <div className="min-w-[min(100%,200px)] flex-1">
-                    <label className="mb-1 block text-[10px] text-surface-muted" htmlFor="ws-tool-manual">
+                    <label className="mb-tight block text-meta text-ink-muted" htmlFor="ws-tool-manual">
                       {t("dashboard:dashboardToolManualLabel")}
                     </label>
-                    <div className="flex gap-2">
-                      <input
+                    <div className="flex gap-base">
+                      <TextInput
+                        mono
                         id="ws-tool-manual"
                         value={manualToolName}
                         onChange={(e) => setManualToolName(e.target.value)}
@@ -2039,170 +2061,172 @@ export function DashboardPage() {
                           }
                         }}
                         placeholder={t("dashboard:shareToolNamePlaceholder")}
-                        className="min-w-0 flex-1 rounded-lg border border-surface-border bg-black/30 px-3 py-2 font-mono text-sm text-white outline-none focus:border-sky-500/50"
+                        className="min-w-0 flex-1 outline-hidden"
                       />
-                      <button
+                      <Button
                         type="button"
-                        className="shrink-0 rounded-lg border border-surface-border px-3 py-2 text-sm text-neutral-200 hover:bg-white/5"
+                        className="shrink-0 px-soft py-base text-sm hover:bg-white/5"
                         onClick={() => {
                           addToolToDashboardAllowlist(manualToolName);
                           setManualToolName("");
                         }}
                       >
                         {t("dashboard:dashboardToolAdd")}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
               ) : (
-                <p className="mt-3 text-xs text-surface-muted">{t("dashboard:dashboardToolEditorOnly")}</p>
+                <p className="mt-soft text-xs text-ink-muted">{t("dashboard:dashboardToolEditorOnly")}</p>
               )}
-              <p className="mt-2 text-[10px] text-surface-muted">{t("dashboard:dashboardToolAllowlistMeta")}</p>
+              <p className="mt-base text-meta text-ink-muted">{t("dashboard:dashboardToolAllowlistMeta")}</p>
             </div>
 
             {canManageMembers ? (
               <>
-              <div className="rounded-xl border border-surface-border bg-black/20 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-surface-muted">
+              <div className="rounded-sheet border border-line bg-black/20 p-wide">
+                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                   {t("dashboard:membersTitle")}
                 </p>
-                <p className="mt-1 text-xs text-surface-muted">{t("dashboard:membersIntro")}</p>
-                {membersErr ? <p className="mt-2 text-xs text-red-300">{membersErr}</p> : null}
-                <div className="mt-3 flex flex-wrap items-end gap-2">
+                <p className="mt-tight text-xs text-ink-muted">{t("dashboard:membersIntro")}</p>
+                {membersErr ? <p className="mt-base text-xs text-badge-danger">{membersErr}</p> : null}
+                <div className="mt-soft flex flex-wrap items-end gap-base">
                   <div className="min-w-[220px] flex-1">
-                    <label className="mb-1 block text-[10px] text-surface-muted">
+                    <label className="mb-tight block text-meta text-ink-muted">
                       {t("dashboard:membersEmailLabel")}
                     </label>
-                    <input
+                    <TextInput
                       type="email"
                       value={memberEmail}
                       onChange={(e) => setMemberEmail(e.target.value)}
                       placeholder={t("dashboard:shareEmailPlaceholder")}
-                      className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50"
+                      className="outline-hidden"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[10px] text-surface-muted">
+                    <label className="mb-tight block text-meta text-ink-muted">
                       {t("dashboard:membersRoleLabel")}
                     </label>
-                    <select
+                    <Select
                       value={memberRole}
                       onChange={(e) => setMemberRole(e.target.value as "viewer" | "editor" | "co_owner")}
-                      className="rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white"
                     >
                       <option value="viewer">{t("dashboard:membersRoleViewer")}</option>
                       <option value="editor">{t("dashboard:membersRoleEditor")}</option>
                       <option value="co_owner">{t("dashboard:membersRoleCoOwner")}</option>
-                    </select>
+                    </Select>
                   </div>
-                  <button
+                  <Button
+                    variant="primary"
+                    size="lg"
                     type="button"
                     disabled={membersBusy || !memberEmail.trim()}
-                    className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+                    className="px-wide py-base text-sm"
                     onClick={() => void addDashboardMember()}
                   >
                     {membersBusy ? "…" : t("dashboard:membersAdd")}
-                  </button>
+                  </Button>
                 </div>
                 {members.length === 0 ? (
-                  <p className="mt-3 text-xs text-surface-muted">{t("dashboard:membersNoneYet")}</p>
+                  <p className="mt-soft text-xs text-ink-muted">{t("dashboard:membersNoneYet")}</p>
                 ) : (
-                  <ul className="mt-3 divide-y divide-white/5 text-sm">
+                  <ul className="mt-soft divide-y divide-line-subtle text-sm">
                     {members.map((m) => (
                       <li
                         key={m.user_id}
-                        className="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0"
+                        className="flex flex-wrap items-center justify-between gap-base py-base first:pt-0"
                       >
-                        <span className="text-neutral-200">
-                          {m.email} <span className="text-surface-muted">({m.role})</span>
+                        <span className="text-ink-primary">
+                          {m.email} <span className="text-ink-muted">({m.role})</span>
                         </span>
-                        <button
+                        <Button
                           type="button"
+                          variant="danger"
+                          size="sm"
                           disabled={membersBusy}
-                          className="text-xs text-red-300 hover:underline disabled:opacity-50"
                           onClick={() => void removeDashboardMember(m.user_id)}
                         >
                           {t("dashboard:remove")}
-                        </button>
+                        </Button>
                       </li>
                     ))}
                   </ul>
                 )}
               </div>
 
-              <div className="mt-4 rounded-xl border border-surface-border bg-black/20 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-surface-muted">
+              <div className="mt-wide rounded-sheet border border-line bg-black/20 p-wide">
+                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                   {t("admin:dashboardBlockSharingTitle")}
                 </p>
-                <p className="mt-1 text-xs text-surface-muted">
+                <p className="mt-tight text-xs text-ink-muted">
                   <span className="text-white/85">{t("dashboard:blockSharingIntroPrefix")}</span>{" "}
                   {t("dashboard:blockSharingIntroBody")}
                 </p>
-                <p className="mt-2 text-xs text-sky-200/80">{t("dashboard:blockSharingListHint")}</p>
-                {blockSharesErr ? <p className="mt-2 text-xs text-red-300">{blockSharesErr}</p> : null}
-                <div className="mt-3 flex flex-wrap items-end gap-2">
+                <p className="mt-base text-xs text-badge-accent">{t("dashboard:blockSharingListHint")}</p>
+                {blockSharesErr ? <p className="mt-base text-xs text-badge-danger">{blockSharesErr}</p> : null}
+                <div className="mt-soft flex flex-wrap items-end gap-base">
                   <div className="min-w-[200px] flex-1">
-                    <label className="mb-1 block text-[10px] text-surface-muted">
+                    <label className="mb-tight block text-meta text-ink-muted">
                       {t("dashboard:blockShareUserEmailLabel")}
                     </label>
-                    <input
+                    <TextInput
                       type="email"
                       value={blockShareEmail}
                       onChange={(e) => setBlockShareEmail(e.target.value)}
                       placeholder={t("dashboard:shareEmailPlaceholder")}
-                      className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50"
+                      className="outline-hidden"
                     />
                   </div>
                   <div className="min-w-[140px]">
-                    <label className="mb-1 block text-[10px] text-surface-muted">
+                    <label className="mb-tight block text-meta text-ink-muted">
                       {t("dashboard:blockShareAccessLabel")}
                     </label>
-                    <select
+                    <Select
                       value={blockSharePermission}
                       onChange={(e) =>
                         setBlockSharePermission(e.target.value === "edit" ? "edit" : "view")
                       }
-                      className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50"
+                      className="outline-hidden"
                     >
                       <option value="view">{t("dashboard:blockShareViewOnly")}</option>
                       <option value="edit">{t("dashboard:blockShareEdit")}</option>
-                    </select>
+                    </Select>
                   </div>
-                  <button
+                  <Button
+                    variant="primary"
+                    size="lg"
                     type="button"
                     disabled={blockSharesBusy || !blockShareEmail.trim()}
-                    className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+                    className="px-wide py-base text-sm"
                     onClick={() => void addBlockShareGrant()}
                   >
                     {blockSharesBusy ? "…" : t("dashboard:shareSelectedBlocks")}
-                  </button>
+                  </Button>
                 </div>
-                <p className="mt-3 text-[10px] uppercase tracking-wide text-surface-muted">
+                <p className="mt-soft text-meta uppercase tracking-wide text-ink-muted">
                   {t("dashboard:blocksToInclude")}
                 </p>
                 {gridLayout.blocks.length === 0 ? (
-                  <p className="mt-1 text-xs text-surface-muted">{t("dashboard:noBlocksInLayoutYet")}</p>
+                  <p className="mt-tight text-xs text-ink-muted">{t("dashboard:noBlocksInLayoutYet")}</p>
                 ) : (
-                  <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-lg border border-white/5 p-2 text-sm">
+                  <ul className="mt-base max-h-48 space-y-base overflow-y-auto rounded-card border border-line-subtle p-base text-sm">
                     {gridLayout.blocks.map((b) => {
                       const id = typeof b.id === "string" ? b.id : String(b.id ?? "");
                       const props = b.props && typeof b.props === "object" && !Array.isArray(b.props) ? b.props as { title?: string } : {};
                       const label = props.title?.trim() || b.type || id;
                       if (!id) return null;
                       return (
-                        <li key={id} className="flex items-center gap-2">
-                          <input
+                        <li key={id} className="flex items-center gap-base">
+                          <Checkbox
                             id={`bshare-${id}`}
-                            type="checkbox"
                             checked={!!blockSharePick[id]}
                             onChange={(e) =>
                               setBlockSharePick((prev) => ({ ...prev, [id]: e.target.checked }))
                             }
-                            className="rounded border-surface-border"
                           />
-                          <label htmlFor={`bshare-${id}`} className="cursor-pointer text-neutral-200">
-                            <span className="text-surface-muted">{b.type}</span> · {label}
-                            <span className="ml-2 font-mono text-[10px] text-surface-muted">{id.slice(0, 8)}…</span>
+                          <label htmlFor={`bshare-${id}`} className="cursor-pointer text-ink-primary">
+                            <span className="text-ink-muted">{b.type}</span> · {label}
+                            <span className="ml-base font-mono text-meta text-ink-muted">{id.slice(0, 8)}…</span>
                           </label>
                         </li>
                       );
@@ -2210,110 +2234,116 @@ export function DashboardPage() {
                   </ul>
                 )}
                 {blockGrants.length === 0 ? (
-                  <p className="mt-3 text-xs text-surface-muted">{t("dashboard:granularSharesNoneYet")}</p>
+                  <p className="mt-soft text-xs text-ink-muted">{t("dashboard:granularSharesNoneYet")}</p>
                 ) : (
-                  <ul className="mt-3 divide-y divide-white/5 text-sm">
+                  <ul className="mt-soft divide-y divide-line-subtle text-sm">
                     {blockGrants.map((g) => (
                       <li
                         key={g.user_id}
-                        className="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0"
+                        className="flex flex-wrap items-center justify-between gap-base py-base first:pt-0"
                       >
-                        <span className="text-neutral-200">
+                        <span className="text-ink-primary">
                           {g.email}{" "}
-                          <span className="text-surface-muted">
+                          <span className="text-ink-muted">
                             ({g.block_ids.length} block{g.block_ids.length === 1 ? "" : "s"},{" "}
                             {g.permission === "edit" ? "edit" : "view"})
                           </span>
                         </span>
-                        <button
+                        <Button
                           type="button"
+                          variant="danger"
+                          size="sm"
                           disabled={blockSharesBusy}
-                          className="text-xs text-red-300 hover:underline disabled:opacity-50"
                           onClick={() => void removeBlockGrant(g.user_id)}
                         >
                           {t("dashboard:remove")}
-                        </button>
+                        </Button>
                       </li>
                     ))}
                   </ul>
                 )}
               </div>
 
-              <div className="mt-4 rounded-xl border border-violet-500/25 bg-violet-950/15 p-4">
+              <div className="mt-wide rounded-sheet border border-violet-500/25 bg-violet-950/15 p-wide">
                 <p className="text-xs font-semibold uppercase tracking-wide text-violet-200/90">
                   {t("dashboard:publicShareTitle")}
                 </p>
-                <p className="mt-1 text-xs text-surface-muted">{t("dashboard:publicShareIntro")}</p>
-                {publicSharesErr ? <p className="mt-2 text-xs text-red-300">{publicSharesErr}</p> : null}
+                <p className="mt-tight text-xs text-ink-muted">{t("dashboard:publicShareIntro")}</p>
+                {publicSharesErr ? <p className="mt-base text-xs text-badge-danger">{publicSharesErr}</p> : null}
                 {createdPublicLink ? (
-                  <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-950/20 p-3 text-xs text-emerald-100">
+                  <div className="mt-soft rounded-card border border-success/30 bg-success-subtle p-soft text-xs text-badge-success">
                     <p className="font-medium">{t("dashboard:publicShareCreatedOnce")}</p>
-                    <p className="mt-2 break-all font-mono text-[11px] text-emerald-50/90">
+                    <p className="mt-base break-all font-mono text-meta text-badge-success">
                       {window.location.origin}
                       {createdPublicLink}
                     </p>
-                    <button
+                    <Button
+                      variant="primary"
+                      tone="success"
+                      size="sm"
                       type="button"
-                      className="mt-2 rounded-md bg-emerald-700/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-600"
+                      className="mt-base px-soft py-snug text-xs"
                       onClick={() => void copyPublicShareUrl(createdPublicLink)}
                     >
                       {t("dashboard:publicShareCopyLink")}
-                    </button>
+                    </Button>
                   </div>
                 ) : null}
-                <div className="mt-3 flex flex-wrap items-end gap-2">
+                <div className="mt-soft flex flex-wrap items-end gap-base">
                   <div className="min-w-[200px] flex-1">
-                    <label className="mb-1 block text-[10px] text-surface-muted">
+                    <label className="mb-tight block text-meta text-ink-muted">
                       {t("dashboard:publicShareLabelField")}
                     </label>
-                    <input
+                    <TextInput
                       type="text"
                       value={publicShareLabel}
                       onChange={(e) => setPublicShareLabel(e.target.value)}
                       placeholder={t("dashboard:publicShareLabelPlaceholder")}
-                      className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-violet-500/50"
+                      className="outline-hidden"
                     />
                   </div>
                   <div className="min-w-[180px]">
-                    <label className="mb-1 block text-[10px] text-surface-muted">
+                    <label className="mb-tight block text-meta text-ink-muted">
                       {t("dashboard:publicShareExpiresLabel")}
                     </label>
-                    <input
+                    <TextInput
                       type="datetime-local"
                       value={publicShareExpiresAt}
                       onChange={(e) => setPublicShareExpiresAt(e.target.value)}
-                      className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-violet-500/50"
+                      className="outline-hidden"
                     />
                   </div>
                   <div className="min-w-[160px]">
-                    <label className="mb-1 block text-[10px] text-surface-muted">
+                    <label className="mb-tight block text-meta text-ink-muted">
                       {t("dashboard:publicSharePasswordField")}
                     </label>
-                    <input
+                    <TextInput
                       type="password"
                       value={publicSharePassword}
                       onChange={(e) => setPublicSharePassword(e.target.value)}
                       placeholder={t("dashboard:publicSharePasswordOptional")}
-                      className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-violet-500/50"
+                      className="outline-hidden"
                       autoComplete="new-password"
                     />
                   </div>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="lg"
                     type="button"
                     disabled={publicSharesBusy}
-                    className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50"
+                    className="bg-violet-600 px-wide py-base text-sm hover:bg-violet-500"
                     onClick={() => void createPublicShare()}
                   >
                     {publicSharesBusy ? "…" : t("dashboard:publicShareCreate")}
-                  </button>
+                  </Button>
                 </div>
-                <p className="mt-3 text-[10px] uppercase tracking-wide text-surface-muted">
+                <p className="mt-soft text-meta uppercase tracking-wide text-ink-muted">
                   {t("dashboard:publicShareBlocksHint")}
                 </p>
                 {gridLayout.blocks.length === 0 ? (
-                  <p className="mt-1 text-xs text-surface-muted">{t("dashboard:noBlocksInLayoutYet")}</p>
+                  <p className="mt-tight text-xs text-ink-muted">{t("dashboard:noBlocksInLayoutYet")}</p>
                 ) : (
-                  <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-lg border border-white/5 p-2 text-sm">
+                  <ul className="mt-base max-h-48 space-y-base overflow-y-auto rounded-card border border-line-subtle p-base text-sm">
                     {gridLayout.blocks.map((b) => {
                       const id = typeof b.id === "string" ? b.id : String(b.id ?? "");
                       const props =
@@ -2323,18 +2353,16 @@ export function DashboardPage() {
                       const label = props.title?.trim() || b.type || id;
                       if (!id) return null;
                       return (
-                        <li key={`ps-${id}`} className="flex items-center gap-2">
-                          <input
+                        <li key={`ps-${id}`} className="flex items-center gap-base">
+                          <Checkbox
                             id={`pshare-${id}`}
-                            type="checkbox"
                             checked={!!publicSharePick[id]}
                             onChange={(e) =>
                               setPublicSharePick((prev) => ({ ...prev, [id]: e.target.checked }))
                             }
-                            className="rounded border-surface-border"
                           />
-                          <label htmlFor={`pshare-${id}`} className="cursor-pointer text-neutral-200">
-                            <span className="text-surface-muted">{b.type}</span> · {label}
+                          <label htmlFor={`pshare-${id}`} className="cursor-pointer text-ink-primary">
+                            <span className="text-ink-muted">{b.type}</span> · {label}
                           </label>
                         </li>
                       );
@@ -2342,9 +2370,9 @@ export function DashboardPage() {
                   </ul>
                 )}
                 {publicShares.length === 0 ? (
-                  <p className="mt-3 text-xs text-surface-muted">{t("dashboard:publicSharesNoneYet")}</p>
+                  <p className="mt-soft text-xs text-ink-muted">{t("dashboard:publicSharesNoneYet")}</p>
                 ) : (
-                  <ul className="mt-3 divide-y divide-white/5 text-sm">
+                  <ul className="mt-soft divide-y divide-line-subtle text-sm">
                     {publicShares.map((s) => {
                       const revoked = Boolean(s.revoked_at);
                       const scopeLabel =
@@ -2360,11 +2388,11 @@ export function DashboardPage() {
                       return (
                         <li
                           key={s.id}
-                          className="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0"
+                          className="flex flex-wrap items-center justify-between gap-base py-base first:pt-0"
                         >
-                          <span className="text-neutral-200">
+                          <span className="text-ink-primary">
                             {s.label || t("dashboard:publicShareUntitled")}{" "}
-                            <span className="text-surface-muted">
+                            <span className="text-ink-muted">
                               ({scopeLabel}
                               {s.password_protected ? ` · ${t("dashboard:publicSharePasswordProtected")}` : ""}
                               {expLabel ? ` · ${expLabel}` : ""}
@@ -2372,14 +2400,15 @@ export function DashboardPage() {
                             </span>
                           </span>
                           {!revoked ? (
-                            <button
+                            <Button
                               type="button"
+                              variant="danger"
+                              size="sm"
                               disabled={publicSharesBusy}
-                              className="text-xs text-red-300 hover:underline disabled:opacity-50"
                               onClick={() => void revokePublicShare(s.id)}
                             >
                               {t("dashboard:publicShareRevoke")}
-                            </button>
+                            </Button>
                           ) : null}
                         </li>
                       );
@@ -2389,31 +2418,33 @@ export function DashboardPage() {
               </div>
               </>
             ) : (
-              <div className="rounded-xl border border-surface-border bg-black/20 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-surface-muted">
+              <div className="rounded-sheet border border-line bg-black/20 p-wide">
+                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                   {t("dashboard:membersTitle")}
                 </p>
-                <p className="mt-2 text-sm text-surface-muted">{t("dashboard:membersManagePermissionDenied")}</p>
+                <p className="mt-base text-sm text-ink-muted">{t("dashboard:membersManagePermissionDenied")}</p>
               </div>
             )}
 
             {isPrimaryOwner ? (
-              <div className="rounded-xl border border-red-500/30 bg-red-950/20 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-red-200/80">
+              <div className="rounded-sheet border border-danger/30 bg-danger-subtle p-wide">
+                <p className="text-xs font-semibold uppercase tracking-wide text-badge-danger">
                   {t("dashboard:dangerZone")}
                 </p>
-                <p className="mt-2 text-xs text-red-200/80">{t("dashboard:deletePermanent")}</p>
-                <button
+                <p className="mt-base text-xs text-badge-danger">{t("dashboard:deletePermanent")}</p>
+                <Button
                   type="button"
-                  className="mt-3 rounded-lg border border-red-500/30 px-3 py-2 text-sm text-red-200 hover:bg-red-950/40"
+                  variant="danger"
+                  size="md"
+                  className="mt-soft"
                   onClick={() => void removeWs()}
                 >
                   {t("dashboard:deleteDashboard")}
-                </button>
+                </Button>
               </div>
             ) : null}
           </div>
-        </DashboardSettingsDrawer>
+        </Drawer>
       ) : null}
 
       {projectsImportOpen && selectedId ? (
@@ -2432,152 +2463,119 @@ export function DashboardPage() {
       ) : null}
 
       {newWsModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="presentation">
-          <div
-            className="absolute inset-0 bg-black/70"
-            role="button"
-            tabIndex={0}
-            aria-label={t("dashboard:close")}
-            onClick={() => setNewWsModalOpen(false)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                setNewWsModalOpen(false);
-              }
-            }}
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="ws-new-title"
-            className="relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl border border-surface-border bg-surface-raised p-6 shadow-xl"
-          >
-            <h2 id="ws-new-title" className="text-lg font-semibold text-white">
-              {t("dashboard:newDashboardModalTitle")}
-            </h2>
-            <p className="mt-2 text-sm text-surface-muted">{t("dashboard:newDashboardPickType")}</p>
-            <ul className="mt-4 flex flex-col gap-2">
+        <Modal
+          open
+          onClose={() => setNewWsModalOpen(false)}
+          title={t("dashboard:newDashboardModalTitle")}
+          footer={
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              onClick={() => setNewWsModalOpen(false)}
+            >
+              {t("admin:cancel")}
+            </Button>
+          }
+        >
+          <p className="text-body text-ink-muted">{t("dashboard:newDashboardPickType")}</p>
+          <ul className="mt-wide flex flex-col gap-base">
               {kindsAllowedForNewDashboard.length === 0 ? (
-                <li className="text-sm text-surface-muted">{t("dashboard:installPackFromCatalogFirst")}</li>
+                <li className="text-sm text-ink-muted">{t("dashboard:installPackFromCatalogFirst")}</li>
               ) : (
                 kindsAllowedForNewDashboard.map((row) => (
                   <li key={row.kind}>
-                    <button
+                    <Button
+                      variant="plain"
+                      block
                       type="button"
-                      className="w-full rounded-lg border border-surface-border px-3 py-2 text-left text-sm text-white hover:bg-white/5"
+                      className="w-full rounded-card border border-line px-soft py-base text-sm text-ink-primary hover:bg-white/5"
                       onClick={() => void createWs(row)}
                     >
                       {row.label}
-                    </button>
+                    </Button>
                   </li>
                 ))
               )}
             </ul>
-            <div className="mt-6 flex justify-end">
-              <button
-                type="button"
-                className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5"
-                onClick={() => setNewWsModalOpen(false)}
-              >
-                {t("admin:cancel")}
-              </button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       ) : null}
 
       {installModalRow && schemaInstalled ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="presentation">
-          <div
-            className="absolute inset-0 bg-black/70"
-            role="button"
-            tabIndex={0}
-            aria-label={t("dashboard:close")}
-            onClick={() => {
-              if (!installBusy) setInstallModalRow(null);
-            }}
-            onKeyDown={(e) => {
-              if ((e.key === "Enter" || e.key === " ") && !installBusy) {
-                e.preventDefault();
-                setInstallModalRow(null);
-              }
-            }}
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="ws-tpl-install-title"
-            className="relative w-full max-w-md rounded-xl border border-surface-border bg-surface-raised p-6 shadow-xl"
-          >
-            <h2 id="ws-tpl-install-title" className="text-lg font-semibold text-white">
-              {t("dashboard:installPackConfirmTitle", { label: installModalRow.label })}
-            </h2>
-            {installModalRow.description ? (
-              <p className="mt-2 text-sm text-surface-muted">{installModalRow.description}</p>
-            ) : null}
-            <div className="mt-6 flex justify-end gap-2">
-              <button
+        <Modal
+          open
+          onClose={() => {
+            if (!installBusy) setInstallModalRow(null);
+          }}
+          title={t("dashboard:installPackConfirmTitle", { label: installModalRow.label })}
+          dismissOnScrim={!installBusy}
+          footer={
+            <>
+              <Button
                 type="button"
+                variant="secondary"
+                size="lg"
                 disabled={installBusy}
-                className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5 disabled:opacity-50"
                 onClick={() => setInstallModalRow(null)}
               >
                 {t("admin:cancel")}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="primary"
+                size="lg"
                 disabled={installBusy || !installModalRow.has_schema}
-                className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
                 onClick={() => void runInstallTemplates(installModalRow.kind)}
               >
                 {installBusy ? t("dashboard:installing") : t("dashboard:install")}
-              </button>
-            </div>
-          </div>
-        </div>
+              </Button>
+            </>
+          }
+        >
+          {installModalRow.description ? (
+            <p className="text-body text-ink-muted">{installModalRow.description}</p>
+          ) : null}
+        </Modal>
       ) : null}
 
       {pinModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="w-full max-w-md rounded-xl border border-surface-border bg-surface-raised p-6 shadow-xl"
-          >
-            <h2 className="text-lg font-semibold text-white">{t("dashboard:pinBlockTitle")}</h2>
-            <label className="mt-4 block text-sm text-surface-muted">
-              {t("dashboard:pinBlockTarget")}
-              <select
-                value={pinTargetId}
-                onChange={(e) => setPinTargetId(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white"
-              >
-                {pinTargetOptions.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.title || w.kind}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                type="button"
-                className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200"
-                onClick={() => setPinModalOpen(false)}
-              >
+        <Modal
+          open
+          onClose={() => setPinModalOpen(false)}
+          title={t("dashboard:pinBlockTitle")}
+          dismissOnScrim={!pinBusy}
+          footer={(
+            <>
+              <Button type="button" variant="secondary" size="lg" onClick={() => setPinModalOpen(false)}>
                 {t("admin:cancel")}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="primary"
+                size="lg"
                 disabled={pinBusy || !pinTargetId}
-                className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50"
                 onClick={() => void confirmPinBlock()}
               >
                 {pinBusy ? "…" : t("dashboard:pinBlockConfirm")}
-              </button>
-            </div>
-          </div>
-        </div>
+              </Button>
+            </>
+          )}
+        >
+          <label className="block text-sm text-ink-muted">
+            {t("dashboard:pinBlockTarget")}
+            <Select
+              value={pinTargetId}
+              onChange={(e) => setPinTargetId(e.target.value)}
+              className="mt-tight"
+            >
+              {pinTargetOptions.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.title || w.kind}
+                </option>
+              ))}
+            </Select>
+          </label>
+        </Modal>
       ) : null}
     </>
   );

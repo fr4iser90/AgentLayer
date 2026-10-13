@@ -22,8 +22,10 @@ LLM_HTTP_SERIALIZE_LOCK = None  # noqa: N816 — removed; use llm_concurrency pe
 
 def _openai_strict_tools(obj: Any) -> Any:
     """
-    Some servers tolerate extra JSON-Schema keys like ``TOOL_DESCRIPTION`` on tools; strict
-    OpenAI-shaped APIs reject unknown field names. Map ``TOOL_DESCRIPTION`` → ``description``.
+    Back-compat for plugins written before the canonical key: a module may describe a tool
+    under ``TOOL_DESCRIPTION`` (the name this repo used until 2026-07) instead of the JSON-Schema
+    key ``description``. Strict OpenAI-shaped APIs reject unknown field names, so map it here.
+    In-tree modules use ``description`` and never hit this branch.
     """
     if isinstance(obj, dict):
         has_desc = "description" in obj
@@ -124,7 +126,7 @@ def http_post_chat_completions(
     """
     POST to OpenAI-compatible ``…/chat/completions``.
 
-    Normalizes ``tools[]`` for strict backends (maps ``TOOL_DESCRIPTION`` → ``description``).
+    Normalizes ``tools[]`` for strict backends (see :func:`_openai_strict_tools`).
 
     Returns ``(response_json, tools_omitted)`` — ``tools_omitted`` is always ``False`` (reserved).
     """

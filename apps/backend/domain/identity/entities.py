@@ -25,9 +25,3 @@ class User:
     email: EmailAddress
     role: UserRole
     created_at: datetime | None = None
-
-    def is_admin(self) -> bool:
-        return self.role == "admin"
-
-    def change_role(self, role: UserRole) -> None:
-        self.role = role

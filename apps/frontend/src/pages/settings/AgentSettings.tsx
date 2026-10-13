@@ -8,6 +8,8 @@ import {
   getAgentShowReasoning,
   setAgentShowReasoning,
 } from "../../features/settings/agentReasoningPrefs";
+import { Checkbox } from "../../ui/Checkbox";
+import { Button } from "../../ui/Button";
 
 type PersonaResp = {
   ok?: boolean;
@@ -163,18 +165,18 @@ export function AgentSettings() {
   }
 
   const input =
-    "mt-1 block w-full rounded-md border border-surface-border bg-black/25 px-3 py-2 text-sm text-white placeholder:text-neutral-600";
-  const label = "block text-xs text-surface-muted";
+    "mt-tight block w-full rounded-tile border border-line bg-black/25 px-soft py-base text-sm text-ink-primary placeholder:text-neutral-600";
+  const label = "block text-xs text-ink-muted";
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className="mx-auto max-w-page space-y-deep">
       <div>
-        <h1 className="text-lg font-semibold text-white">{t("settings:agentTitle")}</h1>
-        <p className="mt-2 text-sm text-surface-muted">
+        <h1 className="text-lg font-semibold text-ink-primary">{t("settings:agentTitle")}</h1>
+        <p className="mt-base text-sm text-ink-muted">
           {t("settings:agentIntro")}
         </p>
-        <p className="mt-2 text-xs text-surface-muted">
-          <Link to="/settings/delegate" className="text-indigo-300 hover:underline">
+        <p className="mt-base text-xs text-ink-muted">
+          <Link to="/settings/delegate" className="text-accent hover:underline">
             {t("settings:delegateNav")}
           </Link>
           {" — "}
@@ -182,22 +184,20 @@ export function AgentSettings() {
         </p>
       </div>
 
-      {loading ? <p className="text-sm text-surface-muted">{t("settings:agentLoading")}</p> : null}
+      {loading ? <p className="text-sm text-ink-muted">{t("settings:agentLoading")}</p> : null}
       {msg ? (
         <p
-          className={`text-sm ${msg.includes("saved") ? "text-emerald-400" : "text-amber-400"}`}
+          className={`text-sm ${msg.includes("saved") ? "text-success" : "text-warning"}`}
         >
           {msg}
         </p>
       ) : null}
 
-      <section className="rounded-xl border border-surface-border bg-black/20 p-5">
-        <h2 className="text-sm font-medium text-white">{t("settings:showReasoningTitle")}</h2>
-        <p className="mt-1 text-xs text-surface-muted">{t("settings:showReasoningHelp")}</p>
-        <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-neutral-200">
-          <input
-            type="checkbox"
-            className="h-4 w-4 rounded border-surface-border bg-black/40"
+      <section className="rounded-sheet border border-line bg-black/20 p-roomy">
+        <h2 className="text-sm font-medium text-ink-primary">{t("settings:showReasoningTitle")}</h2>
+        <p className="mt-tight text-xs text-ink-muted">{t("settings:showReasoningHelp")}</p>
+        <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+          <Checkbox
             checked={showReasoning}
             onChange={(e) => {
               const on = e.target.checked;
@@ -209,18 +209,18 @@ export function AgentSettings() {
         </label>
       </section>
 
-      <section className="rounded-xl border border-surface-border bg-surface-raised p-5">
-        <h2 className="text-sm font-medium text-white">{t("settings:personaTitle")}</h2>
-        <p className="mt-1 text-xs text-surface-muted">
+      <section className="rounded-sheet border border-line bg-card p-roomy">
+        <h2 className="text-sm font-medium text-ink-primary">{t("settings:personaTitle")}</h2>
+        <p className="mt-tight text-xs text-ink-muted">
           {t("settings:personaHelp")}
         </p>
         {personaUnavailable ? (
-          <p className="mt-3 text-sm text-amber-400">
+          <p className="mt-soft text-sm text-warning">
             {t("settings:personaStorageUnavailable")}
           </p>
         ) : (
           <>
-            <label className={`${label} mt-4`}>
+            <label className={`${label} mt-wide`}>
               {t("settings:personaInstructionsLabel")}
               <textarea
                 className={`${input} min-h-[10rem] font-mono text-xs leading-relaxed`}
@@ -229,38 +229,38 @@ export function AgentSettings() {
                 spellCheck
               />
             </label>
-            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-neutral-200">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-surface-border bg-black/40"
+            <label className="mt-soft flex cursor-pointer items-center gap-base text-sm text-ink-primary">
+              <Checkbox
                 checked={injectPersona}
                 onChange={(e) => setInjectPersona(e.target.checked)}
               />
               {t("settings:personaInjectLabel")}
             </label>
-            <button
+            <Button
+              variant="ghost"
+              size="lg"
               type="button"
               disabled={savingPersona}
-              className="mt-4 rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50"
+              className="mt-wide bg-violet-600 px-wide py-base text-sm hover:bg-violet-500"
               onClick={() => void savePersona()}
             >
               {savingPersona ? t("settings:saving") : t("settings:savePersona")}
-            </button>
+            </Button>
           </>
         )}
       </section>
 
-      <section className="rounded-xl border border-surface-border bg-black/20 p-5">
-        <h2 className="text-sm font-medium text-white">{t("settings:structuredProfileTitle")}</h2>
-        <p className="mt-1 text-xs text-surface-muted">
+      <section className="rounded-sheet border border-line bg-black/20 p-roomy">
+        <h2 className="text-sm font-medium text-ink-primary">{t("settings:structuredProfileTitle")}</h2>
+        <p className="mt-tight text-xs text-ink-muted">
           {t("settings:structuredProfileSubtitle")}
         </p>
         {profileUnavailable ? (
-          <p className="mt-3 text-sm text-amber-400">
+          <p className="mt-soft text-sm text-warning">
             {t("settings:profileStorageUnavailable", { table: "user_agent_profile" })}
           </p>
         ) : (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="mt-wide grid gap-wide sm:grid-cols-2">
             <label className={label}>
               {t("settings:displayName")}
               <input className={input} value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
@@ -327,45 +327,45 @@ export function AgentSettings() {
               {t("settings:organization")}
               <input className={input} value={organization} onChange={(e) => setOrganization(e.target.value)} />
             </label>
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-200 sm:col-span-2">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-surface-border bg-black/40"
+            <label className="flex cursor-pointer items-center gap-base text-sm text-ink-primary sm:col-span-2">
+              <Checkbox
                 checked={injectStructured}
                 onChange={(e) => setInjectStructured(e.target.checked)}
               />
               {t("settings:injectStructuredProfile")}
             </label>
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-200 sm:col-span-2">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-surface-border bg-black/40"
+            <label className="flex cursor-pointer items-center gap-base text-sm text-ink-primary sm:col-span-2">
+              <Checkbox
                 checked={proactiveMode}
                 onChange={(e) => setProactiveMode(e.target.checked)}
               />
               {t("settings:proactiveMode")}
             </label>
             <div className="sm:col-span-2">
-              <button
+              <Button
+                variant="primary"
+                size="lg"
                 type="button"
                 disabled={savingProfile}
-                className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+                className="px-wide py-base text-sm"
                 onClick={() => void saveProfile()}
               >
                 {savingProfile ? t("settings:saving") : t("settings:saveProfile")}
-              </button>
+              </Button>
             </div>
           </div>
         )}
       </section>
 
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         type="button"
-        className="text-xs text-sky-400 hover:text-sky-300 hover:underline"
+        className="text-xs text-accent hover:text-badge-accent hover:underline"
         onClick={() => void load()}
       >
         {t("settings:reloadFromServer")}
-      </button>
+      </Button>
     </div>
   );
 }
