@@ -8,6 +8,7 @@ import { deleteWorkspaceApi, fetchWorkspacesApi, isAgentlayerSelfWorkspace } fro
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Tabs } from "../ui/Tabs";
+import { PageShell } from "../layout/PageShell";
 
 type FsEntry = {
   name: string;
@@ -155,7 +156,7 @@ export function ProjectsPage() {
   };
 
   return (
-    <div className="mx-auto flex h-full min-h-0 w-full max-w-pageWide flex-col gap-wide overflow-hidden p-wide md:p-broad">
+    <PageShell density="wide" className="flex h-full min-h-0 flex-col gap-wide overflow-hidden">
       <header className="shrink-0">
         <h1 className="text-lg font-semibold text-ink-primary">{t("workspace:projectsTitle")}</h1>
         <p className="mt-tight max-w-measure text-sm text-ink-muted">{t("workspace:projectsIntro")}</p>
@@ -380,6 +381,6 @@ export function ProjectsPage() {
           )}
         </section>
       </div>
-    </div>
+    </PageShell>
   );
 }

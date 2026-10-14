@@ -27,6 +27,7 @@ import { AdminUsers } from "./pages/admin/AdminUsers";
 import { AdminAgentTraces } from "./pages/admin/AdminAgentTraces";
 import { AdminBenchmarks } from "./pages/admin/AdminBenchmarks";
 import { AdminAgentConfig } from "./pages/admin/AdminAgentConfig";
+import { AdminCodingRuntimes } from "./pages/admin/AdminCodingRuntimes";
 import { OrgGrantsPage } from "./pages/org/OrgGrantsPage";
 import { OrgKnowledgePage } from "./pages/org/OrgKnowledgePage";
 import { OrgTeamPage } from "./pages/org/OrgTeamPage";
@@ -164,6 +165,7 @@ export function App() {
                 <Route path="benchmarks" element={<AdminBenchmarks />} />
                 <Route path="harness" element={<Navigate to="../agent-config" replace />} />
                 <Route path="agent-config" element={<AdminAgentConfig />} />
+                <Route path="coding-runtimes" element={<AdminCodingRuntimes />} />
                 <Route path="workflows" element={<Navigate to="../interfaces/automation" replace />} />
               </Route>
               {/*

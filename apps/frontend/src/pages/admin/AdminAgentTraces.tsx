@@ -8,6 +8,7 @@ import {
   type RunTrace,
 } from "../../lib/runTracesApi";
 import { Button } from "../../ui/Button";
+import { PageShell } from "../../layout/PageShell";
 
 export function AdminAgentTraces() {
   const { t } = useTranslation(["admin"]);
@@ -59,7 +60,7 @@ export function AdminAgentTraces() {
   }, [auth, selectedId]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-wide overflow-hidden p-wide">
+    <PageShell density="fill" className="gap-wide overflow-hidden p-wide">
       <div className="flex shrink-0 items-center justify-between gap-base">
         <div>
           <h1 className="text-lg font-semibold text-ink-primary">{t("admin:agentTracesTitle")}</h1>
@@ -153,6 +154,6 @@ export function AdminAgentTraces() {
           )}
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

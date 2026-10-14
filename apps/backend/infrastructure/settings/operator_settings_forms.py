@@ -138,6 +138,12 @@ class OperatorSettingsPatch(BaseModel):
     legal_terms_md: str | None = Field(default=None, max_length=200_000)
     dashboards_allowed: bool | None = None
     friend_system_enabled: bool | None = None
+    # NULL = follow env; true/false = operator/wizard override
+    external_runtime_enabled: bool | None = None
+    qwen_runtime_enabled: bool | None = None
+    dsh_runtime_enabled: bool | None = None
+    # Empty / null = internal coding loop; else qwen_code | deepseek_harness
+    preferred_coding_runtime: str | None = Field(default=None, max_length=64)
 
 
 def operator_settings_patch_field_names() -> tuple[str, ...]:

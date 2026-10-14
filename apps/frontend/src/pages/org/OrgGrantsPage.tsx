@@ -14,6 +14,7 @@ import {
 import { Select } from "../../ui/Field";
 import { Button } from "../../ui/Button";
 import { Table, type TableColumn } from "../../ui/Table";
+import { PageShell } from "../../layout/PageShell";
 
 type Row = {
   id: string;
@@ -203,14 +204,14 @@ export function OrgGrantsPage() {
 
   if (!hasOrgSurface(auth.user)) {
     return (
-      <div className="mx-auto max-w-pageNarrow px-wide py-page text-sm text-ink-muted">
+      <PageShell density="narrow" className="text-sm text-ink-muted">
         {t("org:grantsNoOrg")}
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className="mx-auto max-w-pageWide px-wide py-deep sm:px-broad">
+    <PageShell density="wide">
       <h1 className="text-2xl font-semibold text-ink-primary">{t("org:grantsTitle")}</h1>
       <p className="mt-base max-w-measure text-sm text-ink-muted">{t("org:grantsIntro")}</p>
 
@@ -251,6 +252,6 @@ export function OrgGrantsPage() {
       {!loading && privateCount > 0 ? (
         <p className="mt-wide text-xs text-badge-warning">{t("org:grantsPrivateWarning")}</p>
       ) : null}
-    </div>
+    </PageShell>
   );
 }

@@ -43,11 +43,13 @@ Alle neuen Features folgen diesem Pattern — kein direkter Import von `infrastr
 - dsh **nicht** als Coding-Ersatz in AgentLayer einbetten.
 - Runtime-Ideen aus dsh nur **selektiv in Python adaptieren** — kein TypeScript-Embed. (Großteil der Phasen unten: erledigt AL-Style oder bewusst dünner.)
 
-### Externe Coding-Schnittstelle — **won't do**
+### Externe Coding-Schnittstelle — **headless adapter (done path)**
 
-Keine dünne Control-Plane in AgentLayer, über die ein externes Coding-Harness (z.B. DeepSeek Harness) angestoßen/orchestriert wird. Coding bleibt außerhalb; AgentLayer bleibt Everyday/Knowledge/Dashboards.
-
-*(Früher: consider / undecided — bewusst verworfen.)*
+Embedding the DSH **desktop/web product** inside AgentLayer remains out of scope.
+A first-class **external runtime adapter** is supported: `deepseek_harness` runs
+`dsh --profile headless` (npm `@deepseek-ai/dsh`) via the same port as Qwen Code.
+Operators install/update/switch under Admin → Coding runtimes. See
+[`docs/features/external-agent-runtimes.md`](../features/external-agent-runtimes.md).
 
 ---
 

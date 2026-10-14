@@ -13,12 +13,18 @@ from apps.backend.infrastructure.agent_runtime.catalog_chat_llm_service import c
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure.providers.model_catalog_providers import list_provider_specs
 from apps.backend.infrastructure.providers.model_catalog_routing import invalidate_model_catalog_cache
+from apps.backend.infrastructure.providers.operator_provider_upsert import (
+    upsert_operator_provider_endpoint_by_base_url,
+)
 from apps.backend.infrastructure.settings.operator_settings import (
     OperatorSettingsPatch,
     apply_operator_settings_patch,
     external_api_headers,
     external_models_list_url,
     invalidate_operator_settings_cache,
+)
+from apps.backend.infrastructure.settings.operator_settings_llm_transport import (
+    gateway_models_kinds_for_provider_kind,
 )
 
 
@@ -36,6 +42,10 @@ class _InstanceSetupDeps:
     external_models_list_url = staticmethod(external_models_list_url)
     invalidate_operator_settings_cache = staticmethod(invalidate_operator_settings_cache)
     invalidate_model_catalog_cache = staticmethod(invalidate_model_catalog_cache)
+    gateway_models_kinds_for_provider_kind = staticmethod(gateway_models_kinds_for_provider_kind)
+    upsert_operator_provider_endpoint_by_base_url = staticmethod(
+        upsert_operator_provider_endpoint_by_base_url
+    )
 
     @staticmethod
     def deployment_mode() -> str:

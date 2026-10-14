@@ -26,13 +26,10 @@ RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && node --version \
     && npm --version
 
-# Qwen Code CLI — coding agent runtimes behind the external-runtime port
-# (docs/features/external-agent-runtimes.md). Pinned; dev override:
-#   docker build --build-arg QWEN_CODE_VERSION=latest .
-ARG QWEN_CODE_VERSION=0.23.3
-RUN npm install -g "@qwen-code/qwen-code@${QWEN_CODE_VERSION}" \
-    && qwen --version \
-    && rm -rf /root/.npm /tmp/*
+# Coding harness CLIs (Qwen Code, DeepSeek Harness) are NOT baked into the image.
+# Operators install them via Admin → Coding runtimes (or Setup) into the external-runtime
+# volume: npm -g --prefix $AGENT_EXTERNAL_RUNTIME_HOME/npm-global.
+# See docs/features/external-agent-runtimes.md.
 
 # Playwright: OS libs + Chromium seed (copied onto the compose volume on first boot).
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright-seed

@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from apps.backend.application.providers.use_cases.provider_admin_acl import (
     chat_provider_model_rows,
+    collapse_duplicate_operator_provider_endpoints,
     embedding_provider_model_rows,
     gateway_models_kinds_for_provider_kind,
     http_get_json,
@@ -18,6 +19,7 @@ from apps.backend.application.providers.use_cases.provider_admin_acl import (
     provider_spec_for_kind,
     require_provider_admin,
     sync_operator_provider_endpoints,
+    upsert_operator_provider_endpoint_by_base_url,
 )
 from apps.backend.api.providers.controllers.operator_common import *
 
@@ -39,6 +41,10 @@ async def admin_get_operator_provider_endpoints(request: Request, kind: str):
     """List non-LLM provider endpoints (keys redacted), using LLM-style endpoint rows."""
     await require_provider_admin(request)
     kind_v = _operator_provider_kind_or_404(kind)
+    # Collapse legacy duplicates (e.g. https://host vs https://host/v1) before listing.
+    collapsed = collapse_duplicate_operator_provider_endpoints(kind_v)
+    if collapsed:
+        _invalidate_non_llm_provider_caches(kind_v)
     out: list[dict[str, Any]] = []
     for r in list_operator_provider_endpoints(kind_v):
         provider_id = _operator_endpoint_provider_id(kind_v, int(r["id"]))
@@ -201,13 +207,27 @@ async def admin_import_operator_env_providers(
                 {"index": getattr(env_row, "index"), "provider_id": getattr(env_row, "provider_id"), "base_url": base}
             )
         else:
+            # Already in DB (same host, with or without /v1): keep stored URL shape
+            # and model_default. Import must not invent a twin or overwrite the user's pick.
             prev = combined[pos]
-            combined[pos] = {**prev, **payload, "id": prev.get("id"), "sort_order": prev.get("sort_order", pos)}
+            stored_model = (str(prev.get("model_default") or "").strip() or None)
+            stored_base = str(prev.get("base_url") or "").strip() or base
+            merged = {
+                **prev,
+                **payload,
+                "id": prev.get("id"),
+                "sort_order": prev.get("sort_order", pos),
+                "base_url": stored_base,
+                "model_default": stored_model or payload.get("model_default"),
+            }
+            if not str(payload.get("api_key") or "").strip():
+                merged["api_key"] = prev.get("api_key") or ""
+            combined[pos] = merged
             updated.append(
                 {
                     "index": getattr(env_row, "index"),
                     "provider_id": getattr(env_row, "provider_id"),
-                    "base_url": base,
+                    "base_url": stored_base,
                     "db_endpoint_id": _operator_provider_endpoint_public_id(prev),
                 }
             )
@@ -253,3 +273,47 @@ async def admin_put_operator_provider_endpoints(
         raise HTTPException(status_code=400, detail=str(e)) from e
     _invalidate_non_llm_provider_caches(kind_v)
     return await admin_get_operator_provider_endpoints(request, kind_v)
+
+
+@router.post("/v1/admin/provider-endpoints/{kind}/upsert")
+async def admin_upsert_operator_provider_endpoint(
+    request: Request,
+    kind: str,
+    body: OperatorProviderEndpointUpsertBody,
+):
+    """Insert or update one endpoint by normalized base URL (no duplicate rows)."""
+    await require_provider_admin(request)
+    kind_v = _operator_provider_kind_or_404(kind)
+    try:
+        row = upsert_operator_provider_endpoint_by_base_url(
+            kind_v,
+            label=body.label,
+            base_url=body.base_url,
+            api_key=body.api_key,
+            api_header_name=body.api_header_name,
+            model_default=body.model_default,
+            max_parallel=body.max_parallel,
+            options_json=body.options_json,
+            enabled=body.enabled,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    _invalidate_non_llm_provider_caches(kind_v)
+    endpoints = (await admin_get_operator_provider_endpoints(request, kind_v))["endpoints"]
+    eid = int(row.get("id") or 0)
+    match = next((ep for ep in endpoints if int(ep.get("id") or 0) == eid), None)
+    return {"ok": True, "endpoint": match or row, "endpoints": endpoints}
+
+
+@router.post("/v1/admin/provider-endpoints/{kind}/probe")
+async def admin_probe_operator_provider_endpoint(
+    request: Request,
+    kind: str,
+    body: OperatorProviderEndpointProbeBody,
+):
+    """Probe /v1/models for a kind without persisting (setup + admin dropdowns)."""
+    await require_provider_admin(request)
+    kind_v = _operator_provider_kind_or_404(kind)
+    from apps.backend.domain.setup.instance import probe_llm_endpoint
+
+    return await probe_llm_endpoint(base_url=body.base_url, api_key=body.api_key, kind=kind_v)

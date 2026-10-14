@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LegalMarkdown } from "../features/legal/LegalMarkdown";
 import { fetchLegalPage, type LegalPageContent } from "../features/legal/useLegalPages";
+import { PageShell } from "../layout/PageShell";
 
 export function LegalPage() {
   const { slug = "" } = useParams<{ slug: string }>();
@@ -38,7 +39,7 @@ export function LegalPage() {
 
   return (
     <div className="h-full min-h-0 overflow-y-auto">
-      <div className="mx-auto max-w-measure px-broad py-page">
+      <PageShell density="measure">
         <p className="mb-broad">
           <Link to="/login" className="text-sm text-accent hover:underline">
             {t("legal.back")}
@@ -54,7 +55,7 @@ export function LegalPage() {
             <LegalMarkdown markdown={page.body_md} />
           </>
         )}
-      </div>
+      </PageShell>
     </div>
   );
 }

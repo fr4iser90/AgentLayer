@@ -6,6 +6,7 @@ import { apiFetch } from "../../lib/api";
 import { Button } from "../../ui/Button";
 import { Badge } from "../../ui/Badge";
 import { TextArea, TextInput } from "../../ui/Field";
+import { PageShell } from "../../layout/PageShell";
 
 type SecretField = {
   name: string;
@@ -304,7 +305,7 @@ export function ConnectionsSettings() {
   }
 
   return (
-    <div className="mx-auto max-w-page space-y-deep">
+    <PageShell density="default" className="space-y-deep">
       <div>
         <h1 className="text-lg font-semibold text-ink-primary">{t("settings:connectionsTitle")}</h1>
         <p className="mt-base text-sm text-ink-muted">{t("settings:connectionsIntro")}</p>
@@ -667,6 +668,6 @@ export function ConnectionsSettings() {
       >
         {t("settings:profileRefresh")}
       </Button>
-    </div>
+    </PageShell>
   );
 }

@@ -112,6 +112,22 @@ def list_operator_provider_endpoints(kind: str) -> list[dict[str, Any]]:
     return db.operator_provider_endpoints_list_all(kind)
 
 
+def collapse_duplicate_operator_provider_endpoints(kind: str) -> int:
+    from apps.backend.infrastructure.providers.operator_provider_upsert import (
+        collapse_duplicate_operator_provider_endpoints as _impl,
+    )
+
+    return int(_impl(kind) or 0)
+
+
+def upsert_operator_provider_endpoint_by_base_url(kind: str, **kwargs: Any) -> dict[str, Any]:
+    from apps.backend.infrastructure.providers.operator_provider_upsert import (
+        upsert_operator_provider_endpoint_by_base_url as _impl,
+    )
+
+    return _impl(kind, **kwargs)
+
+
 def sync_operator_provider_endpoints(
     kind: str,
     rows: list[dict[str, Any]],

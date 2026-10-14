@@ -229,6 +229,10 @@ def _fetch_row() -> dict[str, Any]:
         "legal_terms_md": None,
         "dashboards_allowed": True,
         "friend_system_enabled": True,
+        "external_runtime_enabled": None,
+        "qwen_runtime_enabled": None,
+        "dsh_runtime_enabled": None,
+        "preferred_coding_runtime": None,
     }
     try:
         with db.pool().connection() as conn:
@@ -291,7 +295,11 @@ def _fetch_row() -> dict[str, Any]:
                            legal_terms_enabled,
                            legal_impressum_md, legal_privacy_md, legal_terms_md,
                            dashboards_allowed,
-                           friend_system_enabled
+                           friend_system_enabled,
+                           external_runtime_enabled,
+                           qwen_runtime_enabled,
+                           dsh_runtime_enabled,
+                           preferred_coding_runtime
                     FROM operator_settings WHERE id = 1
                     """
                 )
@@ -446,6 +454,18 @@ def _fetch_row() -> dict[str, Any]:
         "legal_terms_md": row[90] if len(row) > 90 else None,
         "dashboards_allowed": bool(row[91]) if len(row) > 91 and row[91] is not None else True,
         "friend_system_enabled": bool(row[92]) if len(row) > 92 and row[92] is not None else True,
+        "external_runtime_enabled": (
+            bool(row[93]) if len(row) > 93 and row[93] is not None else None
+        ),
+        "qwen_runtime_enabled": (
+            bool(row[94]) if len(row) > 94 and row[94] is not None else None
+        ),
+        "dsh_runtime_enabled": (
+            bool(row[95]) if len(row) > 95 and row[95] is not None else None
+        ),
+        "preferred_coding_runtime": (
+            (str(row[96]).strip() or None) if len(row) > 96 and row[96] is not None else None
+        ),
     }
 
 
@@ -472,20 +492,19 @@ def _sync_single_provider_endpoint(
     base = str(base_url or "").strip().rstrip("/")
     if not base:
         return
-    rows = db.operator_provider_endpoints_list_all(kind)
-    row: dict[str, Any] = {
-        "sort_order": 0,
-        "enabled": True,
-        "label": label,
-        "base_url": base,
-        "api_key": str(api_key or "").strip(),
-        "api_header_name": str(api_header_name or "").strip() or "Authorization",
-        "model_default": (str(model_default).strip() if model_default is not None else None) or None,
-        "options_json": options_json or {},
-    }
-    if rows:
-        row["id"] = int(rows[0]["id"])
-    db.operator_provider_endpoints_sync(kind, [row], delete_missing=False)
+    from apps.backend.infrastructure.providers.operator_provider_upsert import (
+        upsert_operator_provider_endpoint_by_base_url,
+    )
+
+    upsert_operator_provider_endpoint_by_base_url(
+        kind,
+        label=str(label or ""),
+        base_url=base,
+        api_key=str(api_key or "").strip(),
+        api_header_name=str(api_header_name or "").strip() or "Authorization",
+        model_default=(str(model_default).strip() if model_default is not None else None) or None,
+        options_json=options_json or {},
+    )
 
 
 def _bound_int(v: Any, default: int, lo: int, hi: int) -> int:

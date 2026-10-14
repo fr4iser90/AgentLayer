@@ -107,16 +107,27 @@ def test_legacy_single_provider_sync_does_not_delete_when_base_missing(monkeypat
 
 
 def test_legacy_single_provider_sync_is_non_destructive(monkeypatch) -> None:
+    from apps.backend.infrastructure.providers import operator_provider_upsert as upsert_mod
     from apps.backend.infrastructure.settings import operator_settings
 
     calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    existing = [
+        {
+            "id": 73,
+            "kind": "embedding",
+            "label": "Old",
+            "base_url": "https://embed.example",
+            "api_key": "prev",
+            "sort_order": 0,
+        }
+    ]
+
+    def list_all(kind: str):
+        return [dict(r) for r in existing] if kind == "embedding" else []
+
+    monkeypatch.setattr(upsert_mod.db, "operator_provider_endpoints_list_all", list_all)
     monkeypatch.setattr(
-        operator_settings.db,
-        "operator_provider_endpoints_list_all",
-        lambda kind: [{"id": 73}] if kind == "embedding" else [],
-    )
-    monkeypatch.setattr(
-        operator_settings.db,
+        upsert_mod.db,
         "operator_provider_endpoints_sync",
         lambda *args, **kwargs: calls.append((args, kwargs)),
     )

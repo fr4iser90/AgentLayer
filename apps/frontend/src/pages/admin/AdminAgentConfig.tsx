@@ -17,6 +17,7 @@ import { fetchBenchmarkLlmProviders, type BenchmarkLlmProvider } from "../../fea
 import { Button } from "../../ui/Button";
 import { Select, TextArea, TextInput } from "../../ui/Field";
 import { Tabs } from "../../ui/Tabs";
+import { PageShell } from "../../layout/PageShell";
 
 type Tab = "knobs" | "models";
 
@@ -336,7 +337,7 @@ export function AdminAgentConfig() {
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden p-wide md:p-broad">
+    <PageShell density="fill" className="overflow-hidden p-wide md:p-broad">
       <header className="mb-wide shrink-0">
         <h1 className="text-lg font-semibold text-ink-primary">{t("admin:agentConfigTitle")}</h1>
         <p className="mt-tight text-sm text-ink-muted">{t("admin:agentConfigSubtitle")}</p>
@@ -474,6 +475,6 @@ export function AdminAgentConfig() {
       ) : (
         knobEditor
       )}
-    </div>
+    </PageShell>
   );
 }

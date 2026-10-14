@@ -9,6 +9,7 @@ import { Button, buttonClass } from "../../ui/Button";
 import { Drawer } from "../../ui/Drawer";
 import { Checkbox } from "../../ui/Checkbox";
 import { TextInput } from "../../ui/Field";
+import { PageShell } from "../../layout/PageShell";
 
 type ToolPackageUi = {
   category: string;
@@ -299,7 +300,7 @@ export function ToolsSettings() {
   }
 
   return (
-    <div className="mx-auto max-w-page space-y-deep pb-grand">
+    <PageShell density="default" className="space-y-deep pb-grand">
       <div>
         <h1 className="text-lg font-semibold text-ink-primary">{t("settings:toolsTitle")}</h1>
         <p className="mt-base text-sm text-ink-muted">
@@ -551,7 +552,7 @@ export function ToolsSettings() {
           onClose={() => setDrawerPkg(null)}
         />
       ) : null}
-    </div>
+    </PageShell>
   );
 }
 

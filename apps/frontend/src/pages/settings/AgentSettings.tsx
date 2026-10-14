@@ -10,6 +10,7 @@ import {
 } from "../../features/settings/agentReasoningPrefs";
 import { Checkbox } from "../../ui/Checkbox";
 import { Button } from "../../ui/Button";
+import { PageShell } from "../../layout/PageShell";
 
 type PersonaResp = {
   ok?: boolean;
@@ -169,7 +170,7 @@ export function AgentSettings() {
   const label = "block text-xs text-ink-muted";
 
   return (
-    <div className="mx-auto max-w-page space-y-deep">
+    <PageShell density="default" className="space-y-deep">
       <div>
         <h1 className="text-lg font-semibold text-ink-primary">{t("settings:agentTitle")}</h1>
         <p className="mt-base text-sm text-ink-muted">
@@ -366,6 +367,6 @@ export function AgentSettings() {
       >
         {t("settings:reloadFromServer")}
       </Button>
-    </div>
+    </PageShell>
   );
 }

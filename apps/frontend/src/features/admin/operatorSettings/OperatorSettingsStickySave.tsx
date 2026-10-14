@@ -10,6 +10,8 @@ export function OperatorSettingsStickySave() {
       saveLabel={t("admin:save")}
       onSave={() => void save()}
       status={saveMsg ? { ok: saveMsg.ok, text: saveMsg.text } : null}
+      // Match AdminInterfacesPageShell `wide` → pageWide (providers, routing, …).
+      innerClassName="mx-auto max-w-pageWide"
     >
       <span>{t("admin:operatorSaveHint")}</span>
     </StickySaveBar>

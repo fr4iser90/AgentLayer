@@ -13,6 +13,7 @@ import { parseUiLayout } from "../features/dashboard/layoutMode";
 import type { DashboardDetail, UiLayout } from "../features/dashboard/types";
 import { TextInput } from "../ui/Field";
 import { Button } from "../ui/Button";
+import { PageShell } from "../layout/PageShell";
 
 function asUiLayout(raw: unknown): UiLayout | null {
   return parseUiLayout(raw);
@@ -123,24 +124,24 @@ export function DashboardPublicSharePage() {
 
   if (!token) {
     return (
-      <div className="mx-auto flex max-w-dialog flex-1 flex-col justify-center bg-neutral-950 p-deep text-center">
+      <PageShell density="dialog" className="flex flex-1 flex-col justify-center bg-neutral-950 text-center">
         <h1 className="text-lg font-medium text-ink-primary">{t("dashboard:publicShareTitle")}</h1>
         <p className="mt-soft text-sm text-badge-danger">{t("dashboard:publicShareMissingToken")}</p>
-      </div>
+      </PageShell>
     );
   }
 
   if (loading) {
     return (
-      <div className="flex flex-1 items-center justify-center bg-neutral-950 p-deep text-sm text-ink-muted">
+      <PageShell density="fill" className="flex-1 items-center justify-center bg-neutral-950 p-deep text-sm text-ink-muted">
         {t("dashboard:loading")}
-      </div>
+      </PageShell>
     );
   }
 
   if (passwordRequired && !detail) {
     return (
-      <div className="mx-auto flex min-h-dvh max-w-dialog flex-1 flex-col justify-center bg-neutral-950 p-deep">
+      <PageShell density="dialog" className="flex min-h-dvh flex-1 flex-col justify-center bg-neutral-950">
         <h1 className="text-lg font-medium text-ink-primary">
           {shareLabel || t("dashboard:publicShareTitle")}
         </h1>
@@ -164,60 +165,62 @@ export function DashboardPublicSharePage() {
             {t("dashboard:publicShareUnlock")}
           </Button>
         </form>
-      </div>
+      </PageShell>
     );
   }
 
   if (error || !detail || !uiLayout) {
     return (
-      <div className="mx-auto flex max-w-dialog flex-1 flex-col justify-center bg-neutral-950 p-deep text-center">
+      <PageShell density="dialog" className="flex flex-1 flex-col justify-center bg-neutral-950 text-center">
         <h1 className="text-lg font-medium text-ink-primary">{t("dashboard:publicShareTitle")}</h1>
         <p className="mt-soft text-sm text-badge-danger">{error || t("dashboard:publicShareNotFound")}</p>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <DashboardPublicShareProvider token={token} password={password || null}>
-      {galleryPresentation ? (
-        <PublicGalleryShareView
-          title={pageTitle}
-          subtitle={
-            detail.share_label && detail.title && detail.share_label !== detail.title
-              ? detail.title
-              : undefined
-          }
-          layout={uiLayout}
-          data={data}
-        />
-      ) : (
-        <div className="flex min-h-dvh flex-1 flex-col overflow-hidden bg-neutral-950">
-          <header className="shrink-0 border-b border-line bg-panel px-wide py-wide sm:px-broad">
-            <p className="text-meta font-semibold uppercase tracking-wide text-badge-accent">
-              {t("dashboard:publicShareBadge")}
-            </p>
-            <h1 className="mt-tight text-xl font-semibold text-ink-primary">{pageTitle}</h1>
-            <p className="mt-tight text-xs text-ink-muted">
-              {detail.allowed_block_ids && detail.allowed_block_ids.length > 0
-                ? t("dashboard:publicShareScopeBlocks", {
-                    count: detail.allowed_block_ids.length,
-                  })
-                : t("dashboard:publicShareScopeFull")}
-            </p>
-          </header>
-          <div className="min-h-0 flex-1 overflow-y-auto p-wide sm:p-broad">
-            <DashboardGridCanvas
-              layout={uiLayout}
-              setLayout={() => {}}
-              data={data}
-              setData={() => {}}
-              editMode={false}
-              contentReadOnly
-              dashboardId={detail.id}
-            />
+    <PageShell density="fill">
+      <DashboardPublicShareProvider token={token} password={password || null}>
+        {galleryPresentation ? (
+          <PublicGalleryShareView
+            title={pageTitle}
+            subtitle={
+              detail.share_label && detail.title && detail.share_label !== detail.title
+                ? detail.title
+                : undefined
+            }
+            layout={uiLayout}
+            data={data}
+          />
+        ) : (
+          <div className="flex min-h-dvh flex-1 flex-col overflow-hidden bg-neutral-950">
+            <header className="shrink-0 border-b border-line bg-panel px-wide py-wide sm:px-broad">
+              <p className="text-meta font-semibold uppercase tracking-wide text-badge-accent">
+                {t("dashboard:publicShareBadge")}
+              </p>
+              <h1 className="mt-tight text-xl font-semibold text-ink-primary">{pageTitle}</h1>
+              <p className="mt-tight text-xs text-ink-muted">
+                {detail.allowed_block_ids && detail.allowed_block_ids.length > 0
+                  ? t("dashboard:publicShareScopeBlocks", {
+                      count: detail.allowed_block_ids.length,
+                    })
+                  : t("dashboard:publicShareScopeFull")}
+              </p>
+            </header>
+            <div className="min-h-0 flex-1 overflow-y-auto p-wide sm:p-broad">
+              <DashboardGridCanvas
+                layout={uiLayout}
+                setLayout={() => {}}
+                data={data}
+                setData={() => {}}
+                editMode={false}
+                contentReadOnly
+                dashboardId={detail.id}
+              />
+            </div>
           </div>
-        </div>
-      )}
-    </DashboardPublicShareProvider>
+        )}
+      </DashboardPublicShareProvider>
+    </PageShell>
   );
 }

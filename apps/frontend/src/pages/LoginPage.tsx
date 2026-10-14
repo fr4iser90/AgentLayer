@@ -5,6 +5,7 @@ import { SETUP_WIZARD_ACTIVE_KEY, useAuth } from "../auth/AuthContext";
 import { defaultLandingPath } from "../auth/tenantSurface";
 import { TextInput } from "../ui/Field";
 import { Button } from "../ui/Button";
+import { PageShell } from "../layout/PageShell";
 
 export function LoginPage() {
   const { t } = useTranslation(["auth"]);
@@ -59,7 +60,7 @@ export function LoginPage() {
 
   return (
     <div className="h-full min-h-0 overflow-y-auto">
-      <div className="mx-auto max-w-dialog px-broad py-grand">
+      <PageShell density="dialog">
         <h1 className="text-2xl font-semibold text-ink-primary">{t("auth:loginTitle")}</h1>
         <p className="mt-base text-sm text-ink-muted">
           {t("auth:loginSubtitle")}
@@ -110,7 +111,7 @@ export function LoginPage() {
             {pending ? t("auth:signingIn") : t("auth:signIn")}
           </Button>
         </form>
-      </div>
+      </PageShell>
     </div>
   );
 }

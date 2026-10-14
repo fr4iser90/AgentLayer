@@ -1,6 +1,7 @@
 import { Link, Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
+import { PageShell } from "../layout/PageShell";
 import {
   defaultLandingPath,
   hasRestrictedNav,
@@ -38,7 +39,7 @@ export function HomePage() {
 
   return (
     <div className="h-full min-h-0 overflow-y-auto">
-      <div className="mx-auto max-w-page px-broad py-grand">
+      <PageShell density="default">
         <h1 className="text-2xl font-semibold text-ink-primary">{t("common:home.hubTitle")}</h1>
         <p className="mt-base text-sm text-ink-muted">{t("common:home.hubIntro")}</p>
         <ul className="mt-deep flex flex-col gap-soft">
@@ -54,7 +55,7 @@ export function HomePage() {
             </li>
           ))}
         </ul>
-      </div>
+      </PageShell>
     </div>
   );
 }

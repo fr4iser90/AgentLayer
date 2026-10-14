@@ -303,7 +303,9 @@ export default {
         roomy: "20px", // panel padding
         broad: "24px", // large containers
         deep: "32px", // oversized containers
-        page: "40px", // page container vertical padding
+        // Was `page` — that key collided with maxWidth.page, so max-w-page
+        // resolved to 40px and every default PageShell collapsed to a strip.
+        pagePad: "40px", // page container vertical padding
         grand: "48px", // full-page shells: login, wizard, home
       },
 
@@ -345,6 +347,8 @@ export default {
 
         // Page containers. Three steps, decided 24.09.2026: the nine values
         // this replaced were not a scale, just nine separate decisions.
+        // `page` must stay here (not in spacing) — spacing.page used to make
+        // max-w-page resolve to 40px and collapse every default PageShell.
         pageNarrow: "48rem", // 768px
         page: "56rem", // 896px — the default page
         pageWide: "72rem", // 1152px — agents, projects, submissions

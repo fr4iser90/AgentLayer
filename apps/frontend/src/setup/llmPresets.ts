@@ -1,4 +1,4 @@
-/** OpenAI-compatible LLM endpoint presets for setup / admin (base URL + hints). */
+/** OpenAI-compatible endpoint presets for setup / admin (base URL + hints). */
 
 export type LlmPresetId =
   | "provider_1"
@@ -9,11 +9,13 @@ export type LlmPresetId =
   | "together"
   | "custom";
 
+export type ProviderPresetKind = "chat" | "embedding" | "voice_stt" | "voice_tts";
+
 export type LlmPresetConfig = {
   id: LlmPresetId;
   /** i18n key under setup namespace */
   labelKey: string;
-  /** Stored as operator_external_llm_endpoints.label */
+  /** Stored as operator_provider_endpoints.label */
   endpointLabel: string;
   baseUrl: string;
   modelPlaceholderKey: string;
@@ -21,6 +23,34 @@ export type LlmPresetConfig = {
   apiKeyRequired: boolean;
   apiKeyHintKey: string;
   helpKey: string;
+};
+
+const KIND_LOCAL_LABEL: Record<ProviderPresetKind, string> = {
+  chat: "llmPresetProvider1Label",
+  embedding: "embedPresetProvider1Label",
+  voice_stt: "voiceSttPresetProvider1Label",
+  voice_tts: "voiceTtsPresetProvider1Label",
+};
+
+const KIND_LOCAL_HELP: Record<ProviderPresetKind, string> = {
+  chat: "llmPresetProvider1Help",
+  embedding: "embedPresetProvider1Help",
+  voice_stt: "voiceSttPresetProvider1Help",
+  voice_tts: "voiceTtsPresetProvider1Help",
+};
+
+const KIND_CUSTOM_LABEL: Record<ProviderPresetKind, string> = {
+  chat: "LLM",
+  embedding: "Embedding",
+  voice_stt: "STT",
+  voice_tts: "TTS",
+};
+
+const KIND_ENDPOINT_LABEL: Record<ProviderPresetKind, string> = {
+  chat: "provider_1",
+  embedding: "embedding_provider_1",
+  voice_stt: "voice_stt_provider_1",
+  voice_tts: "voice_tts_provider_1",
 };
 
 export const LLM_PRESETS: readonly LlmPresetConfig[] = [
@@ -106,6 +136,30 @@ const PRESET_BY_ID = Object.fromEntries(LLM_PRESETS.map((p) => [p.id, p])) as Re
 
 export function getLlmPreset(id: LlmPresetId): LlmPresetConfig {
   return PRESET_BY_ID[id] ?? PRESET_BY_ID.custom;
+}
+
+/** Same preset list for every kind — only local/custom labels follow env prefix. */
+export function getPresetForKind(kind: ProviderPresetKind, id: LlmPresetId): LlmPresetConfig {
+  const base = getLlmPreset(id);
+  if (id === "provider_1") {
+    return {
+      ...base,
+      labelKey: KIND_LOCAL_LABEL[kind],
+      helpKey: KIND_LOCAL_HELP[kind],
+      endpointLabel: KIND_ENDPOINT_LABEL[kind],
+    };
+  }
+  if (id === "custom") {
+    return {
+      ...base,
+      endpointLabel: KIND_CUSTOM_LABEL[kind],
+    };
+  }
+  return base;
+}
+
+export function listPresetsForKind(kind: ProviderPresetKind): LlmPresetConfig[] {
+  return LLM_PRESETS.map((p) => getPresetForKind(kind, p.id));
 }
 
 export const DEFAULT_LLM_PRESET: LlmPresetId = "provider_1";

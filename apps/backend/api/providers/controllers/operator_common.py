@@ -140,6 +140,26 @@ class OperatorProviderEndpointsPutBody(BaseModel):
     delete_endpoint_ids: list[int] = Field(default_factory=list)
 
 
+class OperatorProviderEndpointUpsertBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    label: str = Field(min_length=1, max_length=512)
+    base_url: str = Field(min_length=1, max_length=2048)
+    api_key: str | None = None
+    api_header_name: str | None = "Authorization"
+    model_default: str | None = None
+    max_parallel: int = Field(default=1, ge=1, le=64)
+    options_json: dict[str, Any] = Field(default_factory=dict)
+    enabled: bool = True
+
+
+class OperatorProviderEndpointProbeBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    base_url: str = Field(min_length=1, max_length=2048)
+    api_key: str | None = None
+
+
 def _operator_provider_kind_or_404(kind: str) -> str:
     k = (kind or "").strip().lower()
     if k not in _operator_provider_endpoint_kinds():

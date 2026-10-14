@@ -6,6 +6,7 @@ import { Badge, type BadgeTone } from "../../ui/Badge";
 import { Checkbox } from "../../ui/Checkbox";
 import { Select, TextArea, TextInput } from "../../ui/Field";
 import { Button } from "../../ui/Button";
+import { PageShell } from "../../layout/PageShell";
 
 type ToolMeta = {
   id?: string;
@@ -559,7 +560,7 @@ export function AdminTools() {
   }
 
   return (
-    <div className="mx-auto max-w-pageWide px-wide py-deep sm:px-broad">
+    <PageShell density="wide">
       <h1 className="text-2xl font-semibold text-ink-primary">{t("admin:toolsRegistryTitle")}</h1>
       <p className="mt-base max-w-measure text-sm text-ink-muted">
         {t("admin:toolsRegistryIntro")}{" "}
@@ -763,6 +764,6 @@ export function AdminTools() {
       {!loading && totalPackages === 0 ? (
         <p className="mt-deep text-sm text-ink-muted">{t("admin:toolsRegistryNoneLoaded")}</p>
       ) : null}
-    </div>
+    </PageShell>
   );
 }

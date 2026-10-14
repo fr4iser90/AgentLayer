@@ -22,7 +22,6 @@ import inspect
 import json
 import logging
 import os
-import shutil
 import stat
 from pathlib import Path
 from typing import Any
@@ -59,14 +58,22 @@ class QwenCodeRuntime:
         )
 
     def available(self) -> tuple[bool, str]:
-        if not bool(getattr(config, "EXTERNAL_RUNTIME_ENABLED", False)):
-            return False, "AGENT_EXTERNAL_RUNTIME_ENABLED is false"
-        if not bool(getattr(config, "QWEN_RUNTIME_ENABLED", True)):
-            return False, "AGENT_QWEN_ENABLED is false"
-        binary = str(getattr(config, "QWEN_BIN", "qwen") or "qwen")
-        resolved = binary if os.path.isabs(binary) else (shutil.which(binary) or "")
+        from apps.backend.infrastructure.platform.config_external_runtimes import (
+            external_runtime_enabled_effective,
+            qwen_runtime_enabled_effective,
+        )
+
+        if not external_runtime_enabled_effective():
+            return False, "external runtime disabled (env or operator setting)"
+        if not qwen_runtime_enabled_effective():
+            return False, "qwen runtime disabled (env or operator setting)"
+        from apps.backend.infrastructure.agent_runtime.external_runtimes.coding_runtime_packages import (
+            resolve_runtime_binary,
+        )
+
+        resolved = resolve_runtime_binary(RUNTIME_ID) or ""
         if not resolved or not os.path.isfile(resolved):
-            return False, f"qwen binary not found ({binary}); install @qwen-code/qwen-code"
+            return False, "qwen binary not found; install @qwen-code/qwen-code (Admin → Coding runtimes)"
         try:
             import qwen_code_sdk  # noqa: F401
         except Exception as exc:
@@ -189,7 +196,11 @@ class QwenCodeRuntime:
 
 
 def _binary_path() -> str:
-    return str(getattr(config, "QWEN_BIN", "qwen") or "qwen")
+    from apps.backend.infrastructure.agent_runtime.external_runtimes.coding_runtime_packages import (
+        resolve_runtime_binary,
+    )
+
+    return resolve_runtime_binary(RUNTIME_ID) or str(getattr(config, "QWEN_BIN", "qwen") or "qwen")
 
 
 def _safe_component(raw: str | None, fallback: str) -> str:

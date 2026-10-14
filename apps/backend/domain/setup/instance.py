@@ -81,6 +81,23 @@ class InstanceSetupDependencies(Protocol):
 
     def apply_deployment_mode_patch(self, mode: str) -> None: ...
 
+    def gateway_models_kinds_for_provider_kind(self, kind: str) -> str | None: ...
+
+    def upsert_operator_provider_endpoint_by_base_url(
+        self,
+        kind: str,
+        *,
+        label: str,
+        base_url: str,
+        api_key: str,
+        model_default: str | None = None,
+        api_header_name: str = "Authorization",
+        preserve_existing_model: bool = True,
+        max_parallel: int | None = None,
+        options_json: dict[str, Any] | None = None,
+        enabled: bool = True,
+    ) -> dict[str, Any]: ...
+
 
 _deps: InstanceSetupDependencies | None = None
 
@@ -394,10 +411,17 @@ def _effective_api_key(api_key: str | None) -> str:
     return k if k else _NO_AUTH_API_KEY_PLACEHOLDER
 
 
-async def probe_llm_endpoint(*, base_url: str, api_key: str | None) -> dict[str, Any]:
+async def probe_llm_endpoint(
+    *,
+    base_url: str,
+    api_key: str | None,
+    kind: str = "chat",
+) -> dict[str, Any]:
     bu = _normalize_base_url(base_url)
     key = _effective_api_key(api_key)
-    url = external_models_list_url(bu, kinds="chat")
+    kind_v = (kind or "chat").strip().lower() or "chat"
+    gateway_kinds = _require_deps().gateway_models_kinds_for_provider_kind(kind_v) or kind_v
+    url = external_models_list_url(bu, kinds=gateway_kinds)
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.get(
@@ -449,16 +473,14 @@ def apply_setup_llm_endpoint(
     md = (model_default or "").strip() or None
     lbl = (label or "").strip()[:512] or "LLM"
 
-    row: dict[str, Any] = {
-        "sort_order": 0,
-        "enabled": True,
-        "label": lbl,
-        "base_url": bu,
-        "api_key": key,
-        "model_default": md,
-    }
     try:
-        db.operator_provider_endpoints_sync("chat", [row], delete_missing=False)
+        _require_deps().upsert_operator_provider_endpoint_by_base_url(
+            "chat",
+            label=lbl,
+            base_url=bu,
+            api_key=key,
+            model_default=md,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     invalidate_operator_settings_cache()

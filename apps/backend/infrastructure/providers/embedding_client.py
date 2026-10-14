@@ -156,12 +156,49 @@ def invalidate_embedding_catalog_cache() -> None:
     invalidate_embedding_provider_specs_cache()
 
 
+def _model_row_looks_like_embedding(item: dict) -> bool:
+    """True when a gateway ``/v1/models`` row is an embedding model, not chat leakage."""
+    mid = str(item.get("id") or "").strip()
+    if not mid:
+        return False
+    kind = str(item.get("kind") or "").strip().lower()
+    if kind in {"embed", "embedding"}:
+        return True
+    owned = str(item.get("owned_by") or "").strip().lower()
+    if owned in {"embed", "embedding"}:
+        return True
+    tags = item.get("tags")
+    if isinstance(tags, list) and any(
+        str(t).strip().lower() in {"embed", "embedding"} for t in tags
+    ):
+        return True
+    low = mid.lower()
+    if "embed" in low or any(h in low for h in ("bge", "e5", "minilm", "gte", "sentence", "nomic-embed")):
+        return True
+    return False
+
+
+def _model_row_available(item: dict) -> bool:
+    status = str(item.get("status") or "").strip().lower()
+    if status in {"unavailable", "down", "error", "offline"}:
+        return False
+    load = str(item.get("load_state") or "").strip().lower()
+    if load in {"down", "error", "offline", "unavailable"}:
+        return False
+    return True
+
+
 def fetch_embedding_models_list(
     *,
     timeout: float = 15.0,
     provider_id: str | None = None,
 ) -> tuple[list[str], str | None]:
-    """``GET …/v1/models`` for the active (or given) embedding provider."""
+    """``GET …/v1/models?kinds=embed`` for the active (or given) embedding provider.
+
+    Gateways that merge catalogs under one host often still leak chat rows into
+    ``?kinds=embed``. We keep only embedding-shaped rows and prefer available ones
+    so setup never auto-picks ``chat`` as an embedding default.
+    """
     from apps.backend.infrastructure.providers.embedding_catalog_providers import get_embedding_provider_spec
 
     if provider_id:
@@ -183,13 +220,20 @@ def fetch_embedding_models_list(
     if status != 200 or not isinstance(data, dict):
         detail = (text or "").strip() or f"http_{status}"
         return [], detail
-    ids: list[str] = []
+    embed_rows: list[dict] = []
     for item in data.get("data") or []:
-        if not isinstance(item, dict):
-            continue
-        mid = item.get("id")
-        if isinstance(mid, str) and mid.strip():
-            ids.append(mid.strip())
+        if isinstance(item, dict) and _model_row_looks_like_embedding(item):
+            embed_rows.append(item)
+    if not embed_rows:
+        return [], (
+            "Kein Embedding-Modell in der Gateway-Antwort "
+            "(nur Chat/andere — ``?kinds=embed`` ungefiltert oder Embedder offline)."
+        )
+    # Available first, then unavailable (still listed so the operator can pick).
+    embed_rows.sort(key=lambda row: (0 if _model_row_available(row) else 1, str(row.get("id") or "")))
+    ids = [str(row.get("id") or "").strip() for row in embed_rows if str(row.get("id") or "").strip()]
+    if not any(_model_row_available(row) for row in embed_rows):
+        return ids, "Embedding-Modelle gelistet, aber alle unavailable/down auf dem Gateway."
     return ids, None
 
 

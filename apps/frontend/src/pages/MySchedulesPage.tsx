@@ -18,6 +18,7 @@ import { Select, TextArea, TextInput } from "../ui/Field";
 import { Checkbox } from "../ui/Checkbox";
 import { SkeletonRows } from "../ui/Skeleton";
 import { Table, type TableColumn } from "../ui/Table";
+import { PageShell } from "../layout/PageShell";
 
 type SchedulerJobRow = {
   id: string;
@@ -535,7 +536,7 @@ export function MySchedulesPage({ scope = "user" }: { scope?: SchedulesScope }) 
   ];
 
   return (
-    <div className="mx-auto max-w-pageWide px-broad py-page">
+    <PageShell density="wide">
       <div className="flex items-start justify-between gap-wide">
         <div>
           <h1 className="text-2xl font-semibold text-ink-primary">
@@ -1045,6 +1046,6 @@ export function MySchedulesPage({ scope = "user" }: { scope?: SchedulesScope }) 
             </div>
         </Modal>
       ) : null}
-    </div>
+    </PageShell>
   );
 }

@@ -122,17 +122,26 @@ def _enable(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(config, "QWEN_MODEL", None, raising=False)
     monkeypatch.setattr(config, "QWEN_PERMISSION_MODE", "auto-edit", raising=False)
     monkeypatch.setattr(config, "QWEN_EXCLUDE_TOOLS", (), raising=False)
+    # effective_* also consults operator DB overrides — pin them open for unit tests.
+    import apps.backend.infrastructure.platform.config_external_runtimes as ext_cfg
+
+    monkeypatch.setattr(ext_cfg, "external_runtime_enabled_effective", lambda: True)
+    monkeypatch.setattr(ext_cfg, "qwen_runtime_enabled_effective", lambda: True)
     # A real file on disk: the adapter checks the resolved path, not just ``PATH``.
     fake_bin = tmp_path / "bin" / "qwen"
     fake_bin.parent.mkdir(parents=True, exist_ok=True)
     fake_bin.write_text("#!/bin/sh\necho fake\n", encoding="utf-8")
     fake_bin.chmod(0o755)
-    monkeypatch.setattr(qwen_code.shutil, "which", lambda name: str(fake_bin))
+    from apps.backend.infrastructure.agent_runtime.external_runtimes import coding_runtime_packages as pkgs
+
+    monkeypatch.setattr(pkgs, "resolve_runtime_binary", lambda rid: str(fake_bin))
 
 
 def test_available_reports_missing_binary(monkeypatch, tmp_path: Path) -> None:
     _enable(monkeypatch, tmp_path)
-    monkeypatch.setattr(qwen_code.shutil, "which", lambda name: None)
+    from apps.backend.infrastructure.agent_runtime.external_runtimes import coding_runtime_packages as pkgs
+
+    monkeypatch.setattr(pkgs, "resolve_runtime_binary", lambda rid: None)
     usable, reason = QwenCodeRuntime().available()
     assert usable is False
     assert "qwen binary not found" in reason

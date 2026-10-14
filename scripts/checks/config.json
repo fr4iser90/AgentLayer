@@ -1,11 +1,11 @@
 {
   "profiles": {
     "fast": ["ddd_layers", "ddd_quality", "agent_governance", "tenant_scope", "legacy_role_reads", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder"],
-    "precommit": ["ddd_layers", "ddd_quality", "agent_governance", "tenant_scope", "legacy_role_reads", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder", "frontend_ink_color", "frontend_border_token", "frontend_radius", "frontend_spacing", "frontend_content_width", "frontend_fill_token", "frontend_z_index", "frontend_icon_label", "frontend_font_license", "frontend_silent_catch", "frontend_nav_depth", "frontend_dialog", "frontend_click_outside", "frontend_control_primitive", "frontend_primitive_coverage", "frontend_loading_placeholder", "node_cve_full", "python_cve"],
+    "precommit": ["ddd_layers", "ddd_quality", "agent_governance", "tenant_scope", "legacy_role_reads", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder", "frontend_ink_color", "frontend_border_token", "frontend_radius", "frontend_spacing", "frontend_content_width", "frontend_page_shell", "frontend_fill_token", "frontend_z_index", "frontend_icon_label", "frontend_font_license", "frontend_silent_catch", "frontend_nav_depth", "frontend_dialog", "frontend_click_outside", "frontend_control_primitive", "frontend_primitive_coverage", "frontend_loading_placeholder", "node_cve_full", "python_cve"],
     "security": ["node_cve_full", "python_cve", "tenant_scope_all", "legacy_role_reads"],
     "architecture": ["ddd_layers_report", "ddd_quality", "agent_governance", "tenant_scope_all", "legacy_role_reads"],
     "quality": ["agent_governance", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder", "bandit"],
-    "ci": ["ddd_layers_all", "ddd_quality", "agent_governance", "tenant_scope", "legacy_role_reads", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder", "frontend_ink_color", "frontend_border_token", "frontend_radius", "frontend_spacing", "frontend_content_width", "frontend_fill_token", "frontend_z_index", "frontend_icon_label", "frontend_font_license", "frontend_silent_catch", "frontend_nav_depth", "frontend_dialog", "frontend_click_outside", "frontend_control_primitive", "frontend_primitive_coverage", "frontend_loading_placeholder", "node_cve_full", "python_cve", "bandit"]
+    "ci": ["ddd_layers_all", "ddd_quality", "agent_governance", "tenant_scope", "legacy_role_reads", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder", "frontend_ink_color", "frontend_border_token", "frontend_radius", "frontend_spacing", "frontend_content_width", "frontend_page_shell", "frontend_fill_token", "frontend_z_index", "frontend_icon_label", "frontend_font_license", "frontend_silent_catch", "frontend_nav_depth", "frontend_dialog", "frontend_click_outside", "frontend_control_primitive", "frontend_primitive_coverage", "frontend_loading_placeholder", "node_cve_full", "python_cve", "bandit"]
   },
   "checks": {
     "legacy_role_reads": {
@@ -569,6 +569,13 @@
       "cwd": "apps/frontend",
       "required_tool": "node",
       "nix_shell_command": "cd apps/frontend && node scripts/check-content-width.mjs"
+    },
+    "frontend_page_shell": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-page-shell.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-page-shell.mjs"
     },
     "frontend_fill_token": {
       "module": "command_check",

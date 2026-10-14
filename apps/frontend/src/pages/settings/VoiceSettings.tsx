@@ -10,6 +10,7 @@ import {
 import { Checkbox } from "../../ui/Checkbox";
 import { Select, TextInput } from "../../ui/Field";
 import { Button } from "../../ui/Button";
+import { PageShell } from "../../layout/PageShell";
 
 const defaultPrefs: VoicePrefs = {
   input_enabled: true,
@@ -67,7 +68,7 @@ export function VoiceSettings() {
   const disabledGlobally = !status?.operator_enabled || !status?.api_configured;
 
   return (
-    <div className="mx-auto max-w-page">
+    <PageShell density="default">
       <h1 className="text-xl font-semibold text-ink-primary">{t("settings:voiceTitle")}</h1>
       <p className="mt-base text-sm text-ink-muted">{t("settings:voiceIntro")}</p>
       {disabledGlobally ? (
@@ -169,6 +170,6 @@ export function VoiceSettings() {
           {t("settings:voiceSave")}
         </Button>
       </div>
-    </div>
+    </PageShell>
   );
 }

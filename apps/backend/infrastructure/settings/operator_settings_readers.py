@@ -37,6 +37,38 @@ def friend_system_enabled() -> bool:
     return bool(_cached_row().get("friend_system_enabled", True))
 
 
+def external_runtime_enabled_override() -> bool | None:
+    """Nullable DB override for AGENT_EXTERNAL_RUNTIME_ENABLED (None = use env)."""
+    v = _cached_row().get("external_runtime_enabled")
+    if v is None:
+        return None
+    return bool(v)
+
+
+def qwen_runtime_enabled_override() -> bool | None:
+    """Nullable DB override for AGENT_QWEN_ENABLED (None = use env)."""
+    v = _cached_row().get("qwen_runtime_enabled")
+    if v is None:
+        return None
+    return bool(v)
+
+
+def dsh_runtime_enabled_override() -> bool | None:
+    """Nullable DB override for AGENT_DSH_ENABLED (None = use env)."""
+    v = _cached_row().get("dsh_runtime_enabled")
+    if v is None:
+        return None
+    return bool(v)
+
+
+def preferred_coding_runtime_override() -> str | None:
+    """Nullable preferred coding runtime id (None = use env / internal)."""
+    v = _cached_row().get("preferred_coding_runtime")
+    if v is None:
+        return None
+    return str(v).strip() or ""
+
+
 def deployment_mode() -> str:
     v = str(_cached_row().get("deployment_mode") or "multi_tenant").strip().lower()
     return v if v in DEPLOYMENT_MODES else "multi_tenant"
@@ -507,6 +539,20 @@ def public_dict() -> dict[str, Any]:
         "legal_terms_md": (str(r.get("legal_terms_md") or "").strip()),
         "dashboards_allowed": bool(r.get("dashboards_allowed", True)),
         "friend_system_enabled": bool(r.get("friend_system_enabled", True)),
+        "external_runtime_enabled": (
+            None if r.get("external_runtime_enabled") is None else bool(r.get("external_runtime_enabled"))
+        ),
+        "qwen_runtime_enabled": (
+            None if r.get("qwen_runtime_enabled") is None else bool(r.get("qwen_runtime_enabled"))
+        ),
+        "dsh_runtime_enabled": (
+            None if r.get("dsh_runtime_enabled") is None else bool(r.get("dsh_runtime_enabled"))
+        ),
+        "preferred_coding_runtime": (
+            None
+            if r.get("preferred_coding_runtime") is None
+            else (str(r.get("preferred_coding_runtime") or "").strip() or "")
+        ),
         **media_settings_public_fields(),
         **chat_quota_settings_public_fields(),
         **voice_settings_public_fields(),

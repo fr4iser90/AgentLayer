@@ -1,0 +1,90 @@
+{
+  "_comment": "Allowed PageShell densities per path family. Lint fails if a page uses another density or raw max-w-page* instead of <PageShell>.",
+  "families": [
+    {
+      "id": "settings",
+      "match": ["src/pages/settings/**"],
+      "allowed": ["default", "narrow"]
+    },
+    {
+      "id": "admin-interfaces",
+      "match": ["src/pages/admin/interfaces/**Page.tsx"],
+      "allowed": ["default", "wide"],
+      "forbid": ["narrow"]
+    },
+    {
+      "id": "admin-dense",
+      "match": [
+        "src/pages/admin/AdminAgents.tsx",
+        "src/pages/admin/AdminTools.tsx",
+        "src/pages/admin/AdminAgentSubmissions.tsx",
+        "src/pages/admin/AdminCodingRuntimes.tsx"
+      ],
+      "allowed": ["wide"]
+    },
+    {
+      "id": "admin-hub",
+      "match": ["src/pages/admin/AdminDashboard.tsx"],
+      "allowed": ["narrow"]
+    },
+    {
+      "id": "admin-form",
+      "match": ["src/pages/admin/AdminUsers.tsx"],
+      "allowed": ["default"]
+    },
+    {
+      "id": "admin-harness",
+      "match": ["src/pages/admin/AdminHarnessConfig.tsx"],
+      "allowed": ["fill", "default"]
+    },
+    {
+      "id": "admin-fill",
+      "match": [
+        "src/pages/admin/AdminAgentTraces.tsx",
+        "src/pages/admin/AdminAgentConfig.tsx",
+        "src/pages/admin/AdminBenchmarks.tsx"
+      ],
+      "allowed": ["fill"]
+    },
+    {
+      "id": "org",
+      "match": ["src/pages/org/**"],
+      "allowed": ["default", "wide", "narrow"]
+    },
+    {
+      "id": "app-wide",
+      "match": ["src/pages/ProjectsPage.tsx", "src/pages/MySchedulesPage.tsx"],
+      "allowed": ["wide"]
+    },
+    {
+      "id": "app-default",
+      "match": ["src/pages/HomePage.tsx", "src/pages/TasksPage.tsx", "src/pages/DashboardPage.tsx"],
+      "allowed": ["default", "narrow", "wide", "fill"]
+    },
+    {
+      "id": "prose",
+      "match": ["src/pages/DocsPage.tsx", "src/pages/LegalPage.tsx"],
+      "allowed": ["measure"]
+    },
+    {
+      "id": "studio",
+      "match": ["src/pages/StudioPage.tsx"],
+      "allowed": ["fill"]
+    },
+    {
+      "id": "gate",
+      "match": ["src/pages/LoginPage.tsx", "src/pages/SetupWizardPage.tsx"],
+      "allowed": ["dialog"]
+    },
+    {
+      "id": "chat",
+      "match": ["src/pages/ChatPage.tsx"],
+      "allowed": ["fill"]
+    },
+    {
+      "id": "public-share",
+      "match": ["src/pages/DashboardPublicSharePage.tsx"],
+      "allowed": ["fill", "dialog"]
+    }
+  ]
+}

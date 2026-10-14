@@ -72,10 +72,13 @@ async def get_chat_runtime(
     # Runtime catalog for coding agents that run outside AgentLayer's planner loop
     # (agent.yaml ``external_runtime:``). Reasons are operator-facing, not secrets.
     try:
+        from apps.backend.application.platform.use_cases.platform_controller_services import (
+            external_runtime_enabled_effective,
+        )
         from apps.backend.domain.agent_runtime.external_runtime import available_external_runtimes
 
         external_runtimes: dict[str, Any] = {
-            "enabled": bool(config.EXTERNAL_RUNTIME_ENABLED),
+            "enabled": external_runtime_enabled_effective(),
             "fallback_internal": bool(config.EXTERNAL_RUNTIME_FALLBACK_INTERNAL),
             "runtimes": available_external_runtimes(),
         }

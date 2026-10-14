@@ -47,6 +47,33 @@ class SetupCatalogDependencies(Protocol):
 
     def normalized_embedding_base(self) -> str: ...
 
+    def setup_voice_summary(self) -> dict[str, Any]: ...
+
+    def setup_external_runtime_summary(self) -> dict[str, Any]: ...
+
+    def operator_provider_endpoints_list_all(self, kind: str) -> list[dict[str, Any]]: ...
+
+    def parse_db_catalog_provider_id(self, provider_id: str) -> int | None: ...
+
+    def provider_endpoint_dedupe_key(self, base_url: str | None) -> str: ...
+
+    def collapse_duplicate_operator_provider_endpoints(self, kind: str) -> int: ...
+
+    def upsert_operator_provider_endpoint_by_base_url(
+        self,
+        kind: str,
+        *,
+        label: str,
+        base_url: str,
+        api_key: str,
+        api_header_name: str = "Authorization",
+        model_default: str | None = None,
+        preserve_existing_model: bool = True,
+        max_parallel: int | None = None,
+        options_json: dict[str, Any] | None = None,
+        enabled: bool = True,
+    ) -> dict[str, Any]: ...
+
 
 _deps: SetupCatalogDependencies | None = None
 
@@ -118,6 +145,14 @@ def operator_provider_endpoints_sync(
 
 def normalized_embedding_base() -> str:
     return _require_deps().normalized_embedding_base()
+
+
+def _setup_voice_summary() -> dict[str, Any]:
+    return _require_deps().setup_voice_summary()
+
+
+def _setup_external_runtime_summary() -> dict[str, Any]:
+    return _require_deps().setup_external_runtime_summary()
 
 
 def rank_embedding_model_ids(model_ids: list[str]) -> list[str]:
@@ -261,11 +296,15 @@ def build_setup_catalog() -> dict[str, Any]:
     embedding = enrich_setup_embedding_meta(embedding, providers_out)
 
     suggestions = _suggest_defaults(providers_out, embedding)
+    voice = _setup_voice_summary()
+    external_runtimes = _setup_external_runtime_summary()
     return {
         "providers": providers_out,
         "embedding": embedding,
         "suggestions": suggestions,
         "any_chat_reachable": any_chat,
+        "voice": voice,
+        "external_runtimes": external_runtimes,
     }
 
 
@@ -323,6 +362,12 @@ class SetupPreferencesBody(BaseModel):
 
 
 def apply_setup_preferences(body: SetupPreferencesBody) -> dict[str, Any]:
+    """
+    Continue / preferences:
+
+    - If chat endpoints already exist: never insert. Collapse URL twins, mark preferred primary.
+    - If none exist yet: create exactly one from the reachable catalog provider.
+    """
     pid = (body.primary_provider_id or "").strip()
     spec = get_provider_spec(pid)
     if spec is None:
@@ -335,41 +380,82 @@ def apply_setup_preferences(body: SetupPreferencesBody) -> dict[str, Any]:
             detail=f"Provider {pid!r} ist nicht erreichbar. Prüfen Sie URL und Netzwerk.",
         )
 
-    chat_ids = {
-        str(m.get("id") or "").strip()
-        for m in rows
-        if str(m.get("id") or "").strip()
-        and classify_model_id(str(m.get("id") or "")) != "embedding"
-    }
+    deps = _require_deps()
+    deps.collapse_duplicate_operator_provider_endpoints("chat")
+    existing = list(deps.operator_provider_endpoints_list_all("chat"))
+    target_key = deps.provider_endpoint_dedupe_key(getattr(spec, "base_url", "") or "")
+    eid = deps.parse_db_catalog_provider_id(pid)
 
-    def pick(field: str | None, fallback: str | None) -> str | None:
-        v = (field or "").strip() or None
-        if v and chat_ids and v not in chat_ids:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Modell {v!r} ist kein Chat-Modell auf Provider {pid!r}.",
+    def _pick_preferred(rows_in: list[dict[str, Any]]) -> dict[str, Any] | None:
+        if not rows_in:
+            return None
+        if eid is not None:
+            hit = next((row for row in rows_in if int(row.get("id") or 0) == int(eid)), None)
+            if hit is not None:
+                return hit
+        if target_key:
+            hit = next(
+                (
+                    row
+                    for row in rows_in
+                    if deps.provider_endpoint_dedupe_key(row.get("base_url")) == target_key
+                ),
+                None,
             )
-        return v or fallback
+            if hit is not None:
+                return hit
+        return min(
+            rows_in,
+            key=lambda row: (int(row.get("sort_order") or 0), int(row.get("id") or 0)),
+        )
 
+    preferred = _pick_preferred(existing)
+    explicit_model = (str(body.model_default).strip() if body.model_default else "") or None
     ranked = rank_chat_model_ids([str(r.get("id") or "") for r in rows if r.get("id")])
     first = ranked[0] if ranked else None
-    md = pick(body.model_default, first)
+    md: str | None
 
-    key = spec.api_key if spec.api_key else "-"
-    operator_provider_endpoints_sync(
-        "chat",
-        [
-            {
-                "sort_order": 0,
-                "enabled": True,
-                "label": spec.label or pid,
-                "base_url": spec.base_url,
-                "api_key": key,
-                "model_default": md,
-            }
-        ],
-        delete_missing=False,
-    )
+    if existing:
+        # Already configured — Continue must not add another row (same host or otherwise).
+        md = (
+            explicit_model
+            or (str(preferred.get("model_default") or "").strip() if preferred else "")
+            or first
+        )
+    else:
+        # First-time Continue with no DB endpoints yet: create exactly one.
+        md = explicit_model or first
+        key = spec.api_key if spec.api_key else "-"
+        preferred = deps.upsert_operator_provider_endpoint_by_base_url(
+            "chat",
+            label=str(getattr(spec, "label", None) or pid),
+            base_url=str(getattr(spec, "base_url", "") or ""),
+            api_key=key,
+            api_header_name=str(getattr(spec, "api_header_name", None) or "Authorization"),
+            model_default=md,
+            preserve_existing_model=False,
+        )
+
+    refreshed = list(deps.operator_provider_endpoints_list_all("chat"))
+    # Collapse again in case twin rows existed before this request.
+    deps.collapse_duplicate_operator_provider_endpoints("chat")
+    refreshed = list(deps.operator_provider_endpoints_list_all("chat"))
+    preferred = _pick_preferred(refreshed) or preferred
+    if preferred is None:
+        raise HTTPException(status_code=400, detail="Kein Chat-Endpunkt nach Continue vorhanden.")
+
+    preferred_id = int(preferred.get("id") or 0)
+    if preferred_id >= 1 and len(refreshed) >= 1:
+        ordered: list[dict[str, Any]] = []
+        ordered.append({**dict(preferred), "sort_order": 0})
+        n = 1
+        for row in refreshed:
+            if int(row.get("id") or 0) == preferred_id:
+                continue
+            ordered.append({**dict(row), "sort_order": n})
+            n += 1
+        operator_provider_endpoints_sync("chat", ordered, delete_missing=False)
+
     invalidate_operator_settings_cache()
     invalidate_model_catalog_cache()
 

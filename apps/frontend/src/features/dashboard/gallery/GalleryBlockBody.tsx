@@ -171,7 +171,7 @@ export function GalleryBlockBody(props: {
       ) : null}
 
       {photos.length === 0 ? (
-        <p className="rounded-card border border-dashed border-line-strong py-page text-center text-sm text-ink-muted">
+        <p className="rounded-card border border-dashed border-line-strong py-pagePad text-center text-sm text-ink-muted">
           {readOnly
             ? t("dashboard:photosEmptyReadOnly")
             : t("dashboard:photosEmptyEditable")}

@@ -28,6 +28,9 @@ from apps.backend.infrastructure.identity.setup_catalog_service import (
 )
 from apps.backend.infrastructure.settings import operator_settings
 from apps.backend.infrastructure.platform.config import PLUGINS_DIR, config
+from apps.backend.infrastructure.platform.config_external_runtimes import (
+    external_runtime_enabled_effective,
+)
 from apps.backend.infrastructure.platform.public_error import http_500_detail
 from apps.backend.infrastructure.providers.model_catalog_providers import (
     fetch_full_model_catalog,

@@ -44,10 +44,87 @@ QWEN_EXCLUDE_TOOLS: tuple[str, ...] = tuple(
     part.strip() for part in (os.environ.get("AGENT_QWEN_EXCLUDE_TOOLS") or "").split(",") if part.strip()
 )
 
+# --- DeepSeek Harness adapter ---
+DSH_RUNTIME_ENABLED = _env_bool("AGENT_DSH_ENABLED", True)
+DSH_BIN = (os.environ.get("AGENT_DSH_BIN") or "dsh").strip() or "dsh"
+DSH_MODEL = (os.environ.get("AGENT_DSH_MODEL") or "").strip() or None
+# Preferred coding runtime id when several are enabled: empty = internal AgentLayer loop.
+PREFERRED_CODING_RUNTIME = (os.environ.get("AGENT_PREFERRED_CODING_RUNTIME") or "").strip() or None
+
 
 def external_runtime_home_dir() -> Path:
     """Absolute, operator-owned base dir for vendor runtime state (sessions, settings)."""
     return Path(EXTERNAL_RUNTIME_HOME).expanduser()
+
+
+def external_runtime_enabled_effective() -> bool:
+    """Env default, optionally overridden by operator_settings.external_runtime_enabled."""
+    try:
+        from apps.backend.infrastructure.settings.operator_settings_readers import (
+            external_runtime_enabled_override,
+        )
+
+        override = external_runtime_enabled_override()
+        if override is not None:
+            return override
+    except Exception:
+        logger.debug("external_runtime override unread; using env", exc_info=True)
+    return bool(EXTERNAL_RUNTIME_ENABLED)
+
+
+def qwen_runtime_enabled_effective() -> bool:
+    """Env default, optionally overridden by operator_settings.qwen_runtime_enabled."""
+    try:
+        from apps.backend.infrastructure.settings.operator_settings_readers import (
+            qwen_runtime_enabled_override,
+        )
+
+        override = qwen_runtime_enabled_override()
+        if override is not None:
+            return override
+    except Exception:
+        logger.debug("qwen_runtime override unread; using env", exc_info=True)
+    return bool(QWEN_RUNTIME_ENABLED)
+
+
+def dsh_runtime_enabled_effective() -> bool:
+    """Env default, optionally overridden by operator_settings.dsh_runtime_enabled."""
+    try:
+        from apps.backend.infrastructure.settings.operator_settings_readers import (
+            dsh_runtime_enabled_override,
+        )
+
+        override = dsh_runtime_enabled_override()
+        if override is not None:
+            return override
+    except Exception:
+        logger.debug("dsh_runtime override unread; using env", exc_info=True)
+    return bool(DSH_RUNTIME_ENABLED)
+
+
+def preferred_coding_runtime_effective() -> str | None:
+    """``None`` / empty = internal coding; else an external runtime id (``qwen_code``, …)."""
+    try:
+        from apps.backend.infrastructure.settings.operator_settings_readers import (
+            preferred_coding_runtime_override,
+        )
+
+        override = preferred_coding_runtime_override()
+        if override is not None:
+            raw = str(override).strip()
+            return raw or None
+    except Exception:
+        logger.debug("preferred_coding_runtime override unread; using env", exc_info=True)
+    return PREFERRED_CODING_RUNTIME
+
+
+def coding_runtime_enabled_effective(runtime_id: str) -> bool:
+    rid = str(runtime_id or "").strip()
+    if rid == "qwen_code":
+        return qwen_runtime_enabled_effective()
+    if rid == "deepseek_harness":
+        return dsh_runtime_enabled_effective()
+    return False
 
 
 __all__ = [
@@ -62,5 +139,14 @@ __all__ = [
     "QWEN_MODEL",
     "QWEN_PERMISSION_MODE",
     "QWEN_EXCLUDE_TOOLS",
+    "DSH_RUNTIME_ENABLED",
+    "DSH_BIN",
+    "DSH_MODEL",
+    "PREFERRED_CODING_RUNTIME",
     "external_runtime_home_dir",
+    "external_runtime_enabled_effective",
+    "qwen_runtime_enabled_effective",
+    "dsh_runtime_enabled_effective",
+    "preferred_coding_runtime_effective",
+    "coding_runtime_enabled_effective",
 ]

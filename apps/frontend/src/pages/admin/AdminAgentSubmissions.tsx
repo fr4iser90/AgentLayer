@@ -7,6 +7,7 @@ import { ConfirmModal } from "../../components/ConfirmModal";
 import { Badge, type BadgeTone } from "../../ui/Badge";
 import { Select, TextArea } from "../../ui/Field";
 import { Button } from "../../ui/Button";
+import { PageShell } from "../../layout/PageShell";
 
 type SubmissionStatus = "pending" | "approved" | "rejected";
 type StatusFilter = SubmissionStatus | "all";
@@ -169,7 +170,7 @@ export function AdminAgentSubmissions() {
   }
 
   return (
-    <div className="mx-auto max-w-pageWide px-wide py-deep sm:px-broad">
+    <PageShell density="wide">
       <h1 className="text-2xl font-semibold text-ink-primary">{t("admin:agentSubmissionsTitle")}</h1>
       <p className="mt-base max-w-measure text-sm text-ink-muted">{t("admin:agentSubmissionsIntro")}</p>
 
@@ -396,6 +397,6 @@ export function AdminAgentSubmissions() {
           if (!busy) setConfirm(null);
         }}
       />
-    </div>
+    </PageShell>
   );
 }

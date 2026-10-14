@@ -7,8 +7,9 @@ tags: [coding-agent, external-runtime, qwen-code, agents, architecture]
 ## What it is
 
 An **external agent runtime** executes an agent turn in its own process instead of
-AgentLayer's planner loop. The first adapter is **Qwen Code**; the port is generic, so
-Claude Code, Codex or a local runner plug in the same way.
+AgentLayer's planner loop. Shipped adapters: **Qwen Code** (`qwen_code`) and
+**DeepSeek Harness** headless (`deepseek_harness`). The port stays generic for further
+CLIs (Claude Code, Codex, …).
 
 AgentLayer keeps ownership of everything around the loop: identity, workspace
 authorization, streaming to the web client, cancellation, provider credentials and audit.
@@ -25,6 +26,7 @@ Related decision: [`docs/adr/0010-external-agent-runtime-port.md`](../adr/0010-e
 | `general`, `dashboard`, … | AgentLayer planner (`chat_tool_loop`) | Chat, default |
 | `coding`, `coding_plan`, `security_auditor` | AgentLayer planner, delegate-only | `general` delegates via `delegate` |
 | `coding_qwen` | **Qwen Code process** | `/chat?agent=coding_qwen` + bound workspace, or `delegate(agent_id="coding_qwen")` |
+| `coding_dsh` | **DeepSeek Harness headless** | `/chat?agent=coding_dsh` + bound workspace, or `delegate(agent_id="coding_dsh")` |
 
 ```yaml
 # plugins/agents/coding_qwen/agent.yaml
@@ -65,6 +67,9 @@ turns — there is no upstream LLM call to mirror; deltas arrive over the WebSoc
 | Normalized events → chat events | `apps/backend/domain/agent_runtime/external_runtime_events.py` |
 | Turn orchestration (guards, git, audit, resume) | `apps/backend/application/agent_runtime/use_cases/chat_external_runtime.py` |
 | Qwen Code adapter | `apps/backend/infrastructure/agent_runtime/external_runtimes/qwen_code.py` |
+| DeepSeek Harness adapter | `apps/backend/infrastructure/agent_runtime/external_runtimes/deepseek_harness.py` (`dsh --profile headless`) |
+| npm install / update into volume | `…/coding_runtime_packages.py` → `{AGENT_EXTERNAL_RUNTIME_HOME}/npm-global` |
+| Admin API | `GET/POST/PATCH /v1/admin/coding-runtimes` |
 | Adapter registration (import side effect) | `apps/backend/infrastructure/agent_runtime/external_runtimes/__init__.py`, wired by `application/platform/use_cases/server_lifecycle.py` |
 | Config | `apps/backend/infrastructure/platform/config_external_runtimes.py` (`.env.example` → “External agent runtimes”) |
 
@@ -167,11 +172,18 @@ point when the binary is missing:
 AGENT_EXTERNAL_RUNTIME_ENABLED=true
 # AGENT_EXTERNAL_RUNTIME_ALLOW_YOLO=false     # ceiling
 # AGENT_QWEN_MODEL=                            # empty = turn's resolved model
+# AGENT_DSH_ENABLED=true
+# AGENT_PREFERRED_CODING_RUNTIME=qwen_code     # or deepseek_harness; empty = internal
 ```
 
+Prefer **Admin → Coding runtimes** (or Setup AI → coding step): multiselect enables,
+`npm install -g --prefix $AGENT_EXTERNAL_RUNTIME_HOME/npm-global` for
+`@qwen-code/qwen-code` / `@deepseek-ai/dsh`, version select/switch, uninstall from the
+volume, and preferred runtime. Both harnesses are volume-managed (not baked into the image).
+
 ```bash
-docker compose build && docker compose up -d   # image ships node 22 + @qwen-code/qwen-code
-alembic -c apps/backend/infrastructure/db/alembic.ini upgrade head   # schema_127
+docker compose build && docker compose up -d   # image ships node/npm; install harnesses via Admin
+alembic -c apps/backend/infrastructure/db/alembic.ini upgrade head
 python scripts/verify_external_runtime_live.py --workspace <workspace-uuid>
 ```
 

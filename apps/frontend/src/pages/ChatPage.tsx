@@ -70,6 +70,7 @@ import {
 import { TurnNavigator, TurnNavigatorHorizontal, buildTurnItems } from "../features/chat/TurnNavigator";
 import { useChatScroll } from "../features/chat/useChatScroll";
 import { CollapsibleSidebarShell } from "../layout/CollapsibleSidebarShell";
+import { PageShell } from "../layout/PageShell";
 import { fetchVoiceStatus, transcribeVoiceBlob, type VoiceStatus } from "../features/voice/voiceApi";
 import { ChatComposerTextarea } from "../features/chat/ChatComposerTextarea";
 import { ChatComposerVoiceControls } from "../features/voice/ChatComposerVoiceControls";
@@ -3269,13 +3270,14 @@ export function ChatPage() {
 
   if (!hydrated || !userId) {
     return (
-      <div className="flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden text-sm text-ink-muted">
+      <PageShell density="fill" className="flex-1 items-center justify-center overflow-hidden text-sm text-ink-muted">
         {t("chat:loadingChats")}
-      </div>
+      </PageShell>
     );
   }
 
   return (
+    <PageShell density="fill">
     <CollapsibleSidebarShell
       className="bg-canvas"
       mobileOpen={threadSidebarOpen}
@@ -4442,5 +4444,6 @@ export function ChatPage() {
         }}
       />
     </CollapsibleSidebarShell>
+    </PageShell>
   );
 }

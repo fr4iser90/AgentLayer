@@ -6,6 +6,7 @@ import { hasOrgSurface } from "../../auth/deploymentMode";
 import { apiFetch } from "../../lib/api";
 import { Select, TextArea, TextInput } from "../../ui/Field";
 import { Button } from "../../ui/Button";
+import { PageShell } from "../../layout/PageShell";
 
 type AgentRow = {
   id: string;
@@ -364,7 +365,7 @@ export function AdminAgents() {
   }
 
   return (
-    <div className="mx-auto max-w-pageWide px-wide py-deep sm:px-broad">
+    <PageShell density="wide">
       <h1 className="text-2xl font-semibold text-ink-primary">{t("admin:agentsTitle")}</h1>
       <p className="mt-base max-w-measure text-sm text-ink-muted">{t("admin:agentsIntro")}</p>
 
@@ -880,6 +881,6 @@ export function AdminAgents() {
           ) : null}
         </div>
       ) : null}
-    </div>
+    </PageShell>
   );
 }

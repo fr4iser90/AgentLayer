@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Select, TextInput } from "../../ui/Field";
 import { Button } from "../../ui/Button";
 import { TabPanel, Tabs } from "../../ui/Tabs";
+import { PageShell } from "../../layout/PageShell";
 
 type ShareItem = {
   resource_type: string;
@@ -441,7 +442,7 @@ export default function SharesSettings() {
     !!newResourceType && (!needsIdentifier || !!newResourceIdentifier.trim());
 
   return (
-    <div className="mx-auto max-w-page space-y-deep">
+    <PageShell density="default" className="space-y-deep">
       <div>
         <h1 className="flex items-center gap-base text-lg font-semibold text-ink-primary">
           <LinkIcon aria-hidden className="h-5 w-5" />
@@ -786,6 +787,6 @@ export default function SharesSettings() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

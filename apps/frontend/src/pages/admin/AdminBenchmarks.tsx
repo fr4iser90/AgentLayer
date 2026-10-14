@@ -83,6 +83,7 @@ import { Modal } from "../../ui/Modal";
 import { Select, TextInput } from "../../ui/Field";
 import { Tabs } from "../../ui/Tabs";
 import { Table, type TableColumn } from "../../ui/Table";
+import { PageShell } from "../../layout/PageShell";
 
 const benchCheckboxClass =
   "h-4 w-4 shrink-0 rounded-tile border-2 border-accent/70 bg-black/60 text-accent accent-accent focus:ring-2 focus:ring-accent/70 focus:ring-offset-0";
@@ -2039,7 +2040,7 @@ export function AdminBenchmarks() {
   ];
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-wide overflow-hidden p-wide">
+    <PageShell density="fill" className="gap-wide overflow-hidden p-wide">
       <div className="shrink-0">
         <h1 className="text-lg font-semibold text-ink-primary">{t("admin:benchTitle")}</h1>
         <p className="mt-tight text-sm text-ink-muted">{t("admin:benchSubtitle")}</p>
@@ -3445,6 +3446,6 @@ export function AdminBenchmarks() {
             </p>
         </Modal>
       ) : null}
-    </div>
+    </PageShell>
   );
 }

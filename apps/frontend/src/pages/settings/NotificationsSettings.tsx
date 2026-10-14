@@ -5,6 +5,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { Checkbox } from "../../ui/Checkbox";
 import { Button } from "../../ui/Button";
+import { PageShell } from "../../layout/PageShell";
 
 type Prefs = {
   telegram_enabled: boolean;
@@ -124,7 +125,7 @@ export function NotificationsSettings() {
   }
 
   return (
-    <div className="mx-auto max-w-page space-y-broad">
+    <PageShell density="default" className="space-y-broad">
       <div>
         <h1 className="text-xl font-semibold text-ink-primary">{t("settings:notificationsTitle")}</h1>
         <p className="mt-tight text-sm text-ink-muted">{t("settings:notificationsIntro")}</p>
@@ -243,6 +244,6 @@ export function NotificationsSettings() {
           {t("settings:reloadFromServer")}
         </Button>
       </div>
-    </div>
+    </PageShell>
   );
 }

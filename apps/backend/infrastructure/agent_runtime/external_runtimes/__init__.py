@@ -11,9 +11,10 @@ import the SDK lazily inside ``run()``.
 from __future__ import annotations
 
 from apps.backend.infrastructure.agent_runtime.external_runtimes import (  # noqa: F401
+    deepseek_harness,
     qwen_code,
 )
 
-_ADAPTERS = (qwen_code,)
+_ADAPTERS = (qwen_code, deepseek_harness)
 
-__all__ = ["qwen_code"]
+__all__ = ["qwen_code", "deepseek_harness"]

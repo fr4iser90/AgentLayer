@@ -8,6 +8,7 @@ export function AdminInterfacesPlatformPage() {
     <AdminInterfacesPageShell
       title={t("admin:interfacesPlatformTitle")}
       description={t("admin:interfacesPlatformDescription")}
+      wide
     >
       <AdminInterfacesPlatformSection mode="platform" />
     </AdminInterfacesPageShell>

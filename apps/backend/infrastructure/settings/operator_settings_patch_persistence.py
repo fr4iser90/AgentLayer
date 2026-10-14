@@ -280,6 +280,19 @@ def persist_operator_settings_patch(
             if "friend_system_enabled" in patch:
                 extra_sets.append("friend_system_enabled = %s")
                 extra_params.append(bool(r.get("friend_system_enabled", True)))
+            if "external_runtime_enabled" in patch:
+                extra_sets.append("external_runtime_enabled = %s")
+                # Allow explicit NULL to clear override back to env.
+                extra_params.append(r.get("external_runtime_enabled"))
+            if "qwen_runtime_enabled" in patch:
+                extra_sets.append("qwen_runtime_enabled = %s")
+                extra_params.append(r.get("qwen_runtime_enabled"))
+            if "dsh_runtime_enabled" in patch:
+                extra_sets.append("dsh_runtime_enabled = %s")
+                extra_params.append(r.get("dsh_runtime_enabled"))
+            if "preferred_coding_runtime" in patch:
+                extra_sets.append("preferred_coding_runtime = %s")
+                extra_params.append(r.get("preferred_coding_runtime"))
             if extra_sets:
                 # SECURITY: Column names in `extra_sets` come from the known
                 # _SETTING_KEYS mapping (see _OPERATOR_SETTINGS_KEYS).

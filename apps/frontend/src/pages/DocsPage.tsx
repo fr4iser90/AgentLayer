@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { PageShell } from "../layout/PageShell";
 
 const REPO =
   "https://github.com/fr4iser90/AgentLayer_-_Jetson-Orin-Nano-Super-Developer-Kit-dedicated";
@@ -14,7 +15,7 @@ export function DocsPage() {
 
   return (
     <div className="h-full min-h-0 overflow-y-auto px-broad py-deep">
-      <div className="mx-auto max-w-measure">
+      <PageShell density="measure">
         <h1 className="text-lg font-semibold text-ink-primary">{t("common:docs.title")}</h1>
         <p className="mt-base text-sm text-ink-muted">
           {t("common:docs.intro")}{" "}
@@ -34,7 +35,7 @@ export function DocsPage() {
             </li>
           ))}
         </ul>
-      </div>
+      </PageShell>
     </div>
   );
 }

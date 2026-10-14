@@ -20,6 +20,8 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    // Bind IPv4+IPv6 so E2E/Playwright on 127.0.0.1:5173 works (default was [::1] only).
+    host: true,
     port: 5173,
     proxy: apiProxy,
   },

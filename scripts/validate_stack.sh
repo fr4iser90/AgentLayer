@@ -27,6 +27,8 @@
 #   scripts/validate_stack.sh --from 3            # from a stage onward
 #   scripts/validate_stack.sh --skip journeys     # skip by name
 #   scripts/validate_stack.sh --model chat        # chat model_default for bootstrap
+#   scripts/validate_stack.sh --responsive        # multi-viewport overflow probe
+#   scripts/validate_stack.sh --vision            # LLM vision over screenshots
 #
 # Exit: 0 if all run stages passed, 1 otherwise.
 
@@ -41,6 +43,7 @@ ONLY=""
 SKIP=""
 MODEL="chat"
 VISION=0
+RESPONSIVE=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -49,8 +52,9 @@ while [[ $# -gt 0 ]]; do
     --skip)  SKIP="$SKIP,${2}"; shift 2 ;;
     --model) MODEL="$2"; shift 2 ;;
     --vision) VISION=1; shift ;;
+    --responsive) RESPONSIVE=1; shift ;;
     -h|--help)
-      sed -n '2,36p' "${BASH_SOURCE[0]}"
+      sed -n '2,38p' "${BASH_SOURCE[0]}"
       exit 0 ;;
     *) echo "unknown arg: $1" >&2; exit 2 ;;
   esac
@@ -60,7 +64,9 @@ done
 # its findings are advisory, so it never runs unless --vision is passed. When it
 # does, it sits after the browser stages (so the PNGs exist) and before report
 # (so its findings land in the summary).
+# Responsive is also opt-in (Playwright matrix; needs live stack + Chromium).
 STAGES=(preflight up bootstrap seed backend journeys modematrix blocks)
+[[ "$RESPONSIVE" == "1" ]] && STAGES+=(responsive)
 [[ "$VISION" == "1" ]] && STAGES+=(vision)
 STAGES+=(report)
 
@@ -259,6 +265,16 @@ stage_blocks() {
   bash scripts/run-e2e-playwright-dashboard-ux-audit.sh
 }
 
+# ---------------------------------------------------------------- responsive (opt-in)
+stage_responsive() {
+  local dest="$OUT/responsive"
+  mkdir -p "$dest"
+  RESPONSIVE_OUT_DIR="$dest" bash scripts/run-e2e-responsive.sh --shots fail
+  if [[ -f "$dest/report.md" ]]; then
+    echo "responsive report: $dest/report.md"
+  fi
+}
+
 # ---------------------------------------------------------------- vision (opt-in)
 stage_vision() {
   # Freshness-bound: read ONLY the screenshots this run produced, never a glob
@@ -286,6 +302,12 @@ stage_report() {
     for s in "${STAGES[@]}"; do
       printf '| %s | %s | %s |\n' "$s" "${STATUS[$s]:-not-run}" "${DETAIL[$s]:-}"
     done
+    if [[ -f "$OUT/responsive/report.md" ]]; then
+      echo ""
+      echo "## Responsive probe"
+      echo ""
+      echo "Multi-viewport overflow gate: \`responsive/report.md\`."
+    fi
     if [[ -f "$OUT/vision.md" ]]; then
       echo ""
       echo "## Vision audit"
@@ -328,6 +350,7 @@ run_stage backend     stage_backend
 run_stage journeys    stage_journeys
 run_stage modematrix  stage_modematrix
 run_stage blocks      stage_blocks
+run_stage responsive  stage_responsive
 run_stage vision      stage_vision
 run_stage report      stage_report
 

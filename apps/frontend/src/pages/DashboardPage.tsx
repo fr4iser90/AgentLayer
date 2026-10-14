@@ -51,6 +51,7 @@ import { layoutModeOf, parseUiLayout, withLayoutMode } from "../features/dashboa
 import { Tooltip } from "../ui/Tooltip";
 import { Select, TextArea, TextInput } from "../ui/Field";
 import { Checkbox } from "../ui/Checkbox";
+import { PageShell } from "../layout/PageShell";
 
 function asUiLayout(raw: unknown): UiLayout | null {
   return parseUiLayout(raw);
@@ -1164,7 +1165,7 @@ export function DashboardPage() {
   if (!loading && schemaInstalled === false) {
     return (
       <div className="h-full min-h-0 overflow-y-auto">
-        <div className="mx-auto max-w-page px-broad py-page">
+        <PageShell density="default">
           <h1 className="text-xl font-semibold text-ink-primary">{t("dashboard:catalogTitle")}</h1>
           <p className="mt-tight text-sm text-ink-muted">
             {t("dashboard:catalogIntro")}
@@ -1199,7 +1200,7 @@ export function DashboardPage() {
               {error}
             </div>
           ) : null}
-        </div>
+        </PageShell>
 
         {installModalRow ? (
           <Modal
@@ -1338,7 +1339,7 @@ export function DashboardPage() {
   );
 
   const hubHomeMain = (
-    <div className="mx-auto max-w-pageNarrow space-y-deep py-broad">
+    <PageShell density="narrow" className="space-y-deep">
       <div>
         <h1 className="text-xl font-semibold text-ink-primary">{t("dashboard:hubHomeTitle")}</h1>
         <p className="mt-tight text-sm text-ink-muted">{t("dashboard:hubHomeSubtitle")}</p>
@@ -1388,7 +1389,7 @@ export function DashboardPage() {
           </ul>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 
   const catalogMain = (

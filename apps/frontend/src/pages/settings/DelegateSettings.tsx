@@ -7,6 +7,7 @@ import { Checkbox } from "../../ui/Checkbox";
 import { Select, TextArea } from "../../ui/Field";
 import { Button } from "../../ui/Button";
 import { cardClasses } from "../../ui/Card";
+import { PageShell } from "../../layout/PageShell";
 
 type Level = "low" | "medium" | "high";
 type PrimaryGoal = "security" | "stability" | "maintainability" | "speed";
@@ -502,7 +503,7 @@ export function DelegateSettings() {
   }
 
   return (
-    <div className="mx-auto max-w-pageNarrow">
+    <PageShell density="narrow">
       <h1 className="text-xl font-semibold text-ink-primary">{t("settings:delegateTitle")}</h1>
       <p className="mt-base text-sm text-ink-muted">{t("settings:delegateSubtitle")}</p>
       <p className="mt-base text-xs text-ink-muted">
@@ -588,6 +589,6 @@ export function DelegateSettings() {
           </>
         )}
       </section>
-    </div>
+    </PageShell>
   );
 }

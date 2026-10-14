@@ -46,6 +46,8 @@ def test_build_setup_catalog_splits_models() -> None:
         patch.object(mod, "fetch_full_model_catalog", return_value=(merged, agentlayer)),
         patch.object(mod, "list_provider_specs", return_value=[spec]),
         patch.object(mod, "pick_reachable_catalog_provider", return_value="provider_1"),
+        patch.object(mod, "_setup_voice_summary", return_value={"voice_enabled": False}),
+        patch.object(mod, "_setup_external_runtime_summary", return_value={"enabled": False}),
     ):
         out = mod.build_setup_catalog()
     assert out["any_chat_reachable"] is True
@@ -95,14 +97,30 @@ def test_enrich_setup_embedding_meta_not_configured() -> None:
     assert out["chat_embed_opt_in"]["suggested_model"] == "nomic-embed-text"
 
 
-def test_apply_setup_preferences_syncs_db() -> None:
+def test_apply_setup_preferences_creates_when_empty() -> None:
     spec = MagicMock(
         provider_id="provider_1",
         label="provider_1",
         base_url="http://host:11434",
         api_key="",
+        api_header_name="Authorization",
     )
     rows = [{"id": "llama3"}, {"id": "nomic-embed-text"}]
+    created = {
+        "id": 9,
+        "kind": "chat",
+        "label": "provider_1",
+        "base_url": "http://host:11434",
+        "model_default": "llama3",
+        "sort_order": 0,
+    }
+    deps = MagicMock()
+    deps.collapse_duplicate_operator_provider_endpoints.return_value = 0
+    deps.operator_provider_endpoints_list_all.side_effect = [[], [created], [created]]
+    deps.provider_endpoint_dedupe_key.side_effect = lambda u: str(u or "").rstrip("/")
+    deps.parse_db_catalog_provider_id.return_value = None
+    deps.upsert_operator_provider_endpoint_by_base_url.return_value = created
+    mod.register_setup_catalog_dependencies(deps)
     with (
         patch.object(mod, "get_provider_spec", return_value=spec),
         patch.object(mod, "fetch_models_for_provider", return_value=(rows, {"reachable": True})),
@@ -121,8 +139,53 @@ def test_apply_setup_preferences_syncs_db() -> None:
             )
         )
     assert out["ok"] is True
+    deps.upsert_operator_provider_endpoint_by_base_url.assert_called_once()
     sync.assert_called_once()
     assert sync.call_args[0][0] == "chat"
     row = sync.call_args[0][1][0]
     assert row["model_default"] == "llama3"
     assert row["base_url"] == "http://host:11434"
+
+
+def test_apply_setup_preferences_never_inserts_when_existing() -> None:
+    """Continue with DB endpoints already present must not invent a twin / model."""
+    spec = MagicMock(
+        provider_id="provider_db_1",
+        label="ai.fr4iser.com",
+        base_url="https://ai.fr4iser.com/v1",
+        api_key="k",
+        api_header_name="Authorization",
+    )
+    existing = {
+        "id": 1,
+        "kind": "chat",
+        "label": "ai.fr4iser.com",
+        "base_url": "https://ai.fr4iser.com/v1",
+        "model_default": "chat",
+        "sort_order": 0,
+    }
+    rows = [{"id": "Qwen3.8 Flash Next"}, {"id": "chat"}]
+    deps = MagicMock()
+    deps.collapse_duplicate_operator_provider_endpoints.return_value = 0
+    deps.operator_provider_endpoints_list_all.return_value = [existing]
+    deps.provider_endpoint_dedupe_key.side_effect = lambda u: str(u or "").rstrip("/")
+    deps.parse_db_catalog_provider_id.return_value = 1
+    mod.register_setup_catalog_dependencies(deps)
+    with (
+        patch.object(mod, "get_provider_spec", return_value=spec),
+        patch.object(mod, "fetch_models_for_provider", return_value=(rows, {"reachable": True})),
+        patch.object(mod, "operator_provider_endpoints_sync") as sync,
+        patch.object(mod, "invalidate_operator_settings_cache"),
+        patch.object(mod, "invalidate_model_catalog_cache"),
+        patch.object(mod, "normalized_embedding_base", return_value=""),
+        patch.object(mod, "apply_operator_settings_patch"),
+    ):
+        out = mod.apply_setup_preferences(
+            SetupPreferencesBody(primary_provider_id="provider_db_1")
+        )
+    assert out["ok"] is True
+    deps.upsert_operator_provider_endpoint_by_base_url.assert_not_called()
+    # Primary reorder only — model stays what the user already had.
+    sync.assert_called_once()
+    assert sync.call_args[0][1][0]["model_default"] == "chat"
+    assert sync.call_args[0][1][0]["base_url"] == "https://ai.fr4iser.com/v1"

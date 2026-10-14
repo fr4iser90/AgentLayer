@@ -7,6 +7,7 @@ import { Button } from "../../ui/Button";
 import { EmptyState } from "../../ui/EmptyState";
 import { TextArea, TextInput } from "../../ui/Field";
 import { TabPanel, Tabs } from "../../ui/Tabs";
+import { PageShell } from "../../layout/PageShell";
 
 type FriendRequest = {
   id: number;
@@ -237,7 +238,7 @@ export function FriendsSettings() {
   }, [load]);
 
   return (
-    <div className="mx-auto max-w-page space-y-deep">
+    <PageShell density="default" className="space-y-deep">
       <div>
         <h1 className="text-lg font-semibold text-ink-primary">{t("settings:friendsSystemTitle")}</h1>
         <p className="mt-base text-sm text-ink-muted">{t("settings:friendsSystemSubtitle")}</p>
@@ -595,6 +596,6 @@ export function FriendsSettings() {
           )}
         </TabPanel>
       )}
-    </div>
+    </PageShell>
   );
 }

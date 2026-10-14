@@ -8,6 +8,7 @@ export function AdminInterfacesBridgesPage() {
     <AdminInterfacesPageShell
       title={t("admin:bridges")}
       description={t("admin:interfacesBridgesDescription")}
+      wide
     >
       <AdminInterfacesBridgesSection />
     </AdminInterfacesPageShell>

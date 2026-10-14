@@ -9,7 +9,7 @@
  *   1   (4px)  -> tight     5    (20px) -> roomy
  *   1.5 (6px)  -> snug      6    (24px) -> broad
  *   2   (8px)  -> base      8    (32px) -> deep
- *   2.5 (10px) -> firm      10   (40px) -> page
+ *   2.5 (10px) -> firm      10   (40px) -> pagePad
  *   3   (12px) -> soft      12   (48px) -> grand
  *
  * Every mapping is pixel-exact. Nothing in this codemod moves a rendered
@@ -61,7 +61,7 @@ const MAP = new Map([
   ["5", "roomy"],
   ["6", "broad"],
   ["8", "deep"],
-  ["10", "page"],
+  ["10", "pagePad"],
   ["12", "grand"],
 ]);
 

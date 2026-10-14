@@ -13,6 +13,7 @@ import { Badge } from "../../ui/Badge";
 import { Checkbox } from "../../ui/Checkbox";
 import { Select, TextInput } from "../../ui/Field";
 import { Button } from "../../ui/Button";
+import { PageShell } from "../../layout/PageShell";
 
 type TenantTemplateRow = {
   id: string;
@@ -588,7 +589,7 @@ export function AdminUsers() {
       : [{ id: 1, name: "default" }];
 
   return (
-    <div className="mx-auto max-w-page px-broad py-page">
+    <PageShell density="default">
       <h1 className="text-2xl font-semibold text-ink-primary">{t("admin:usersPageTitle")}</h1>
       <p className="mt-base text-sm text-ink-muted">
         {t("admin:usersPageIntro")}{" "}
@@ -892,7 +893,7 @@ export function AdminUsers() {
       </section>
 
       {showTenantUi && (
-        <section className="mt-page rounded-sheet border border-line bg-card p-roomy">
+        <section className="mt-pagePad rounded-sheet border border-line bg-card p-roomy">
           <h2 className="text-sm font-medium text-ink-primary">{t("admin:usersCreateTenant")}</h2>
         <p className="mt-tight text-xs text-ink-muted">{t("admin:usersCreateTenantApi")}</p>
         <div className="mt-wide flex flex-col gap-soft sm:flex-row sm:flex-wrap sm:items-end">
@@ -951,7 +952,7 @@ export function AdminUsers() {
       </section>
       )}
 
-      <section className="mt-page rounded-sheet border border-line bg-card p-roomy">
+      <section className="mt-pagePad rounded-sheet border border-line bg-card p-roomy">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:usersCreateUser")}</h2>
         <p className="mt-tight text-xs text-ink-muted">{t("admin:usersCreateUserApi")}</p>
         <div className="mt-wide flex flex-col gap-soft sm:flex-row sm:flex-wrap sm:items-end">
@@ -1021,6 +1022,6 @@ export function AdminUsers() {
           </p>
         ) : null}
       </section>
-    </div>
+    </PageShell>
   );
 }

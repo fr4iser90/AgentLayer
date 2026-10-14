@@ -8,15 +8,11 @@ import {
   passwordRejectionReason,
   passwordStrengthLevel,
 } from "../auth/passwordStrength";
-import {
-  DEFAULT_LLM_PRESET,
-  getLlmPreset,
-  LLM_PRESETS,
-  type LlmPresetId,
-} from "../setup/llmPresets";
 import { Radio } from "../ui/Radio";
-import { Select, TextInput } from "../ui/Field";
+import { TextInput } from "../ui/Field";
 import { Button } from "../ui/Button";
+import { SetupAiPhases } from "./setup/SetupAiPhases";
+import { PageShell } from "../layout/PageShell";
 
 const PASSWORD_RULE_KEYS = {
   atLeast: "setup:passwordRuleAtLeast",
@@ -26,51 +22,6 @@ const PASSWORD_RULE_KEYS = {
   symbol: "setup:passwordRuleSymbol",
   sequence: "setup:passwordRuleSequence",
 } as const;
-
-type SetupCatalogProvider = {
-  provider_id: string;
-  label: string;
-  source: string;
-  reachable: boolean;
-  detail?: string | null;
-  chat_models: string[];
-  embedding_models: string[];
-  model_count: number;
-};
-
-type SetupCatalog = {
-  providers: SetupCatalogProvider[];
-  embedding: {
-    configured?: boolean;
-    reachable?: boolean;
-    rag_active?: boolean;
-    status_line?: string | null;
-    model?: string | null;
-    detail?: string | null;
-    available_models?: string[];
-    chat_embed_opt_in?: {
-      available?: boolean;
-      suggested_base_url?: string | null;
-      suggested_model?: string | null;
-      suggested_models?: string[];
-    };
-  };
-  suggestions: {
-    primary_provider_id?: string | null;
-    model_agent?: string | null;
-    model_coding?: string | null;
-    model_default?: string | null;
-    rag_embedding_model?: string | null;
-  };
-  any_chat_reachable: boolean;
-};
-
-function authHeaders(token: string): HeadersInit {
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-}
 
 export function SetupWizardPage() {
   const { t } = useTranslation(["setup"]);
@@ -90,68 +41,12 @@ export function SetupWizardPage() {
   const [adminError, setAdminError] = useState<string | null>(null);
   const [adminPending, setAdminPending] = useState(false);
 
-  const [catalog, setCatalog] = useState<SetupCatalog | null>(null);
-  const [catalogLoading, setCatalogLoading] = useState(false);
-  const [catalogError, setCatalogError] = useState<string | null>(null);
-
-  const [primaryProviderId, setPrimaryProviderId] = useState("");
-  const [modelAgent, setModelAgent] = useState("");
-  const [modelCoding, setModelCoding] = useState("");
-  const [modelDefault, setModelDefault] = useState("");
-  const [ragEmbedding, setRagEmbedding] = useState("");
-
-  const [prefsPending, setPrefsPending] = useState(false);
-  const [prefsError, setPrefsError] = useState<string | null>(null);
-  const [prefsOk, setPrefsOk] = useState<string | null>(null);
-  const [embedTestOk, setEmbedTestOk] = useState<string | null>(null);
-  const [embedTestPending, setEmbedTestPending] = useState(false);
-  const [chatEmbedPending, setChatEmbedPending] = useState(false);
-  const [showManual, setShowManual] = useState(false);
-
-  const [preset, setPreset] = useState<LlmPresetId>(DEFAULT_LLM_PRESET);
-  const [baseUrl, setBaseUrl] = useState(getLlmPreset(DEFAULT_LLM_PRESET).baseUrl);
-  const [apiKey, setApiKey] = useState("");
-  const [modelDefaultManual, setModelDefaultManual] = useState("");
-  const [llmError, setLlmError] = useState<string | null>(null);
-  const [llmPending, setLlmPending] = useState(false);
-  const [llmTestOk, setLlmTestOk] = useState<string | null>(null);
-
   const loadStatus = useCallback(async () => {
     setStatusLoading(true);
     const s = await refreshSetupStatus();
     setStatusLoading(false);
     return s;
   }, [refreshSetupStatus]);
-
-  const loadCatalog = useCallback(async () => {
-    if (!accessToken) return;
-    setCatalogLoading(true);
-    setCatalogError(null);
-    const r = await fetch("/auth/setup/catalog", {
-      credentials: "include",
-      headers: authHeaders(accessToken),
-    });
-    setCatalogLoading(false);
-    if (!r.ok) {
-      let msg = t("setup:catalogLoadFailed");
-      try {
-        const d = (await r.json()) as { detail?: string };
-        if (typeof d.detail === "string") msg = d.detail;
-      } catch {
-        /* ignore */
-      }
-      setCatalogError(msg);
-      return;
-    }
-    const data = (await r.json()) as SetupCatalog;
-    setCatalog(data);
-    const s = data.suggestions;
-    setPrimaryProviderId(s.primary_provider_id ?? "");
-    setModelAgent(s.model_agent ?? "");
-    setModelCoding(s.model_coding ?? "");
-    setModelDefault(s.model_default ?? "");
-    setRagEmbedding(s.rag_embedding_model ?? "");
-  }, [accessToken]);
 
   useEffect(() => {
     void (async () => {
@@ -178,29 +73,6 @@ export function SetupWizardPage() {
       }
     }
   }, [loading, accessToken, setupStatus, step]);
-
-  useEffect(() => {
-    if (step === 2 && accessToken) {
-      void loadCatalog();
-    }
-  }, [step, accessToken, loadCatalog]);
-
-  const selectedProvider = catalog?.providers.find((p) => p.provider_id === primaryProviderId);
-
-  const presetConfig = getLlmPreset(preset);
-
-  function onPresetChange(p: LlmPresetId) {
-    const cfg = getLlmPreset(p);
-    setPreset(p);
-    if (p !== "custom") {
-      setBaseUrl(cfg.baseUrl);
-      if (cfg.modelExample) {
-        setModelDefaultManual(cfg.modelExample);
-      }
-    }
-    setLlmTestOk(null);
-    setLlmError(null);
-  }
 
   async function onDeploymentSubmit(e: FormEvent) {
     e.preventDefault();
@@ -266,230 +138,30 @@ export function SetupWizardPage() {
     sessionStorage.removeItem(SETUP_WIZARD_ACTIVE_KEY);
   }
 
-  async function onSkipProfiles() {
-    if (!accessToken) return;
-    setPrefsPending(true);
-    setPrefsError(null);
-    const r = await fetch("/auth/setup/skip-profiles", {
-      method: "POST",
-      credentials: "include",
-      headers: authHeaders(accessToken),
-    });
-    setPrefsPending(false);
-    if (!r.ok) {
-      let msg = t("setup:skipFailed");
-      try {
-        const d = (await r.json()) as { detail?: string };
-        if (typeof d.detail === "string") msg = d.detail;
-      } catch {
-        /* ignore */
-      }
-      setPrefsError(msg);
-      return;
-    }
-    finishWizard();
-    await refreshSetupStatus();
-    setStep(3);
-  }
-
-  async function onSavePreferences(e: FormEvent) {
-    e.preventDefault();
-    if (!accessToken) {
-      setPrefsError(t("setup:prefsSessionExpired"));
-      return;
-    }
-    if (!primaryProviderId) {
-      setPrefsError(t("setup:prefsChooseProvider"));
-      return;
-    }
-    setPrefsPending(true);
-    setPrefsError(null);
-    setPrefsOk(null);
-    const r = await fetch("/auth/setup/preferences", {
-      method: "POST",
-      credentials: "include",
-      headers: authHeaders(accessToken),
-      body: JSON.stringify({
-        primary_provider_id: primaryProviderId,
-        model_agent: modelAgent.trim() || null,
-        model_coding: modelCoding.trim() || null,
-        model_default: modelDefault.trim() || null,
-        rag_embedding_model: ragEmbedding.trim() || null,
-      }),
-    });
-    setPrefsPending(false);
-    if (!r.ok) {
-      let msg = t("setup:saveFailed");
-      try {
-        const d = (await r.json()) as { detail?: string };
-        if (typeof d.detail === "string") msg = d.detail;
-      } catch {
-        /* ignore */
-      }
-      setPrefsError(msg);
-      return;
-    }
-    setPrefsOk(t("setup:prefsSaved"));
-    finishWizard();
-    await refreshSetupStatus();
-    setStep(3);
-  }
-
-  async function onEnableChatProviderEmbedding() {
-    if (!accessToken) return;
-    setChatEmbedPending(true);
-    setPrefsError(null);
-    const r = await fetch("/auth/setup/enable-chat-provider-embedding", {
-      method: "POST",
-      credentials: "include",
-      headers: authHeaders(accessToken),
-    });
-    setChatEmbedPending(false);
-    if (!r.ok) {
-      let msg = t("setup:chatEmbedEnableFailed");
-      try {
-        const d = (await r.json()) as { detail?: string };
-        if (typeof d.detail === "string") msg = d.detail;
-      } catch {
-        /* ignore */
-      }
-      setPrefsError(msg);
-      return;
-    }
-    const d = (await r.json()) as {
-      rag_embedding_model?: string;
-      embedding?: SetupCatalog["embedding"];
-    };
-    if (d.rag_embedding_model) setRagEmbedding(d.rag_embedding_model);
-    await loadCatalog();
-  }
-
-  async function onTestEmbedding() {
-    if (!accessToken || !ragEmbedding.trim()) return;
-    setEmbedTestPending(true);
-    setEmbedTestOk(null);
-    setPrefsError(null);
-    const r = await fetch("/auth/setup/test-embedding", {
-      method: "POST",
-      credentials: "include",
-      headers: authHeaders(accessToken),
-      body: JSON.stringify({ model: ragEmbedding.trim() }),
-    });
-    setEmbedTestPending(false);
-    if (!r.ok) {
-      let msg = t("setup:embeddingTestFailed");
-      try {
-        const d = (await r.json()) as { detail?: string };
-        if (typeof d.detail === "string") msg = d.detail;
-      } catch {
-        /* ignore */
-      }
-      setPrefsError(msg);
-      return;
-    }
-    const d = (await r.json()) as { embedding_dim?: number };
-    setEmbedTestOk(
-      d.embedding_dim != null
-        ? t("setup:embeddingOkWithDim", { dim: d.embedding_dim })
-        : t("setup:embeddingOk")
-    );
-  }
-
-  async function llmRequest(testOnly: boolean): Promise<boolean> {
-    if (!accessToken) {
-      setLlmError(t("setup:prefsSessionExpired"));
-      return false;
-    }
-    const cfg = getLlmPreset(preset);
-    if (cfg.apiKeyRequired && !apiKey.trim()) {
-      setLlmError(t("setup:llmApiKeyRequired", { label: cfg.endpointLabel }));
-      return false;
-    }
-    if (!baseUrl.trim()) {
-      setLlmError(t("setup:llmBaseUrlRequired"));
-      return false;
-    }
-    setLlmPending(true);
-    setLlmError(null);
-    setLlmTestOk(null);
-    const r = await fetch("/auth/setup/llm", {
-      method: "POST",
-      credentials: "include",
-      headers: authHeaders(accessToken),
-      body: JSON.stringify({
-        base_url: baseUrl.trim(),
-        api_key: apiKey.trim() || null,
-        model_default: modelDefaultManual.trim() || null,
-        label: cfg.endpointLabel,
-        test_only: testOnly,
-      }),
-    });
-    setLlmPending(false);
-    if (!r.ok) {
-      let msg = t("setup:requestFailed");
-      try {
-        const d = (await r.json()) as { detail?: string };
-        if (typeof d.detail === "string") msg = d.detail;
-      } catch {
-        /* ignore */
-      }
-      setLlmError(msg);
-      return false;
-    }
-    const d = (await r.json()) as { model_count?: number; ok?: boolean };
-    const n = d.model_count ?? 0;
-    if (n === 0 && !testOnly) {
-      setLlmError(t("setup:llmTestNoModels"));
-      return false;
-    }
-    setLlmTestOk(
-      n > 0 ? t("setup:llmTestOkCount", { count: n }) : t("setup:llmTestOkSimple")
-    );
-    if (!testOnly) {
-      await loadCatalog();
-    }
-    return true;
-  }
-
-  async function onLlmTest(ev: FormEvent) {
-    ev.preventDefault();
-    await llmRequest(true);
-  }
-
-  async function onLlmSave(ev: FormEvent) {
-    ev.preventDefault();
-    await llmRequest(false);
-  }
-
-  if (statusLoading || loading) {
+  if (statusLoading && !setupStatus) {
     return (
-      <div className="flex h-full min-h-0 flex-1 items-center justify-center text-sm text-ink-muted">
+      <div className="flex h-full items-center justify-center text-sm text-ink-muted">
         {t("setup:loading")}
       </div>
     );
   }
 
-  if (setupStatus && !setupStatus.needs_setup && !accessToken) {
-    return null;
-  }
-
-  const chatModels = selectedProvider?.chat_models ?? [];
-  const embedModelsOnProvider = selectedProvider?.embedding_models ?? [];
-  const embedCatalogModels = catalog?.embedding.available_models ?? [];
-  const embedOptions = [
-    ...new Set([
-      ...embedModelsOnProvider,
-      ...embedCatalogModels,
-      ...(catalog?.embedding.model ? [catalog.embedding.model] : []),
-    ]),
-  ].filter(Boolean);
-
   return (
     <div className="h-full min-h-0 overflow-y-auto">
-      <div className="mx-auto max-w-dialog px-broad py-grand">
-        <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
-          {t("setup:stepOf", { step: step + 1, total: 4 })}
-        </p>
+      <PageShell density="dialog">
+        {step < 2 ? (
+          <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
+            {t("setup:stepOf", { step: step + 1, total: 4 })}
+          </p>
+        ) : step === 2 ? (
+          <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
+            {t("setup:stepOf", { step: 3, total: 4 })}
+          </p>
+        ) : (
+          <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
+            {t("setup:stepOf", { step: 4, total: 4 })}
+          </p>
+        )}
 
         {step === 0 ? (
           <>
@@ -524,8 +196,12 @@ export function SetupWizardPage() {
                     className="mt-tight"
                   />
                   <span>
-                    <span className="block text-sm font-medium text-ink-primary">{t("setup:modeSingleTitle")}</span>
-                    <span className="mt-tight block text-xs text-ink-muted">{t("setup:modeSingleDesc")}</span>
+                    <span className="block text-sm font-medium text-ink-primary">
+                      {t("setup:modeSingleTitle")}
+                    </span>
+                    <span className="mt-tight block text-xs text-ink-muted">
+                      {t("setup:modeSingleDesc")}
+                    </span>
                   </span>
                 </label>
                 <label className="flex cursor-pointer items-start gap-soft rounded-card border border-line p-wide">
@@ -537,8 +213,12 @@ export function SetupWizardPage() {
                     className="mt-tight"
                   />
                   <span>
-                    <span className="block text-sm font-medium text-ink-primary">{t("setup:modeAgentTitle")}</span>
-                    <span className="mt-tight block text-xs text-ink-muted">{t("setup:modeAgentDesc")}</span>
+                    <span className="block text-sm font-medium text-ink-primary">
+                      {t("setup:modeAgentTitle")}
+                    </span>
+                    <span className="mt-tight block text-xs text-ink-muted">
+                      {t("setup:modeAgentDesc")}
+                    </span>
                   </span>
                 </label>
                 <label className="flex cursor-pointer items-start gap-soft rounded-card border border-line p-wide">
@@ -550,8 +230,12 @@ export function SetupWizardPage() {
                     className="mt-tight"
                   />
                   <span>
-                    <span className="block text-sm font-medium text-ink-primary">{t("setup:modeTenantTitle")}</span>
-                    <span className="mt-tight block text-xs text-ink-muted">{t("setup:modeTenantDesc")}</span>
+                    <span className="block text-sm font-medium text-ink-primary">
+                      {t("setup:modeTenantTitle")}
+                    </span>
+                    <span className="mt-tight block text-xs text-ink-muted">
+                      {t("setup:modeTenantDesc")}
+                    </span>
                   </span>
                 </label>
               </fieldset>
@@ -648,9 +332,7 @@ export function SetupWizardPage() {
                   required
                   minLength={MIN_PASSWORD_LENGTH}
                   aria-invalid={
-                    passwordConfirm.length > 0 && passwordConfirm !== password
-                      ? true
-                      : undefined
+                    passwordConfirm.length > 0 && passwordConfirm !== password ? true : undefined
                   }
                 />
                 {passwordConfirm ? (
@@ -666,9 +348,7 @@ export function SetupWizardPage() {
                   </p>
                 ) : null}
               </label>
-              <p className="text-xs text-ink-muted">
-                {t("setup:passwordHint")}
-              </p>
+              <p className="text-xs text-ink-muted">{t("setup:passwordHint")}</p>
               {adminError ? (
                 <p className="text-sm text-danger" role="alert">
                   {adminError}
@@ -691,362 +371,15 @@ export function SetupWizardPage() {
           </>
         ) : null}
 
-        {step === 2 ? (
-          <>
-            <h1 className="mt-base text-2xl font-semibold text-ink-primary">{t("setup:step2Title")}</h1>
-            <p className="mt-base text-sm text-ink-muted">{t("setup:step2Intro")}</p>
-
-            {catalogLoading ? (
-              <p className="mt-broad text-sm text-ink-muted">{t("setup:catalogLoading")}</p>
-            ) : null}
-            {catalogError ? (
-              <p className="mt-wide text-sm text-danger" role="alert">
-                {catalogError}
-              </p>
-            ) : null}
-
-            {catalog ? (
-              <div className="mt-broad space-y-wide">
-                <section>
-                  <h2 className="text-sm font-medium text-ink-primary">{t("setup:providerStatus")}</h2>
-                  <ul className="mt-base space-y-base">
-                    {catalog.providers.map((p) => (
-                      <li
-                        key={p.provider_id}
-                        className="rounded-card border border-line bg-card px-soft py-base text-sm"
-                      >
-                        <div className="flex items-center justify-between gap-base">
-                          <span className="font-medium text-ink-primary">{p.label}</span>
-                          <span
-                            className={
-                              p.reachable ? "text-success" : "text-warning"
-                            }
-                          >
-                            {p.reachable ? t("setup:reachable") : t("setup:notReachable")}
-                          </span>
-                        </div>
-                        <p className="mt-tight text-xs text-ink-muted">
-                          {p.source}
-                          {p.model_count > 0
-                            ? t("setup:providerModelsSummary", {
-                                chat: p.chat_models.length,
-                                embed: p.embedding_models.length,
-                              })
-                            : ""}
-                        </p>
-                        {p.detail && !p.reachable ? (
-                          <p className="mt-tight text-xs text-badge-warning">{p.detail}</p>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-
-                <section className="rounded-card border border-line bg-card px-soft py-base text-sm">
-                  <div className="flex items-center justify-between gap-base">
-                    <span className="font-medium text-ink-primary">{t("setup:embeddingsTitle")}</span>
-                    <span
-                      className={
-                        catalog.embedding.configured && catalog.embedding.reachable
-                          ? "text-success"
-                          : "text-warning"
-                      }
-                    >
-                      {!catalog.embedding.configured
-                        ? t("setup:optional")
-                        : catalog.embedding.reachable
-                          ? t("setup:reachable")
-                          : t("setup:notReachable")}
-                    </span>
-                  </div>
-                  {catalog.embedding.status_line && !catalog.embedding.configured ? (
-                    <p className="mt-base text-xs text-ink-muted">{catalog.embedding.status_line}</p>
-                  ) : null}
-                  {catalog.embedding.configured && catalog.embedding.detail && !catalog.embedding.reachable ? (
-                    <p className="mt-tight text-xs text-badge-warning">{catalog.embedding.detail}</p>
-                  ) : null}
-                  {!catalog.embedding.configured &&
-                  catalog.embedding.chat_embed_opt_in?.available ? (
-                    <div className="mt-soft flex flex-col gap-base">
-                      <p className="text-xs text-ink-muted">
-                        {t("setup:chatEmbedHint", {
-                          model: catalog.embedding.chat_embed_opt_in.suggested_model ?? "—",
-                        })}
-                      </p>
-                      <Button
-                        variant="primary"
-                        type="button"
-                        disabled={chatEmbedPending || prefsPending}
-                        onClick={() => void onEnableChatProviderEmbedding()}
-                        className="self-start border-accent/40 px-soft py-base text-sm text-badge-accent"
-                      >
-                        {chatEmbedPending ? t("setup:chatEmbedPending") : t("setup:chatEmbedBtn")}
-                      </Button>
-                    </div>
-                  ) : null}
-                </section>
-
-                <form onSubmit={onSavePreferences} className="flex flex-col gap-wide">
-                  <label className="flex flex-col gap-snug text-sm">
-                    <span className="text-ink-muted">{t("setup:preferredProvider")}</span>
-                    <Select
-                      value={primaryProviderId}
-                      onChange={(ev) => {
-                        const id = ev.target.value;
-                        setPrimaryProviderId(id);
-                        const prov = catalog.providers.find((x) => x.provider_id === id);
-                        if (prov?.chat_models[0]) {
-                          setModelAgent(prov.chat_models[0]);
-                          setModelDefault(prov.chat_models[0]);
-                          setModelCoding(prov.chat_models[1] ?? prov.chat_models[0]);
-                        }
-                      }}
-                    >
-                      <option value="">{t("setup:selectProvider")}</option>
-                      {catalog.providers.map((p) => (
-                        <option
-                          key={p.provider_id}
-                          value={p.provider_id}
-                          disabled={!p.reachable}
-                        >
-                          {p.label}
-                          {p.reachable ? "" : t("setup:offlineSuffix")}
-                        </option>
-                      ))}
-                    </Select>
-                  </label>
-
-                  <label className="flex flex-col gap-snug text-sm">
-                    <span className="text-ink-muted">{t("setup:modelAgent")}</span>
-                    <Select
-                      value={modelAgent}
-                      onChange={(ev) => setModelAgent(ev.target.value)}
-                      disabled={!chatModels.length}
-                    >
-                      {chatModels.length === 0 ? (
-                        <option value="">{t("setup:noChatModels")}</option>
-                      ) : (
-                        chatModels.map((m) => (
-                          <option key={m} value={m}>
-                            {m}
-                          </option>
-                        ))
-                      )}
-                    </Select>
-                  </label>
-
-                  <label className="flex flex-col gap-snug text-sm">
-                    <span className="text-ink-muted">{t("setup:modelCoding")}</span>
-                    <Select
-                      value={modelCoding}
-                      onChange={(ev) => setModelCoding(ev.target.value)}
-                      disabled={!chatModels.length}
-                    >
-                      {chatModels.map((m) => (
-                        <option key={`c-${m}`} value={m}>
-                          {m}
-                        </option>
-                      ))}
-                    </Select>
-                  </label>
-
-                  <label className="flex flex-col gap-snug text-sm">
-                    <span className="text-ink-muted">{t("setup:modelDefault")}</span>
-                    <Select
-                      value={modelDefault}
-                      onChange={(ev) => setModelDefault(ev.target.value)}
-                      disabled={!chatModels.length}
-                    >
-                      {chatModels.map((m) => (
-                        <option key={`d-${m}`} value={m}>
-                          {m}
-                        </option>
-                      ))}
-                    </Select>
-                  </label>
-
-                  {embedOptions.length > 0 || catalog.embedding.configured ? (
-                    <div className="flex flex-col gap-base">
-                      <label className="flex flex-col gap-snug text-sm">
-                        <span className="text-ink-muted">
-                          {t("setup:ragEmbedding")}
-                          {!catalog.embedding.configured ? t("setup:ragEmbeddingAfterEnable") : ""}
-                        </span>
-                        <Select
-                          value={ragEmbedding}
-                          onChange={(ev) => setRagEmbedding(ev.target.value)}
-                        >
-                          <option value="">{t("setup:optionalDash")}</option>
-                          {embedOptions.map((m) => (
-                            <option key={m} value={m}>
-                              {m}
-                            </option>
-                          ))}
-                        </Select>
-                      </label>
-                      <Button
-                        type="button"
-                        disabled={embedTestPending || !ragEmbedding.trim()}
-                        onClick={() => void onTestEmbedding()}
-                        className="self-start px-soft py-base text-sm hover:bg-white/5"
-                      >
-                        {embedTestPending ? t("setup:embedTestPending") : t("setup:embedTestBtn")}
-                      </Button>
-                      {embedTestOk ? (
-                        <p className="text-sm text-success" role="status">
-                          {embedTestOk}
-                        </p>
-                      ) : null}
-                    </div>
-                  ) : null}
-
-                  {prefsError ? (
-                    <p className="text-sm text-danger" role="alert">
-                      {prefsError}
-                    </p>
-                  ) : null}
-                  {prefsOk ? (
-                    <p className="text-sm text-success" role="status">
-                      {prefsOk}
-                    </p>
-                  ) : null}
-
-                  <div className="flex flex-wrap gap-soft">
-                    <Button
-                      size="lg"
-                      type="button"
-                      disabled={catalogLoading}
-                      onClick={() => void loadCatalog()}
-                      className="px-wide py-firm text-sm hover:bg-white/5"
-                    >
-                      {t("setup:refresh")}
-                    </Button>
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      type="submit"
-                      disabled={
-                        prefsPending ||
-                        !primaryProviderId ||
-                        !selectedProvider?.reachable
-                      }
-                      className="px-wide py-firm text-sm"
-                    >
-                      {prefsPending ? t("setup:savePending") : t("setup:saveAndContinue")}
-                    </Button>
-                  </div>
-                </form>
-              </div>
-            ) : null}
-
-            <div className="mt-deep border-t border-line pt-broad">
-              <Button
-                variant="ghost"
-                type="button"
-                onClick={() => setShowManual((v) => !v)}
-                className="text-sm text-accent hover:underline"
-              >
-                {showManual ? t("setup:showManualHide") : t("setup:showManualAdd")}
-              </Button>
-              {showManual ? (
-                <form onSubmit={onLlmSave} className="mt-wide flex flex-col gap-wide">
-                  <label className="flex flex-col gap-snug text-sm">
-                    <span className="text-ink-muted">{t("setup:preset")}</span>
-                    <Select
-                      value={preset}
-                      onChange={(ev) => onPresetChange(ev.target.value as LlmPresetId)}
-                    >
-                      {LLM_PRESETS.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {t(`setup:${p.labelKey}`)}
-                        </option>
-                      ))}
-                    </Select>
-                    <p className="text-xs text-ink-muted">{t(`setup:${presetConfig.helpKey}`)}</p>
-                  </label>
-                  <label className="flex flex-col gap-snug text-sm">
-                    <span className="text-ink-muted">{t("setup:baseUrl")}</span>
-                    <TextInput
-                      type="url"
-                      value={baseUrl}
-                      onChange={(ev) => {
-                        setBaseUrl(ev.target.value);
-                        setPreset("custom");
-                        setLlmTestOk(null);
-                      }}
-                      required
-                    />
-                  </label>
-                  <label className="flex flex-col gap-snug text-sm">
-                    <span className="text-ink-muted">
-                      {t("setup:apiKey")}
-                      {presetConfig.apiKeyRequired ? t("setup:apiKeyRequired") : t("setup:apiKeyOptional")}
-                    </span>
-                    <TextInput
-                      type="password"
-                      value={apiKey}
-                      onChange={(ev) => {
-                        setApiKey(ev.target.value);
-                        setLlmTestOk(null);
-                      }}
-                      autoComplete="off"
-                      required={presetConfig.apiKeyRequired}
-                    />
-                    <p className="text-xs text-ink-muted">{t(`setup:${presetConfig.apiKeyHintKey}`)}</p>
-                  </label>
-                  <label className="flex flex-col gap-snug text-sm">
-                    <span className="text-ink-muted">{t("setup:defaultModelOptional")}</span>
-                    <TextInput
-                      type="text"
-                      value={modelDefaultManual}
-                      onChange={(ev) => setModelDefaultManual(ev.target.value)}
-                      placeholder={t(`setup:${presetConfig.modelPlaceholderKey}`)}
-                    />
-                  </label>
-                  {llmError ? (
-                    <p className="text-sm text-danger" role="alert">
-                      {llmError}
-                    </p>
-                  ) : null}
-                  {llmTestOk ? (
-                    <p className="text-sm text-success" role="status">
-                      {llmTestOk}
-                    </p>
-                  ) : null}
-                  <div className="flex flex-wrap gap-soft">
-                    <Button
-                      size="lg"
-                      type="button"
-                      disabled={llmPending}
-                      onClick={(ev) => void onLlmTest(ev as unknown as FormEvent)}
-                      className="px-wide py-firm text-sm hover:bg-white/5"
-                    >
-                      {t("setup:testConnection")}
-                    </Button>
-                    <Button
-                      size="lg"
-                      type="submit"
-                      disabled={llmPending}
-                      className="px-wide py-firm text-sm hover:bg-white/5"
-                    >
-                      {t("setup:saveEndpoint")}
-                    </Button>
-                  </div>
-                </form>
-              ) : null}
-            </div>
-
-            <Button
-              variant="plain"
-              block
-              type="button"
-              disabled={prefsPending}
-              onClick={() => void onSkipProfiles()}
-              className="mt-broad text-sm text-ink-muted hover:text-white"
-            >
-              {t("setup:skipProfiles")}
-            </Button>
-          </>
+        {step === 2 && accessToken ? (
+          <SetupAiPhases
+            accessToken={accessToken}
+            onComplete={() => {
+              finishWizard();
+              void refreshSetupStatus();
+              setStep(3);
+            }}
+          />
         ) : null}
 
         {step === 3 ? (
@@ -1070,12 +403,12 @@ export function SetupWizardPage() {
           </>
         ) : null}
 
-        <p className="mt-page text-center text-sm text-ink-muted">
+        <p className="mt-pagePad text-center text-sm text-ink-muted">
           <Link to="/login" className="text-accent hover:underline">
             {t("setup:backToLogin")}
           </Link>
         </p>
-      </div>
+      </PageShell>
     </div>
   );
 }

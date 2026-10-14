@@ -4,7 +4,7 @@
  *
  * Every spacing utility must sit on the named ramp defined in
  * tailwind.config.js: hair/tight/snug/base/firm/soft/wide/roomy/broad/deep/
- * page/grand. A numeric step like `p-7` is off-ramp and fails.
+ * pagePad/grand. A numeric step like `p-7` is off-ramp and fails.
  *
  * Three values are allowed as-is because they are statements, not ramp
  * positions:
@@ -145,7 +145,7 @@ if (isMain) {
           }
           if (violations.length > 25) console.error(`  … und ${violations.length - 25} weitere`);
           console.error(
-            "\nUse a named step from tailwind.config.js: hair(2) tight(4) snug(6) base(8) firm(10) soft(12) wide(16) roomy(20) broad(24) deep(32) page(40) grand(48)."
+            "\nUse a named step from tailwind.config.js: hair(2) tight(4) snug(6) base(8) firm(10) soft(12) wide(16) roomy(20) broad(24) deep(32) pagePad(40) grand(48)."
           );
           process.exit(1);
         }

@@ -16,6 +16,7 @@ import {
 import { Button } from "../../ui/Button";
 import { Select, TextArea, TextInput } from "../../ui/Field";
 import { Table, type TableColumn } from "../../ui/Table";
+import { PageShell } from "../../layout/PageShell";
 
 const emptyOverrideForm = (): HarnessConfigFields & {
   catalog_owned_by: string;
@@ -248,7 +249,7 @@ export function AdminHarnessConfig() {
   ];
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+    <PageShell density="fill" className="overflow-hidden">
       <header className="shrink-0 border-b border-line px-wide py-soft">
         <h1 className="text-lg font-semibold text-ink-primary">{t("admin:harnessTitle")}</h1>
         <p className="mt-tight text-sm text-ink-muted">{t("admin:harnessSubtitle")}</p>
@@ -273,7 +274,7 @@ export function AdminHarnessConfig() {
         {loading ? (
           <p className="text-sm text-ink-muted">{t("admin:loading")}</p>
         ) : (
-          <div className="mx-auto max-w-page space-y-deep">
+          <PageShell density="default" padded={false} className="space-y-deep">
             <section className="rounded-card border border-line bg-black/20 p-wide">
               <h2 className="text-sm font-medium text-ink-primary">{t("admin:harnessGlobalTitle")}</h2>
               <p className="mt-tight text-xs text-ink-muted">{t("admin:harnessGlobalHint")}</p>
@@ -475,9 +476,9 @@ export function AdminHarnessConfig() {
                 </div>
               </div>
             </section>
-          </div>
+          </PageShell>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }

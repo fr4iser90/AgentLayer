@@ -65,7 +65,7 @@ export function PublicGalleryShareView(props: {
           const hero = readHero(getPath(data, dp));
           if (!hero.url) return null;
           return (
-            <section key={block.id} className="mb-broad sm:mb-page">
+            <section key={block.id} className="mb-broad sm:mb-pagePad">
               <div className="relative aspect-[2.1/1] max-h-[min(520px,70vh)] w-full overflow-hidden rounded-sheet sm:rounded-sheet">
                 <GalleryImage
                   url={hero.url}

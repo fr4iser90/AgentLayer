@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { SchemaForm } from "../components/SchemaForm";
 import { CollapsibleSidebarShell } from "../layout/CollapsibleSidebarShell";
+import { PageShell } from "../layout/PageShell";
 import { Button } from "../ui/Button";
 
 type CatalogPreset = {
@@ -158,6 +159,7 @@ export function StudioPage() {
       .join(" ");
 
   return (
+    <PageShell density="fill">
     <CollapsibleSidebarShell
       className="bg-canvas"
       mobileOpen={presetSidebarOpen}
@@ -301,5 +303,6 @@ export function StudioPage() {
         ) : null}
       </div>
     </CollapsibleSidebarShell>
+    </PageShell>
   );
 }

@@ -101,8 +101,47 @@ def test_fetch_embedding_models_list_parses_ids() -> None:
     ):
         ids, err = embedding_client.fetch_embedding_models_list()
     assert err is None
-    assert ids == ["nomic-embed-text", "bge-m3"]
+    assert ids == ["bge-m3", "nomic-embed-text"]
     assert get_json.call_args.kwargs["headers"]["X-API-KEY"] == "secret"
+
+
+def test_fetch_embedding_models_list_drops_chat_leak_from_kinds_embed() -> None:
+    """Gateway ?kinds=embed often still returns chat/coder — must not become the default."""
+    payload = {
+        "data": [
+            {"id": "chat", "owned_by": "onprem", "load_state": "ok"},
+            {"id": "coder", "owned_by": "onprem", "load_state": "ok"},
+            {
+                "id": "bge-m3-Q4_K_M",
+                "kind": "embed",
+                "owned_by": "embed",
+                "tags": ["embed"],
+                "load_state": "down",
+                "status": "unavailable",
+            },
+            {
+                "id": "nomic-embed-text-v1.5.Q4_K_M",
+                "kind": "embed",
+                "owned_by": "embed",
+                "tags": ["embed"],
+                "load_state": "down",
+                "status": "unavailable",
+            },
+        ]
+    }
+    with (
+        patch.object(embedding_client, "resolve_active_embedding_spec", return_value=_spec()),
+        patch(
+            "apps.backend.infrastructure.providers.openai_compat_http.http_get_json",
+            return_value=(200, "", payload),
+        ),
+    ):
+        ids, err = embedding_client.fetch_embedding_models_list()
+    assert "chat" not in ids
+    assert "coder" not in ids
+    assert ids == ["bge-m3-Q4_K_M", "nomic-embed-text-v1.5.Q4_K_M"]
+    assert err is not None
+    assert "unavailable" in err.lower() or "down" in err.lower()
 
 
 def test_embedding_request_headers_authorization_bearer() -> None:

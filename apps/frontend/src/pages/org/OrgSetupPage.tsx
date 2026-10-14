@@ -7,6 +7,7 @@ import { OrgKnowledgePublishSection } from "./OrgKnowledgePublishSection";
 import { Checkbox } from "../../ui/Checkbox";
 import { TextInput } from "../../ui/Field";
 import { Button } from "../../ui/Button";
+import { PageShell } from "../../layout/PageShell";
 
 type TenantResponse = {
   tenant?: {
@@ -110,7 +111,7 @@ export function OrgSetupPage() {
   }
 
   return (
-    <div className="mx-auto max-w-pageNarrow px-broad py-page">
+    <PageShell density="narrow">
       <h1 className="text-xl font-semibold text-ink-primary">{t("org:setupPageTitle")}</h1>
       <p className="mt-base text-sm text-ink-muted">{t("org:setupPageIntro")}</p>
 
@@ -192,6 +193,6 @@ export function OrgSetupPage() {
           </Button>
         </div>
       ) : null}
-    </div>
+    </PageShell>
   );
 }

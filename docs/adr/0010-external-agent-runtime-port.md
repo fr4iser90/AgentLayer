@@ -191,8 +191,9 @@ Done:
 
 Not done (the open end):
 
-1. Rebuild the image (`@qwen-code/qwen-code` is pinned in `Dockerfile`, `qwen-code-sdk` in
-   `requirements.txt`) and run `alembic upgrade head` for `schema_127`.
+1. Rebuild the image (`qwen-code-sdk` in `requirements.txt`; CLI via Admin volume npm),
+   install `@qwen-code/qwen-code` under Admin → Coding runtimes, and run
+   `alembic upgrade head` for `schema_127`.
 2. `python scripts/verify_external_runtime_live.py --workspace <uuid>` — status, one
    permission-mode-`plan` turn, then a second turn on the same conversation to prove resume.
 3. Confirm an audit row lands in `tool_invocations` and the touched-paths summary renders.

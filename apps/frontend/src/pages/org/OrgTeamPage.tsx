@@ -4,6 +4,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { Select, TextInput } from "../../ui/Field";
 import { Button } from "../../ui/Button";
+import { PageShell } from "../../layout/PageShell";
 
 type Department = { id: string; slug: string; name: string };
 type ProfessionRole = { id: string; slug: string; name: string; role_kind: string };
@@ -78,7 +79,7 @@ export function OrgTeamPage() {
   }
 
   return (
-    <div className="mx-auto max-w-page px-broad py-page">
+    <PageShell density="default">
       <h1 className="text-xl font-semibold text-ink-primary">{t("org:teamPageTitle")}</h1>
       <p className="mt-base text-sm text-ink-muted">{t("org:teamPageIntro")}</p>
 
@@ -165,6 +166,6 @@ export function OrgTeamPage() {
 
       {msg ? <p className="mt-wide text-sm text-success">{msg}</p> : null}
       {err ? <p className="mt-wide text-sm text-danger">{err}</p> : null}
-    </div>
+    </PageShell>
   );
 }

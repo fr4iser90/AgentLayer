@@ -273,6 +273,7 @@ const ADMIN_SECTIONS: NavSection[] = [
     leaves: [
       { to: "/admin/benchmarks", labelKey: "admin:benchNav", icon: Activity },
       { to: "/admin/agent-config", labelKey: "admin:agentConfigNav", icon: SlidersHorizontal },
+      { to: "/admin/coding-runtimes", labelKey: "admin:codingRuntimesNav", icon: Cpu },
       {
         to: "/admin/run-traces",
         labelKey: "admin:runTraces",

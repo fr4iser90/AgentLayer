@@ -5,6 +5,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { Badge } from "../../ui/Badge";
 import { Button } from "../../ui/Button";
+import { PageShell } from "../../layout/PageShell";
 
 type MeResponse = {
   id?: string;
@@ -68,7 +69,7 @@ export function ProfileSettings() {
     : null;
 
   return (
-    <div className="mx-auto max-w-page space-y-deep">
+    <PageShell density="default" className="space-y-deep">
       <div>
         <h1 className="text-lg font-semibold text-ink-primary">{t("settings:profileTitle")}</h1>
         <p className="mt-base text-sm text-ink-muted">
@@ -146,6 +147,6 @@ export function ProfileSettings() {
           {t("settings:signOut")}
         </Button>
       </div>
-    </div>
+    </PageShell>
   );
 }

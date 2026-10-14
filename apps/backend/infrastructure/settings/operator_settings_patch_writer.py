@@ -391,6 +391,22 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
         r["dashboards_allowed"] = bool(patch["dashboards_allowed"])
     if "friend_system_enabled" in patch:
         r["friend_system_enabled"] = bool(patch["friend_system_enabled"])
+    if "external_runtime_enabled" in patch:
+        v = patch["external_runtime_enabled"]
+        r["external_runtime_enabled"] = None if v is None else bool(v)
+    if "qwen_runtime_enabled" in patch:
+        v = patch["qwen_runtime_enabled"]
+        r["qwen_runtime_enabled"] = None if v is None else bool(v)
+    if "dsh_runtime_enabled" in patch:
+        v = patch["dsh_runtime_enabled"]
+        r["dsh_runtime_enabled"] = None if v is None else bool(v)
+    if "preferred_coding_runtime" in patch:
+        v = patch["preferred_coding_runtime"]
+        if v is None:
+            r["preferred_coding_runtime"] = None
+        else:
+            raw = str(v).strip()[:64]
+            r["preferred_coding_runtime"] = raw or None
 
     media_patch = {
         k: patch[k]

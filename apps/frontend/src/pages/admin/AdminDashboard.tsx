@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import type { OperatorPublic } from "../../features/admin/operatorSettings/operatorSettingsTypes";
+import { PageShell } from "../../layout/PageShell";
 
 function StatusCard({
   title,
@@ -55,7 +56,7 @@ export function AdminDashboard() {
   }, [auth]);
 
   return (
-    <div className="mx-auto max-w-pageNarrow px-broad py-page">
+    <PageShell density="narrow">
       <h1 className="text-xl font-semibold text-ink-primary">{t("admin:overview")}</h1>
       <p className="mt-base text-sm text-ink-muted">
         {t("admin:adminDashboardIntro")}
@@ -103,6 +104,6 @@ export function AdminDashboard() {
           />
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

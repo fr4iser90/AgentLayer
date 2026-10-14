@@ -1,0 +1,15 @@
+id: coding_dsh
+name: Coding (DeepSeek Harness)
+icon: code
+description: "Build mode executed by the external DeepSeek Harness headless runtime"
+min_role: user
+delegatable: true
+external_runtime: deepseek_harness
+schedulable: false
+requires_workspace: true
+strict_workspace: true
+execution_context: container
+model_profile: coding
+tool_discipline_preset: coding_build
+tool_domains:
+  - coding

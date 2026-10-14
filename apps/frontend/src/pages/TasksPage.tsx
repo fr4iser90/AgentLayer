@@ -13,6 +13,7 @@ import {
 import { Select, TextInput } from "../ui/Field";
 import { SkeletonRows } from "../ui/Skeleton";
 import { Button } from "../ui/Button";
+import { PageShell } from "../layout/PageShell";
 
 type WorkspaceRow = { id: string; name: string };
 
@@ -197,7 +198,7 @@ export function TasksPage() {
 
   return (
     <div className="h-full min-h-0 overflow-y-auto">
-      <div className="mx-auto max-w-page px-broad py-deep">
+      <PageShell density="default">
         <div className="flex flex-wrap items-start justify-between gap-wide">
           <div>
             <h1 className="text-2xl font-semibold text-ink-primary">{t_0("tasks:pageTitle")}</h1>
@@ -278,7 +279,7 @@ export function TasksPage() {
           </div>
         </section>
 
-        <section className="mt-page border-t border-line pt-deep">
+        <section className="mt-pagePad border-t border-line pt-deep">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">
             {t_0("tasks:projectTasks")}
           </h2>
@@ -357,7 +358,7 @@ export function TasksPage() {
             </p>
           )}
         </section>
-      </div>
+      </PageShell>
     </div>
   );
 }

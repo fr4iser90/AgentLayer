@@ -38,7 +38,7 @@ const NESTED_QUOTES = /"([^"\n]*)"|'([^'\n]*)'/g;
 // utility letter, e.g. the storage key `m-${Date.now()}-${Math.random()…}`,
 // which the guard then baselined as if it were a spacing class.
 const STEP =
-  "(?:[0-9]+(?:\\.[0-9]+)?|px|auto|hair|tight|snug|base|firm|soft|wide|roomy|broad|deep|page|grand)";
+  "(?:[0-9]+(?:\\.[0-9]+)?|px|auto|hair|tight|snug|base|firm|soft|wide|roomy|broad|deep|pagePad|grand)";
 
 // A spacing utility with any real step value. STEP must stay wrapped in a
 // capturing group: it is non-capturing itself, so without the outer parens
@@ -61,7 +61,7 @@ export const NAMED = new Set([
   "roomy",
   "broad",
   "deep",
-  "page",
+  "pagePad",
   "grand",
 ]);
 
