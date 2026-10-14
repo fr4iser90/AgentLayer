@@ -106,21 +106,11 @@ def ws_url(token: str) -> str:
 
 
 def admin_credentials() -> tuple[str, str]:
-    email = (
-        os.environ.get("AGENT_E2E_EMAIL")
-        or os.environ.get("AGENT_TEST_EMAIL")
-        or os.environ.get("AGENT_INITIAL_ADMIN_EMAIL")
-        or ""
-    ).strip()
-    password = (
-        os.environ.get("AGENT_E2E_PASSWORD")
-        or os.environ.get("AGENT_TEST_PASSWORD")
-        or os.environ.get("AGENT_INITIAL_ADMIN_PASSWORD")
-        or ""
-    ).strip()
+    email = (os.environ.get("AGENT_E2E_EMAIL") or os.environ.get("AGENT_TEST_EMAIL") or "").strip()
+    password = (os.environ.get("AGENT_E2E_PASSWORD") or os.environ.get("AGENT_TEST_PASSWORD") or "").strip()
     if not email or not password:
         raise RuntimeError(
-            "Missing admin credentials (AGENT_E2E_EMAIL/PASSWORD or AGENT_INITIAL_ADMIN_* in .env)"
+            "Missing admin credentials (set AGENT_E2E_EMAIL/PASSWORD in .env.e2e)"
         )
     return email, password
 

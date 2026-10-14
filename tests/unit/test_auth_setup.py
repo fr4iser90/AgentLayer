@@ -18,7 +18,7 @@ def test_validate_setup_email_rejects_invalid() -> None:
 
 def test_validate_setup_password_mismatch() -> None:
     with pytest.raises(HTTPException) as exc:
-        mod.validate_setup_password("password1", "password2")
+        mod.validate_setup_password("MyStr0ng!Pass99", "MyStr0ng!Pass00")
     assert exc.value.status_code == 400
 
 
@@ -26,6 +26,16 @@ def test_validate_setup_password_too_short() -> None:
     with pytest.raises(HTTPException) as exc:
         mod.validate_setup_password("short")
     assert exc.value.status_code == 400
+
+
+def test_validate_setup_password_rejects_test1234() -> None:
+    with pytest.raises(HTTPException) as exc:
+        mod.validate_setup_password("test1234")
+    assert exc.value.status_code == 400
+
+
+def test_validate_setup_password_accepts_strong() -> None:
+    mod.validate_setup_password("MyStr0ng!Pass99", "MyStr0ng!Pass99")
 
 
 def test_create_first_admin_when_already_configured() -> None:
@@ -91,10 +101,7 @@ def test_build_setup_status_provider_wizard_done() -> None:
 
 
 def test_setup_admin_claim_does_not_exit() -> None:
-    with (
-        patch.object(mod, "is_first_start", return_value=True),
-        patch.object(mod, "try_create_initial_admin_from_env", return_value=False),
-    ):
+    with patch.object(mod, "is_first_start", return_value=True):
         mod.setup_admin_claim_if_needed()
 
 

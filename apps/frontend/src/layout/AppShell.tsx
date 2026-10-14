@@ -32,12 +32,9 @@ interface AppShellProps {
 /**
  * The single application chrome.
  *
- * One header with the mascot, the language switch and the account controls, one
- * rail, one drawer. `AppLayout`, `SettingsLayout`, `AdminLayout`,
- * `OrgAdminLayout` and `InterfacesLayout` all render through here, so an
- * operator in `/admin/interfaces/voice` has the same avatar, bell and language
- * control as a user in `/chat` — previously the admin surfaces had none of
- * them, and leaving meant hunting for a small text link.
+ * Signed-in: header + rail + main + footer.
+ * Signed-out (login / setup / legal): header + main + footer, no rail — those
+ * destinations need a session.
  */
 export function AppShell({
   surface,
@@ -52,37 +49,42 @@ export function AppShell({
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // Which rail doors the reader folded. Here rather than inside `NavRail`
-  // because this file renders that rail twice, and two copies of one preference
-  // is the drift the single list of links exists to prevent.
   const [navFolds, setNavFolds] = useState<Record<string, boolean>>({});
   const foldDoor = (to: string, open: boolean) =>
     setNavFolds((current) => ({ ...current, [to]: open }));
 
-  // Navigating closes the drawer: on a phone the rail covers the page you just
-  // asked for, and leaving it open makes the next tap a second navigation.
   useEffect(() => {
     setDrawerOpen(false);
   }, [location.pathname]);
 
-  // The drawer always needs a name; the app rail has no heading of its own.
   const title = surface.titleKey
     ? t(surface.titleKey, { ns: surface.namespace })
     : t("nav.sectionsAria", { ns: "common" });
 
+  const showRail = signedIn;
+
+  const mainClass = [
+    "min-h-0 min-w-0 flex-1",
+    scroll === "page"
+      ? "overflow-y-auto overscroll-contain"
+      : "overflow-hidden [&>*]:h-full [&>*]:min-h-0"
+  ].join(" ");
+
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-canvas">
       <header className="flex shrink-0 items-center gap-soft border-b border-line bg-panel px-wide py-base">
-        <Button
-          variant="ghost"
-          type="button"
-          className="shrink-0 p-tight text-ink-muted hover:bg-white/5 hover:text-ink-primary md:hidden"
-          aria-label={t("nav.openMenu", { ns: "common" })}
-          aria-expanded={drawerOpen}
-          onClick={() => setDrawerOpen(true)}
-        >
-          <PanelLeft size={18} aria-hidden />
-        </Button>
+        {showRail ? (
+          <Button
+            variant="ghost"
+            type="button"
+            className="shrink-0 p-tight text-ink-muted hover:bg-white/5 hover:text-ink-primary md:hidden"
+            aria-label={t("nav.openMenu", { ns: "common" })}
+            aria-expanded={drawerOpen}
+            onClick={() => setDrawerOpen(true)}
+          >
+            <PanelLeft size={18} aria-hidden />
+          </Button>
+        ) : null}
         <Link to="/" className="flex shrink-0 items-center gap-snug">
           <Mascot size={28} animated={false} ariaLabel={t("app.title", { ns: "common" })} />
           <span className="text-sm font-semibold tracking-tight text-ink-primary">
@@ -103,39 +105,36 @@ export function AppShell({
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        <aside className="hidden w-56 shrink-0 overflow-y-auto overscroll-contain border-r border-line bg-panel px-soft py-wide md:block">
-          {surface.titleKey ? (
-            <p className="mb-base px-base text-meta font-medium uppercase tracking-wide text-ink-muted">
-              {title}
-            </p>
-          ) : null}
-          <NavRail surface={surface} folds={navFolds} onFold={foldDoor} />
-        </aside>
-        <main
-          className={[
-            "min-h-0 min-w-0 flex-1",
-            scroll === "page"
-              ? "overflow-y-auto overscroll-contain"
-              : "overflow-hidden [&>*]:h-full [&>*]:min-h-0"
-          ].join(" ")}
-        >
-          {children}
-        </main>
-      </div>
+      {showRail ? (
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          <aside className="hidden w-56 shrink-0 overflow-y-auto overscroll-contain border-r border-line bg-panel px-soft py-wide md:block">
+            {surface.titleKey ? (
+              <p className="mb-base px-base text-meta font-medium uppercase tracking-wide text-ink-muted">
+                {title}
+              </p>
+            ) : null}
+            <NavRail surface={surface} folds={navFolds} onFold={foldDoor} />
+          </aside>
+          <main className={mainClass}>{children}</main>
+        </div>
+      ) : (
+        <main className={mainClass}>{children}</main>
+      )}
 
       {footer}
 
-      <Drawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        title={title}
-        side="left"
-        surface="panel"
-        mobileOnly
-      >
-        <NavRail surface={surface} folds={navFolds} onFold={foldDoor} />
-      </Drawer>
+      {showRail ? (
+        <Drawer
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          title={title}
+          side="left"
+          surface="panel"
+          mobileOnly
+        >
+          <NavRail surface={surface} folds={navFolds} onFold={foldDoor} />
+        </Drawer>
+      ) : null}
     </div>
   );
 }

@@ -86,7 +86,7 @@ export type AdminCapability = (typeof ADMIN_CAPABILITIES)[number];
  * asks both and says so.
  */
 export function holdsCapability(
-  actor?: AccessActor | null,
+  actor: AccessActor | null | undefined,
   cap: AdminCapability
 ): boolean {
   if (actor?.site_role === "site_admin") return true;

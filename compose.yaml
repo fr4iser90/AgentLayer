@@ -102,7 +102,7 @@ services:
       dockerfile: Dockerfile
     image: jetpack-agent-layer:local
     container_name: agent-layer
-    # Optional: restart unless-stopped after first admin exists (via /app/setup or AGENT_INITIAL_ADMIN_*).
+    # Optional: restart unless-stopped after first admin exists (via /app/setup).
     restart: "no"
     depends_on:
       postgres:

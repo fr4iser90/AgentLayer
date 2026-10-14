@@ -38,23 +38,25 @@ export function AppLayout() {
 
   const surface = surfaceForPath(location.pathname, user);
 
+  // One horizontal row: Impressum · Datenschutz · … · Docs · Brand.
+  // flex-nowrap keeps them side-by-side; wrap was the stacked mess.
   const footer = (
     <>
       <MediaMiniPlayer />
       <footer className="shrink-0 border-t border-line bg-panel px-wide py-base">
-        <div className="mx-auto flex max-w-page flex-wrap items-center justify-center gap-x-wide gap-y-tight text-meta text-ink-muted">
+        <div className="mx-auto flex w-full min-w-0 flex-nowrap items-center justify-center gap-x-wide text-meta text-ink-muted">
           <LegalFooterLinks />
           {showDocsFooter && !signedIn ? (
             <>
-              <Link to="/docs" className="hover:text-ink-secondary">
+              <Link to="/docs" className="shrink-0 hover:text-ink-secondary">
                 {t("footer.docs")}
               </Link>
-              <span className="text-line-strong" aria-hidden>
+              <span className="shrink-0 text-line-strong" aria-hidden>
                 ·
               </span>
             </>
           ) : null}
-          <span className="text-ink-muted">{t("footer.brand")}</span>
+          <span className="shrink-0 text-ink-muted">{t("footer.brand")}</span>
         </div>
       </footer>
     </>

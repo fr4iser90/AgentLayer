@@ -31,22 +31,12 @@ def _load_dotenv(path: Path) -> None:
 
 
 def _cred() -> tuple[str, str]:
-    email = (
-        os.environ.get("AGENT_E2E_EMAIL")
-        or os.environ.get("AGENT_TEST_EMAIL")
-        or os.environ.get("AGENT_INITIAL_ADMIN_EMAIL")
-        or ""
-    ).strip()
-    password = (
-        os.environ.get("AGENT_E2E_PASSWORD")
-        or os.environ.get("AGENT_TEST_PASSWORD")
-        or os.environ.get("AGENT_INITIAL_ADMIN_PASSWORD")
-        or ""
-    ).strip()
+    email = (os.environ.get("AGENT_E2E_EMAIL") or os.environ.get("AGENT_TEST_EMAIL") or "").strip()
+    password = (os.environ.get("AGENT_E2E_PASSWORD") or os.environ.get("AGENT_TEST_PASSWORD") or "").strip()
     if not email or not password:
         raise SystemExit(
             "missing login credentials in environment "
-            "(set AGENT_INITIAL_ADMIN_EMAIL/PASSWORD or AGENT_E2E_EMAIL/PASSWORD in .env)"
+            "(set AGENT_E2E_EMAIL/PASSWORD in .env.e2e)"
         )
     return email, password
 

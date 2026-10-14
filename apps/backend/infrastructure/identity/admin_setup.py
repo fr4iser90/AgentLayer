@@ -1,18 +1,11 @@
 """
-First admin bootstrap: env-seeded admin creation and first-start detection.
+First-start detection: no elevated account yet → setup wizard at /app/setup.
 """
 
 from __future__ import annotations
 
-import logging
-
 from apps.backend.domain.identity.roles import ELEVATED_SQL
-from apps.backend.infrastructure.platform.config import AGENT_INITIAL_ADMIN_EMAIL, AGENT_INITIAL_ADMIN_PASSWORD
-from apps.backend.infrastructure.dashboards.dashboard_persistence import ensure_default_dashboard_for_new_user
-from apps.backend.infrastructure.identity.auth import insert_user_with_cursor
 from apps.backend.infrastructure.db import db
-
-logger = logging.getLogger(__name__)
 
 
 def is_first_start() -> bool:
@@ -22,38 +15,3 @@ def is_first_start() -> bool:
             cur.execute(f"SELECT COUNT(*) FROM users WHERE {ELEVATED_SQL}")
             admin_count = cur.fetchone()[0]
             return admin_count == 0
-
-
-def try_create_initial_admin_from_env() -> bool:
-    """
-    If AGENT_INITIAL_ADMIN_EMAIL and AGENT_INITIAL_ADMIN_PASSWORD are both set, create the first
-    admin once.
-    """
-    email = AGENT_INITIAL_ADMIN_EMAIL
-    password = AGENT_INITIAL_ADMIN_PASSWORD
-    if not email or not password:
-        return False
-    if len(password) < 8:
-        logger.warning(
-            "AGENT_INITIAL_ADMIN_PASSWORD must be at least 8 characters; env bootstrap skipped"
-        )
-        return False
-
-    with db.pool().connection() as conn:  # tenant-scope: site-wide — first-admin bootstrap
-        with conn.cursor() as cur:
-            cur.execute("SELECT pg_advisory_xact_lock(872814001)")
-            cur.execute(f"SELECT COUNT(*) FROM users WHERE {ELEVATED_SQL}")
-            if cur.fetchone()[0] > 0:
-                conn.rollback()
-                return False
-            new_admin = insert_user_with_cursor(cur, email, password, role="admin")
-            cur.execute("DELETE FROM admin_claim_otp")
-        conn.commit()
-
-    logger.info(
-        "First admin created from AGENT_INITIAL_ADMIN_EMAIL. "
-        "Remove AGENT_INITIAL_ADMIN_* from the environment and change the password after login."
-    )
-    # tenant_id=1 matches insert_user_with_cursor default for first admin
-    ensure_default_dashboard_for_new_user(new_admin.id, 1)
-    return True

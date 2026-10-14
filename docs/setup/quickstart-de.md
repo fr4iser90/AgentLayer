@@ -7,7 +7,7 @@
   - `AGENT_JWT_SECRET` (einmalig: `openssl rand -hex 32`)
   - `DATABASE_URL` (in Compose meist vorkonfiguriert)
 
-Optional: `AGENT_INITIAL_ADMIN_EMAIL` und `AGENT_INITIAL_ADMIN_PASSWORD` legen den ersten Administrator beim Start an (Automation). Ohne diese Variablen erfolgt die Anlage über die Web-Oberfläche.
+Der erste Administrator wird nur über die Web-Oberfläche angelegt (`/app/setup`) — nicht über Umgebungsvariablen.
 
 **Einrichtungs-Token:** Wenn `AGENT_SETUP_TOKEN` in `.env` gesetzt ist, ist es für Schritt 1 der Ersteinrichtung erforderlich. Ist es nicht gesetzt, erzeugt der Server beim ersten Start ein Token und schreibt es **einmal** ins Log (`docker compose logs agent-layer`). Für öffentlich erreichbare Hosts `AGENT_SETUP_TOKEN` vor dem Start setzen (`openssl rand -hex 32`).
 

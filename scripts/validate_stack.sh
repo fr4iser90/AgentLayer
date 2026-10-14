@@ -123,7 +123,7 @@ stage_preflight() {
   done
 
   echo "required env keys"
-  for k in AGENT_INITIAL_ADMIN_EMAIL AGENT_INITIAL_ADMIN_PASSWORD LLM_PROVIDER_1_BASE_URL AGENT_E2E_EMAIL_B AGENT_E2E_PASSWORD_B; do
+  for k in AGENT_E2E_EMAIL AGENT_E2E_PASSWORD LLM_PROVIDER_1_BASE_URL AGENT_E2E_EMAIL_B AGENT_E2E_PASSWORD_B; do
     if [[ -n "${!k:-}" ]]; then echo "  ok: $k"; else echo "  MISSING: $k"; fail=1; fi
   done
 
@@ -218,7 +218,7 @@ run_mode() {
   local tok
   tok="$(curl -s -X POST "http://127.0.0.1:${AGENT_HTTP_PORT:-8088}/auth/login" \
     -H 'Content-Type: application/json' \
-    -d "{\"email\":\"${AGENT_INITIAL_ADMIN_EMAIL}\",\"password\":\"${AGENT_INITIAL_ADMIN_PASSWORD}\"}" \
+    -d "{\"email\":\"${AGENT_E2E_EMAIL}\",\"password\":\"${AGENT_E2E_PASSWORD}\"}" \
     | python3 -c 'import sys,json;print(json.load(sys.stdin).get("access_token",""))')"
   [[ -n "$tok" ]] || { echo "  cannot log in to set mode"; return 1; }
 
@@ -237,8 +237,8 @@ sys.exit(0 if got=='${mode}' else 1)
   docker run --rm --network host \
     -v "$REPO:/work" -w /work/apps/frontend \
     -e BASE_URL="http://127.0.0.1:${AGENT_HTTP_PORT:-8088}" \
-    -e EMAIL="$AGENT_INITIAL_ADMIN_EMAIL" \
-    -e PASSWORD="$AGENT_INITIAL_ADMIN_PASSWORD" \
+    -e EMAIL="$AGENT_E2E_EMAIL" \
+    -e PASSWORD="$AGENT_E2E_PASSWORD" \
     -e MODE="$mode" \
     -e OUT_DIR=/work/output/stack-validation/"$STAMP"/screenshots \
     mcr.microsoft.com/playwright:v1.49.1-noble \
@@ -316,7 +316,7 @@ echo "AgentLayer full-stack validation — ${STAMP}"
 echo "output: $OUT"
 
 # Must run before any stage: the mode matrix and the browser probes read
-# AGENT_INITIAL_ADMIN_* / AGENT_E2E_* straight from the environment, and
+# AGENT_E2E_* straight from the environment, and
 # defining load_env without calling it left those empty.
 load_env
 

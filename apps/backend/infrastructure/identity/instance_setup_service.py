@@ -7,7 +7,7 @@ from typing import Any
 from apps.backend.infrastructure.dashboards.dashboard_persistence import ensure_default_dashboard_for_new_user
 from apps.backend.domain.setup import instance as domain
 from apps.backend.infrastructure.platform.config import AGENT_SETUP_TOKEN
-from apps.backend.infrastructure.identity.admin_setup import is_first_start, try_create_initial_admin_from_env
+from apps.backend.infrastructure.identity.admin_setup import is_first_start
 from apps.backend.infrastructure.identity.auth import insert_user_with_cursor
 from apps.backend.infrastructure.agent_runtime.catalog_chat_llm_service import cached_llm_reachable
 from apps.backend.infrastructure.db import db
@@ -24,7 +24,6 @@ from apps.backend.infrastructure.settings.operator_settings import (
 
 class _InstanceSetupDeps:
     is_first_start = staticmethod(is_first_start)
-    try_create_initial_admin_from_env = staticmethod(try_create_initial_admin_from_env)
     cached_llm_reachable = staticmethod(cached_llm_reachable)
     list_provider_specs = staticmethod(list_provider_specs)
     pool = staticmethod(db.pool)

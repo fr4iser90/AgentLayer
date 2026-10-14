@@ -161,11 +161,8 @@ DATABASE_URL = resolve_database_url()
 # Same DB as DATABASE_URL; use for Alembic / SQLAlchemy create_engine.
 SQLALCHEMY_DATABASE_URL = sqlalchemy_postgresql_url(DATABASE_URL)
 
-# First admin when no admin user exists yet: set both before first start, or the process exits.
-AGENT_INITIAL_ADMIN_EMAIL = (os.environ.get("AGENT_INITIAL_ADMIN_EMAIL") or "").strip()
-AGENT_INITIAL_ADMIN_PASSWORD = os.environ.get("AGENT_INITIAL_ADMIN_PASSWORD") or ""
-
 # Required for POST /auth/setup when set. If unset on first start, a one-time token is generated and logged.
+# First admin is created only via /app/setup (wizard) — never from env credentials.
 AGENT_SETUP_TOKEN = (os.environ.get("AGENT_SETUP_TOKEN") or "").strip()
 
 # Extra tool tree (optional): scan + create_tool writes here. Two different concerns:

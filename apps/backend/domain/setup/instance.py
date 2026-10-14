@@ -49,8 +49,6 @@ User = Any
 class InstanceSetupDependencies(Protocol):
     def is_first_start(self) -> bool: ...
 
-    def try_create_initial_admin_from_env(self) -> bool: ...
-
     def cached_llm_reachable(self) -> bool | None: ...
 
     def list_provider_specs(self) -> list[Any]: ...
@@ -100,10 +98,6 @@ def _require_deps() -> InstanceSetupDependencies:
 
 def is_first_start() -> bool:
     return _require_deps().is_first_start()
-
-
-def try_create_initial_admin_from_env() -> bool:
-    return _require_deps().try_create_initial_admin_from_env()
 
 
 def cached_llm_reachable() -> bool | None:
@@ -282,12 +276,12 @@ def validate_setup_token(provided: str | None) -> None:
 
 
 def validate_setup_password(password: str, password_confirm: str | None = None) -> None:
+    from apps.backend.domain.identity.password_policy import password_rejection_reason
+
     p = password or ""
-    if len(p) < 8:
-        raise HTTPException(
-            status_code=400,
-            detail="Passwort: mindestens 8 Zeichen.",
-        )
+    reason = password_rejection_reason(p)
+    if reason:
+        raise HTTPException(status_code=400, detail=reason)
     if password_confirm is not None and p != (password_confirm or ""):
         raise HTTPException(status_code=400, detail="Die Passwörter stimmen nicht überein.")
 
@@ -472,12 +466,9 @@ def apply_setup_llm_endpoint(
 
 
 def setup_admin_claim_if_needed() -> None:
-    """Env bootstrap optional; otherwise wait for POST /auth/setup."""
+    """First admin only via POST /auth/setup (wizard). No env bootstrap."""
     if not is_first_start():
         return
-    if try_create_initial_admin_from_env():
-        return
     logger.info(
-        "No administrator account yet. Complete initial setup at /app/setup or set "
-        "AGENT_INITIAL_ADMIN_EMAIL and AGENT_INITIAL_ADMIN_PASSWORD."
+        "No administrator account yet. Complete initial setup at /app/setup."
     )

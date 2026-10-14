@@ -159,18 +159,8 @@ def login_token(base: str, email: str, password: str) -> str:
 
 
 def creds() -> tuple[str, str] | None:
-    email = (
-        os.environ.get("AGENT_E2E_EMAIL")
-        or os.environ.get("AGENT_TEST_EMAIL")
-        or os.environ.get("AGENT_INITIAL_ADMIN_EMAIL")
-        or ""
-    ).strip()
-    password = (
-        os.environ.get("AGENT_E2E_PASSWORD")
-        or os.environ.get("AGENT_TEST_PASSWORD")
-        or os.environ.get("AGENT_INITIAL_ADMIN_PASSWORD")
-        or ""
-    ).strip()
+    email = (os.environ.get("AGENT_E2E_EMAIL") or os.environ.get("AGENT_TEST_EMAIL") or "").strip()
+    password = (os.environ.get("AGENT_E2E_PASSWORD") or os.environ.get("AGENT_TEST_PASSWORD") or "").strip()
     if email and password:
         return email, password
     return None
@@ -315,7 +305,7 @@ def run_report(base: str, *, concurrent_n: int, with_auth: bool) -> Report:
                         name="auth probes",
                         ms=0,
                         ok=True,
-                        detail="skipped (no AGENT_INITIAL_ADMIN_* in .env)",
+                        detail="skipped (no AGENT_E2E_* credentials)",
                     )
                 )
 

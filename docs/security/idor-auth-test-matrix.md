@@ -8,7 +8,7 @@ AuthZ correctness.
 
 Requires a **running** Agent Layer instance (default `http://127.0.0.1:8088`).
 
-**Config split:** `.env` = server/runtime (DB, JWT, …). **E2E credentials belong in `.env.e2e` only** (gitignored; copy from `.env.e2e.example`). Tests load `.env` first, then `.env.e2e` for keys not already set — admin login can fall back to `AGENT_INITIAL_ADMIN_*` from `.env` when `AGENT_E2E_EMAIL` is unset.
+**Config split:** `.env` = server/runtime (DB, JWT, …). **E2E credentials belong in `.env.e2e` only** (gitignored; copy from `.env.e2e.example`). Tests load `.env` first, then `.env.e2e` for keys not already set — admin login uses `AGENT_E2E_EMAIL` / `AGENT_E2E_PASSWORD`.
 
 ```bash
 cp .env.e2e.example .env.e2e

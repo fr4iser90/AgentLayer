@@ -112,7 +112,7 @@ async def server_lifespan(_app: FastAPI) -> AsyncIterator[None]:
         setup_admin_claim_if_needed()
     except Exception:
         logger.exception(
-            "First-admin bootstrap failed (DB migrations? or set AGENT_INITIAL_ADMIN_EMAIL/PASSWORD)"
+            "First-start setup check failed (DB migrations?). Complete /app/setup when ready."
         )
     cors_env = os.environ.get("AGENT_CORS_ORIGINS", "").strip()
     if cors_env == "*":

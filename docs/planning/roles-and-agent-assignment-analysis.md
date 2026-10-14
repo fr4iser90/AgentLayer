@@ -95,7 +95,7 @@ und im Bridge-Pfad (`apps/backend/infrastructure/integrations/bridge_agent_sessi
   „Coder *und* Dashboard-Editor" ist heute nicht darstellbar.
 - **B7 — Kein `roles`-/`user_roles`-Table, kein `is_superadmin`, keine `ADMIN_EMAILS`, kein Self-Signup,
   keine Invites.** Accounts legt ausschließlich der Admin an (`POST /v1/admin/users`). Erster Admin:
-  `AGENT_INITIAL_ADMIN_EMAIL`/`AGENT_INITIAL_ADMIN_PASSWORD` oder Setup-Wizard.
+  Setup-Wizard (`/app/setup`).
 - **B8 — `deployment_mode` ist nach dem Bootstrap nur über den Operator-Settings-Patch änderbar**
   (`operator_settings_patch_writer.py`); der Setup-Endpoint wirft 409, sobald ein Admin existiert
   (`apps/backend/domain/setup/instance.py`). Vor dem Wechsel auf `agent_system` prüfen, ob Org-/

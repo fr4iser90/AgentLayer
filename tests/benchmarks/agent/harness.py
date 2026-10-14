@@ -142,18 +142,16 @@ def bench_credentials() -> tuple[str, str]:
     email = (
         os.environ.get("AGENT_BENCH_EMAIL")
         or os.environ.get("AGENT_E2E_EMAIL")
-        or os.environ.get("AGENT_INITIAL_ADMIN_EMAIL")
         or ""
     ).strip()
     password = (
         os.environ.get("AGENT_BENCH_PASSWORD")
         or os.environ.get("AGENT_E2E_PASSWORD")
-        or os.environ.get("AGENT_INITIAL_ADMIN_PASSWORD")
         or ""
     ).strip()
     if not email or not password:
         raise RuntimeError(
-            "Missing bench credentials (AGENT_BENCH_* or AGENT_INITIAL_ADMIN_* in .env)"
+            "Missing bench credentials (AGENT_BENCH_* or AGENT_E2E_* in .env.e2e)"
         )
     return email, password
 

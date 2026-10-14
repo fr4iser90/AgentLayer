@@ -4,6 +4,11 @@ import { useTranslation } from "react-i18next";
 import { SETUP_WIZARD_ACTIVE_KEY, useAuth } from "../auth/AuthContext";
 import type { DeploymentMode } from "../auth/deploymentMode";
 import {
+  MIN_PASSWORD_LENGTH,
+  passwordRejectionReason,
+  passwordStrengthLevel,
+} from "../auth/passwordStrength";
+import {
   DEFAULT_LLM_PRESET,
   getLlmPreset,
   LLM_PRESETS,
@@ -12,6 +17,15 @@ import {
 import { Radio } from "../ui/Radio";
 import { Select, TextInput } from "../ui/Field";
 import { Button } from "../ui/Button";
+
+const PASSWORD_RULE_KEYS = {
+  atLeast: "setup:passwordRuleAtLeast",
+  lower: "setup:passwordRuleLower",
+  upper: "setup:passwordRuleUpper",
+  digit: "setup:passwordRuleDigit",
+  symbol: "setup:passwordRuleSymbol",
+  sequence: "setup:passwordRuleSequence",
+} as const;
 
 type SetupCatalogProvider = {
   provider_id: string;
@@ -226,6 +240,17 @@ export function SetupWizardPage() {
     e.preventDefault();
     setAdminPending(true);
     setAdminError(null);
+    const rejectKey = passwordRejectionReason(password);
+    if (rejectKey) {
+      setAdminPending(false);
+      setAdminError(t(PASSWORD_RULE_KEYS[rejectKey]));
+      return;
+    }
+    if (password !== passwordConfirm) {
+      setAdminPending(false);
+      setAdminError(t("setup:passwordMismatch"));
+      return;
+    }
     const result = await completeSetup(email.trim(), password, passwordConfirm, setupToken);
     setAdminPending(false);
     if (!result.ok) {
@@ -482,6 +507,11 @@ export function SetupWizardPage() {
                     onChange={(ev) => setSetupToken(ev.target.value)}
                     required
                   />
+                  <p className="text-xs text-ink-muted">
+                    {setupStatus.setup_token_source === "env"
+                      ? t("setup:setupTokenEnv")
+                      : t("setup:setupTokenLog")}
+                  </p>
                 </label>
               ) : null}
               <fieldset className="space-y-soft">
@@ -548,24 +578,6 @@ export function SetupWizardPage() {
             <h1 className="mt-base text-2xl font-semibold text-ink-primary">{t("setup:step1Title")}</h1>
             <p className="mt-base text-sm text-ink-muted">{t("setup:step1Intro")}</p>
             <form onSubmit={onAdminSubmit} className="mt-deep flex flex-col gap-wide">
-              {setupStatus?.setup_token_required ? (
-                <label className="flex flex-col gap-snug text-sm">
-                  <span className="text-ink-muted">{t("setup:setupToken")}</span>
-                  <TextInput
-                    type="password"
-                    name="setup_token"
-                    autoComplete="off"
-                    value={setupToken}
-                    onChange={(ev) => setSetupToken(ev.target.value)}
-                    required
-                  />
-                  <p className="text-xs text-ink-muted">
-                    {setupStatus.setup_token_source === "env"
-                      ? t("setup:setupTokenEnv")
-                      : t("setup:setupTokenLog")}
-                  </p>
-                </label>
-              ) : null}
               <label className="flex flex-col gap-snug text-sm">
                 <span className="text-ink-muted">{t("setup:email")}</span>
                 <TextInput
@@ -586,8 +598,44 @@ export function SetupWizardPage() {
                   value={password}
                   onChange={(ev) => setPassword(ev.target.value)}
                   required
-                  minLength={8}
+                  minLength={MIN_PASSWORD_LENGTH}
                 />
+                {(() => {
+                  const level = passwordStrengthLevel(password);
+                  const reject = passwordRejectionReason(password);
+                  if (!password) return null;
+                  const tone =
+                    level <= 1 ? "bg-danger" : level === 2 ? "bg-warning" : "bg-success";
+                  const label =
+                    level <= 1
+                      ? t("setup:passwordStrengthWeak")
+                      : level === 2
+                        ? t("setup:passwordStrengthOk")
+                        : t("setup:passwordStrengthStrong");
+                  return (
+                    <div className="mt-snug space-y-tight" aria-live="polite">
+                      <div
+                        className="flex gap-tight"
+                        role="meter"
+                        aria-valuemin={0}
+                        aria-valuemax={3}
+                        aria-valuenow={level}
+                        aria-label={label}
+                      >
+                        {[1, 2, 3].map((n) => (
+                          <span
+                            key={n}
+                            className={`h-1.5 flex-1 rounded-pill ${level >= n ? tone : "bg-line"}`}
+                          />
+                        ))}
+                      </div>
+                      <p className="text-xs text-ink-muted">
+                        {label}
+                        {reject ? ` — ${t(PASSWORD_RULE_KEYS[reject])}` : null}
+                      </p>
+                    </div>
+                  );
+                })()}
               </label>
               <label className="flex flex-col gap-snug text-sm">
                 <span className="text-ink-muted">{t("setup:passwordConfirm")}</span>
@@ -598,8 +646,25 @@ export function SetupWizardPage() {
                   value={passwordConfirm}
                   onChange={(ev) => setPasswordConfirm(ev.target.value)}
                   required
-                  minLength={8}
+                  minLength={MIN_PASSWORD_LENGTH}
+                  aria-invalid={
+                    passwordConfirm.length > 0 && passwordConfirm !== password
+                      ? true
+                      : undefined
+                  }
                 />
+                {passwordConfirm ? (
+                  <p
+                    className={`text-xs ${
+                      passwordConfirm === password ? "text-success" : "text-danger"
+                    }`}
+                    aria-live="polite"
+                  >
+                    {passwordConfirm === password
+                      ? t("setup:passwordMatch")
+                      : t("setup:passwordMismatch")}
+                  </p>
+                ) : null}
               </label>
               <p className="text-xs text-ink-muted">
                 {t("setup:passwordHint")}
@@ -613,7 +678,11 @@ export function SetupWizardPage() {
                 variant="primary"
                 size="lg"
                 type="submit"
-                disabled={adminPending}
+                disabled={
+                  adminPending ||
+                  passwordStrengthLevel(password) < 2 ||
+                  password !== passwordConfirm
+                }
                 className="px-wide py-firm text-sm"
               >
                 {adminPending ? t("setup:adminPending") : t("setup:continueBtn")}

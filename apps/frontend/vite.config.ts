@@ -1,11 +1,9 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// The backend port differs by how it is run: 8080 when uvicorn runs directly,
-// 8088 when it is reached through the docker port mapping. Overridable so
-// `vite preview` can be pointed at a running stack for pixel verification
-// without changing the default anyone else depends on.
-const API = process.env.AGENT_API_TARGET || "http://127.0.0.1:8080";
+// Default = docker compose host port (compose maps AGENT_HTTP_PORT→container :8080).
+// Uvicorn on the host: AGENT_API_TARGET=http://127.0.0.1:8080 npm run dev
+const API = process.env.AGENT_API_TARGET || "http://127.0.0.1:8088";
 const apiProxy = {
   "/auth": { target: API, changeOrigin: true },
   "/v1": { target: API, changeOrigin: true },

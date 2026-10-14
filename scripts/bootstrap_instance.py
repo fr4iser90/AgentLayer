@@ -7,7 +7,7 @@ Why this exists: on a wiped database the path from "container running" to
   * The deployment mode can only be chosen through the setup endpoint while
     no admin exists. `apply_setup_deployment_mode` raises 409 afterwards
     (`apps/backend/domain/setup/instance.py`), so a box that bootstrapped
-    its admin from `AGENT_INITIAL_ADMIN_*` has already missed that window
+    its admin outside the setup window has already missed mode choice
     and must set the mode as an admin instead.
   * `needs_provider_wizard` stays true until a DB endpoint carries a
     `model_default`. While it is true, a non-admin is redirected to
@@ -146,8 +146,8 @@ def main() -> int:
         f"deployment_mode={setup.get('deployment_mode')}"
     )
 
-    admin_email = os.environ.get("AGENT_INITIAL_ADMIN_EMAIL") or os.environ.get("AGENT_E2E_EMAIL") or ""
-    admin_password = os.environ.get("AGENT_INITIAL_ADMIN_PASSWORD") or os.environ.get("AGENT_E2E_PASSWORD") or ""
+    admin_email = os.environ.get("AGENT_E2E_EMAIL") or os.environ.get("AGENT_BOOTSTRAP_EMAIL") or ""
+    admin_password = os.environ.get("AGENT_E2E_PASSWORD") or os.environ.get("AGENT_BOOTSTRAP_PASSWORD") or ""
 
     # ── First-start path: mode must be chosen before any admin exists ──
     if setup.get("needs_admin"):
