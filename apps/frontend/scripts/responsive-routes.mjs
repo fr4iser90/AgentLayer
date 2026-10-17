@@ -171,6 +171,20 @@ function componentToBaselineFile(component, baselineKeys) {
 }
 
 /**
+ * Matches AppLayout fillScroll: only workspace routes lock the viewport.
+ * Path may be `/app/chat` or `/chat`.
+ * @param {string} route
+ * @returns {"fill" | "page"}
+ */
+export function expectedScrollMode(route) {
+  const p = route.replace(/^\/app(?=\/|$)/, "") || "/";
+  const fill = ["/chat", "/dashboard", "/projects", "/studio"].some(
+    (x) => p === x || p.startsWith(`${x}/`)
+  );
+  return fill ? "fill" : "page";
+}
+
+/**
  * @param {{ includeUnauth?: boolean }} [opts]
  */
 export function loadResponsiveRoutes(opts = {}) {
@@ -184,7 +198,7 @@ export function loadResponsiveRoutes(opts = {}) {
   }
   const baselineKeys = Object.keys(baseline);
 
-  /** @type {Map<string, { route: string, shell: string|null, file: string|null, component: string|null }>} */
+  /** @type {Map<string, { route: string, shell: string|null, file: string|null, component: string|null, scroll: "fill"|"page" }>} */
   const byRoute = new Map();
 
   for (const row of parseAppRoutes(appSrc)) {
@@ -195,11 +209,25 @@ export function loadResponsiveRoutes(opts = {}) {
 
     const file = row.component ? componentToBaselineFile(row.component, baselineKeys) : null;
     const shell = file && baseline[file] ? String(baseline[file]) : null;
-    byRoute.set(route, { route, shell, file, component: row.component });
+    byRoute.set(route, {
+      route,
+      shell,
+      file,
+      component: row.component,
+      scroll: expectedScrollMode(route),
+    });
   }
 
   for (const route of EXTRA_ROUTES) {
-    if (!byRoute.has(route)) byRoute.set(route, { route, shell: null, file: null, component: null });
+    if (!byRoute.has(route)) {
+      byRoute.set(route, {
+        route,
+        shell: null,
+        file: null,
+        component: null,
+        scroll: expectedScrollMode(route),
+      });
+    }
   }
 
   return [...byRoute.values()].sort((a, b) => a.route.localeCompare(b.route));

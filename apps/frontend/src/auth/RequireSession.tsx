@@ -26,7 +26,14 @@ export function RequireSession() {
 
   return (
     <AgentChatSessionProvider>
-      <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
+      {/*
+        Do not put overflow-hidden / h-full here. AppShell chooses scroll mode:
+        - page (settings/admin/org): main is overflow-y-auto; this wrapper must
+          grow with content so main can scroll.
+        - fill (chat/app): AppShell applies [&>*]:h-full on main's child.
+        A hard overflow-hidden here clipped every tall settings page.
+      */}
+      <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
         <Outlet />
       </div>
     </AgentChatSessionProvider>

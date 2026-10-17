@@ -108,6 +108,8 @@ from apps.backend.infrastructure.db.identity_messaging import (
     user_id_for_telegram_user_id,
     user_id_tenant_for_discord_global,
     user_id_tenant_for_telegram_global,
+    user_telegram_user_id_get,
+    user_telegram_user_id_set,
 )
 
 

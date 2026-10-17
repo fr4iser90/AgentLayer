@@ -23,7 +23,7 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadResponsiveRoutes } from "./responsive-routes.mjs";
+import { expectedScrollMode, loadResponsiveRoutes } from "./responsive-routes.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FRONTEND = join(__dirname, "..");
@@ -152,13 +152,14 @@ async function login(page, base, email, password, shotDir) {
 }
 
 /**
- * Metric probe in-page: overflow + collapsed PageShell (too-narrow column).
- * Horizontal scroll alone misses the classic bug: max-w-page resolving to a
- * spacing token (40px) so content bricks into a character strip.
+ * Metric probe: overflow, shell width, and scroll contract (page vs fill).
+ * @param {import('playwright').Page} page
+ * @param {"fill"|"page"} scrollMode
  */
-async function measureOverflow(page) {
-  return page.evaluate(() => {
+async function measureOverflow(page, scrollMode) {
+  return page.evaluate((expectedScroll) => {
     const findings = [];
+    const soft = [];
     const doc = document.documentElement;
     const body = document.body;
     const pageOver = Math.max(
@@ -170,13 +171,10 @@ async function measureOverflow(page) {
     }
 
     // PageShell columns: max-w-page* must resolve to rem reading widths, not spacing.
-    // shell_token catches theme collisions (max-w-page → 40px). shell_narrow catches
-    // a collapsed strip; nested empty-state shells can be legitimately narrower, so
-    // only fail when the box is pathologically small.
     const TOKEN_MIN_PX = {
-      "max-w-pageNarrow": 700, // 48rem ≈ 768
-      "max-w-page": 800, // 56rem ≈ 896
-      "max-w-pageWide": 1000, // 72rem ≈ 1152
+      "max-w-pageNarrow": 700,
+      "max-w-page": 800,
+      "max-w-pageWide": 1000,
       "max-w-measure": 600,
       "max-w-dialog": 400,
     };
@@ -205,13 +203,109 @@ async function measureOverflow(page) {
           detail: `${token} computed max-width=${maxW} (token collision / wrong theme)`,
         });
       }
-      // Collapsed strip: ≤120px or <12% of main (the old bug was ~48px).
       if (boxW > 0 && (boxW <= 120 || boxW < mainW * 0.12)) {
         findings.push({
           kind: "shell_narrow",
           over: Math.round(Math.max(120, mainW * 0.12) - boxW),
           detail: `${token} box=${Math.round(boxW)}px main=${Math.round(mainW)}px (collapsed column)`,
         });
+      }
+    }
+
+    // Scroll contract — must match AppLayout fillScroll / page.
+    if (main) {
+      const mainCs = getComputedStyle(main);
+      const mainOY = mainCs.overflowY;
+      const mainIsPagePort = mainOY === "auto" || mainOY === "scroll";
+      const mainIsFill = mainOY === "hidden" || mainOY === "clip";
+
+      if (expectedScroll === "page" && !mainIsPagePort) {
+        findings.push({
+          kind: "scroll_mode",
+          over: 0,
+          detail: `expected page scroll (main overflow-y:auto); got overflow-y=${mainOY}`,
+        });
+      }
+      if (expectedScroll === "fill" && !mainIsFill) {
+        findings.push({
+          kind: "scroll_mode",
+          over: 0,
+          detail: `expected fill (main overflow-y:hidden); got overflow-y=${mainOY}`,
+        });
+      }
+
+      const shells = [...main.querySelectorAll("div")].filter((el) => {
+        const c = (el.className || "").toString();
+        return /\bmx-auto\b/.test(c) && /\bmax-w-(?:page|measure|dialog)/.test(c);
+      });
+      const contentRoot =
+        shells.sort((a, b) => b.scrollHeight - a.scrollHeight)[0] ||
+        main.firstElementChild;
+
+      function findScrollport(from, stopAt) {
+        let el = from;
+        while (el) {
+          const cs = getComputedStyle(el);
+          if (
+            (cs.overflowY === "auto" || cs.overflowY === "scroll") &&
+            el.scrollHeight > el.clientHeight + 2
+          ) {
+            return el;
+          }
+          if (el === stopAt) break;
+          el = el.parentElement;
+        }
+        return null;
+      }
+
+      // Also count absolute bottom of content vs main (h-full children can
+      // report scrollHeight == clientHeight while painting past the clip).
+      let tallNeed = 0;
+      if (contentRoot) {
+        tallNeed = Math.max(
+          contentRoot.scrollHeight - main.clientHeight,
+          contentRoot.getBoundingClientRect().height - main.clientHeight
+        );
+      }
+      // Descendant that sticks past main's bottom
+      let pastBottom = 0;
+      for (const el of main.querySelectorAll("h1, p, section, article, table, ul, pre")) {
+        const bottom = el.getBoundingClientRect().bottom;
+        const over = bottom - main.getBoundingClientRect().bottom;
+        if (over > pastBottom) pastBottom = over;
+        if (pastBottom > 200) break;
+      }
+      const need = Math.max(tallNeed, pastBottom);
+
+      if (need > 48) {
+        if (expectedScroll === "page") {
+          if (!(main.scrollHeight > main.clientHeight + 2 && mainIsPagePort)) {
+            findings.push({
+              kind: "scroll_trap",
+              over: Math.round(need),
+              detail: `page mode: content exceeds main by ${Math.round(need)}px but main does not scroll (overflow-y=${mainOY}, sh=${main.scrollHeight})`,
+            });
+          }
+        } else {
+          // fill: walk from deepest overflowing node up for an inner port
+          let port = contentRoot ? findScrollport(contentRoot, main) : null;
+          if (!port || port === main) {
+            for (const el of main.querySelectorAll("*")) {
+              const over = el.getBoundingClientRect().bottom - main.getBoundingClientRect().bottom;
+              if (over <= 48) continue;
+              port = findScrollport(el, main);
+              if (port && port !== main) break;
+              port = null;
+            }
+          }
+          if (!port || port === main) {
+            findings.push({
+              kind: "scroll_trap",
+              over: Math.round(need),
+              detail: `fill mode: content exceeds main by ${Math.round(need)}px; no inner scrollport`,
+            });
+          }
+        }
       }
     }
 
@@ -257,12 +351,8 @@ async function measureOverflow(page) {
       }
     }
 
-    // Soft: vertical hidden clips (reported, not hard-fail in v1)
-    const soft = [];
-    // console noise collected outside
-
     return { findings, soft };
-  });
+  }, scrollMode);
 }
 
 async function main() {
@@ -359,7 +449,12 @@ async function main() {
       try {
         await page.goto(base + route, { waitUntil: "domcontentloaded", timeout: 45_000 });
         await page.waitForTimeout(900);
-        const measured = await measureOverflow(page);
+        // After redirects (e.g. /app/ → /chat), classify by the URL we landed on.
+        const landed = new URL(page.url()).pathname.replace(/\/$/, "") || "/";
+        const scrollMode = expectedScrollMode(
+          landed.startsWith("/app") ? landed : `/app${landed === "/" ? "/" : landed}`
+        );
+        const measured = await measureOverflow(page, scrollMode);
         const hard = [];
         for (const f of measured.findings || []) {
           const key = allowKey(route, vp.id, f.kind);

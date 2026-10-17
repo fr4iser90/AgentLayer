@@ -30,9 +30,23 @@ export function ProfileSettings() {
     setErr(null);
     try {
       const res = await apiFetch("/auth/me", auth);
-      const data = (await res.json()) as MeResponse;
-      if (!res.ok) {
-        setErr(typeof data.detail === "string" ? data.detail : t("settings:profileLoadFailed"));
+      const raw = await res.text();
+      let data: MeResponse | null = null;
+      try {
+        data = raw ? (JSON.parse(raw) as MeResponse) : null;
+      } catch {
+        setErr(
+          res.ok
+            ? t("settings:profileLoadFailed")
+            : `${t("settings:profileLoadFailed")} (HTTP ${res.status})`
+        );
+        setMe(null);
+        return;
+      }
+      if (!res.ok || !data) {
+        setErr(
+          typeof data?.detail === "string" ? data.detail : t("settings:profileLoadFailed")
+        );
         setMe(null);
         return;
       }

@@ -67,7 +67,21 @@ Written under `output/responsive/<stamp>/` (gitignored):
 | `chrome_x` | header / sticky bar wider than its box |
 | `shell_token` | `max-w-page*` computed width is wrong (e.g. spacing key collision → 40px) |
 | `shell_narrow` | PageShell column collapsed far below its density |
+| `scroll_trap` | content taller than `main`, but no ancestor is scrollable (`overflow:hidden` clip) |
 | `text_h` | nowrap text clipped (soft in v1 — reported, not fail) |
+
+### Who should scroll?
+
+Decided in `AppLayout` → `AppShell` `scroll` (probe: `expectedScrollMode`):
+
+| mode | routes | scrollport |
+|------|--------|------------|
+| **fill** | `/chat`, `/dashboard`, `/projects`, `/studio` (+ nested) | page-owned inner region; `main` is `overflow-hidden` |
+| **page** | settings, admin, org, docs, tasks, schedules, legal, … | `main` (`overflow-y-auto`) |
+
+Probe kinds: `scroll_mode` (DOM ≠ expected), `scroll_trap` (content taller than viewport, nothing scrolls).
+
+Do **not** wrap `Outlet` in `h-full overflow-hidden` under page-scroll surfaces — that clips tall settings pages.
 
 Fix the layout (flex `min-w-0`, wrap, smaller grids, correct `max-w-page*`), then re-run.
 

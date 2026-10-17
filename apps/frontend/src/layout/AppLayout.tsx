@@ -62,11 +62,20 @@ export function AppLayout() {
     </>
   );
 
+  // Fill = locked viewport; the page owns inner scroll (chat thread, dashboard
+  // canvas, project panes, studio). Everything else — settings/admin/org and
+  // document/list app pages (docs, tasks, schedules, …) — uses page scroll on main.
+  const fillScroll =
+    surface.id === "app" &&
+    ["/chat", "/dashboard", "/projects", "/studio"].some(
+      (p) => location.pathname === p || location.pathname.startsWith(`${p}/`)
+    );
+
   const shell = (
     <AppShell
       surface={surface}
       signedIn={signedIn && !loading}
-      scroll={surface.id === "app" ? "fill" : "page"}
+      scroll={fillScroll ? "fill" : "page"}
       runningBadge={surface.id === "app"}
       footer={footer}
       signIn={

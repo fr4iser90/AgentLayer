@@ -284,7 +284,9 @@ const ADMIN_SECTIONS: NavSection[] = [
   }
 ];
 
-const BACK_TO_APP: NavLeaf = { to: "/", labelKey: "nav.backToApp", icon: Home, end: true };
+// common: prefix — settings/admin/org surfaces use another default ns; bare
+// "nav.backToApp" would render the raw key there.
+const BACK_TO_APP: NavLeaf = { to: "/", labelKey: "common:nav.backToApp", icon: Home, end: true };
 
 function withBackToApp(sections: NavSection[]): NavSection[] {
   return [...sections, { leaves: [BACK_TO_APP] }];
