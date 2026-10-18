@@ -1867,7 +1867,7 @@ export function DashboardPage() {
         onMobileOpenChange={setActionsSidebarOpen}
         sidebarAriaLabel={t("dashboard:sidebarNavAria")}
         closeSidebarAriaLabel={t("dashboard:closeActionsSidebar")}
-        desktopWidthClass="md:w-64"
+        desktopWidthClass="md:w-[280px]"
         sidebar={dashboardSidebar}
       >
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">

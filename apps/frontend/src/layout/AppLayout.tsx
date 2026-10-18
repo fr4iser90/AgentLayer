@@ -65,7 +65,8 @@ export function AppLayout() {
   // Fill = locked viewport; the page owns inner scroll (chat thread, dashboard
   // canvas, project panes, studio). Everything else — settings/admin/org and
   // document/list app pages (docs, tasks, schedules, …) — uses page scroll on main.
-  const fillScroll =
+  // Those same routes own a context sidebar → app rail goes icon-compact.
+  const contextWorkspace =
     surface.id === "app" &&
     ["/chat", "/dashboard", "/projects", "/studio"].some(
       (p) => location.pathname === p || location.pathname.startsWith(`${p}/`)
@@ -75,7 +76,8 @@ export function AppLayout() {
     <AppShell
       surface={surface}
       signedIn={signedIn && !loading}
-      scroll={fillScroll ? "fill" : "page"}
+      scroll={contextWorkspace ? "fill" : "page"}
+      contextNav={contextWorkspace}
       runningBadge={surface.id === "app"}
       footer={footer}
       signIn={

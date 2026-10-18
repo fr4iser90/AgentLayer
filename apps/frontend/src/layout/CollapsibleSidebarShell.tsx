@@ -40,6 +40,7 @@ export function CollapsibleSidebarShell({
   onMobileOpenChange,
   sidebarAriaLabel,
   closeSidebarAriaLabel,
+  /** Context column beside the app rail — ~280px keeps labels + main workable. */
   desktopWidthClass = "md:w-[280px]",
   className = "",
 }: Props) {

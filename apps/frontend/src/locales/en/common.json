@@ -26,7 +26,9 @@
     "backToApp": "Back to app",
     "openMenu": "Open menu",
     "expandGroup": "Show {{group}} pages",
-    "collapseGroup": "Hide {{group}} pages"
+    "collapseGroup": "Hide {{group}} pages",
+    "pinRail": "Keep navigation expanded",
+    "unpinRail": "Collapse navigation beside page sidebar"
   },
   "footer": {
     "docs": "Docs",

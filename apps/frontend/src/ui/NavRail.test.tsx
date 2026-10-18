@@ -56,6 +56,24 @@ function Rail({
 
 const foldButton = () => screen.getByRole("button", { name: /nav\.(expand|collapse)Group/ });
 
+describe("compact icon rail", () => {
+  it("keeps one nav and hides fold children", () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={[`${DOOR}/voice`]}>
+        <NavRail
+          surface={adminNav(null)}
+          folds={{}}
+          onFold={() => {}}
+          compact
+        />
+      </MemoryRouter>
+    );
+    expect(container.querySelectorAll("nav")).toHaveLength(1);
+    expect(screen.queryByRole("link", { name: CHILD })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "admin:interfacesTitle" })).toBeInTheDocument();
+  });
+});
+
 describe("a folded group stays one nav", () => {
   it("adds no second nav container", () => {
     const { container } = render(<Rail path={DOOR} />);

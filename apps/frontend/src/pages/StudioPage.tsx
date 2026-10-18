@@ -166,7 +166,7 @@ export function StudioPage() {
       onMobileOpenChange={setPresetSidebarOpen}
       sidebarAriaLabel={t("common:studio.presetsSidebarAria")}
       closeSidebarAriaLabel={t("common:studio.closePresetsSidebar")}
-      desktopWidthClass="md:w-56"
+      desktopWidthClass="md:w-[280px]"
       sidebar={
         <div className="flex h-full min-h-0 flex-col overflow-y-auto p-soft">
           <p className="mb-base text-xs font-semibold uppercase tracking-wide text-ink-muted">

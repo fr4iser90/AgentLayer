@@ -1,6 +1,12 @@
 /** Layout mode helpers for dashboard ``ui_layout`` (grid vs infinite canvas). */
 
-import type { DashboardCanvasViewport, DashboardLayoutMode, UiBlock, UiLayout } from "./types";
+import type {
+  DashboardCanvasViewport,
+  DashboardLayoutMode,
+  UiBlock,
+  UiLayout,
+  UiLayoutModeSnapshot,
+} from "./types";
 import { GRID_COLS } from "./gridConfig";
 
 /** World cell size for canvas rendering (maps grid units → px). */
@@ -24,17 +30,51 @@ export function parseCanvasViewport(raw: unknown): DashboardCanvasViewport | und
   return { zoom, panX, panY };
 }
 
+function cloneBlocks(blocks: UiBlock[]): UiBlock[] {
+  return JSON.parse(JSON.stringify(blocks)) as UiBlock[];
+}
+
+function parseModeSnapshot(raw: unknown): UiLayoutModeSnapshot | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const o = raw as { blocks?: unknown; canvas?: unknown };
+  if (!Array.isArray(o.blocks)) return undefined;
+  const canvas = parseCanvasViewport(o.canvas);
+  return {
+    blocks: o.blocks as UiBlock[],
+    ...(canvas ? { canvas } : {}),
+  };
+}
+
 export function parseUiLayout(raw: unknown): UiLayout | null {
   if (!raw || typeof raw !== "object") return null;
-  const o = raw as { version?: number; blocks?: unknown; mode?: unknown; canvas?: unknown };
+  const o = raw as {
+    version?: number;
+    blocks?: unknown;
+    mode?: unknown;
+    canvas?: unknown;
+    mode_layouts?: unknown;
+  };
   if (!Array.isArray(o.blocks)) return null;
   const mode = normalizeLayoutMode(o.mode);
   const canvas = parseCanvasViewport(o.canvas);
+  let mode_layouts: UiLayout["mode_layouts"];
+  if (o.mode_layouts && typeof o.mode_layouts === "object") {
+    const ml = o.mode_layouts as { grid?: unknown; canvas?: unknown };
+    const grid = parseModeSnapshot(ml.grid);
+    const canvasSnap = parseModeSnapshot(ml.canvas);
+    if (grid || canvasSnap) {
+      mode_layouts = {
+        ...(grid ? { grid } : {}),
+        ...(canvasSnap ? { canvas: canvasSnap } : {}),
+      };
+    }
+  }
   return {
     version: Number(o.version) === 2 ? 2 : 1,
     mode,
     ...(canvas ? { canvas } : {}),
     blocks: o.blocks as UiLayout["blocks"],
+    ...(mode_layouts ? { mode_layouts } : {}),
   };
 }
 
@@ -53,21 +93,72 @@ export function snapBlocksToGrid(blocks: UiBlock[]): UiBlock[] {
   });
 }
 
+function snapshotOf(layout: UiLayout): UiLayoutModeSnapshot {
+  return {
+    blocks: cloneBlocks(layout.blocks),
+    ...(layout.canvas ? { canvas: { ...layout.canvas } } : {}),
+  };
+}
+
+/**
+ * Apply a mode snapshot's positions onto the current block set (by id).
+ * Blocks that only exist now keep a derived placement for the target mode.
+ */
+function applySnapshotPositions(
+  liveBlocks: UiBlock[],
+  saved: UiLayoutModeSnapshot | undefined,
+  targetMode: DashboardLayoutMode
+): UiBlock[] {
+  const byId = new Map(
+    (saved?.blocks ?? []).map((b) => [b.id, b] as const).filter(([id]) => !!id)
+  );
+  const merged = liveBlocks.map((b) => {
+    const prev = byId.get(b.id);
+    if (prev?.grid) {
+      return { ...b, grid: { ...prev.grid } };
+    }
+    return b;
+  });
+  return targetMode === "grid" ? snapBlocksToGrid(merged) : merged;
+}
+
+/**
+ * Switch placement engine while keeping the other mode's last positions.
+ * Active ``blocks`` (identity/props) always win; only ``grid`` coords + canvas
+ * viewport are restored from ``mode_layouts``.
+ */
 export function withLayoutMode(layout: UiLayout, mode: DashboardLayoutMode): UiLayout {
+  const current = layoutModeOf(layout);
+  if (current === mode) {
+    return layout;
+  }
+
+  const mode_layouts: NonNullable<UiLayout["mode_layouts"]> = {
+    ...(layout.mode_layouts ?? {}),
+    [current]: snapshotOf(layout),
+  };
+
+  const saved = mode_layouts[mode];
+  const blocks = applySnapshotPositions(layout.blocks, saved, mode);
+
   if (mode === "canvas") {
     return {
       ...layout,
       mode: "canvas",
       version: layout.version === 2 ? 2 : 1,
-      canvas: layout.canvas ?? { zoom: 1, panX: 0, panY: 0 },
+      blocks,
+      canvas: saved?.canvas ?? layout.canvas ?? { zoom: 1, panX: 0, panY: 0 },
+      mode_layouts,
     };
   }
+
   return {
     ...layout,
     mode: "grid",
     version: layout.version === 2 ? 2 : 1,
-    blocks: snapBlocksToGrid(layout.blocks),
+    blocks,
     canvas: undefined,
+    mode_layouts,
   };
 }
 

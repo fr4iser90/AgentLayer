@@ -83,6 +83,12 @@ export interface UiBlock {
   };
 }
 
+/** Placement snapshot for one layout engine (grid or canvas). */
+export type UiLayoutModeSnapshot = {
+  blocks: UiBlock[];
+  canvas?: DashboardCanvasViewport;
+};
+
 export interface UiLayout {
   version: 1 | 2;
   /** Default ``grid``. ``canvas`` = infinite free placement (root only). */
@@ -90,6 +96,15 @@ export interface UiLayout {
   /** Optional viewport hint for canvas mode (client may also keep ephemeral pan/zoom). */
   canvas?: DashboardCanvasViewport;
   blocks: UiBlock[];
+  /**
+   * Last-known placement per mode. Switching grid ↔ canvas restores the other
+   * mode's positions instead of destroying them. Active ``blocks`` stay the
+   * source of truth for which blocks exist (add/delete).
+   */
+  mode_layouts?: {
+    grid?: UiLayoutModeSnapshot;
+    canvas?: UiLayoutModeSnapshot;
+  };
 }
 
 export interface DashboardSummary {

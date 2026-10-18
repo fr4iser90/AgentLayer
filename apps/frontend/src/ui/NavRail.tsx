@@ -1,10 +1,14 @@
+import type { ReactElement } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ChevronRight } from "lucide-react";
 import type { NavLeaf, NavSurface } from "../layout/navModel";
+import { Tooltip } from "./Tooltip";
 
 const leaf =
   "flex items-center gap-snug rounded-card border border-transparent px-base py-base text-sm transition-colors";
+const leafCompact =
+  "flex items-center justify-center rounded-card border border-transparent p-base text-sm transition-colors";
 const leafActive = "border-line bg-white/10 text-ink-primary";
 const leafIdle = "text-ink-muted hover:bg-white/5 hover:text-ink-secondary";
 const fold =
@@ -19,22 +23,21 @@ const fold =
  * mobile rail cannot drift from the desktop one, and there is exactly one drawer
  * mechanism in the app.
  *
- * The one thing that differs between the two renderings is which door the reader
- * folded, so that is the one piece of state `AppShell` holds for the rail and
- * hands back to both. A fold has no value until somebody asks for one, and the
- * default is open while the route is below the door — the list never hides the
- * page you are on by itself. A collapse the reader pressed is honoured even then,
- * because the door row above the closed group stays lit (a `NavLink` without
- * `end` matches its descendants), so where you are stays named.
+ * `compact` is the icon-only density used when a page context sidebar is open:
+ * labels move into tooltips; folded children stay hidden until the rail peeks
+ * or is pinned wide again.
  */
 export function NavRail({
   surface,
   folds,
-  onFold
+  onFold,
+  compact = false,
 }: {
   surface: NavSurface;
   folds: Record<string, boolean>;
   onFold: (to: string, open: boolean) => void;
+  /** Icon-only; section headings and fold children are omitted. */
+  compact?: boolean;
 }) {
   const { t } = useTranslation([surface.namespace, "common"]);
   const { pathname } = useLocation();
@@ -42,14 +45,14 @@ export function NavRail({
     <nav className="flex flex-col" aria-label={t(surface.ariaKey, { ns: surface.namespace })}>
       {surface.sections.map((section, i) => (
         <div key={section.labelKey ?? `ungrouped-${i}`} className="mt-wide first:mt-0">
-          {section.labelKey ? (
+          {section.labelKey && !compact ? (
             <p className="mb-tight px-base text-meta font-medium uppercase tracking-wide text-ink-muted">
               {t(section.labelKey, { ns: surface.namespace })}
             </p>
           ) : null}
           <div className="flex flex-col gap-hair">
             {section.leaves.map((item) =>
-              renderLeaf(item, t, surface.namespace, folds, onFold, pathname)
+              renderLeaf(item, t, surface.namespace, folds, onFold, pathname, compact)
             )}
           </div>
         </div>
@@ -60,34 +63,65 @@ export function NavRail({
 
 type Translate = (key: string, options: Record<string, unknown>) => string;
 
+function withOptionalTooltip(compact: boolean, label: string, node: ReactElement) {
+  if (!compact) return node;
+  return (
+    <Tooltip label={label} placement="right">
+      {node}
+    </Tooltip>
+  );
+}
+
 function renderLeaf(
   item: NavLeaf,
   t: Translate,
   ns: string,
   folds: Record<string, boolean>,
   onFold: (to: string, open: boolean) => void,
-  pathname: string
+  pathname: string,
+  compact: boolean
 ) {
   const label = t(item.labelKey, { ns });
   const Icon = item.icon;
+  const rowClass = compact ? leafCompact : leaf;
+
   const row = item.external ? (
-    <a href={item.to} target="_blank" rel="noreferrer" className={`${leaf} ${leafIdle} min-w-0`}>
-      <Icon size={16} aria-hidden className="shrink-0" />
-      <span className="truncate">{label}</span>
-    </a>
+    withOptionalTooltip(
+      compact,
+      label,
+      <a
+        href={item.to}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={compact ? label : undefined}
+        className={`${rowClass} ${leafIdle} min-w-0`}
+      >
+        <Icon size={16} aria-hidden className="shrink-0" />
+        <span className={compact ? "sr-only" : "truncate"}>{label}</span>
+      </a>
+    )
   ) : (
-    <NavLink
-      to={item.to}
-      end={item.end}
-      className={({ isActive }) => `${leaf} min-w-0 ${isActive ? leafActive : leafIdle}`}
-    >
-      <Icon size={16} aria-hidden className="shrink-0" />
-      <span className="truncate">{label}</span>
-    </NavLink>
+    withOptionalTooltip(
+      compact,
+      label,
+      <NavLink
+        to={item.to}
+        end={item.end}
+        aria-label={compact ? label : undefined}
+        className={({ isActive }) =>
+          `${rowClass} min-w-0 ${isActive ? leafActive : leafIdle}`
+        }
+      >
+        <Icon size={16} aria-hidden className="shrink-0" />
+        <span className={compact ? "sr-only" : "truncate"}>{label}</span>
+      </NavLink>
+    )
   );
 
   const pages = item.children ?? [];
-  if (!pages.length) return <div key={item.to}>{row}</div>;
+  if (!pages.length || compact) {
+    return <div key={item.to}>{row}</div>;
+  }
 
   const open = folds[item.to] ?? isBelow(pathname, item.to);
   const listId = `nav-group-${item.to.replace(/[^a-z0-9]/gi, "-")}`;
