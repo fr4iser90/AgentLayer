@@ -35,6 +35,32 @@ class TestLlmUserErrors(unittest.TestCase):
         self.assertTrue(log_exc)
         self.assertIn("unexpected", msg.lower())
 
+    def test_http_503_includes_safe_provider_hint(self) -> None:
+        req = httpx.Request("POST", "https://ai.example/v1/chat/completions")
+        resp = httpx.Response(
+            503,
+            request=req,
+            json={
+                "error": "local_temperature_above_limit",
+                "service": "gufo",
+            },
+        )
+        exc = httpx.HTTPStatusError("Server error", request=req, response=resp)
+        msg, log_exc = user_visible_llm_transport_error(exc)
+        self.assertFalse(log_exc)
+        self.assertIn("HTTP 503", msg)
+        self.assertIn("local_temperature_above_limit", msg)
+
+    def test_http_503_without_json_stays_generic(self) -> None:
+        req = httpx.Request("POST", "https://ai.example/v1/chat/completions")
+        resp = httpx.Response(503, request=req, text="upstream blew up with secrets sk-abc123xyz")
+        exc = httpx.HTTPStatusError("Server error", request=req, response=resp)
+        msg, log_exc = user_visible_llm_transport_error(exc)
+        self.assertFalse(log_exc)
+        self.assertIn("HTTP 503", msg)
+        self.assertNotIn("sk-abc", msg)
+        self.assertNotIn("blew up", msg)
+
 
 if __name__ == "__main__":
     unittest.main()

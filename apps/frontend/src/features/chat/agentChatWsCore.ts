@@ -452,7 +452,7 @@ export function handleAgentWsMessage(msg: Record<string, unknown>, ctx: HandlerC
     return;
   }
 
-  if (typ === "agent.aborted" || typ === "agent.cancelled") {
+  if (typ === "agent.aborted" || typ === "agent.cancelled" || typ === "agent.interrupted") {
     appendAgentLine(liveTurn, typ, String(msg.detail ?? ""));
     turn.reject(new Error(typeof msg.detail === "string" ? msg.detail : "Agent cancelled"));
     return;

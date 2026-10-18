@@ -91,6 +91,7 @@
   "cancelledOrFailed": "Abgebrochen oder fehlgeschlagen",
   "turnCancelled": "Abgebrochen.",
   "turnCancelledBadge": "Abgebrochen",
+  "turnInterrupted": "Unterbrochen.",
   "replyModeTitle": "Agent: Tools + Multi-Round WebSocket. Chat: eine gestreamte Assistant-Message (HTTP).",
   "replyModeLabel": "Antwortmodus",
   "replyModeAgent": "Agent (Tools, WebSocket)",

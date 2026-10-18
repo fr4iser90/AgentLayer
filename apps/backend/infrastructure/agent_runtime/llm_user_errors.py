@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+import json
+import re
+
 import httpx
+
+_SAFE_HINT_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}$")
 
 
 def _request_url_from_exc(exc: BaseException) -> str:
@@ -21,6 +26,53 @@ def _request_url_from_exc(exc: BaseException) -> str:
         return str(u)
     except Exception:
         return ""
+
+
+def _safe_provider_error_hint(response: httpx.Response) -> str:
+    """
+    Extract a short, client-safe machine reason from a provider error body.
+
+    Prefer JSON ``error`` (string or ``error.code`` / ``error.message``) when it looks
+    like a stable code (e.g. ``local_temperature_above_limit``). Never forward raw bodies.
+    """
+    try:
+        raw = (response.text or "").strip()
+    except Exception:
+        return ""
+    if not raw:
+        return ""
+    obj: object | None
+    try:
+        obj = response.json()
+    except Exception:
+        try:
+            obj = json.loads(raw)
+        except Exception:
+            obj = None
+    if not isinstance(obj, dict):
+        return ""
+    err = obj.get("error")
+    candidates: list[str] = []
+    if isinstance(err, str):
+        candidates.append(err.strip())
+    elif isinstance(err, dict):
+        for key in ("code", "type", "error", "message"):
+            val = err.get(key)
+            if isinstance(val, str) and val.strip():
+                candidates.append(val.strip())
+                break
+    for key in ("code", "detail"):
+        val = obj.get(key)
+        if isinstance(val, str) and val.strip():
+            candidates.append(val.strip())
+    for cand in candidates:
+        # Prefer snake/machine codes; allow short human tokens without spaces.
+        token = cand.split(":", 1)[0].strip()
+        if " " in token:
+            token = token.replace(" ", "_")
+        if _SAFE_HINT_RE.match(token):
+            return token
+    return ""
 
 
 def user_visible_llm_transport_error(exc: BaseException) -> tuple[str, bool]:
@@ -66,6 +118,13 @@ def user_visible_llm_transport_error(exc: BaseException) -> tuple[str, bool]:
         return (" ".join(parts), False)
     if isinstance(exc, httpx.HTTPStatusError):
         code = exc.response.status_code
+        hint = _safe_provider_error_hint(exc.response)
+        if hint:
+            return (
+                f"Language model server returned HTTP {code} ({hint}). "
+                "Inspect logs on the LLM host or proxy.",
+                False,
+            )
         return (
             f"Language model server returned HTTP {code}. Inspect logs on the LLM host or proxy.",
             False,

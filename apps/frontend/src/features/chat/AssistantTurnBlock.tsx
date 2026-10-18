@@ -75,8 +75,13 @@ type Props = {
   waitHint?: string | null;
 };
 
-function timelineTurnCancelled(entries: AgentTimelineEntry[]): boolean {
-  return entries.some((e) => e.kind === "agent.cancelled" || e.kind === "agent.aborted");
+function timelineInterruptEntry(entries: AgentTimelineEntry[]): AgentTimelineEntry | undefined {
+  return entries.find(
+    (e) =>
+      e.kind === "agent.interrupted" ||
+      e.kind === "agent.cancelled" ||
+      e.kind === "agent.aborted"
+  );
 }
 
 const InterleavedStreamBody = memo(function InterleavedStreamBody({
@@ -170,7 +175,8 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
       s.type === "secret_prompt" ||
       s.type === "context_inject_group"
   );
-  const turnCancelled = timelineTurnCancelled(timelineEntries);
+  const interruptEntry = timelineInterruptEntry(timelineEntries);
+  const turnCancelled = Boolean(interruptEntry);
 
   const hasReasoning = Boolean(reasoningContent && reasoningContent.trim());
   const mascotState = agentTurnState({
@@ -178,6 +184,10 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
     hasReasoning,
     cancelled: turnCancelled,
   });
+  const interruptBadge =
+    interruptEntry?.kind === "agent.interrupted" && interruptEntry.text.trim()
+      ? interruptEntry.text.trim()
+      : t("chat:turnCancelledBadge");
 
   const timeLabel =
     createdAt != null
@@ -222,7 +232,7 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
         {turnCancelled && !running ? (
           <div className="mt-soft flex justify-start">
             <Badge tone="warning" className="uppercase tracking-wide">
-              {t("chat:turnCancelledBadge")}
+              {interruptBadge}
             </Badge>
           </div>
         ) : null}

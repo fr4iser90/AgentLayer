@@ -56,6 +56,11 @@ import { deferredWaitMessage, llmSlotWaitMessage } from "../features/chat/agentC
 import {
   persistDetachedAgentCompletion,
 } from "../features/chat/detachedTurnPersist";
+import {
+  formatInterruptedBadgeLabel,
+  isInterruptTimelineKind,
+  threadWithInterruptedTurn,
+} from "../features/chat/interruptedTurn";
 import { indexActivityToTimeline, type IndexActivityEvent } from "../features/chat/indexActivity";
 import { compactionEventToTimeline } from "../features/chat/compactionActivity";
 import { appendContextInjectionsFromSession } from "../features/chat/contextInjectionTimeline";
@@ -304,7 +309,10 @@ function assistantReasoningFromCompletion(data: unknown): string {
 }
 
 function chatMessageHasVisibleContent(m: UiMessage): boolean {
-  return (m.content ?? "").trim().length > 0;
+  return (
+    (m.content ?? "").trim().length > 0 ||
+    (m.reasoningContent ?? "").trim().length > 0
+  );
 }
 
 type QueuedComposerMessage = {
@@ -358,11 +366,16 @@ function assistantMessage(
   return msg;
 }
 
-function stripTrailingEmptyAssistantMessages(msgs: UiMessage[]): UiMessage[] {
+function stripTrailingEmptyAssistantMessages(
+  msgs: UiMessage[],
+  agentLog?: AgentTimelineEntry[]
+): UiMessage[] {
+  const keepInterruptedStub = (agentLog ?? []).some((e) => isInterruptTimelineKind(e.kind));
   let out = [...msgs];
   while (out.length > 0) {
     const last = out[out.length - 1]!;
     if (last.role === "assistant" && !chatMessageHasVisibleContent(last)) {
+      if (keepInterruptedStub) break;
       out = out.slice(0, -1);
     } else break;
   }
@@ -2154,7 +2167,7 @@ export function ChatPage() {
         setThreads((prev) =>
           prev.map((th) => {
             if (th.id !== id) return th;
-            const messages = stripTrailingEmptyAssistantMessages(th.messages);
+            const messages = stripTrailingEmptyAssistantMessages(th.messages, th.agentLog);
             if (messages.length === th.messages.length) return th;
             return {
               ...th,
@@ -2171,6 +2184,37 @@ export function ChatPage() {
     armSlowHint(20_000, "chat:slowHintRunning");
     armSlowHint(60_000, "chat:slowHintLong");
 
+    const sealInFlightAsInterrupted = (detail: string) => {
+      const snapshot = inFlightTurnRef.current;
+      if (!snapshot || snapshot.threadId !== activeThreadIdRef.current) return;
+      const tid = snapshot.threadId;
+      const live = agentLiveTurnRef.current;
+      const streamText = live.getStreamText().trim();
+      const streamReasoning = live.getStreamReasoningText().trim();
+      const logBase = live.isActive()
+        ? live.takeAgentLogSnapshot()
+        : (threadsRef.current.find((x) => x.id === tid)?.agentLog ?? []);
+      const markerText = formatInterruptedBadgeLabel(detail);
+      setThreads((prev) => {
+        const next = prev.map((th) => {
+          if (th.id !== tid) return th;
+          const updated = threadWithInterruptedTurn(th, {
+            streamText,
+            streamReasoning,
+            logBase,
+            kind: "agent.interrupted",
+            markerText,
+          });
+          void putConversation(authRef.current, updated).catch(() => {});
+          return updated;
+        });
+        threadsRef.current = next;
+        return next;
+      });
+      inFlightTurnRef.current = null;
+      live.resetAfterCommit();
+    };
+
     agentHandlerRef.current = (ev: MessageEvent) => {
       try {
         const msg = JSON.parse(String(ev.data)) as Record<string, unknown>;
@@ -2178,7 +2222,10 @@ export function ChatPage() {
         if (typ === "pong") return;
         if (typ === "error") {
           if (finished) return;
-          setError(typeof msg.detail === "string" ? msg.detail : t("errors:agentError"));
+          const detail =
+            typeof msg.detail === "string" ? msg.detail : t("errors:agentError");
+          setError(detail);
+          sealInFlightAsInterrupted(detail);
           finish();
           return;
         }
@@ -2191,7 +2238,11 @@ export function ChatPage() {
             if (cancelEcho || finished) {
               return;
             }
-            setError(detail || t("chat:cancelledOrFailed"));
+            const errDetail = detail || t("chat:cancelledOrFailed");
+            setError(errDetail);
+            if (!/cancel|abort/i.test(detail || "")) {
+              sealInFlightAsInterrupted(errDetail);
+            }
             finish();
             return;
           }
@@ -2752,7 +2803,9 @@ export function ChatPage() {
         }
         appendAgentLine(String(typ ?? "event"), JSON.stringify(msg).slice(0, 300));
       } catch {
-        setError(t("chat:invalidWebsocketMessage"));
+        const detail = t("chat:invalidWebsocketMessage");
+        setError(detail);
+        sealInFlightAsInterrupted(detail);
         finish();
       }
     };
@@ -2943,37 +2996,16 @@ export function ChatPage() {
       const logBase = live.isActive()
         ? live.takeAgentLogSnapshot()
         : (threadsRef.current.find((x) => x.id === tid)?.agentLog ?? []);
-      const cancelledLog = appendTimelineEntry(logBase, {
-        kind: "agent.cancelled",
-        text: t("chat:turnCancelled"),
-      });
       setThreads((prev) => {
         const next = prev.map((th) => {
           if (th.id !== tid) return th;
-          let messages = stripTrailingEmptyAssistantMessages(th.messages);
-          const last = messages[messages.length - 1];
-          if (last?.role === "assistant") {
-            const merged = streamText
-              ? {
-                  ...last,
-                  content: streamText,
-                  ...(streamReasoning ? { reasoningContent: streamReasoning } : {}),
-                }
-              : last;
-            messages = [...messages.slice(0, -1), merged];
-          } else {
-            messages = [
-              ...messages,
-              assistantMessage(streamText, undefined, streamReasoning || undefined),
-            ];
-          }
-          const updated: ChatThread = {
-            ...th,
-            messages,
-            agentLog: cancelledLog,
-            messageCount: messages.length,
-            updatedAt: Date.now(),
-          };
+          const updated = threadWithInterruptedTurn(th, {
+            streamText,
+            streamReasoning,
+            logBase,
+            kind: "agent.cancelled",
+            markerText: t("chat:turnCancelled"),
+          });
           void putConversation(authRef.current, updated).catch(() => {});
           return updated;
         });
@@ -3902,8 +3934,8 @@ export function ChatPage() {
                       s.type === "secret_prompt" ||
                       s.type === "context_inject_group"
                   );
-                  const turnCancelled = timelineEntries.some(
-                    (e) => e.kind === "agent.cancelled" || e.kind === "agent.aborted"
+                  const turnCancelled = timelineEntries.some((e) =>
+                    isInterruptTimelineKind(e.kind)
                   );
                   if (!hasStreamBody && !inFlight && !turnCancelled) return null;
                   const prevUser =

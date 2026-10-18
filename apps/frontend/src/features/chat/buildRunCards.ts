@@ -346,7 +346,11 @@ export function buildRunCardsFromTimeline(entries: AgentTimelineEntry[]): RunCar
       continue;
     }
 
-    if (e.kind === "agent.cancelled" || e.kind === "agent.aborted") {
+    if (
+      e.kind === "agent.cancelled" ||
+      e.kind === "agent.aborted" ||
+      e.kind === "agent.interrupted"
+    ) {
       for (const card of cards) {
         if (card.status === "running") {
           card.status = "cancelled";

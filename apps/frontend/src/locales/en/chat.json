@@ -91,6 +91,7 @@
   "cancelledOrFailed": "Cancelled or failed",
   "turnCancelled": "Cancelled.",
   "turnCancelledBadge": "Cancelled",
+  "turnInterrupted": "Interrupted.",
   "replyModeTitle": "Agent: tools + multi-round WebSocket. Chat: single streamed assistant message (HTTP).",
   "replyModeLabel": "Reply mode",
   "replyModeAgent": "Agent (tools, WebSocket)",
