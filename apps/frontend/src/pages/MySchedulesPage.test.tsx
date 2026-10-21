@@ -119,25 +119,26 @@ describe("MySchedulesPage target catalog gate", () => {
     render(<MySchedulesPage />);
     await waitFor(() => expect(askedFor("/v1/user/scheduler-jobs/execution-targets")).toHaveLength(1));
     fireEvent.click(screen.getByRole("button", { name: "admin:schedulesCreate" }));
-    return screen.getAllByRole("option").map((o) => o.textContent);
+    const targetSelect = screen.getByLabelText("settings:schedulesTargetHeader");
+    return Array.from(targetSelect.querySelectorAll("option")).map((o) => o.textContent);
   };
 
   it("hides an admin target from a plain user", async () => {
-    expect(await targetOptions()).toEqual(["—", "General"]);
+    expect(await targetOptions()).toEqual(["General"]);
   });
 
   it("hides it from a legacy admin row that the site flag says is a user", async () => {
     authState.user = { role: "admin", site_role: "site_user" };
-    expect(await targetOptions()).toEqual(["—", "General"]);
+    expect(await targetOptions()).toEqual(["General"]);
   });
 
   it("shows it to a site admin", async () => {
     authState.user = { role: "user", site_role: "site_admin" };
-    expect(await targetOptions()).toEqual(["—", "General", "Coding"]);
+    expect(await targetOptions()).toEqual(["General", "Coding"]);
   });
 
   it("still honours the legacy column while the site flag is unset", async () => {
     authState.user = { role: "admin" };
-    expect(await targetOptions()).toEqual(["—", "General", "Coding"]);
+    expect(await targetOptions()).toEqual(["General", "Coding"]);
   });
 });

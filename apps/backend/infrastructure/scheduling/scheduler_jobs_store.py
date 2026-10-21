@@ -9,7 +9,23 @@ from typing import Any
 from psycopg.rows import dict_row
 from psycopg.types.json import Json
 
+from apps.backend.domain.scheduling.job_notify import (
+    DEFAULT_NOTIFY_CHANNELS,
+    DEFAULT_NOTIFY_ON,
+    normalize_notify_channels,
+    normalize_notify_on,
+)
 from apps.backend.infrastructure.db import db
+
+_JOB_RETURNING = """id, tenant_id, created_by_user_id, execution_user_id, dashboard_id,
+                          execution_target, title, instructions, interval_minutes, enabled,
+                          coding_workflow, notify_on, notify_channels, notify_include_output,
+                          last_run_at, created_at, updated_at"""
+
+_JOB_RETURNING_WITH_DELETED = """id, tenant_id, created_by_user_id, execution_user_id, dashboard_id,
+                          execution_target, title, instructions, interval_minutes, enabled,
+                          coding_workflow, notify_on, notify_channels, notify_include_output,
+                          last_run_at, deleted_at, created_at, updated_at"""
 
 
 def _uuid(v: Any) -> uuid.UUID | None:
@@ -47,6 +63,9 @@ def insert_job(
     interval_minutes: int,
     enabled: bool = True,
     coding_workflow: dict[str, Any] | None = None,
+    notify_on: str | None = None,
+    notify_channels: list[str] | None = None,
+    notify_include_output: bool = False,
 ) -> dict[str, Any]:
     wf = coding_workflow if coding_workflow is not None else {}
     from apps.backend.infrastructure.workspace.workspace_execution import (
@@ -54,19 +73,20 @@ def insert_job(
     )
 
     raise_if_workflow_targets_client(wf)
+    on = normalize_notify_on(notify_on, default=DEFAULT_NOTIFY_ON)
+    channels = normalize_notify_channels(notify_channels, default=DEFAULT_NOTIFY_CHANNELS)
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
-                """
+                f"""
                 INSERT INTO scheduler_jobs (
                   tenant_id, created_by_user_id, execution_user_id, dashboard_id,
                   execution_target, title, instructions, interval_minutes, enabled,
-                  coding_workflow, updated_at
+                  coding_workflow, notify_on, notify_channels, notify_include_output,
+                  updated_at
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
-                RETURNING id, tenant_id, created_by_user_id, execution_user_id, dashboard_id,
-                          execution_target, title, instructions, interval_minutes, enabled,
-                          coding_workflow, last_run_at, created_at, updated_at
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
+                RETURNING {_JOB_RETURNING}
                 """,
                 (
                     tenant_id,
@@ -79,6 +99,9 @@ def insert_job(
                     interval_minutes,
                     enabled,
                     Json(wf),
+                    on,
+                    Json(channels),
+                    bool(notify_include_output),
                 ),
             )
             row = cur.fetchone()
@@ -183,7 +206,8 @@ def list_jobs_for_scope(
 
     columns = """j.id, j.tenant_id, j.created_by_user_id, j.execution_user_id, j.dashboard_id,
                        j.execution_target, j.title, j.instructions, j.interval_minutes, j.enabled,
-                       j.coding_workflow, j.last_run_at, j.deleted_at, j.created_at, j.updated_at"""
+                       j.coding_workflow, j.notify_on, j.notify_channels, j.notify_include_output,
+                       j.last_run_at, j.deleted_at, j.created_at, j.updated_at"""
     joins = ""
     if include_owner_labels:
         columns += """,
@@ -244,10 +268,8 @@ def get_job_any_tenant(job_id: uuid.UUID) -> dict[str, Any] | None:
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
-                """
-                SELECT id, tenant_id, created_by_user_id, execution_user_id, dashboard_id,
-                       execution_target, title, instructions, interval_minutes, enabled,
-                       coding_workflow, last_run_at, deleted_at, created_at, updated_at
+                f"""
+                SELECT {_JOB_RETURNING_WITH_DELETED}
                 FROM scheduler_jobs
                 WHERE id = %s
                 """,
@@ -262,10 +284,8 @@ def get_job(job_id: uuid.UUID, tenant_id: int) -> dict[str, Any] | None:
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
-                """
-                SELECT id, tenant_id, created_by_user_id, execution_user_id, dashboard_id,
-                       execution_target, title, instructions, interval_minutes, enabled,
-                       coding_workflow, last_run_at, deleted_at, created_at, updated_at
+                f"""
+                SELECT {_JOB_RETURNING_WITH_DELETED}
                 FROM scheduler_jobs
                 WHERE id = %s AND tenant_id = %s
                 """,
@@ -320,13 +340,11 @@ def set_enabled(
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
-                """
+                f"""
                 UPDATE scheduler_jobs
                 SET enabled = %s, updated_at = %s
                 WHERE id = %s AND tenant_id = %s
-                RETURNING id, tenant_id, created_by_user_id, execution_user_id, dashboard_id,
-                          execution_target, title, instructions, interval_minutes, enabled,
-                          coding_workflow, last_run_at, created_at, updated_at
+                RETURNING {_JOB_RETURNING}
                 """,
                 (enabled, now, job_id, tenant_id),
             )
@@ -345,6 +363,9 @@ def update_job(
     instructions: str | None,
     interval_minutes: int | None,
     coding_workflow: dict[str, Any] | None,
+    notify_on: str | None = None,
+    notify_channels: list[str] | None = None,
+    notify_include_output: bool | None = None,
 ) -> dict[str, Any] | None:
     job = _writable_job(
         job_id=job_id, tenant_id=tenant_id, actor_user_id=actor_user_id, actor_is_admin=actor_is_admin
@@ -357,6 +378,23 @@ def update_job(
     new_instr = job.get("instructions") if instructions is None else instructions
     new_interval = job.get("interval_minutes") if interval_minutes is None else interval_minutes
     new_wf = job.get("coding_workflow") if coding_workflow is None else coding_workflow
+    new_notify_on = (
+        job.get("notify_on")
+        if notify_on is None
+        else normalize_notify_on(notify_on, default=DEFAULT_NOTIFY_ON)
+    )
+    new_channels = (
+        job.get("notify_channels")
+        if notify_channels is None
+        else normalize_notify_channels(notify_channels, default=DEFAULT_NOTIFY_CHANNELS)
+    )
+    if not isinstance(new_channels, list):
+        new_channels = normalize_notify_channels(new_channels, default=DEFAULT_NOTIFY_CHANNELS)
+    new_include = (
+        bool(job.get("notify_include_output"))
+        if notify_include_output is None
+        else bool(notify_include_output)
+    )
     from apps.backend.infrastructure.workspace.workspace_execution import (
         raise_if_workflow_targets_client,
     )
@@ -366,23 +404,27 @@ def update_job(
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
-                """
+                f"""
                 UPDATE scheduler_jobs
                 SET title = %s,
                     instructions = %s,
                     interval_minutes = %s,
                     coding_workflow = %s,
+                    notify_on = %s,
+                    notify_channels = %s,
+                    notify_include_output = %s,
                     updated_at = %s
                 WHERE id = %s AND tenant_id = %s
-                RETURNING id, tenant_id, created_by_user_id, execution_user_id, dashboard_id,
-                          execution_target, title, instructions, interval_minutes, enabled,
-                          coding_workflow, last_run_at, deleted_at, created_at, updated_at
+                RETURNING {_JOB_RETURNING_WITH_DELETED}
                 """,
                 (
                     new_title,
                     new_instr,
                     int(new_interval),
                     Json(new_wf if isinstance(new_wf, dict) else {}),
+                    normalize_notify_on(new_notify_on, default=DEFAULT_NOTIFY_ON),
+                    Json(new_channels),
+                    new_include,
                     now,
                     job_id,
                     tenant_id,
@@ -460,10 +502,8 @@ def fetch_due_jobs(*, limit: int = 10) -> list[dict[str, Any]]:
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
-                """
-                SELECT id, tenant_id, created_by_user_id, execution_user_id, dashboard_id,
-                       execution_target, title, instructions, interval_minutes, enabled,
-                       coding_workflow, last_run_at, created_at, updated_at
+                f"""
+                SELECT {_JOB_RETURNING}
                 FROM scheduler_jobs
                 WHERE enabled = true
                   AND deleted_at IS NULL

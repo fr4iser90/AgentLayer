@@ -20,6 +20,9 @@ import { SkeletonRows } from "../ui/Skeleton";
 import { Table, type TableColumn } from "../ui/Table";
 import { PageShell } from "../layout/PageShell";
 
+type NotifyOn = "never" | "failure" | "always";
+type NotifyChannel = "in_app" | "telegram" | "discord";
+
 type SchedulerJobRow = {
   id: string;
   dashboard_id: string | null;
@@ -32,7 +35,39 @@ type SchedulerJobRow = {
   created_at: string;
   coding_workflow?: unknown;
   instructions?: string;
+  notify_on?: NotifyOn | string;
+  notify_channels?: NotifyChannel[] | string[];
+  notify_include_output?: boolean;
 };
+
+const NOTIFY_CHANNELS_ALL: NotifyChannel[] = ["in_app", "telegram", "discord"];
+
+function normalizeNotifyOn(raw: unknown): NotifyOn {
+  const s = String(raw || "").trim().toLowerCase();
+  if (s === "never" || s === "failure" || s === "always") return s;
+  return "always";
+}
+
+function normalizeNotifyChannels(raw: unknown): NotifyChannel[] {
+  if (!Array.isArray(raw)) return ["in_app"];
+  const out: NotifyChannel[] = [];
+  for (const item of raw) {
+    const ch = String(item || "").trim().toLowerCase();
+    if (
+      (ch === "in_app" || ch === "telegram" || ch === "discord") &&
+      !out.includes(ch)
+    ) {
+      out.push(ch);
+    }
+  }
+  return out.length ? out : ["in_app"];
+}
+
+function toggleChannel(list: NotifyChannel[], ch: NotifyChannel, on: boolean): NotifyChannel[] {
+  if (on) return list.includes(ch) ? list : [...list, ch];
+  const next = list.filter((c) => c !== ch);
+  return next.length ? next : ["in_app"];
+}
 
 type SchedulerJobRunSummary = {
   tools?: Array<{ round?: number; name?: string; ok?: boolean; args?: Record<string, unknown>; error?: string }>;
@@ -140,6 +175,9 @@ export function MySchedulesPage({ scope = "user" }: { scope?: SchedulesScope }) 
   const [createInstructions, setCreateInstructions] = useState("");
   const [createDashboardId, setCreateDashboardId] = useState("");
   const [createCodingWorkflow, setCreateCodingWorkflow] = useState<CodingWorkflowPreset>({});
+  const [createNotifyOn, setCreateNotifyOn] = useState<NotifyOn>("always");
+  const [createNotifyChannels, setCreateNotifyChannels] = useState<NotifyChannel[]>(["in_app"]);
+  const [createNotifyIncludeOutput, setCreateNotifyIncludeOutput] = useState(false);
   const [workspaces, setWorkspaces] = useState<WorkspaceApiRecord[]>([]);
   const [workspacesLoading, setWorkspacesLoading] = useState(false);
 
@@ -147,6 +185,9 @@ export function MySchedulesPage({ scope = "user" }: { scope?: SchedulesScope }) 
   const [editTitle, setEditTitle] = useState("");
   const [editInstructions, setEditInstructions] = useState("");
   const [editInterval, setEditInterval] = useState<number>(60);
+  const [editNotifyOn, setEditNotifyOn] = useState<NotifyOn>("always");
+  const [editNotifyChannels, setEditNotifyChannels] = useState<NotifyChannel[]>(["in_app"]);
+  const [editNotifyIncludeOutput, setEditNotifyIncludeOutput] = useState(false);
 
   const [runsJob, setRunsJob] = useState<SchedulerJobRow | null>(null);
   const [runs, setRuns] = useState<SchedulerJobRun[] | null>(null);
@@ -331,6 +372,9 @@ export function MySchedulesPage({ scope = "user" }: { scope?: SchedulesScope }) 
     setEditTitle(j.title ?? "");
     setEditInstructions(j.instructions ?? "");
     setEditInterval(j.interval_minutes ?? 60);
+    setEditNotifyOn(normalizeNotifyOn(j.notify_on));
+    setEditNotifyChannels(normalizeNotifyChannels(j.notify_channels));
+    setEditNotifyIncludeOutput(Boolean(j.notify_include_output));
   };
 
   const saveEdit = async () => {
@@ -341,6 +385,9 @@ export function MySchedulesPage({ scope = "user" }: { scope?: SchedulesScope }) 
         title: editTitle,
         instructions: editInstructions,
         interval_minutes: editInterval,
+        notify_on: editNotifyOn,
+        notify_channels: editNotifyChannels,
+        notify_include_output: editNotifyIncludeOutput,
       }),
     });
     const j = (await res.json().catch(() => null)) as any;
@@ -404,6 +451,9 @@ export function MySchedulesPage({ scope = "user" }: { scope?: SchedulesScope }) 
         title: createTitle || null,
         instructions: createInstructions,
         dashboard_id: createDashboardId || null,
+        notify_on: createNotifyOn,
+        notify_channels: createNotifyChannels,
+        notify_include_output: createNotifyIncludeOutput,
         ...(createNeedsWorkspace
           ? {
               workspace_id: createWorkspaceId.trim(),
@@ -424,6 +474,9 @@ export function MySchedulesPage({ scope = "user" }: { scope?: SchedulesScope }) 
     setCreateDashboardId("");
     setCreateWorkspaceId("");
     setCreateCodingWorkflow({});
+    setCreateNotifyOn("always");
+    setCreateNotifyChannels(["in_app"]);
+    setCreateNotifyIncludeOutput(false);
     await refresh();
   };
 
@@ -461,6 +514,35 @@ export function MySchedulesPage({ scope = "user" }: { scope?: SchedulesScope }) 
       key: "interval",
       header: t("settings:schedulesIntervalHeader"),
       render: (j) => t("settings:schedulesIntervalMinutes", { minutes: j.interval_minutes }),
+    },
+    {
+      key: "notify",
+      header: t("settings:schedulesNotifyHeader"),
+      render: (j) => {
+        const on = normalizeNotifyOn(j.notify_on);
+        const channels = normalizeNotifyChannels(j.notify_channels);
+        if (on === "never") {
+          return <Badge tone="neutral">{t("settings:schedulesNotifyNever")}</Badge>;
+        }
+        return (
+          <span className="flex flex-wrap items-center gap-tight">
+            <Badge tone={on === "failure" ? "warning" : "success"}>
+              {on === "failure"
+                ? t("settings:schedulesNotifyFailure")
+                : t("settings:schedulesNotifyAlways")}
+            </Badge>
+            {channels.includes("in_app") ? (
+              <Badge tone="neutral">{t("settings:schedulesNotifyInAppShort")}</Badge>
+            ) : null}
+            {channels.includes("telegram") ? (
+              <Badge tone="accent">{t("settings:schedulesNotifyTelegramShort")}</Badge>
+            ) : null}
+            {channels.includes("discord") ? (
+              <Badge tone="accent">{t("settings:schedulesNotifyDiscordShort")}</Badge>
+            ) : null}
+          </span>
+        );
+      },
     },
     {
       key: "dashboard",
@@ -826,6 +908,50 @@ export function MySchedulesPage({ scope = "user" }: { scope?: SchedulesScope }) 
                 />
                 {t("settings:schedulesEnabledHeader")}
               </label>
+              <label className="text-xs text-ink-muted md:col-span-2">
+                {t("settings:schedulesNotifyWhen")}
+                <Select
+                  className="mt-tight"
+                  value={createNotifyOn}
+                  onChange={(e) => setCreateNotifyOn(normalizeNotifyOn(e.target.value))}
+                >
+                  <option value="always">{t("settings:schedulesNotifyAlways")}</option>
+                  <option value="failure">{t("settings:schedulesNotifyFailure")}</option>
+                  <option value="never">{t("settings:schedulesNotifyNever")}</option>
+                </Select>
+              </label>
+              <fieldset className="md:col-span-2 text-xs text-ink-muted">
+                <legend className="mb-tight">{t("settings:schedulesNotifyChannels")}</legend>
+                <p className="mb-soft text-meta text-ink-muted">{t("settings:schedulesNotifyChannelsHelp")}</p>
+                <div className="flex flex-wrap gap-soft">
+                  {NOTIFY_CHANNELS_ALL.map((ch) => (
+                    <label key={ch} className="flex items-center gap-base">
+                      <Checkbox
+                        checked={createNotifyChannels.includes(ch)}
+                        disabled={createNotifyOn === "never"}
+                        onChange={(e) =>
+                          setCreateNotifyChannels(
+                            toggleChannel(createNotifyChannels, ch, e.target.checked)
+                          )
+                        }
+                      />
+                      {ch === "in_app"
+                        ? t("settings:schedulesNotifyInApp")
+                        : ch === "telegram"
+                          ? t("settings:schedulesNotifyTelegram")
+                          : t("settings:schedulesNotifyDiscord")}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <label className="flex items-center gap-base text-xs text-ink-muted md:col-span-2">
+                <Checkbox
+                  checked={createNotifyIncludeOutput}
+                  disabled={createNotifyOn === "never"}
+                  onChange={(e) => setCreateNotifyIncludeOutput(e.target.checked)}
+                />
+                {t("settings:schedulesNotifyIncludeOutput")}
+              </label>
             </div>
         </Modal>
       ) : null}
@@ -886,6 +1012,50 @@ export function MySchedulesPage({ scope = "user" }: { scope?: SchedulesScope }) 
                   value={editInstructions}
                   onChange={(e) => setEditInstructions(e.target.value)}
                 />
+              </label>
+              <label className="text-xs text-ink-muted">
+                {t("settings:schedulesNotifyWhen")}
+                <Select
+                  className="mt-tight"
+                  value={editNotifyOn}
+                  onChange={(e) => setEditNotifyOn(normalizeNotifyOn(e.target.value))}
+                >
+                  <option value="always">{t("settings:schedulesNotifyAlways")}</option>
+                  <option value="failure">{t("settings:schedulesNotifyFailure")}</option>
+                  <option value="never">{t("settings:schedulesNotifyNever")}</option>
+                </Select>
+              </label>
+              <fieldset className="text-xs text-ink-muted">
+                <legend className="mb-tight">{t("settings:schedulesNotifyChannels")}</legend>
+                <p className="mb-soft text-meta text-ink-muted">{t("settings:schedulesNotifyChannelsHelp")}</p>
+                <div className="flex flex-wrap gap-soft">
+                  {NOTIFY_CHANNELS_ALL.map((ch) => (
+                    <label key={ch} className="flex items-center gap-base">
+                      <Checkbox
+                        checked={editNotifyChannels.includes(ch)}
+                        disabled={editNotifyOn === "never"}
+                        onChange={(e) =>
+                          setEditNotifyChannels(
+                            toggleChannel(editNotifyChannels, ch, e.target.checked)
+                          )
+                        }
+                      />
+                      {ch === "in_app"
+                        ? t("settings:schedulesNotifyInApp")
+                        : ch === "telegram"
+                          ? t("settings:schedulesNotifyTelegram")
+                          : t("settings:schedulesNotifyDiscord")}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <label className="flex items-center gap-base text-xs text-ink-muted">
+                <Checkbox
+                  checked={editNotifyIncludeOutput}
+                  disabled={editNotifyOn === "never"}
+                  onChange={(e) => setEditNotifyIncludeOutput(e.target.checked)}
+                />
+                {t("settings:schedulesNotifyIncludeOutput")}
               </label>
             </div>
         </Modal>

@@ -22,8 +22,14 @@ def emit_notification(
     severity: str = "info",
     link_path: str | None = None,
     source_ref: dict[str, Any] | None = None,
+    skip_in_app: bool = False,
+    external_channels: frozenset[str] | None = None,
 ) -> None:
-    """Insert in-app notification and deliver to opted-in external channels."""
+    """Insert in-app notification and deliver to opted-in external channels.
+
+    ``external_channels``: when set, only those channels are attempted (job allowlist).
+    ``skip_in_app``: deliver externally without inserting an in-app row.
+    """
     try:
         from apps.backend.domain.shared.identity import get_benchmark_run_id
 
@@ -39,17 +45,33 @@ def emit_notification(
         pass
 
     def _run() -> None:
-        row = notifications_store.insert_notification(
-            tenant_id=tenant_id,
+        if skip_in_app:
+            row = {
+                "kind": kind,
+                "title": title,
+                "body": body,
+                "severity": severity,
+                "link_path": link_path,
+                "source_ref": source_ref or {},
+            }
+        else:
+            row = notifications_store.insert_notification(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                kind=kind,
+                title=title,
+                body=body,
+                severity=severity,
+                link_path=link_path,
+                source_ref=source_ref,
+            )
+        if external_channels is not None and not external_channels:
+            return
+        deliver_external(
             user_id=user_id,
-            kind=kind,
-            title=title,
-            body=body,
-            severity=severity,
-            link_path=link_path,
-            source_ref=source_ref,
+            notification=row,
+            channels=external_channels,
         )
-        deliver_external(user_id=user_id, notification=row)
 
     _safe_emit(_run)
 
@@ -76,7 +98,24 @@ def notify_scheduler_job_finished(
     success: bool,
     error: str | None = None,
     run_id: str | None = None,
+    output_excerpt: str | None = None,
 ) -> None:
+    from apps.backend.domain.scheduling.job_notify import (
+        normalize_notify_channels,
+        normalize_notify_on,
+        should_notify_for_outcome,
+    )
+
+    notify_on = normalize_notify_on(row.get("notify_on"))
+    if not should_notify_for_outcome(notify_on=notify_on, success=success):
+        return
+
+    channels = normalize_notify_channels(row.get("notify_channels"))
+    want_in_app = "in_app" in channels
+    external = frozenset(ch for ch in channels if ch in ("telegram", "discord"))
+    if not want_in_app and not external:
+        return
+
     job_id = str(row.get("id") or "")
     title = _job_title(row)
     link = "/app/schedules"
@@ -87,28 +126,40 @@ def notify_scheduler_job_finished(
     if dash is not None:
         ref["dashboard_id"] = str(dash)
 
+    include_output = bool(row.get("notify_include_output"))
+    excerpt = (output_excerpt or "").strip()
     if success:
+        body = "Background job completed successfully."
+        if include_output and excerpt:
+            body = f"{body}\n\n{excerpt[:1500]}"
         emit_notification(
             tenant_id=tenant_id,
             user_id=user_id,
             kind="scheduler_job_done",
             severity="info",
             title=f"Schedule finished: {title}",
-            body="Background job completed successfully.",
+            body=body,
             link_path=link,
             source_ref=ref,
+            skip_in_app=not want_in_app,
+            external_channels=external,
         )
     else:
         err = (error or "Job failed").strip()[:500]
+        body = err
+        if include_output and excerpt:
+            body = f"{err}\n\n{excerpt[:1500]}"
         emit_notification(
             tenant_id=tenant_id,
             user_id=user_id,
             kind="scheduler_job_failed",
             severity="warning",
             title=f"Schedule failed: {title}",
-            body=err,
+            body=body,
             link_path=link,
             source_ref=ref,
+            skip_in_app=not want_in_app,
+            external_channels=external,
         )
 
 

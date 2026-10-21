@@ -161,6 +161,18 @@ def create(arguments: dict[str, Any]) -> str:
         return _err(str(e))
 
     try:
+        from apps.backend.domain.scheduling.job_notify import (
+            normalize_notify_channels,
+            require_notify_on,
+        )
+
+        try:
+            notify_on = require_notify_on(arguments.get("notify_on"))
+        except ValueError as e:
+            return _err(str(e))
+        notify_channels = None
+        if arguments.get("notify_channels") is not None:
+            notify_channels = normalize_notify_channels(arguments.get("notify_channels"))
         row = scheduler_jobs_store.insert_job(
             tenant_id=tenant_id,
             created_by_user_id=caller_uid,
@@ -172,6 +184,9 @@ def create(arguments: dict[str, Any]) -> str:
             interval_minutes=interval_m,
             enabled=bool(arguments.get("enabled", True)),
             coding_workflow=coding_wf,
+            notify_on=notify_on,
+            notify_channels=notify_channels,
+            notify_include_output=bool(arguments.get("notify_include_output", False)),
         )
     except ValueError as e:
         return _err(str(e))
@@ -258,7 +273,9 @@ TOOLS: list[dict[str, Any]] = [
                 "(e.g. general, coding, coding_plan, security_auditor — see GET /v1/user/scheduler-jobs/execution-targets). "
                 "Workspace agents need workspace_id or coding_workflow.workspace_id. "
                 "Optional coding_workflow: agent_id, prompt_preamble. "
-                "instructions: what to do. Optional dashboard_id (UUID). interval_minutes: 5–10080 (default 60)."
+                "instructions: what to do. Optional dashboard_id (UUID). interval_minutes: 5–10080 (default 60). "
+                "Optional notify_on (never|failure|always), notify_channels ([in_app,telegram,discord]), "
+                "notify_include_output (bool)."
             ),
             "parameters": {
                 "type": "object",
@@ -297,6 +314,19 @@ TOOLS: list[dict[str, Any]] = [
                         "description": (
                             "Optional overrides: workspace_id, agent_id (coding|coding_plan), prompt_preamble."
                         ),
+                    },
+                    "notify_on": {
+                        "type": "string",
+                        "description": "never | failure | always (default always).",
+                    },
+                    "notify_channels": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "in_app, telegram, and/or discord (default [in_app]).",
+                    },
+                    "notify_include_output": {
+                        "type": "boolean",
+                        "description": "Append a short run output excerpt to the notification body.",
                     },
                 },
                 "required": ["instructions", "execution_target"],

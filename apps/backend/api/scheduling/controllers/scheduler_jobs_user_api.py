@@ -19,6 +19,7 @@ from apps.backend.application.scheduling.use_cases.scheduling_controller_service
 from apps.backend.application.scheduling.use_cases.scheduling_controller_services import (
     schedule_feature_permission_error,
 )
+from apps.backend.domain.scheduling.job_notify import normalize_notify_channels, require_notify_on
 from apps.backend.domain.scheduling.targets import (
     agent_requires_workspace_for_target,
     execution_target_error,
@@ -28,6 +29,19 @@ from apps.backend.domain.scheduling.targets import (
 )
 
 router = APIRouter(prefix="/v1/user/scheduler-jobs", tags=["scheduler-jobs-user"])
+
+
+def _validated_notify_on(raw: str | None) -> str | None:
+    try:
+        return require_notify_on(raw)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+def _validated_notify_channels(raw: list[str] | None) -> list[str] | None:
+    if raw is None:
+        return None
+    return normalize_notify_channels(raw)
 
 
 class SchedulerJobCreateBody(BaseModel):
@@ -42,6 +56,16 @@ class SchedulerJobCreateBody(BaseModel):
         default=None,
         description="Required for workspace agents unless in coding_workflow",
     )
+    notify_on: str | None = Field(
+        default=None,
+        max_length=16,
+        description="never | failure | always (default always)",
+    )
+    notify_channels: list[str] | None = Field(
+        default=None,
+        description="Subset of in_app, telegram, discord (default [in_app])",
+    )
+    notify_include_output: bool = False
 
 
 class SchedulerJobSetEnabledBody(BaseModel):
@@ -52,6 +76,9 @@ class SchedulerJobPatchBody(BaseModel):
     title: str | None = Field(default=None, max_length=500)
     instructions: str | None = Field(default=None, max_length=32000)
     interval_minutes: int | None = Field(default=None, ge=5, le=10080)
+    notify_on: str | None = Field(default=None, max_length=16)
+    notify_channels: list[str] | None = None
+    notify_include_output: bool | None = None
 
 
 @router.get("/execution-targets")
@@ -151,6 +178,9 @@ async def scheduler_job_create(request: Request, body: SchedulerJobCreateBody) -
             interval_minutes=int(body.interval_minutes),
             enabled=bool(body.enabled),
             coding_workflow=wf,
+            notify_on=_validated_notify_on(body.notify_on),
+            notify_channels=_validated_notify_channels(body.notify_channels),
+            notify_include_output=bool(body.notify_include_output),
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -179,6 +209,9 @@ async def scheduler_job_patch(request: Request, job_id: str, body: SchedulerJobP
         instructions=body.instructions.strip() if isinstance(body.instructions, str) else None,
         interval_minutes=body.interval_minutes,
         coding_workflow=None,
+        notify_on=_validated_notify_on(body.notify_on),
+        notify_channels=_validated_notify_channels(body.notify_channels),
+        notify_include_output=body.notify_include_output,
     )
     if not row:
         raise HTTPException(status_code=404, detail="job not found or not allowed")

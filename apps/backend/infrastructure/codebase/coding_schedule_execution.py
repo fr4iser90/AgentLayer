@@ -548,6 +548,7 @@ async def run_coding_schedule_row(
                 success=False,
                 error=err_msg,
                 run_id=str(run_id),
+                output_excerpt=final_reply,
             )
             return False, err_msg, None
 
@@ -582,6 +583,7 @@ async def run_coding_schedule_row(
             success=status != "failed",
             error=outcome if status == "failed" else None,
             run_id=str(run_id),
+            output_excerpt=final_reply,
         )
         if status == "failed":
             return False, err_msg or outcome or "schedule run failed", None
